@@ -8,6 +8,7 @@ import {
   OrderItem,
   OrderStatus,
   RewardActivity,
+   RewardActivityInput,
   User,
   VendorSettings
 } from './models';
@@ -266,6 +267,36 @@ export class SupabaseDataClient implements DataClient {
     return (data ?? []).map(mapRewardActivityFromRow);
   }
 
+  async recordRewardActivity(activity: RewardActivityInput): Promise<RewardActivity> {
+    const { data, error } = await this.client
+      .from('reward_activities')
+      .insert(toRewardActivityInsert(activity))
+      .select()
+      .single();
+    if (error) throw error;
+    return mapRewardActivityFromRow(data);
+  }
+
+  async adjustUserLoyaltyPoints(userId: string, delta: number): Promise<number> {
+    const { data: existing, error: fetchError } = await this.client
+      .from('users')
+      .select('loyalty_points')
+      .eq('id', userId)
+      .single();
+
+    if (fetchError) throw fetchError;
+    const current = existing?.loyalty_points ?? 0;
+    const next = Math.max(0, current + delta);
+
+    const { error: updateError } = await this.client
+      .from('users')
+      .update({ loyalty_points: next })
+      .eq('id', userId);
+
+    if (updateError) throw updateError;
+    return next;
+  }
+
   subscribeToOrders(vendorId: string, handler: (order: Order) => void): Subscription {
     const channel = this.client
       .channel(`orders:${vendorId}`)
@@ -373,6 +404,19 @@ const toOrderInsert = (order: CreateOrderInput): Database['public']['Tables']['o
   updated_at: order.updatedAt ?? null,
   eta_minutes: order.etaMinutes ?? null,
   note: order.note ?? null
+});
+
+const toRewardActivityInsert = (
+  activity: RewardActivityInput
+): Database['public']['Tables']['reward_activities']['Insert'] => ({
+  id: activity.id,
+  user_id: activity.userId,
+  vendor_id: activity.vendorId,
+  points: activity.points,
+  type: activity.type,
+  description: activity.description ?? null,
+  occurred_at: activity.occurredAt ?? new Date().toISOString(),
+  order_id: activity.orderId ?? null
 });
 
 const mapRewardActivityFromRow = (

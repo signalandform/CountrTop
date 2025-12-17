@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@countrtop/api-client": "workspace:*",
+    "@countrtop/functions": "workspace:*",
     "@countrtop/models": "workspace:*",
     "@countrtop/ui": "workspace:*",
     "next": "14.2.6",

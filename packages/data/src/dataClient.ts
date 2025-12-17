@@ -1,4 +1,12 @@
-import { MenuItem, Order, OrderStatus, RewardActivity, User, VendorSettings } from './models';
+import {
+  MenuItem,
+  Order,
+  OrderStatus,
+  RewardActivity,
+  RewardActivityInput,
+  User,
+  VendorSettings
+} from './models';
 
 export type Subscription = {
   unsubscribe: () => Promise<void> | void;
@@ -26,6 +34,8 @@ export interface DataClient {
 
   fetchVendorSettings(vendorId: string): Promise<VendorSettings | null>;
   fetchRewardActivities(userId: string): Promise<RewardActivity[]>;
+  recordRewardActivity(activity: RewardActivityInput): Promise<RewardActivity>;
+  adjustUserLoyaltyPoints(userId: string, delta: number): Promise<number>;
 
   subscribeToOrders(vendorId: string, handler: (order: Order) => void): Subscription;
   subscribeToMenu(vendorId: string, handler: (menuItem: MenuItem) => void): Subscription;

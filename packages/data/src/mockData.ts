@@ -1,5 +1,13 @@
 import { CreateOrderInput, DataClient, MenuItemInput, Subscription } from './dataClient';
-import { MenuItem, Order, OrderStatus, RewardActivity, User, VendorSettings } from './models';
+import {
+  MenuItem,
+  Order,
+  OrderStatus,
+  RewardActivity,
+  RewardActivityInput,
+  User,
+  VendorSettings
+} from './models';
 
 export type MockDataSeed = {
   menuItems?: MenuItem[];
@@ -127,6 +135,26 @@ export class MockDataClient implements DataClient {
 
   async fetchRewardActivities(userId: string): Promise<RewardActivity[]> {
     return this.rewardActivities.filter(activity => activity.userId === userId);
+  }
+
+  async recordRewardActivity(activity: RewardActivityInput): Promise<RewardActivity> {
+    const occurredAt = activity.occurredAt ?? new Date().toISOString();
+    const nextActivity: RewardActivity = {
+      ...activity,
+      id: activity.id ?? this.createId('reward'),
+      occurredAt
+    };
+    this.rewardActivities = [nextActivity, ...this.rewardActivities];
+    return nextActivity;
+  }
+
+  async adjustUserLoyaltyPoints(userId: string, delta: number): Promise<number> {
+    const user = this.users.find(candidate => candidate.id === userId);
+    if (!user) throw new Error(`User ${userId} not found`);
+    const current = user.loyaltyPoints ?? 0;
+    const next = Math.max(0, current + delta);
+    user.loyaltyPoints = next;
+    return next;
   }
 
   subscribeToOrders(vendorId: string, handler: (order: Order) => void): Subscription {
