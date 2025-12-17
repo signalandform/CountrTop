@@ -8,6 +8,7 @@ export * from './models';
 export * from './dataClient';
 export * from './supabaseClient';
 export * from './mockData';
+export * from './auth';
 
 export type DataClientFactoryOptions = {
   supabase?: SupabaseClient<Database>;
