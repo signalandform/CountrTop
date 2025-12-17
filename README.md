@@ -17,3 +17,31 @@
 
 ## 📦 Structure
 
+This repository is organized as a PNPM-powered monorepo with dedicated apps for mobile and web, plus shared packages for UI, data models, and API access.
+
+```
+.
+├── apps
+│   ├── dashboard   # Next.js vendor console
+│   └── mobile      # Expo React Native customer app
+├── packages
+│   ├── api-client  # Typed API helpers for menus, loyalty, and orders
+│   ├── models      # Shared data contracts
+│   └── ui          # Reusable UI building blocks for the dashboard
+├── tsconfig.json   # Shared compiler settings and path aliases
+├── pnpm-workspace.yaml
+└── package.json
+```
+
+### Quickstart
+
+1. Install dependencies with `pnpm install`.
+2. Run `pnpm dev:mobile` to start the Expo dev server.
+3. Run `pnpm dev:dashboard` to start the Next.js dashboard.
+
+### What’s included
+
+- **Typed data models** for vendors, menu items, loyalty, and orders.
+- **API client stubs** for fetching featured vendors, menus, loyalty snapshots, and recent orders.
+- **Shared UI components** for dashboard sections and stats.
+- **Placeholder screens** in both apps aligned to the ordering, loyalty, and vendor management flows described above.
