@@ -50,3 +50,70 @@ export const fetchRecentOrders = async (
   if (!response.ok) throw new Error('Failed to load orders');
   return response.json();
 };
+
+export type CheckoutIntentPayload = {
+  amount: number;
+  currency?: string;
+  orderId?: string;
+  userId?: string;
+  vendorId?: string;
+  customerId?: string;
+  description?: string;
+  successUrl?: string;
+  cancelUrl?: string;
+  mode?: 'payment' | 'setup';
+};
+
+export type CheckoutIntentResponse = {
+  ok: boolean;
+  paymentIntentId?: string;
+  clientSecret?: string;
+  checkoutSessionId?: string;
+  checkoutUrl?: string | null;
+  error?: string;
+};
+
+export type RewardActivityRequest = {
+  userId: string;
+  vendorId: string;
+  points: number;
+  type: 'earn' | 'redeem';
+  description?: string;
+  orderId?: string;
+};
+
+export const initiateCheckout = async (
+  payload: CheckoutIntentPayload,
+  config: ApiConfig = defaultConfig
+): Promise<CheckoutIntentResponse> => {
+  const response = await fetch(createUrl('/payments/checkout', config.baseUrl ?? defaultConfig.baseUrl), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => ({}));
+    return { ok: false, error: errorBody.error ?? 'Unable to start checkout' };
+  }
+
+  return response.json();
+};
+
+export const recordRewardActivity = async (
+  payload: RewardActivityRequest,
+  config: ApiConfig = defaultConfig
+): Promise<{ ok: boolean; error?: string }> => {
+  const response = await fetch(createUrl('/loyalty/activities', config.baseUrl ?? defaultConfig.baseUrl), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => ({}));
+    return { ok: false, error: errorBody.error ?? 'Failed to record loyalty activity' };
+  }
+
+  return response.json();
+};

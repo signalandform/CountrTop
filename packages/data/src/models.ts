@@ -68,6 +68,17 @@ export type RewardActivity = {
   orderId?: string;
 };
 
+export type RewardActivityInput = {
+  id?: string;
+  userId: string;
+  vendorId: string;
+  points: number;
+  type: RewardActivityType;
+  description?: string;
+  occurredAt?: string;
+  orderId?: string;
+};
+
 export type VendorSettings = {
   vendorId: string;
   currency: string;

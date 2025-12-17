@@ -24,5 +24,13 @@ export const createDataClient = (options: DataClientFactoryOptions = {}): DataCl
   return new SupabaseDataClient(supabase);
 };
 
-export type { CreateOrderInput, DataClient, Database, MenuItemInput, MockDataSeed, Subscription };
+export type {
+  CreateOrderInput,
+  DataClient,
+  Database,
+  MenuItemInput,
+  MockDataSeed,
+  RewardActivityInput,
+  Subscription
+};
 export { MockDataClient, SupabaseDataClient };

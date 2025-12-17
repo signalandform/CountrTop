@@ -19,7 +19,9 @@
       "@countrtop/api-client": ["packages/api-client/src"],
       "@countrtop/api-client/*": ["packages/api-client/src/*"],
       "@countrtop/data": ["packages/data/src"],
-      "@countrtop/data/*": ["packages/data/src/*"]
+      "@countrtop/data/*": ["packages/data/src/*"],
+      "@countrtop/functions": ["packages/functions/src"],
+      "@countrtop/functions/*": ["packages/functions/src/*"]
     }
   },
   "include": ["packages", "apps"],
