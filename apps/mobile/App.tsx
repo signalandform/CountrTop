@@ -1,7 +1,13 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { ScrollView, SafeAreaView, Text, View, StyleSheet } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { LoyaltySnapshot, MenuItem, OrderSummary, VendorProfile } from '@countrtop/models';
+import {
+  ensureNotificationPermissions,
+  getStoredPushToken,
+  obtainExpoPushToken,
+  StoredPushToken
+} from './notifications/pushNotifications';
 
 const featuredVendors: VendorProfile[] = [
   { id: 'v1', name: 'Hilltop Tacos', cuisine: 'Mexican', location: 'Mission Bay' },
@@ -25,6 +31,40 @@ const recentOrders: OrderSummary[] = [
 ];
 
 export default function App() {
+  const [pushToken, setPushToken] = useState<StoredPushToken | null>(null);
+  const [notificationStatus, setNotificationStatus] = useState<'checking' | 'ready' | 'denied' | 'error'>(
+    'checking'
+  );
+  const [notificationError, setNotificationError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const bootstrapNotifications = async () => {
+      const cachedToken = await getStoredPushToken();
+      if (cachedToken) {
+        setPushToken(cachedToken);
+        setNotificationStatus('ready');
+        return;
+      }
+
+      try {
+        const permission = await ensureNotificationPermissions();
+        if (permission !== 'granted') {
+          setNotificationStatus('denied');
+          return;
+        }
+
+        const token = await obtainExpoPushToken();
+        setPushToken(token);
+        setNotificationStatus('ready');
+      } catch (error) {
+        setNotificationStatus('error');
+        setNotificationError(error instanceof Error ? error.message : 'Unknown notification error');
+      }
+    };
+
+    bootstrapNotifications();
+  }, []);
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar style="dark" />
@@ -78,6 +118,25 @@ export default function App() {
               )}
             </View>
           ))}
+        </View>
+
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Notifications</Text>
+          <Text style={styles.rowSubtitle}>
+            {notificationStatus === 'checking' && 'Checking permission and device token...'}
+            {notificationStatus === 'ready' &&
+              (pushToken
+                ? `Push ready via ${pushToken.provider.toUpperCase()}`
+                : 'Push notifications are configured.')}
+            {notificationStatus === 'denied' &&
+              'Notifications are disabled. Enable them to get order updates.'}
+            {notificationStatus === 'error' && (notificationError ?? 'Unable to configure notifications.')}
+          </Text>
+          {pushToken && (
+            <Text style={styles.monoText} numberOfLines={2}>
+              {pushToken.token}
+            </Text>
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -137,5 +196,14 @@ const styles = StyleSheet.create({
   badgeMuted: {
     backgroundColor: '#f3f4f6',
     color: '#6b7280'
+  },
+  monoText: {
+    marginTop: 8,
+    padding: 10,
+    borderRadius: 8,
+    backgroundColor: '#f8fafc',
+    fontFamily: 'Courier New',
+    fontSize: 12,
+    color: '#0f172a'
   }
 });

@@ -2,6 +2,7 @@ import Head from 'next/head';
 import React from 'react';
 import { LoyaltySnapshot, OrderSummary, VendorProfile } from '@countrtop/models';
 import { Section, StatCard } from '@countrtop/ui';
+import { requireVendorUser, User } from '@countrtop/data';
 
 const vendors: VendorProfile[] = [
   { id: 'v1', name: 'Hilltop Tacos', cuisine: 'Mexican', location: 'Mission Bay' },
@@ -20,6 +21,44 @@ const recentOrders: OrderSummary[] = [
 ];
 
 export default function Dashboard() {
+  const activeUser: User = {
+    id: 'vendor-demo',
+    email: 'vendor@countrtop.app',
+    role: 'vendor',
+    displayName: 'Demo Vendor'
+  };
+
+  let accessError: string | null = null;
+  try {
+    requireVendorUser(activeUser);
+  } catch (error) {
+    accessError = error instanceof Error ? error.message : 'Unauthorized';
+  }
+
+  if (accessError) {
+    return (
+      <>
+        <Head>
+          <title>CountrTop Dashboard</title>
+        </Head>
+        <main style={{ padding: '32px', fontFamily: 'Inter, sans-serif' }}>
+          <h1 style={{ marginBottom: 8 }}>CountrTop Vendor Console</h1>
+          <p style={{ color: '#6b7280', marginBottom: 24 }}>Access restricted</p>
+          <div
+            style={{
+              backgroundColor: '#fef2f2',
+              border: '1px solid #fecdd3',
+              borderRadius: 12,
+              padding: 16
+            }}
+          >
+            <strong>Permission denied:</strong> {accessError}
+          </div>
+        </main>
+      </>
+    );
+  }
+
   return (
     <>
       <Head>
