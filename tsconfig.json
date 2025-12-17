@@ -17,7 +17,9 @@
       "@countrtop/models": ["packages/models/src"],
       "@countrtop/models/*": ["packages/models/src/*"],
       "@countrtop/api-client": ["packages/api-client/src"],
-      "@countrtop/api-client/*": ["packages/api-client/src/*"]
+      "@countrtop/api-client/*": ["packages/api-client/src/*"],
+      "@countrtop/data": ["packages/data/src"],
+      "@countrtop/data/*": ["packages/data/src/*"]
     }
   },
   "include": ["packages", "apps"],
