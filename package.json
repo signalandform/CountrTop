@@ -22,5 +22,8 @@
     "eslint-plugin-react-hooks": "^5.1.0-rc.0",
     "prettier": "^3.3.3",
     "typescript": "^5.3.3"
+  },
+  "dependencies": {
+    "@babel/runtime": "^7.28.4"
   }
 }

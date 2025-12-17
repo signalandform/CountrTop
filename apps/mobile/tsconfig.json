@@ -3,5 +3,9 @@
   "compilerOptions": {
     "jsx": "react-native"
   },
-  "include": ["app", "App.tsx", "notifications/**/*", "expo-env.d.ts"]
+  "include": [
+    "app",
+    "App.tsx",
+    "notifications/**/*"
+  ]
 }
