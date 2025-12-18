@@ -1,0 +1,17 @@
+{
+  "expo": {
+    "name": "CountrTop Vendor Ops",
+    "slug": "countrtop-vendor-ops",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "sdkVersion": "51.0.0",
+    "platforms": ["ios", "android"],
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "bundleIdentifier": "com.countrtop.vendorops"
+    },
+    "android": {
+      "package": "com.countrtop.vendorops"
+    }
+  }
+}

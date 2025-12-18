@@ -1,6 +1,6 @@
 # CountrTop
 
-**CountrTop Kit** is a white-label mobile app + vendor dashboard starter for food trucks, vendors, and hospitality brands. Designed to power standalone ordering and loyalty apps, or feed into multi-vendor platforms like Hilltop.
+**CountrTop Kit** now ships as a 3-pronged starter for food and beverage teams: a customer-facing mobile app, a tablet-friendly vendor ops console, and a web-based vendor admin command center. Everything lives in a single PNPM monorepo with shared data models, API helpers, and UI primitives.
 
 ---
 
@@ -17,31 +17,36 @@
 
 ## 📦 Structure
 
-This repository is organized as a PNPM-powered monorepo with dedicated apps for mobile and web, plus shared packages for UI, data models, and API access.
-
 ```
 .
 ├── apps
-│   ├── dashboard   # Next.js vendor console
-│   └── mobile      # Expo React Native customer app
+│   ├── customer-mobile     # Expo app for customer browsing, ordering, rewards
+│   ├── vendor-ops-mobile   # Expo app for kitchen/ops teams (orders queue, analytics)
+│   └── vendor-admin-web    # Next.js admin for onboarding, menu, billing, analytics
 ├── packages
-│   ├── api-client  # Typed API helpers for menus, loyalty, and orders
-│   ├── models      # Shared data contracts
-│   └── ui          # Reusable UI building blocks for the dashboard
-├── tsconfig.json   # Shared compiler settings and path aliases
+│   ├── api-client          # REST helpers for customer app + loyalty
+│   ├── data                # Supabase/mock data client, auth helpers
+│   ├── functions           # Server-side helpers + webhooks
+│   ├── models              # Shared data contracts + enums
+│   └── ui                  # Reusable dashboard UI primitives
 ├── pnpm-workspace.yaml
-└── package.json
+├── package.json
+└── tsconfig.json
 ```
 
 ### Quickstart
 
-1. Install dependencies with `pnpm install`.
-2. Run `pnpm dev:mobile` to start the Expo dev server.
-3. Run `pnpm dev:dashboard` to start the Next.js dashboard.
+1. Install dependencies: `pnpm install`
+2. Customer app (Expo): `pnpm dev:customer`
+3. Vendor Ops (Expo): `pnpm dev:vendor-ops`
+4. Vendor Admin (Next.js): `pnpm dev:vendor-admin`
+
+Build commands are also namespaced per surface: `pnpm build:customer`, `pnpm build:vendor-ops`, and `pnpm build:vendor-admin`.
 
 ### What’s included
 
-- **Typed data models** for vendors, menu items, loyalty, and orders.
-- **API client stubs** for fetching featured vendors, menus, loyalty snapshots, and recent orders.
-- **Shared UI components** for dashboard sections and stats.
-- **Placeholder screens** in both apps aligned to the ordering, loyalty, and vendor management flows described above.
+- **Shared models + enums** consumed by every app, keeping order status + roles consistent.
+- **Data layer** (`packages/data`) that powers vendor menu CRUD, order queues, loyalty, and realtime/polling subscriptions.
+- **Vendor Admin web** with onboarding tracker, menu management (list/create/edit/delete), vendor settings surface, billing placeholders, and analytics tied to shared data.
+- **Vendor Ops mobile** with auth gating, live orders queue, order detail + status actions, lightweight analytics, and realtime/polling fallback.
+- **Customer mobile** tabbed experience for discover / orders / rewards / account, plus push notification bootstrap + loyalty stubs.

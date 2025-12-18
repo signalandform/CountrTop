@@ -1,5 +1,5 @@
 {
-  "name": "@countrtop/dashboard",
+  "name": "@countrtop/vendor-admin-web",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@countrtop/api-client": "workspace:*",
+    "@countrtop/data": "workspace:*",
     "@countrtop/functions": "workspace:*",
     "@countrtop/models": "workspace:*",
     "@countrtop/ui": "workspace:*",

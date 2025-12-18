@@ -10,7 +10,7 @@
   ],
   "overrides": [
     {
-      "files": ["apps/dashboard/**/*"],
+      "files": ["apps/vendor-admin-web/**/*"],
       "extends": ["next/core-web-vitals"]
     }
   ],

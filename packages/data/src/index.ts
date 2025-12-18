@@ -1,8 +1,8 @@
-import { SupabaseClient } from '@supabase/supabase-js';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { CreateOrderInput, DataClient, MenuItemInput, Subscription } from './dataClient';
 import { createMockDataClient, MockDataClient, MockDataSeed } from './mockData';
-import { Database, SupabaseDataClient } from './supabaseClient';
+import type { Database } from './supabaseClient';
 
 export * from './models';
 export * from './dataClient';
@@ -16,11 +16,22 @@ export type DataClientFactoryOptions = {
   mockSeed?: MockDataSeed;
 };
 
+type SupabaseModule = typeof import('./supabaseClient');
+
+let cachedSupabaseModule: SupabaseModule | null = null;
+const loadSupabaseModule = (): SupabaseModule => {
+  if (!cachedSupabaseModule) {
+    cachedSupabaseModule = require('./supabaseClient');
+  }
+  return cachedSupabaseModule;
+};
+
 export const createDataClient = (options: DataClientFactoryOptions = {}): DataClient => {
   const { supabase, useMockData, mockSeed } = options;
   if (useMockData || !supabase) {
     return createMockDataClient(mockSeed);
   }
+  const { SupabaseDataClient } = loadSupabaseModule();
   return new SupabaseDataClient(supabase);
 };
 
@@ -33,4 +44,7 @@ export type {
   RewardActivityInput,
   Subscription
 };
-export { MockDataClient, SupabaseDataClient };
+export { MockDataClient };
+
+export const loadSupabaseDataClient = (): SupabaseModule['SupabaseDataClient'] =>
+  loadSupabaseModule().SupabaseDataClient;

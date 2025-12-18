@@ -1,0 +1,17 @@
+{
+  "expo": {
+    "name": "CountrTop Customer",
+    "slug": "countrtop-customer",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "sdkVersion": "51.0.0",
+    "platforms": ["ios", "android"],
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "bundleIdentifier": "com.countrtop.customer"
+    },
+    "android": {
+      "package": "com.countrtop.customer"
+    }
+  }
+}

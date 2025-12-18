@@ -4,8 +4,12 @@
   "private": true,
   "packageManager": "pnpm@9.10.0",
   "scripts": {
-    "dev:mobile": "pnpm --filter @countrtop/mobile start",
-    "dev:dashboard": "pnpm --filter @countrtop/dashboard dev",
+    "dev:customer": "pnpm --filter @countrtop/customer-mobile start",
+    "dev:vendor-ops": "pnpm --filter @countrtop/vendor-ops-mobile start",
+    "dev:vendor-admin": "pnpm --filter @countrtop/vendor-admin-web dev",
+    "build:customer": "pnpm --filter @countrtop/customer-mobile build",
+    "build:vendor-ops": "pnpm --filter @countrtop/vendor-ops-mobile build",
+    "build:vendor-admin": "pnpm --filter @countrtop/vendor-admin-web build",
     "build": "pnpm -r run build",
     "lint": "pnpm -r run lint",
     "format": "prettier --write ."

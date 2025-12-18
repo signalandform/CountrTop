@@ -46,11 +46,14 @@ importers:
         specifier: ^5.3.3
         version: 5.9.3
 
-  apps/dashboard:
+  apps/vendor-admin-web:
     dependencies:
       '@countrtop/api-client':
         specifier: workspace:*
         version: link:../../packages/api-client
+      '@countrtop/data':
+        specifier: workspace:*
+        version: link:../../packages/data
       '@countrtop/functions':
         specifier: workspace:*
         version: link:../../packages/functions
@@ -83,7 +86,7 @@ importers:
         specifier: ^5.3.3
         version: 5.9.3
 
-  apps/mobile:
+  apps/customer-mobile:
     dependencies:
       '@countrtop/api-client':
         specifier: workspace:*
@@ -123,6 +126,37 @@ importers:
         specifier: ^5.3.3
         version: 5.3.3
 
+  apps/vendor-ops-mobile:
+    dependencies:
+      '@countrtop/data':
+        specifier: workspace:*
+        version: link:../../packages/data
+      '@countrtop/models':
+        specifier: workspace:*
+        version: link:../../packages/models
+      expo:
+        specifier: ~54.0.29
+        version: 54.0.29(@babel/core@7.28.5)(graphql@15.8.0)(react-native@0.74.5(@babel/core@7.28.5)(@babel/preset-env@7.28.5(@babel/core@7.28.5))(@types/react@18.2.79)(react@18.2.0))(react@18.2.0)
+      expo-status-bar:
+        specifier: ~1.12.0
+        version: 1.12.1
+      react:
+        specifier: 18.2.0
+        version: 18.2.0
+      react-native:
+        specifier: 0.74.5
+        version: 0.74.5(@babel/core@7.28.5)(@babel/preset-env@7.28.5(@babel/core@7.28.5))(@types/react@18.2.79)(react@18.2.0)
+    devDependencies:
+      '@types/react':
+        specifier: ^18.2.79
+        version: 18.2.79
+      '@types/react-native':
+        specifier: ^0.73.0
+        version: 0.73.0(@babel/core@7.28.5)(@babel/preset-env@7.28.5(@babel/core@7.28.5))(@types/react@18.2.79)(react@18.2.0)
+      typescript:
+        specifier: ^5.3.3
+        version: 5.3.3
+
   packages/api-client:
     dependencies:
       '@countrtop/models':
@@ -131,6 +165,9 @@ importers:
 
   packages/data:
     dependencies:
+      '@countrtop/models':
+        specifier: workspace:*
+        version: link:../models
       '@supabase/supabase-js':
         specifier: ^2.45.6
         version: 2.88.0
