@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-import { CreateOrderInput, DataClient, MenuItemInput, Subscription } from './dataClient';
+import { CreateOrderInput, DataClient, MenuItemInput, RewardActivityInput, Subscription } from './dataClient';
 import { createMockDataClient, MockDataClient, MockDataSeed } from './mockData';
 import type { Database } from './supabaseClient';
 
