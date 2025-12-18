@@ -9,6 +9,7 @@ export * from './dataClient';
 export * from './supabaseClient';
 export * from './mockData';
 export * from './auth';
+export * from './session';
 
 export type DataClientFactoryOptions = {
   supabase?: SupabaseClient<Database>;

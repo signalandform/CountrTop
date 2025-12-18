@@ -1,43 +1,46 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ScrollView, SafeAreaView, Text, View, StyleSheet, TouchableOpacity } from 'react-native';
+import { ScrollView, SafeAreaView, Text, View, StyleSheet } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { LoyaltySnapshot, OrderSummary, VendorProfile } from '@countrtop/models';
+import { fetchFeaturedVendors, fetchLoyalty, fetchRecentOrders } from '@countrtop/api-client';
 import {
   ensureNotificationPermissions,
   getStoredPushToken,
   obtainExpoPushToken,
   StoredPushToken
 } from './notifications/pushNotifications';
-
-const featuredVendors: VendorProfile[] = [
-  { id: 'v1', name: 'Hilltop Tacos', cuisine: 'Mexican', location: 'Mission Bay' },
-  { id: 'v2', name: 'Sunset Coffee Cart', cuisine: 'Cafe', location: 'Sunset Park' }
-];
-
-const loyalty: LoyaltySnapshot = {
-  points: 280,
-  tier: 'silver',
-  nextRewardAt: 300
-};
-
-const recentOrders: OrderSummary[] = [
-  { id: 'o1', status: 'preparing', total: 24.5, etaMinutes: 8 },
-  { id: 'o2', status: 'ready', total: 16, etaMinutes: 2 },
-  { id: 'o3', status: 'completed', total: 11.75 }
-];
+import { NavigationContainer } from '@react-navigation/native';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 
 const mockUser = {
   name: 'Jordan Lee'
 };
 
-const tabMetadata = {
-  discover: { title: 'Discover', subtitle: 'Featured Vendors' },
-  orders: { title: 'Orders', subtitle: 'Past and Present' },
-  rewards: { title: 'Rewards', subtitle: 'Loyalty Program' },
-  account: { title: 'Account', subtitle: 'Dashboard' }
-} as const;
+const mockVendors: VendorProfile[] = [
+  { id: 'vendor_cafe', name: 'Sunset Coffee Cart', cuisine: 'Cafe', location: 'Sunset Park' },
+  { id: 'vendor_foodtruck', name: 'Hilltop Tacos', cuisine: 'Mexican', location: 'Mission Bay' }
+];
 
-type TabKey = keyof typeof tabMetadata;
+const mockLoyalty: LoyaltySnapshot = {
+  points: 280,
+  tier: 'silver',
+  nextRewardAt: 300
+};
+
+const mockOrders: OrderSummary[] = [
+  { id: 'order_one', status: 'preparing', total: 11, etaMinutes: 8 },
+  { id: 'order_two', status: 'ready', total: 12.5, etaMinutes: 3 },
+  { id: 'order_three', status: 'completed', total: 9.25 }
+];
+
+type TabParamList = {
+  Discover: undefined;
+  Orders: undefined;
+  Rewards: undefined;
+  Account: undefined;
+};
+
+const Tab = createBottomTabNavigator<TabParamList>();
 
 export default function App() {
   const [pushToken, setPushToken] = useState<StoredPushToken | null>(null);
@@ -45,7 +48,14 @@ export default function App() {
     'checking'
   );
   const [notificationError, setNotificationError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<TabKey>('discover');
+  const [featuredVendors, setFeaturedVendors] = useState<VendorProfile[]>([]);
+  const [recentOrders, setRecentOrders] = useState<OrderSummary[]>([]);
+  const [loyalty, setLoyalty] = useState<LoyaltySnapshot | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [dataError, setDataError] = useState<string | null>(null);
+
+  const customerUserId = process.env.EXPO_PUBLIC_CUSTOMER_USER_ID ?? 'user_demo';
+  const preferredVendorId = process.env.EXPO_PUBLIC_CUSTOMER_VENDOR_ID ?? 'vendor_cafe';
 
   useEffect(() => {
     const bootstrapNotifications = async () => {
@@ -75,6 +85,32 @@ export default function App() {
     bootstrapNotifications();
   }, []);
 
+  useEffect(() => {
+    const loadData = async () => {
+      setLoading(true);
+      setDataError(null);
+      try {
+        const [vendorsResponse, ordersResponse, loyaltyResponse] = await Promise.all([
+          fetchFeaturedVendors().catch(() => mockVendors),
+          fetchRecentOrders(preferredVendorId).catch(() => mockOrders),
+          fetchLoyalty(customerUserId).catch(() => mockLoyalty)
+        ]);
+        setFeaturedVendors(vendorsResponse ?? mockVendors);
+        setRecentOrders(ordersResponse ?? mockOrders);
+        setLoyalty(loyaltyResponse ?? mockLoyalty);
+      } catch (error) {
+        setDataError('Using offline demo data.');
+        setFeaturedVendors(mockVendors);
+        setRecentOrders(mockOrders);
+        setLoyalty(mockLoyalty);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, [customerUserId, preferredVendorId]);
+
   const notificationCopy = useMemo(() => {
     if (notificationStatus === 'checking') {
       return 'Checking permission and device token…';
@@ -90,124 +126,147 @@ export default function App() {
     return notificationError ?? 'Unable to configure notifications.';
   }, [notificationError, notificationStatus, pushToken]);
 
-  const renderDiscover = () => (
-    <View style={styles.card}>
-      {featuredVendors.map((vendor) => (
-        <View key={vendor.id} style={styles.vendorBlock}>
-          <View style={styles.vendorHeader}>
-            <Text style={styles.eyebrowText}>open</Text>
-            <Text style={styles.vendorName}>{vendor.name}</Text>
-            <View style={styles.actionsBadge}>
-              <Text style={styles.actionsBadgeText}>≡</Text>
+  const DiscoverScreen = () => (
+    <ScrollView contentContainerStyle={styles.scrollContent}>
+      <View style={styles.card}>
+        {loading && <Text style={styles.rowSubtitle}>Loading vendors…</Text>}
+        {featuredVendors.map((vendor) => (
+          <View key={vendor.id} style={styles.vendorBlock}>
+            <View style={styles.vendorHeader}>
+              <Text style={styles.eyebrowText}>open</Text>
+              <Text style={styles.vendorName}>{vendor.name}</Text>
+              <View style={styles.actionsBadge}>
+                <Text style={styles.actionsBadgeText}>≡</Text>
+              </View>
+            </View>
+            <Text style={styles.rowSubtitle}>
+              {vendor.cuisine} • {vendor.location}
+            </Text>
+            <View style={styles.thumbnailRow}>
+              {[1, 2, 3, 4].map((thumb) => (
+                <View key={`${vendor.id}-${thumb}`} style={styles.thumbnail} />
+              ))}
             </View>
           </View>
-          <Text style={styles.rowSubtitle}>
-            {vendor.cuisine} • {vendor.location}
-          </Text>
-          <View style={styles.thumbnailRow}>
-            {[1, 2, 3, 4].map((thumb) => (
-              <View key={`${vendor.id}-${thumb}`} style={styles.thumbnail} />
-            ))}
-          </View>
-        </View>
-      ))}
-    </View>
+        ))}
+        {!loading && featuredVendors.length === 0 && (
+          <Text style={styles.rowSubtitle}>No vendors available right now.</Text>
+        )}
+        {dataError && <Text style={[styles.rowSubtitle, { color: '#ef4444' }]}>{dataError}</Text>}
+      </View>
+    </ScrollView>
   );
 
-  const renderOrders = () => (
-    <View style={styles.card}>
-      {recentOrders.map((order) => (
-        <View key={order.id} style={styles.orderRow}>
-          <View style={styles.orderThumb} />
-          <View style={styles.orderMeta}>
-            <Text style={styles.orderDate}>12 · 18 · 25 • #{order.id}</Text>
-            <Text style={styles.orderStatus}>{order.status === 'completed' ? 'Completed.' : `${order.status}…`}</Text>
-          </View>
-          <Text style={styles.orderCTA}>→</Text>
-        </View>
-      ))}
-      <Text style={styles.notificationHint}>{notificationCopy}</Text>
-    </View>
-  );
-
-  const renderRewards = () => (
-    <View style={styles.card}>
-      <Text style={styles.rewardsIcon}>☆</Text>
-      <Text style={styles.rewardsPoints}>{loyalty.points.toString().padStart(4, '0')}</Text>
-      <Text style={styles.rowSubtitle}>points</Text>
-      <View style={styles.rewardsRow}>
-        <View style={styles.rewardsThumb} />
-        <View>
-          <Text style={styles.rowTitle}>Available Offers</Text>
-          <Text style={styles.rowSubtitle}>Browse</Text>
-        </View>
-        <Text style={styles.orderCTA}>→</Text>
-      </View>
-      <View style={styles.rewardsRow}>
-        <View style={styles.rewardsThumb} />
-        <View>
-          <Text style={styles.rowTitle}>Your Coupons</Text>
-          <Text style={styles.rowSubtitle}>Redeem</Text>
-        </View>
-        <Text style={styles.orderCTA}>→</Text>
-      </View>
-      <View style={styles.rewardsRow}>
-        <View style={styles.rewardsThumb} />
-        <View>
-          <Text style={styles.rowTitle}>Redemption History</Text>
-          <Text style={styles.rowSubtitle}>Previous</Text>
-        </View>
-        <Text style={styles.orderCTA}>→</Text>
-      </View>
-      <Text style={styles.rowSubtitle}>Next reward at {loyalty.nextRewardAt} pts</Text>
-    </View>
-  );
-
-  const renderAccount = () => (
-    <View style={styles.card}>
-      <View style={styles.accountAvatar}>
-        <Text style={styles.accountAvatarText}>👤</Text>
-      </View>
-      <Text style={styles.accountName}>{mockUser.name}</Text>
-      <View style={styles.accountList}>
-        {['loyalty program', 'order history', 'account settings', 'support'].map((item) => (
-          <View key={item} style={styles.accountRow}>
-            <Text style={styles.rowTitle}>{item}</Text>
+  const OrdersScreen = () => (
+    <ScrollView contentContainerStyle={styles.scrollContent}>
+      <View style={styles.card}>
+        {loading && <Text style={styles.rowSubtitle}>Loading orders…</Text>}
+        {recentOrders.map((order) => (
+          <View key={order.id} style={styles.orderRow}>
+            <View style={styles.orderThumb} />
+            <View style={styles.orderMeta}>
+              <Text style={styles.orderDate}>#{order.id}</Text>
+              <Text style={styles.orderStatus}>
+                {order.status === 'completed' ? 'Completed.' : `${order.status}…`}
+              </Text>
+            </View>
             <Text style={styles.orderCTA}>→</Text>
           </View>
         ))}
+        {!loading && recentOrders.length === 0 && (
+          <Text style={styles.rowSubtitle}>No orders yet. Place your first order.</Text>
+        )}
+        <Text style={styles.notificationHint}>{notificationCopy}</Text>
+        {dataError && <Text style={[styles.rowSubtitle, { color: '#ef4444' }]}>{dataError}</Text>}
       </View>
-      <Text style={styles.legalText}>terms & conditions</Text>
-      <Text style={styles.legalText}>CountrTop v1.2.1</Text>
-    </View>
+    </ScrollView>
   );
 
-  const tabContent: Record<TabKey, JSX.Element> = {
-    discover: renderDiscover(),
-    orders: renderOrders(),
-    rewards: renderRewards(),
-    account: renderAccount()
-  };
+  const RewardsScreen = () => (
+    <ScrollView contentContainerStyle={styles.scrollContent}>
+      <View style={styles.card}>
+        <Text style={styles.rewardsIcon}>☆</Text>
+        {loyalty ? (
+          <>
+            <Text style={styles.rewardsPoints}>{loyalty.points.toString().padStart(4, '0')}</Text>
+            <Text style={styles.rowSubtitle}>points</Text>
+          </>
+        ) : (
+          <Text style={styles.rowSubtitle}>{loading ? 'Loading loyalty…' : 'No loyalty data available.'}</Text>
+        )}
+        <View style={styles.rewardsRow}>
+          <View style={styles.rewardsThumb} />
+          <View>
+            <Text style={styles.rowTitle}>Available Offers</Text>
+            <Text style={styles.rowSubtitle}>Browse</Text>
+          </View>
+          <Text style={styles.orderCTA}>→</Text>
+        </View>
+        <View style={styles.rewardsRow}>
+          <View style={styles.rewardsThumb} />
+          <View>
+            <Text style={styles.rowTitle}>Your Coupons</Text>
+            <Text style={styles.rowSubtitle}>Redeem</Text>
+          </View>
+          <Text style={styles.orderCTA}>→</Text>
+        </View>
+        <View style={styles.rewardsRow}>
+          <View style={styles.rewardsThumb} />
+          <View>
+            <Text style={styles.rowTitle}>Redemption History</Text>
+            <Text style={styles.rowSubtitle}>Previous</Text>
+          </View>
+          <Text style={styles.orderCTA}>→</Text>
+        </View>
+        {loyalty && <Text style={styles.rowSubtitle}>Next reward at {loyalty.nextRewardAt} pts</Text>}
+        {dataError && <Text style={[styles.rowSubtitle, { color: '#ef4444' }]}>{dataError}</Text>}
+      </View>
+    </ScrollView>
+  );
+
+  const AccountScreen = () => (
+    <ScrollView contentContainerStyle={styles.scrollContent}>
+      <View style={styles.card}>
+        <View style={styles.accountAvatar}>
+          <Text style={styles.accountAvatarText}>👤</Text>
+        </View>
+        <Text style={styles.accountName}>{mockUser.name}</Text>
+        <View style={styles.accountList}>
+          {['loyalty program', 'order history', 'account settings', 'support'].map((item) => (
+            <View key={item} style={styles.accountRow}>
+              <Text style={styles.rowTitle}>{item}</Text>
+              <Text style={styles.orderCTA}>→</Text>
+            </View>
+          ))}
+        </View>
+        <Text style={styles.legalText}>terms & conditions</Text>
+        <Text style={styles.legalText}>CountrTop v1.2.1</Text>
+      </View>
+    </ScrollView>
+  );
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar style="dark" />
-      <View style={styles.screenHeader}>
-        <Text style={styles.screenEyebrow}>{tabMetadata[activeTab].subtitle}</Text>
-        <Text style={styles.screenTitle}>{tabMetadata[activeTab].title}</Text>
-      </View>
-      <ScrollView contentContainerStyle={styles.scrollContent}>{tabContent[activeTab]}</ScrollView>
-      <View style={styles.tabBar}>
-        {(Object.keys(tabMetadata) as TabKey[]).map((key) => (
-          <TouchableOpacity
-            key={key}
-            style={[styles.tabButton, activeTab === key && styles.tabButtonActive]}
-            onPress={() => setActiveTab(key)}
-          >
-            <Text style={[styles.tabLabel, activeTab === key && styles.tabLabelActive]}>{tabMetadata[key].title}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+      <NavigationContainer>
+        <Tab.Navigator
+          screenOptions={{
+            header: ({ route }) => (
+              <View style={styles.screenHeader}>
+                <Text style={styles.screenEyebrow}>{route.name}</Text>
+                <Text style={styles.screenTitle}>{route.name}</Text>
+              </View>
+            ),
+            tabBarStyle: { paddingVertical: 8 },
+            tabBarLabelStyle: { fontSize: 12 }
+          }}
+        >
+          <Tab.Screen name="Discover" component={DiscoverScreen} />
+          <Tab.Screen name="Orders" component={OrdersScreen} />
+          <Tab.Screen name="Rewards" component={RewardsScreen} />
+          <Tab.Screen name="Account" component={AccountScreen} />
+        </Tab.Navigator>
+      </NavigationContainer>
     </SafeAreaView>
   );
 }

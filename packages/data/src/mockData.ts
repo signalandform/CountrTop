@@ -133,6 +133,25 @@ export class MockDataClient implements DataClient {
     return this.vendorSettings.find(settings => settings.vendorId === vendorId) ?? null;
   }
 
+  async updateVendorSettings(vendorId: string, settings: Partial<VendorSettings>): Promise<VendorSettings> {
+    const existing =
+      this.vendorSettings.find((config) => config.vendorId === vendorId) ??
+      ({
+        vendorId,
+        currency: 'USD',
+        enableLoyalty: false
+      } as VendorSettings);
+
+    const next = { ...existing, ...settings };
+    const index = this.vendorSettings.findIndex((config) => config.vendorId === vendorId);
+    if (index >= 0) {
+      this.vendorSettings[index] = next;
+    } else {
+      this.vendorSettings.push(next);
+    }
+    return next;
+  }
+
   async fetchRewardActivities(userId: string): Promise<RewardActivity[]> {
     return this.rewardActivities.filter(activity => activity.userId === userId);
   }

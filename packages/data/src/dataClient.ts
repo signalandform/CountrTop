@@ -33,6 +33,7 @@ export interface DataClient {
   updateOrderStatus(orderId: string, status: OrderStatus): Promise<Order>;
 
   fetchVendorSettings(vendorId: string): Promise<VendorSettings | null>;
+  updateVendorSettings(vendorId: string, settings: Partial<VendorSettings>): Promise<VendorSettings>;
   fetchRewardActivities(userId: string): Promise<RewardActivity[]>;
   recordRewardActivity(activity: RewardActivityInput): Promise<RewardActivity>;
   adjustUserLoyaltyPoints(userId: string, delta: number): Promise<number>;

@@ -1,12 +1,23 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { SafeAreaView, View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Order, OrderStatus, User } from '@countrtop/models';
-import { createDataClient, requireVendorUser } from '@countrtop/data';
+import { getDataClient } from './services/dataClient';
+import { useAuthSession } from './services/auth';
+import { NavigationContainer } from '@react-navigation/native';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 type TabKey = 'orders' | 'orderDetail' | 'analytics' | 'account';
+type OrdersStackParamList = {
+  Queue: undefined;
+  Detail: undefined;
+};
 
-const vendorId = 'vendor_cafe';
+const Tab = createBottomTabNavigator();
+const OrdersStack = createNativeStackNavigator<OrdersStackParamList>();
+
+const vendorId = process.env.EXPO_PUBLIC_VENDOR_ID ?? 'vendor_cafe';
 const actionableStatuses: OrderStatus[] = ['pending', 'preparing', 'ready', 'completed'];
 
 const formatCurrency = (value: number) => `$${(value / 100).toFixed(2)}`;
@@ -20,10 +31,8 @@ const upsertOrder = (orders: Order[], next: Order) => {
 };
 
 export default function VendorOpsApp() {
-  const dataClient = useMemo(() => createDataClient({ useMockData: true }), []);
-  const [accessGranted, setAccessGranted] = useState(false);
-  const [authError, setAuthError] = useState<string | null>('Vendor credential required.');
-  const [user, setUser] = useState<User | null>(null);
+  const dataClient = useMemo(() => getDataClient(), []);
+  const { user, status, error: authError, signIn, signOut } = useAuthSession();
   const [activeTab, setActiveTab] = useState<TabKey>('orders');
   const [orders, setOrders] = useState<Order[]>([]);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
@@ -43,7 +52,7 @@ export default function VendorOpsApp() {
   }, [orders, selectedOrder]);
 
   useEffect(() => {
-    if (!accessGranted) return;
+    if (status !== 'authenticated') return;
 
     let mounted = true;
     let cleanupSubscription: (() => void) | null = null;
@@ -75,23 +84,12 @@ export default function VendorOpsApp() {
       cleanupSubscription?.();
       if (pollingTimer) clearInterval(pollingTimer);
     };
-  }, [accessGranted, dataClient]);
+  }, [dataClient, status]);
 
   const handleUnlock = () => {
-    const vendorUser: User = {
-      id: 'vendor-ops',
-      email: 'ops@countrtop.app',
-      role: 'vendor',
-      displayName: 'Ops Lead'
-    };
-    try {
-      requireVendorUser(vendorUser);
-      setAccessGranted(true);
-      setAuthError(null);
-      setUser(vendorUser);
-    } catch (error) {
-      setAuthError(error instanceof Error ? error.message : 'Unauthorized');
-    }
+    const email = process.env.EXPO_PUBLIC_VENDOR_USER_EMAIL ?? 'alex@example.com';
+    const password = process.env.EXPO_PUBLIC_VENDOR_USER_PASSWORD ?? 'password123';
+    void signIn(email, password);
   };
 
   const handleStatusUpdate = async (status: OrderStatus) => {
@@ -117,145 +115,204 @@ export default function VendorOpsApp() {
     return { total, active, ready, completed };
   }, [orders]);
 
-  const renderOrders = () => (
-    <View style={styles.card}>
-      <Text style={styles.cardTitle}>Orders queue</Text>
-      {subscriptionNote && <Text style={styles.helperText}>{subscriptionNote}</Text>}
-      {orders.map((order) => (
+  const OrdersContext = createContext({
+    orders,
+    selectedOrder,
+    selectOrder: setSelectedOrderId,
+    subscriptionNote,
+    handleStatusUpdate,
+    analytics,
+    opsError,
+    updatingStatus
+  });
+
+  const OrdersQueueScreen = () => {
+    const ctx = useContext(OrdersContext);
+    return (
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Orders queue</Text>
+          {ctx.subscriptionNote && <Text style={styles.helperText}>{ctx.subscriptionNote}</Text>}
+          {ctx.orders.map((order) => (
+            <TouchableOpacity
+              key={order.id}
+              style={[
+                styles.orderRow,
+                ctx.selectedOrder?.id === order.id && { borderColor: '#0ea5e9', borderWidth: 1 }
+              ]}
+              onPress={() => {
+                ctx.selectOrder(order.id);
+              }}
+            >
+              <View style={{ flex: 1 }}>
+                <Text style={styles.orderId}>#{order.id}</Text>
+                <Text style={styles.orderMeta}>
+                  {order.items.length} items • {formatCurrency(order.total)}
+                </Text>
+              </View>
+              <View style={styles.statusPill}>
+                <Text style={styles.statusPillText}>{order.status.toUpperCase()}</Text>
+              </View>
+            </TouchableOpacity>
+          ))}
+          {ctx.orders.length === 0 && <Text style={styles.helperText}>No orders yet.</Text>}
+        </View>
+      </ScrollView>
+    );
+  };
+
+  const OrderDetailScreen = () => {
+    const ctx = useContext(OrdersContext);
+    return (
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Order detail</Text>
+          {ctx.selectedOrder ? (
+            <>
+              <Text style={styles.orderId}>Order #{ctx.selectedOrder.id}</Text>
+              <Text style={styles.orderMeta}>
+                Placed {new Date(ctx.selectedOrder.createdAt).toLocaleTimeString()}
+              </Text>
+              <View style={{ marginTop: 12 }}>
+                {ctx.selectedOrder.items.map((item, index) => (
+                  <View key={item.menuItemId + index} style={styles.itemRow}>
+                    <Text style={styles.itemName}>
+                      {item.quantity} × {item.menuItemId}
+                    </Text>
+                    <Text style={styles.itemPrice}>{formatCurrency(item.price * item.quantity)}</Text>
+                  </View>
+                ))}
+              </View>
+              <Text style={[styles.orderMeta, { marginTop: 12 }]}>
+                Total {formatCurrency(ctx.selectedOrder.total)}
+              </Text>
+              <Text style={[styles.orderMeta, { marginTop: 4 }]}>
+                Status: <Text style={{ fontWeight: '600' }}>{ctx.selectedOrder.status}</Text>
+              </Text>
+              {ctx.opsError && <Text style={[styles.helperText, { color: '#dc2626' }]}>{ctx.opsError}</Text>}
+              <View style={styles.statusGrid}>
+                {actionableStatuses.map((status) => (
+                  <TouchableOpacity
+                    key={status}
+                    disabled={ctx.updatingStatus !== null || ctx.selectedOrder.status === status}
+                    style={[
+                      styles.statusAction,
+                      ctx.selectedOrder.status === status && styles.statusActionActive,
+                      ctx.updatingStatus === status && { opacity: 0.5 }
+                    ]}
+                    onPress={() => ctx.handleStatusUpdate(status)}
+                  >
+                    <Text
+                      style={[
+                        styles.statusActionText,
+                        ctx.selectedOrder.status === status && { color: '#fff' }
+                      ]}
+                    >
+                      {status.toUpperCase()}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </>
+          ) : (
+            <Text style={styles.helperText}>Select an order to review details.</Text>
+          )}
+        </View>
+      </ScrollView>
+    );
+  };
+
+  const AnalyticsScreen = () => (
+    <ScrollView contentContainerStyle={styles.scrollContent}>
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Floor analytics</Text>
+        <View style={styles.analyticsRow}>
+          <View style={styles.analyticsTile}>
+            <Text style={styles.analyticsValue}>{analytics.active}</Text>
+            <Text style={styles.analyticsLabel}>Active</Text>
+          </View>
+          <View style={styles.analyticsTile}>
+            <Text style={styles.analyticsValue}>{analytics.ready}</Text>
+            <Text style={styles.analyticsLabel}>Ready</Text>
+          </View>
+          <View style={styles.analyticsTile}>
+            <Text style={styles.analyticsValue}>{analytics.completed}</Text>
+            <Text style={styles.analyticsLabel}>Completed</Text>
+          </View>
+          <View style={styles.analyticsTile}>
+            <Text style={styles.analyticsValue}>{analytics.total}</Text>
+            <Text style={styles.analyticsLabel}>Total Orders</Text>
+          </View>
+        </View>
+        <Text style={styles.helperText}>
+          Numbers derived from listOrdersForVendor; updateOrderStatus drives these real-time.
+        </Text>
+      </View>
+    </ScrollView>
+  );
+
+  const AccountScreen = () => (
+    <ScrollView contentContainerStyle={styles.scrollContent}>
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Account</Text>
+        <Text style={styles.orderMeta}>{user?.displayName ?? 'Vendor Ops'}</Text>
+        <Text style={styles.orderMeta}>{user?.email}</Text>
         <TouchableOpacity
-          key={order.id}
-          style={[
-            styles.orderRow,
-            selectedOrder?.id === order.id && { borderColor: '#0ea5e9', borderWidth: 1 }
-          ]}
+          style={[styles.primaryButton, { marginTop: 16 }]}
           onPress={() => {
-            setSelectedOrderId(order.id);
-            setActiveTab('orderDetail');
+            setOrders([]);
+            setSelectedOrderId(null);
+            void signOut();
           }}
         >
-          <View style={{ flex: 1 }}>
-            <Text style={styles.orderId}>#{order.id}</Text>
-            <Text style={styles.orderMeta}>
-              {order.items.length} items • {formatCurrency(order.total)}
-            </Text>
-          </View>
-          <View style={styles.statusPill}>
-            <Text style={styles.statusPillText}>{order.status.toUpperCase()}</Text>
-          </View>
+          <Text style={styles.primaryButtonText}>Sign out</Text>
         </TouchableOpacity>
-      ))}
-      {orders.length === 0 && <Text style={styles.helperText}>No orders yet.</Text>}
-    </View>
-  );
-
-  const renderOrderDetail = () => (
-    <View style={styles.card}>
-      <Text style={styles.cardTitle}>Order detail</Text>
-      {selectedOrder ? (
-        <>
-          <Text style={styles.orderId}>Order #{selectedOrder.id}</Text>
-          <Text style={styles.orderMeta}>Placed {new Date(selectedOrder.createdAt).toLocaleTimeString()}</Text>
-          <View style={{ marginTop: 12 }}>
-            {selectedOrder.items.map((item, index) => (
-              <View key={item.menuItemId + index} style={styles.itemRow}>
-                <Text style={styles.itemName}>
-                  {item.quantity} × {item.menuItemId}
-                </Text>
-                <Text style={styles.itemPrice}>{formatCurrency(item.price * item.quantity)}</Text>
-              </View>
-            ))}
-          </View>
-          <Text style={[styles.orderMeta, { marginTop: 12 }]}>Total {formatCurrency(selectedOrder.total)}</Text>
-          <Text style={[styles.orderMeta, { marginTop: 4 }]}>
-            Status: <Text style={{ fontWeight: '600' }}>{selectedOrder.status}</Text>
-          </Text>
-          {opsError && <Text style={[styles.helperText, { color: '#dc2626' }]}>{opsError}</Text>}
-          <View style={styles.statusGrid}>
-            {actionableStatuses.map((status) => (
-              <TouchableOpacity
-                key={status}
-                disabled={updatingStatus !== null || selectedOrder.status === status}
-                style={[
-                  styles.statusAction,
-                  selectedOrder.status === status && styles.statusActionActive,
-                  updatingStatus === status && { opacity: 0.5 }
-                ]}
-                onPress={() => handleStatusUpdate(status)}
-              >
-                <Text
-                  style={[
-                    styles.statusActionText,
-                    selectedOrder.status === status && { color: '#fff' }
-                  ]}
-                >
-                  {status.toUpperCase()}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </>
-      ) : (
-        <Text style={styles.helperText}>Select an order to review details.</Text>
-      )}
-    </View>
-  );
-
-  const renderAnalytics = () => (
-    <View style={styles.card}>
-      <Text style={styles.cardTitle}>Floor analytics</Text>
-      <View style={styles.analyticsRow}>
-        <View style={styles.analyticsTile}>
-          <Text style={styles.analyticsValue}>{analytics.active}</Text>
-          <Text style={styles.analyticsLabel}>Active</Text>
-        </View>
-        <View style={styles.analyticsTile}>
-          <Text style={styles.analyticsValue}>{analytics.ready}</Text>
-          <Text style={styles.analyticsLabel}>Ready</Text>
-        </View>
-        <View style={styles.analyticsTile}>
-          <Text style={styles.analyticsValue}>{analytics.completed}</Text>
-          <Text style={styles.analyticsLabel}>Completed</Text>
-        </View>
-        <View style={styles.analyticsTile}>
-          <Text style={styles.analyticsValue}>{analytics.total}</Text>
-          <Text style={styles.analyticsLabel}>Total Orders</Text>
-        </View>
       </View>
-      <Text style={styles.helperText}>
-        Numbers derived from listOrdersForVendor; updateOrderStatus drives these real-time.
-      </Text>
-    </View>
+    </ScrollView>
   );
 
-  const renderAccount = () => (
-    <View style={styles.card}>
-      <Text style={styles.cardTitle}>Account</Text>
-      <Text style={styles.orderMeta}>{user?.displayName ?? 'Vendor Ops'}</Text>
-      <Text style={styles.orderMeta}>{user?.email}</Text>
-      <TouchableOpacity
-        style={[styles.primaryButton, { marginTop: 16 }]}
-        onPress={() => {
-          setAccessGranted(false);
-          setOrders([]);
-          setSelectedOrderId(null);
-          setUser(null);
-          setAuthError('Session ended.');
+  const OrdersStackNavigator = () => (
+    <OrdersContext.Provider
+      value={{
+        orders,
+        selectedOrder,
+        selectOrder: setSelectedOrderId,
+        subscriptionNote,
+        handleStatusUpdate,
+        analytics,
+        opsError,
+        updatingStatus
+      }}
+    >
+      <OrdersStack.Navigator
+        initialRouteName="Queue"
+        screenOptions={{
+          headerStyle: { backgroundColor: '#0f172a' },
+          headerTintColor: '#fff',
+          contentStyle: { backgroundColor: '#0f172a' }
         }}
       >
-        <Text style={styles.primaryButtonText}>Sign out</Text>
-      </TouchableOpacity>
-    </View>
+        <OrdersStack.Screen name="Queue" component={OrdersQueueScreen} options={{ title: 'Orders' }} />
+        <OrdersStack.Screen name="Detail" component={OrderDetailScreen} options={{ title: 'Order detail' }} />
+      </OrdersStack.Navigator>
+    </OrdersContext.Provider>
   );
 
-  if (!accessGranted) {
+  if (status !== 'authenticated') {
     return (
       <SafeAreaView style={[styles.container, styles.lockedScreen]}>
         <StatusBar style="light" />
         <Text style={styles.heading}>CountrTop Vendor Ops</Text>
         <Text style={[styles.helperText, { color: '#cbd5f5' }]}>Live queue + analytics</Text>
         {authError && <Text style={[styles.helperText, { color: '#fecaca' }]}>{authError}</Text>}
-        <TouchableOpacity style={[styles.primaryButton, { marginTop: 24 }]} onPress={handleUnlock}>
-          <Text style={styles.primaryButtonText}>Sign in as vendor</Text>
+        <TouchableOpacity
+          style={[styles.primaryButton, { marginTop: 24 }]}
+          onPress={handleUnlock}
+          disabled={status === 'loading'}
+        >
+          <Text style={styles.primaryButtonText}>
+            {status === 'loading' ? 'Signing in…' : 'Sign in as vendor'}
+          </Text>
         </TouchableOpacity>
       </SafeAreaView>
     );
@@ -264,29 +321,28 @@ export default function VendorOpsApp() {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar style="light" />
-      <View style={styles.header}>
-        <Text style={styles.heading}>Vendor Ops</Text>
-        <Text style={styles.subheading}>Orders · Detail · Analytics · Account</Text>
-      </View>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        {activeTab === 'orders' && renderOrders()}
-        {activeTab === 'orderDetail' && renderOrderDetail()}
-        {activeTab === 'analytics' && renderAnalytics()}
-        {activeTab === 'account' && renderAccount()}
-      </ScrollView>
-      <View style={styles.tabBar}>
-        {(['orders', 'orderDetail', 'analytics', 'account'] as TabKey[]).map((tab) => (
-          <TouchableOpacity
-            key={tab}
-            style={[styles.tabButton, activeTab === tab && styles.tabButtonActive]}
-            onPress={() => setActiveTab(tab)}
-          >
-            <Text style={[styles.tabLabel, activeTab === tab && styles.tabLabelActive]}>
-              {tab.replace(/([A-Z])/g, ' $1')}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+      <NavigationContainer>
+        <Tab.Navigator
+          screenOptions={{
+            headerStyle: { backgroundColor: '#0f172a' },
+            headerTintColor: '#fff',
+            tabBarStyle: { backgroundColor: '#111827', borderTopColor: '#1e293b' },
+            tabBarActiveTintColor: '#fff',
+            tabBarInactiveTintColor: '#94a3b8'
+          }}
+        >
+          <Tab.Screen
+            name="Orders"
+            component={OrdersStackNavigator}
+            options={{ headerShown: false }}
+            listeners={{
+              tabPress: () => setSelectedOrderId((current) => current ?? orders[0]?.id ?? null)
+            }}
+          />
+          <Tab.Screen name="Analytics" component={AnalyticsScreen} />
+          <Tab.Screen name="Account" component={AccountScreen} />
+        </Tab.Navigator>
+      </NavigationContainer>
     </SafeAreaView>
   );
 }
@@ -427,29 +483,5 @@ const styles = StyleSheet.create({
     color: '#0f172a',
     fontWeight: '700',
     textAlign: 'center'
-  },
-  tabBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    backgroundColor: '#111827',
-    paddingVertical: 12,
-    borderTopWidth: 1,
-    borderColor: '#1e293b'
-  },
-  tabButton: {
-    paddingVertical: 4,
-    paddingHorizontal: 8
-  },
-  tabButtonActive: {
-    borderBottomWidth: 2,
-    borderColor: '#0ea5e9'
-  },
-  tabLabel: {
-    color: '#94a3b8',
-    fontSize: 12
-  },
-  tabLabelActive: {
-    color: '#fff',
-    fontWeight: '600'
   }
 });

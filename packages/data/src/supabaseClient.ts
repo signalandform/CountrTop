@@ -257,6 +257,16 @@ export class SupabaseDataClient implements DataClient {
     return data ? mapVendorSettingsFromRow(data) : null;
   }
 
+  async updateVendorSettings(vendorId: string, settings: Partial<VendorSettings>): Promise<VendorSettings> {
+    const { data, error } = await this.client
+      .from('vendor_settings')
+      .upsert(toVendorSettingsUpdate(vendorId, settings), { onConflict: 'vendor_id' })
+      .select()
+      .single();
+    if (error) throw error;
+    return mapVendorSettingsFromRow(data);
+  }
+
   async fetchRewardActivities(userId: string): Promise<RewardActivity[]> {
     const { data, error } = await this.client
       .from('reward_activities')
@@ -444,4 +454,19 @@ const mapVendorSettingsFromRow = (
   allowScheduledOrders: row.allow_scheduled_orders ?? undefined,
   defaultPrepMinutes: row.default_prep_minutes ?? undefined,
   menuVersion: row.menu_version ?? undefined
+});
+
+const toVendorSettingsUpdate = (
+  vendorId: string,
+  settings: Partial<VendorSettings>
+): Database['public']['Tables']['vendor_settings']['Insert'] => ({
+  vendor_id: vendorId,
+  currency: settings.currency ?? 'USD',
+  timezone: settings.timezone ?? null,
+  enable_loyalty: settings.enableLoyalty ?? false,
+  loyalty_earn_rate: settings.loyaltyEarnRate ?? null,
+  loyalty_redeem_rate: settings.loyaltyRedeemRate ?? null,
+  allow_scheduled_orders: settings.allowScheduledOrders ?? null,
+  default_prep_minutes: settings.defaultPrepMinutes ?? null,
+  menu_version: settings.menuVersion ?? null
 });

@@ -12,6 +12,7 @@
     "build:vendor-admin": "pnpm --filter @countrtop/vendor-admin-web build",
     "build": "pnpm -r run build",
     "lint": "pnpm -r run lint",
+    "test": "pnpm -r test --if-present",
     "format": "prettier --write ."
   },
   "devDependencies": {

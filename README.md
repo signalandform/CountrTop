@@ -50,3 +50,16 @@ Build commands are also namespaced per surface: `pnpm build:customer`, `pnpm bui
 - **Vendor Admin web** with onboarding tracker, menu management (list/create/edit/delete), vendor settings surface, billing placeholders, and analytics tied to shared data.
 - **Vendor Ops mobile** with auth gating, live orders queue, order detail + status actions, lightweight analytics, and realtime/polling fallback.
 - **Customer mobile** tabbed experience for discover / orders / rewards / account, plus push notification bootstrap + loyalty stubs.
+
+### Environment configuration
+
+- Copy the sample envs to configure each app:
+  - `apps/customer-mobile/.env.example`
+  - `apps/vendor-ops-mobile/.env.example`
+  - `apps/vendor-admin-web/.env.example`
+- Set `EXPO_PUBLIC_USE_MOCK_DATA=true` (default) to run against mock data; flip to `false` and configure Supabase/API URLs when backend is ready.
+- For payments, set `STRIPE_SECRET_KEY`, `CHECKOUT_SUCCESS_URL`, and `CHECKOUT_CANCEL_URL` in the admin web env.
+
+### CI
+
+GitHub Actions workflow `CI` runs lint and test (where present) on pushes/PRs. Use `pnpm lint` and `pnpm test` locally before pushing.

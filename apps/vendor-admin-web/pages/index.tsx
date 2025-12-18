@@ -20,7 +20,8 @@ const upsertMenuItemInState = (items: MenuItem[], item: MenuItem) => {
 };
 
 export default function VendorAdminDashboard() {
-  const dataClient = useMemo(() => createDataClient({ useMockData: true }), []);
+  const useMockData = process.env.NEXT_PUBLIC_USE_MOCK_DATA !== 'false';
+  const dataClient = useMemo(() => createDataClient({ useMockData }), [useMockData]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [settings, setSettings] = useState<VendorSettings | null>(null);
@@ -37,6 +38,9 @@ export default function VendorAdminDashboard() {
   const [draftPrice, setDraftPrice] = useState('5.00');
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [settingsSaving, setSettingsSaving] = useState(false);
+  const [settingsMessage, setSettingsMessage] = useState<string | null>(null);
+  const [settingsError, setSettingsError] = useState<string | null>(null);
 
   const accessError = useMemo(() => {
     const activeUser: User = {
@@ -168,6 +172,22 @@ export default function VendorAdminDashboard() {
       </>
     );
   }
+
+  const handleSettingsUpdate = async (updates: Partial<VendorSettings>) => {
+    if (!settings) return;
+    setSettingsSaving(true);
+    setSettingsMessage(null);
+    setSettingsError(null);
+    try {
+      const next = await dataClient.updateVendorSettings(settings.vendorId, updates);
+      setSettings(next);
+      setSettingsMessage('Settings updated.');
+    } catch (error) {
+      setSettingsError(error instanceof Error ? error.message : 'Unable to update settings.');
+    } finally {
+      setSettingsSaving(false);
+    }
+  };
 
   return (
     <>
@@ -349,35 +369,67 @@ export default function VendorAdminDashboard() {
 
         <Section title="Vendor settings" subtitle="Configuration">
           {settings ? (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
-              <div>
-                <div style={{ fontWeight: 600 }}>Currency</div>
-                <div style={{ color: '#6b7280' }}>{settings.currency}</div>
-              </div>
-              <div>
-                <div style={{ fontWeight: 600 }}>Timezone</div>
-                <div style={{ color: '#6b7280' }}>{settings.timezone ?? 'Not set'}</div>
-              </div>
-              <div>
-                <div style={{ fontWeight: 600 }}>Loyalty status</div>
-                <div style={{ color: '#6b7280' }}>
-                  {settings.enableLoyalty ? 'Enabled' : 'Disabled'}{' '}
-                  {settings.enableLoyalty && settings.loyaltyEarnRate
-                    ? `(${settings.loyaltyEarnRate} pts per dollar)`
-                    : ''}
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                const formData = new FormData(event.currentTarget);
+                const enableLoyalty = formData.get('enableLoyalty') === 'on';
+                const defaultPrep = Number(formData.get('defaultPrepMinutes') ?? settings.defaultPrepMinutes ?? 10);
+                void handleSettingsUpdate({
+                  enableLoyalty,
+                  defaultPrepMinutes: Number.isNaN(defaultPrep) ? settings.defaultPrepMinutes : defaultPrep
+                });
+              }}
+            >
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
+                <div>
+                  <div style={{ fontWeight: 600 }}>Currency</div>
+                  <div style={{ color: '#6b7280' }}>{settings.currency}</div>
                 </div>
+                <div>
+                  <div style={{ fontWeight: 600 }}>Timezone</div>
+                  <div style={{ color: '#6b7280' }}>{settings.timezone ?? 'Not set'}</div>
+                </div>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <input
+                    type="checkbox"
+                    name="enableLoyalty"
+                    defaultChecked={settings.enableLoyalty}
+                    disabled={settingsSaving}
+                  />
+                  <div>
+                    <div style={{ fontWeight: 600 }}>Loyalty status</div>
+                    <div style={{ color: '#6b7280' }}>
+                      {settings.enableLoyalty ? 'Enabled' : 'Disabled'}{' '}
+                      {settings.enableLoyalty && settings.loyaltyEarnRate
+                        ? `(${settings.loyaltyEarnRate} pts per dollar)`
+                        : ''}
+                    </div>
+                  </div>
+                </label>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <div style={{ fontWeight: 600 }}>Default prep time (minutes)</div>
+                  <input
+                    type="number"
+                    name="defaultPrepMinutes"
+                    min={1}
+                    defaultValue={settings.defaultPrepMinutes ?? 10}
+                    style={{ padding: 8, borderRadius: 8, border: '1px solid #d1d5db' }}
+                    disabled={settingsSaving}
+                  />
+                </label>
               </div>
-              <div>
-                <div style={{ fontWeight: 600 }}>Default prep time</div>
-                <div style={{ color: '#6b7280' }}>{settings.defaultPrepMinutes ?? 10} minutes</div>
+              <div style={{ marginTop: 12 }}>
+                <button type="submit" disabled={settingsSaving} style={{ padding: '10px 16px' }}>
+                  {settingsSaving ? 'Saving…' : 'Save settings'}
+                </button>
               </div>
-            </div>
+              {settingsMessage && <p style={{ color: '#16a34a', marginTop: 8 }}>{settingsMessage}</p>}
+              {settingsError && <p style={{ color: '#dc2626', marginTop: 8 }}>{settingsError}</p>}
+            </form>
           ) : (
             <p style={{ color: '#6b7280' }}>Loading vendor settings…</p>
           )}
-          <p style={{ marginTop: 16, color: '#9ca3af' }}>
-            TODO: wire editing controls to `fetchVendorSettings` / `updateVendorSettings` once backend endpoints land.
-          </p>
         </Section>
 
         <Section title="Billing" subtitle="Stripe + invoicing">
