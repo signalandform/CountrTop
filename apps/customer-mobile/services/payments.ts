@@ -1,8 +1,10 @@
 import { useCallback, useState } from 'react';
 
 import {
-  CheckoutIntentPayload,
-  initiateCheckout,
+  createPaymentIntent,
+  createSetupIntent,
+  PaymentIntentPayload,
+  SetupIntentPayload,
   recordRewardActivity,
   RewardActivityRequest
 } from '@countrtop/api-client';
@@ -11,18 +13,18 @@ type ApiClientConfig = {
   baseUrl?: string;
 };
 
-export const useCheckoutService = (config?: ApiClientConfig) => {
+export const usePaymentIntentService = (config?: ApiClientConfig) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const startCheckout = useCallback(
-    async (payload: CheckoutIntentPayload) => {
+  const startPayment = useCallback(
+    async (payload: PaymentIntentPayload) => {
       setLoading(true);
       setError(null);
 
-      const result = await initiateCheckout(payload, config);
+      const result = await createPaymentIntent(payload, config);
       if (!result.ok) {
-        setError(result.error ?? 'Unable to start checkout');
+        setError(result.error ?? 'Unable to create payment intent');
       }
 
       setLoading(false);
@@ -31,7 +33,30 @@ export const useCheckoutService = (config?: ApiClientConfig) => {
     [config]
   );
 
-  return { startCheckout, loading, error };
+  return { startPayment, loading, error };
+};
+
+export const useSetupIntentService = (config?: ApiClientConfig) => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const startSetup = useCallback(
+    async (payload: SetupIntentPayload) => {
+      setLoading(true);
+      setError(null);
+
+      const result = await createSetupIntent(payload, config);
+      if (!result.ok) {
+        setError(result.error ?? 'Unable to create setup intent');
+      }
+
+      setLoading(false);
+      return result;
+    },
+    [config]
+  );
+
+  return { startSetup, loading, error };
 };
 
 export const useRewardActivityService = (config?: ApiClientConfig) => {

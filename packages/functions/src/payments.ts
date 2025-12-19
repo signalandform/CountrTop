@@ -5,27 +5,6 @@ export type PaymentServiceConfig = {
   defaultCurrency?: string;
 };
 
-export type CheckoutSessionRequest = {
-  amount: number;
-  currency?: string;
-  successUrl: string;
-  cancelUrl: string;
-  orderId?: string;
-  userId?: string;
-  vendorId?: string;
-  customerId?: string;
-  description?: string;
-  metadata?: Record<string, string>;
-  lineItems?: Stripe.Checkout.SessionCreateParams.LineItem[];
-  mode?: Stripe.Checkout.SessionCreateParams.Mode;
-};
-
-export type CheckoutSessionResult = {
-  sessionId: string;
-  url?: string | null;
-  paymentIntentId?: string;
-};
-
 export type PaymentIntentRequest = {
   amount: number;
   currency?: string;
@@ -35,11 +14,32 @@ export type PaymentIntentRequest = {
   customerId?: string;
   description?: string;
   metadata?: Record<string, string>;
+  setupFutureUsage?: Stripe.PaymentIntentCreateParams.SetupFutureUsage;
 };
 
 export type PaymentIntentResult = {
   paymentIntentId: string;
   clientSecret: string;
+};
+
+export type SetupIntentRequest = {
+  customerId?: string;
+  userId?: string;
+  vendorId?: string;
+  metadata?: Record<string, string>;
+  usage?: Stripe.SetupIntentCreateParams.Usage;
+};
+
+export type SetupIntentResult = {
+  setupIntentId: string;
+  clientSecret: string;
+};
+
+type MetadataRequest = {
+  metadata?: Record<string, string>;
+  orderId?: string;
+  userId?: string;
+  vendorId?: string;
 };
 
 const API_VERSION: Stripe.LatestApiVersion = '2024-06-20';
@@ -60,7 +60,8 @@ export class PaymentService {
       currency,
       customer: request.customerId,
       description: request.description,
-      metadata: this.buildMetadata(request)
+      metadata: this.buildMetadata(request),
+      ...(request.setupFutureUsage ? { setup_future_usage: request.setupFutureUsage } : {})
     });
 
     if (!paymentIntent.client_secret) {
@@ -70,43 +71,25 @@ export class PaymentService {
     return { paymentIntentId: paymentIntent.id, clientSecret: paymentIntent.client_secret };
   };
 
-  createCheckoutSession = async (request: CheckoutSessionRequest): Promise<CheckoutSessionResult> => {
-    const currency = request.currency ?? this.defaultCurrency;
-    const lineItems = request.lineItems ?? [
-      {
-        price_data: {
-          currency,
-          product_data: { name: request.description ?? 'Order payment' },
-          unit_amount: Math.round(request.amount)
-        },
-        quantity: 1
-      }
-    ];
-
-    const session = await this.stripe.checkout.sessions.create({
-      mode: request.mode ?? 'payment',
-      success_url: request.successUrl,
-      cancel_url: request.cancelUrl,
+  createSetupIntent = async (request: SetupIntentRequest): Promise<SetupIntentResult> => {
+    const setupIntent = await this.stripe.setupIntents.create({
       customer: request.customerId,
-      line_items: lineItems,
-      payment_intent_data: { metadata: this.buildMetadata(request) },
+      usage: request.usage ?? 'off_session',
       metadata: this.buildMetadata(request)
     });
 
-    return {
-      sessionId: session.id,
-      url: session.url,
-      paymentIntentId: typeof session.payment_intent === 'string' ? session.payment_intent : undefined
-    };
+    if (!setupIntent.client_secret) {
+      throw new Error('Stripe did not return a client secret for the SetupIntent.');
+    }
+
+    return { setupIntentId: setupIntent.id, clientSecret: setupIntent.client_secret };
   };
 
   get client() {
     return this.stripe;
   }
 
-  private buildMetadata(
-    request: Pick<PaymentIntentRequest, 'metadata' | 'orderId' | 'userId' | 'vendorId'>
-  ): Record<string, string> {
+  private buildMetadata(request: MetadataRequest): Record<string, string> {
     const baseMetadata: Record<string, string> = {};
     if (request.orderId) baseMetadata.orderId = request.orderId;
     if (request.userId) baseMetadata.userId = request.userId;

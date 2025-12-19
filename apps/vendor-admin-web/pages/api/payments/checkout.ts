@@ -2,33 +2,34 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 
 import { PaymentService } from '@countrtop/functions';
 
-type CheckoutRequestBody = {
-  amount: number;
+type IntentRequestBody = {
+  mode?: 'payment' | 'setup';
+  amount?: number;
   currency?: string;
   orderId?: string;
   userId?: string;
   vendorId?: string;
   customerId?: string;
   description?: string;
-  successUrl?: string;
-  cancelUrl?: string;
-  mode?: 'payment' | 'setup';
+  setupFutureUsage?: 'on_session' | 'off_session';
 };
 
-type CheckoutResponse =
+type IntentResponse =
   | {
       ok: true;
-      paymentIntentId?: string;
-      clientSecret?: string;
-      checkoutSessionId?: string;
-      checkoutUrl?: string | null;
+      mode: 'payment';
+      paymentIntentId: string;
+      clientSecret: string;
+    }
+  | {
+      ok: true;
+      mode: 'setup';
+      setupIntentId: string;
+      clientSecret: string;
     }
   | { ok: false; error: string };
 
-const resolveUrl = (value: string | undefined, fallbackEnv: string | undefined, defaultValue: string) =>
-  value ?? fallbackEnv ?? defaultValue;
-
-export default async function handler(req: NextApiRequest, res: NextApiResponse<CheckoutResponse>) {
+export default async function handler(req: NextApiRequest, res: NextApiResponse<IntentResponse>) {
   if (req.method !== 'POST') {
     return res.status(405).json({ ok: false, error: 'Method not allowed' });
   }
@@ -38,43 +39,45 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     return res.status(500).json({ ok: false, error: 'Stripe secret key not configured' });
   }
 
-  const body = req.body as CheckoutRequestBody;
-  if (typeof body?.amount !== 'number') {
-    return res.status(400).json({ ok: false, error: 'amount is required' });
+  const body = req.body as IntentRequestBody;
+  const mode = body.mode ?? 'payment';
+  if (mode === 'payment' && typeof body?.amount !== 'number') {
+    return res.status(400).json({ ok: false, error: 'amount is required for payment intents' });
   }
 
   const service = new PaymentService({ secretKey, defaultCurrency: body.currency ?? 'usd' });
 
   try {
-    const paymentIntent = await service.createPaymentIntent({
-      amount: body.amount,
-      currency: body.currency,
-      orderId: body.orderId,
-      userId: body.userId,
-      vendorId: body.vendorId,
-      customerId: body.customerId,
-      description: body.description
-    });
+    if (mode === 'setup') {
+      const setupIntent = await service.createSetupIntent({
+        customerId: body.customerId,
+        userId: body.userId,
+        vendorId: body.vendorId
+      });
+      return res.status(200).json({
+        ok: true,
+        mode: 'setup',
+        setupIntentId: setupIntent.setupIntentId,
+        clientSecret: setupIntent.clientSecret
+      });
+    }
 
-    const checkoutSession = await service.createCheckoutSession({
-      amount: body.amount,
+    const paymentIntent = await service.createPaymentIntent({
+      amount: body.amount ?? 0,
       currency: body.currency,
       orderId: body.orderId,
       userId: body.userId,
       vendorId: body.vendorId,
       customerId: body.customerId,
       description: body.description,
-      mode: body.mode,
-      successUrl: resolveUrl(body.successUrl, process.env.CHECKOUT_SUCCESS_URL, 'https://countrtop.app/success'),
-      cancelUrl: resolveUrl(body.cancelUrl, process.env.CHECKOUT_CANCEL_URL, 'https://countrtop.app/cancel')
+      setupFutureUsage: body.setupFutureUsage
     });
 
     return res.status(200).json({
       ok: true,
+      mode: 'payment',
       paymentIntentId: paymentIntent.paymentIntentId,
-      clientSecret: paymentIntent.clientSecret,
-      checkoutSessionId: checkoutSession.sessionId,
-      checkoutUrl: checkoutSession.url
+      clientSecret: paymentIntent.clientSecret
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unexpected payment error';

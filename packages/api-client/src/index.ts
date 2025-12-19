@@ -51,7 +51,7 @@ export const fetchRecentOrders = async (
   return response.json();
 };
 
-export type CheckoutIntentPayload = {
+export type PaymentIntentPayload = {
   amount: number;
   currency?: string;
   orderId?: string;
@@ -59,19 +59,32 @@ export type CheckoutIntentPayload = {
   vendorId?: string;
   customerId?: string;
   description?: string;
-  successUrl?: string;
-  cancelUrl?: string;
-  mode?: 'payment' | 'setup';
+  setupFutureUsage?: 'on_session' | 'off_session';
 };
 
-export type CheckoutIntentResponse = {
-  ok: boolean;
-  paymentIntentId?: string;
-  clientSecret?: string;
-  checkoutSessionId?: string;
-  checkoutUrl?: string | null;
-  error?: string;
+export type PaymentIntentResponse =
+  | {
+      ok: true;
+      mode: 'payment';
+      paymentIntentId: string;
+      clientSecret: string;
+    }
+  | { ok: false; error: string };
+
+export type SetupIntentPayload = {
+  customerId?: string;
+  userId?: string;
+  vendorId?: string;
 };
+
+export type SetupIntentResponse =
+  | {
+      ok: true;
+      mode: 'setup';
+      setupIntentId: string;
+      clientSecret: string;
+    }
+  | { ok: false; error: string };
 
 export type RewardActivityRequest = {
   userId: string;
@@ -82,19 +95,37 @@ export type RewardActivityRequest = {
   orderId?: string;
 };
 
-export const initiateCheckout = async (
-  payload: CheckoutIntentPayload,
+export const createPaymentIntent = async (
+  payload: PaymentIntentPayload,
   config: ApiConfig = defaultConfig
-): Promise<CheckoutIntentResponse> => {
+): Promise<PaymentIntentResponse> => {
   const response = await fetch(createUrl('/payments/checkout', config.baseUrl ?? defaultConfig.baseUrl), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
+    body: JSON.stringify({ ...payload, mode: 'payment' })
   });
 
   if (!response.ok) {
     const errorBody = await response.json().catch(() => ({}));
-    return { ok: false, error: errorBody.error ?? 'Unable to start checkout' };
+    return { ok: false, error: errorBody.error ?? 'Unable to create payment intent' };
+  }
+
+  return response.json();
+};
+
+export const createSetupIntent = async (
+  payload: SetupIntentPayload,
+  config: ApiConfig = defaultConfig
+): Promise<SetupIntentResponse> => {
+  const response = await fetch(createUrl('/payments/checkout', config.baseUrl ?? defaultConfig.baseUrl), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...payload, mode: 'setup' })
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => ({}));
+    return { ok: false, error: errorBody.error ?? 'Unable to create setup intent' };
   }
 
   return response.json();

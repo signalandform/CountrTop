@@ -58,7 +58,7 @@ Build commands are also namespaced per surface: `pnpm build:customer`, `pnpm bui
   - `apps/vendor-ops-mobile/.env.example`
   - `apps/vendor-admin-web/.env.example`
 - Set `EXPO_PUBLIC_USE_MOCK_DATA=true` (default) to run against mock data; flip to `false` and configure Supabase/API URLs when backend is ready.
-- For payments, set `STRIPE_SECRET_KEY`, `CHECKOUT_SUCCESS_URL`, and `CHECKOUT_CANCEL_URL` in the admin web env.
+- For payments, set `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` in the admin web env.
 
 ### CI
 
