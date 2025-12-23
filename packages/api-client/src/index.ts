@@ -30,23 +30,6 @@ export const fetchOrderHistory = async (
   return response.json();
 };
 
-export type CreateOrderSnapshotPayload = Omit<OrderSnapshot, 'id' | 'placedAt'> &
-  Partial<Pick<OrderSnapshot, 'placedAt'>>;
-
-export const createOrderSnapshot = async (
-  vendorId: string,
-  payload: CreateOrderSnapshotPayload,
-  config?: ApiConfig
-): Promise<OrderSnapshot> => {
-  const response = await fetch(createUrl(`/vendors/${vendorId}/orders`, resolveBaseUrl(config)), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
-  });
-  if (!response.ok) throw new Error('Failed to create order snapshot');
-  return response.json();
-};
-
 export const fetchLoyaltyLedger = async (
   vendorId: string,
   userId: string,

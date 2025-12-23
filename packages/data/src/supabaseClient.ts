@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import { SupabaseClient, User as SupabaseAuthUser } from '@supabase/supabase-js';
 
 import { DataClient, LoyaltyLedgerEntryInput, OrderSnapshotInput, PushDeviceInput } from './dataClient';
@@ -127,10 +128,24 @@ export class SupabaseDataClient implements DataClient {
     return data ? mapVendorFromRow(data) : null;
   }
 
+  async getVendorBySquareLocationId(locationId: string): Promise<Vendor | null> {
+    const { data, error } = await this.client
+      .from('vendors')
+      .select('*')
+      .eq('square_location_id', locationId)
+      .maybeSingle();
+    if (error) throw error;
+    return data ? mapVendorFromRow(data) : null;
+  }
+
   async createOrderSnapshot(order: OrderSnapshotInput): Promise<OrderSnapshot> {
+    const withId = {
+      ...order,
+      id: order.id ?? randomUUID()
+    };
     const { data, error } = await this.client
       .from('order_snapshots')
-      .insert(toOrderSnapshotInsert(order))
+      .insert(toOrderSnapshotInsert(withId))
       .select()
       .single();
     if (error) throw error;
@@ -142,6 +157,20 @@ export class SupabaseDataClient implements DataClient {
       .from('order_snapshots')
       .select('*')
       .eq('id', orderId)
+      .maybeSingle();
+    if (error) throw error;
+    return data ? mapOrderSnapshotFromRow(data) : null;
+  }
+
+  async getOrderSnapshotBySquareOrderId(
+    vendorId: string,
+    squareOrderId: string
+  ): Promise<OrderSnapshot | null> {
+    const { data, error } = await this.client
+      .from('order_snapshots')
+      .select('*')
+      .eq('vendor_id', vendorId)
+      .eq('square_order_id', squareOrderId)
       .maybeSingle();
     if (error) throw error;
     return data ? mapOrderSnapshotFromRow(data) : null;

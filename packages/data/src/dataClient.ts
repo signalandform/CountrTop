@@ -30,9 +30,11 @@ export interface DataClient {
 
   getVendorBySlug(slug: string): Promise<Vendor | null>;
   getVendorById(vendorId: string): Promise<Vendor | null>;
+  getVendorBySquareLocationId(locationId: string): Promise<Vendor | null>;
 
   createOrderSnapshot(order: OrderSnapshotInput): Promise<OrderSnapshot>;
   getOrderSnapshot(orderId: string): Promise<OrderSnapshot | null>;
+  getOrderSnapshotBySquareOrderId(vendorId: string, squareOrderId: string): Promise<OrderSnapshot | null>;
   listOrderSnapshotsForUser(vendorId: string, userId: string): Promise<OrderSnapshot[]>;
   listOrderSnapshotsForVendor(vendorId: string): Promise<OrderSnapshot[]>;
 

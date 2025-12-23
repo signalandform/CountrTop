@@ -8,7 +8,6 @@ import { resolveVendorSlugFromHost } from '@countrtop/data';
 import { getServerDataClient } from '../../lib/dataClient';
 
 type ConfirmProps = {
-  vendorSlug: string | null;
   vendorName: string;
 };
 
@@ -27,66 +26,39 @@ export const getServerSideProps: GetServerSideProps<ConfirmProps> = async ({ req
 
   return {
     props: {
-      vendorSlug: vendorSlug ?? null,
       vendorName: vendor?.displayName ?? 'CountrTop'
     }
   };
 };
 
-export default function ConfirmPage({ vendorSlug, vendorName }: ConfirmProps) {
+export default function ConfirmPage({ vendorName }: ConfirmProps) {
   const router = useRouter();
   const orderId = useMemo(() => {
     const value = router.query.orderId;
     return Array.isArray(value) ? value[0] : value;
   }, [router.query.orderId]);
-  const [status, setStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [status, setStatus] = useState<'idle' | 'ready' | 'error'>('idle');
   const [error, setError] = useState<string | null>(null);
   const [snapshot, setSnapshot] = useState<StoredSnapshot | null>(null);
 
   useEffect(() => {
-    if (!orderId || !vendorSlug || status !== 'idle') return;
+    if (!orderId || status !== 'idle') return;
 
     const raw = sessionStorage.getItem(`ct_order_${orderId}`);
     if (!raw) {
-      setError('Missing order snapshot. Please contact support.');
-      setStatus('error');
+      setStatus('ready');
       return;
     }
 
     try {
       const parsed = JSON.parse(raw) as StoredSnapshot;
       setSnapshot(parsed);
-      setStatus('saving');
-      fetch(`/api/vendors/${vendorSlug}/orders`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          squareOrderId: parsed.squareOrderId,
-          placedAt: new Date().toISOString(),
-          snapshotJson: {
-            items: parsed.items,
-            total: parsed.total,
-            currency: parsed.currency
-          }
-        })
-      })
-        .then(async (response) => {
-          const payload = await response.json();
-          if (!response.ok || !payload.ok) {
-            throw new Error(payload.error ?? 'Unable to save order');
-          }
-          sessionStorage.removeItem(`ct_order_${orderId}`);
-          setStatus('saved');
-        })
-        .catch((err) => {
-          setError(err instanceof Error ? err.message : 'Unable to save order');
-          setStatus('error');
-        });
+      setStatus('ready');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Invalid order snapshot');
       setStatus('error');
     }
-  }, [orderId, status, vendorSlug]);
+  }, [orderId, status]);
 
   return (
     <>
@@ -98,9 +70,7 @@ export default function ConfirmPage({ vendorSlug, vendorName }: ConfirmProps) {
           <p style={styles.eyebrow}>Order confirmed</p>
           <h1 style={styles.title}>{vendorName}</h1>
           <p style={styles.subtitle}>
-            {status === 'saved'
-              ? 'Your order is in. We will notify you when it is ready.'
-              : 'We are syncing your order details.'}
+            Your order is in. We will notify you when it is ready.
           </p>
           {snapshot && (
             <div style={styles.summary}>
@@ -121,7 +91,7 @@ export default function ConfirmPage({ vendorSlug, vendorName }: ConfirmProps) {
               </div>
             </div>
           )}
-          {status === 'saving' && <p style={styles.helper}>Finalizing your order…</p>}
+          {status === 'idle' && <p style={styles.helper}>Finalizing your order…</p>}
           {status === 'error' && <p style={{ ...styles.helper, color: '#b91c1c' }}>{error}</p>}
         </div>
       </main>

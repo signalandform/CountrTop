@@ -55,6 +55,10 @@ export class MockDataClient implements DataClient {
     return this.vendors.find((vendor) => vendor.id === vendorId) ?? null;
   }
 
+  async getVendorBySquareLocationId(locationId: string): Promise<Vendor | null> {
+    return this.vendors.find((vendor) => vendor.squareLocationId === locationId) ?? null;
+  }
+
   async createOrderSnapshot(order: OrderSnapshotInput): Promise<OrderSnapshot> {
     const id = order.id ?? this.createId('order');
     const placedAt = order.placedAt ?? new Date().toISOString();
@@ -65,6 +69,17 @@ export class MockDataClient implements DataClient {
 
   async getOrderSnapshot(orderId: string): Promise<OrderSnapshot | null> {
     return this.orderSnapshots.find((order) => order.id === orderId) ?? null;
+  }
+
+  async getOrderSnapshotBySquareOrderId(
+    vendorId: string,
+    squareOrderId: string
+  ): Promise<OrderSnapshot | null> {
+    return (
+      this.orderSnapshots.find(
+        (order) => order.vendorId === vendorId && order.squareOrderId === squareOrderId
+      ) ?? null
+    );
   }
 
   async listOrderSnapshotsForUser(vendorId: string, userId: string): Promise<OrderSnapshot[]> {
