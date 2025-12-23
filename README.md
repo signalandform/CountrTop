@@ -71,6 +71,7 @@ For local development:
 
 - Set `DEFAULT_VENDOR_SLUG=sunset`
 - Use `NEXT_PUBLIC_USE_MOCK_DATA=true` on web apps to read mock data
+- Square server envs live in `apps/customer-web/.env.example`
 
 ---
 
