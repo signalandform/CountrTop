@@ -41,7 +41,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
   try {
     const square = squareClientForVendor(vendor);
-    const { result } = await square.catalogApi.listCatalog(undefined, undefined, 'ITEM,IMAGE');
+    const { result } = await square.catalogApi.listCatalog(undefined, 'ITEM,IMAGE');
 
     const images = new Map<string, string>();
     (result.objects ?? []).forEach((object) => {

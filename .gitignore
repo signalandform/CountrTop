@@ -13,3 +13,4 @@ build
 .expo-shared
 .DS_Store
 coverage
+**/.env
