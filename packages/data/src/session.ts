@@ -70,8 +70,8 @@ export const createSessionManager = (options: SessionManagerOptions) => {
     return user;
   };
 
-  const signInWithEmail = async (email: string, password: string) => {
-    const user = await dataClient.signInWithEmail(email, password);
+  const signInWithProvider = async (provider: User['provider'], idToken: string) => {
+    const user = await dataClient.signInWithProvider(provider, idToken);
     currentSession = { user };
     await persist();
     notify();
@@ -93,7 +93,7 @@ export const createSessionManager = (options: SessionManagerOptions) => {
   return {
     bootstrap,
     getSession: () => currentSession,
-    signInWithEmail,
+    signInWithProvider,
     signOut,
     subscribe
   };

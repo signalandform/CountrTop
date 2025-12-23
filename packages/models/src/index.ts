@@ -1,125 +1,56 @@
-export type UserRole = 'guest' | 'customer' | 'vendor' | 'admin';
+export type AuthProvider = 'apple' | 'google';
 
-export const USER_ROLES: readonly UserRole[] = ['guest', 'customer', 'vendor', 'admin'];
+export type VendorStatus = 'active' | 'inactive';
 
-export type MenuItemOption = {
+export type Vendor = {
   id: string;
-  name: string;
-  priceDelta?: number;
-  isDefault?: boolean;
-};
-
-export type MenuItem = {
-  id: string;
-  vendorId: string;
-  name: string;
-  description?: string;
-  price: number;
-  currency?: string;
-  category?: string;
-  tags?: string[];
-  imageUrl?: string;
-  isAvailable: boolean;
-  options?: MenuItemOption[];
-};
-
-export type VendorProfile = {
-  id: string;
-  name: string;
-  cuisine: string;
-  location: string;
-  heroImage?: string;
-  status?: 'open' | 'closed' | 'paused';
-};
-
-export type LoyaltySnapshot = {
-  points: number;
-  tier: 'bronze' | 'silver' | 'gold';
-  nextRewardAt: number;
-};
-
-export type OrderStatus = 'draft' | 'pending' | 'preparing' | 'ready' | 'completed' | 'cancelled';
-
-export const ORDER_STATUSES: readonly OrderStatus[] = [
-  'draft',
-  'pending',
-  'preparing',
-  'ready',
-  'completed',
-  'cancelled'
-];
-
-export type OrderItem = {
-  menuItemId: string;
-  quantity: number;
-  price: number;
-  notes?: string;
-  selectedOptionIds?: string[];
-};
-
-export type Order = {
-  id: string;
-  vendorId: string;
-  userId: string;
-  items: OrderItem[];
-  status: OrderStatus;
-  total: number;
-  createdAt: string;
-  updatedAt?: string;
-  etaMinutes?: number;
-  note?: string;
-};
-
-export type OrderSummary = {
-  id: string;
-  status: OrderStatus;
-  total: number;
-  etaMinutes?: number;
+  slug: string;
+  displayName: string;
+  squareLocationId: string;
+  squareCredentialRef?: string;
+  status?: VendorStatus;
 };
 
 export type User = {
   id: string;
-  email: string;
-  role: UserRole;
+  provider: AuthProvider;
+  providerUserId: string;
   displayName?: string;
-  phoneNumber?: string;
-  photoUrl?: string;
-  loyaltyPoints?: number;
-  preferredVendorId?: string;
 };
 
-export type RewardActivityType = 'earn' | 'redeem';
+export type OrderSnapshot = {
+  id: string;
+  vendorId: string;
+  userId?: string | null;
+  squareOrderId: string;
+  placedAt: string;
+  snapshotJson: Record<string, unknown>;
+};
 
-export type RewardActivity = {
+export type LoyaltyLedgerEntry = {
+  id: string;
+  vendorId: string;
+  userId: string;
+  orderId: string;
+  pointsDelta: number;
+  createdAt: string;
+};
+
+export type PushPlatform = 'ios' | 'android' | 'web';
+
+export type PushDevice = {
   id: string;
   userId: string;
-  vendorId: string;
-  points: number;
-  type: RewardActivityType;
-  description?: string;
-  occurredAt: string;
-  orderId?: string;
+  deviceToken: string;
+  platform: PushPlatform;
+  createdAt: string;
+  updatedAt?: string | null;
 };
 
-export type RewardActivityInput = {
-  id?: string;
-  userId: string;
-  vendorId: string;
-  points: number;
-  type: RewardActivityType;
-  description?: string;
-  occurredAt?: string;
-  orderId?: string;
-};
-
-export type VendorSettings = {
-  vendorId: string;
-  currency: string;
-  timezone?: string;
-  enableLoyalty: boolean;
-  loyaltyEarnRate?: number;
-  loyaltyRedeemRate?: number;
-  allowScheduledOrders?: boolean;
-  defaultPrepMinutes?: number;
-  menuVersion?: string;
+export type VendorInsights = {
+  orders: number;
+  uniqueCustomers: number;
+  repeatCustomers: number;
+  pointsIssued: number;
+  topReorderedItems: { label: string; count: number }[];
 };

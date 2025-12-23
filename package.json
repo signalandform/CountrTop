@@ -4,9 +4,11 @@
   "private": true,
   "packageManager": "pnpm@9.10.0",
   "scripts": {
+    "dev:customer-web": "pnpm --filter @countrtop/customer-web dev",
     "dev:customer": "pnpm --filter @countrtop/customer-mobile start",
     "dev:vendor-ops": "pnpm --filter @countrtop/vendor-ops-mobile start",
     "dev:vendor-admin": "pnpm --filter @countrtop/vendor-admin-web dev",
+    "build:customer-web": "pnpm --filter @countrtop/customer-web build",
     "build:customer": "pnpm --filter @countrtop/customer-mobile build",
     "build:vendor-ops": "pnpm --filter @countrtop/vendor-ops-mobile build",
     "build:vendor-admin": "pnpm --filter @countrtop/vendor-admin-web build",

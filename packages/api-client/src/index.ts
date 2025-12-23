@@ -1,4 +1,4 @@
-import { LoyaltySnapshot, MenuItem, OrderSummary, VendorProfile } from '@countrtop/models';
+import { LoyaltyLedgerEntry, OrderSnapshot, PushDevice, Vendor, VendorInsights } from '@countrtop/models';
 
 type ApiConfig = {
   baseUrl?: string;
@@ -10,141 +10,77 @@ const defaultConfig: Required<ApiConfig> = {
 
 const createUrl = (path: string, baseUrl: string) => `${baseUrl}${path}`;
 
-export const fetchFeaturedVendors = async (
-  config: ApiConfig = defaultConfig
-): Promise<VendorProfile[]> => {
-  const response = await fetch(createUrl('/vendors/featured', config.baseUrl ?? defaultConfig.baseUrl));
-  if (!response.ok) throw new Error('Failed to load vendors');
+const resolveBaseUrl = (config?: ApiConfig) => config?.baseUrl ?? defaultConfig.baseUrl;
+
+export const fetchVendorBySlug = async (slug: string, config?: ApiConfig): Promise<Vendor> => {
+  const response = await fetch(createUrl(`/vendors/${slug}`, resolveBaseUrl(config)));
+  if (!response.ok) throw new Error('Failed to load vendor');
   return response.json();
 };
 
-export const fetchMenu = async (
+export const fetchOrderHistory = async (
   vendorId: string,
-  config: ApiConfig = defaultConfig
-): Promise<MenuItem[]> => {
-  const response = await fetch(
-    createUrl(`/vendors/${vendorId}/menu`, config.baseUrl ?? defaultConfig.baseUrl)
-  );
-  if (!response.ok) throw new Error('Failed to load menu');
-  return response.json();
-};
-
-export const fetchLoyalty = async (
   userId: string,
-  config: ApiConfig = defaultConfig
-): Promise<LoyaltySnapshot> => {
+  config?: ApiConfig
+): Promise<OrderSnapshot[]> => {
   const response = await fetch(
-    createUrl(`/users/${userId}/loyalty`, config.baseUrl ?? defaultConfig.baseUrl)
+    createUrl(`/vendors/${vendorId}/orders?userId=${encodeURIComponent(userId)}`, resolveBaseUrl(config))
   );
-  if (!response.ok) throw new Error('Failed to load loyalty');
+  if (!response.ok) throw new Error('Failed to load order history');
   return response.json();
 };
 
-export const fetchRecentOrders = async (
+export type CreateOrderSnapshotPayload = Omit<OrderSnapshot, 'id' | 'placedAt'> &
+  Partial<Pick<OrderSnapshot, 'placedAt'>>;
+
+export const createOrderSnapshot = async (
   vendorId: string,
-  config: ApiConfig = defaultConfig
-): Promise<OrderSummary[]> => {
-  const response = await fetch(
-    createUrl(`/vendors/${vendorId}/orders/recent`, config.baseUrl ?? defaultConfig.baseUrl)
-  );
-  if (!response.ok) throw new Error('Failed to load orders');
-  return response.json();
-};
-
-export type PaymentIntentPayload = {
-  amount: number;
-  currency?: string;
-  orderId?: string;
-  userId?: string;
-  vendorId?: string;
-  customerId?: string;
-  description?: string;
-  setupFutureUsage?: 'on_session' | 'off_session';
-};
-
-export type PaymentIntentResponse =
-  | {
-      ok: true;
-      mode: 'payment';
-      paymentIntentId: string;
-      clientSecret: string;
-    }
-  | { ok: false; error: string };
-
-export type SetupIntentPayload = {
-  customerId?: string;
-  userId?: string;
-  vendorId?: string;
-};
-
-export type SetupIntentResponse =
-  | {
-      ok: true;
-      mode: 'setup';
-      setupIntentId: string;
-      clientSecret: string;
-    }
-  | { ok: false; error: string };
-
-export type RewardActivityRequest = {
-  userId: string;
-  vendorId: string;
-  points: number;
-  type: 'earn' | 'redeem';
-  description?: string;
-  orderId?: string;
-};
-
-export const createPaymentIntent = async (
-  payload: PaymentIntentPayload,
-  config: ApiConfig = defaultConfig
-): Promise<PaymentIntentResponse> => {
-  const response = await fetch(createUrl('/payments/checkout', config.baseUrl ?? defaultConfig.baseUrl), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ...payload, mode: 'payment' })
-  });
-
-  if (!response.ok) {
-    const errorBody = await response.json().catch(() => ({}));
-    return { ok: false, error: errorBody.error ?? 'Unable to create payment intent' };
-  }
-
-  return response.json();
-};
-
-export const createSetupIntent = async (
-  payload: SetupIntentPayload,
-  config: ApiConfig = defaultConfig
-): Promise<SetupIntentResponse> => {
-  const response = await fetch(createUrl('/payments/checkout', config.baseUrl ?? defaultConfig.baseUrl), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ...payload, mode: 'setup' })
-  });
-
-  if (!response.ok) {
-    const errorBody = await response.json().catch(() => ({}));
-    return { ok: false, error: errorBody.error ?? 'Unable to create setup intent' };
-  }
-
-  return response.json();
-};
-
-export const recordRewardActivity = async (
-  payload: RewardActivityRequest,
-  config: ApiConfig = defaultConfig
-): Promise<{ ok: boolean; error?: string }> => {
-  const response = await fetch(createUrl('/loyalty/activities', config.baseUrl ?? defaultConfig.baseUrl), {
+  payload: CreateOrderSnapshotPayload,
+  config?: ApiConfig
+): Promise<OrderSnapshot> => {
+  const response = await fetch(createUrl(`/vendors/${vendorId}/orders`, resolveBaseUrl(config)), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload)
   });
+  if (!response.ok) throw new Error('Failed to create order snapshot');
+  return response.json();
+};
 
-  if (!response.ok) {
-    const errorBody = await response.json().catch(() => ({}));
-    return { ok: false, error: errorBody.error ?? 'Failed to record loyalty activity' };
-  }
+export const fetchLoyaltyLedger = async (
+  vendorId: string,
+  userId: string,
+  config?: ApiConfig
+): Promise<LoyaltyLedgerEntry[]> => {
+  const response = await fetch(
+    createUrl(`/vendors/${vendorId}/loyalty/${encodeURIComponent(userId)}`, resolveBaseUrl(config))
+  );
+  if (!response.ok) throw new Error('Failed to load loyalty ledger');
+  return response.json();
+};
 
+export const fetchInsights = async (
+  vendorId: string,
+  config?: ApiConfig
+): Promise<VendorInsights> => {
+  const response = await fetch(createUrl(`/vendors/${vendorId}/insights`, resolveBaseUrl(config)));
+  if (!response.ok) throw new Error('Failed to load insights');
+  return response.json();
+};
+
+export type PushDevicePayload = Omit<PushDevice, 'id' | 'createdAt' | 'updatedAt'> &
+  Partial<Pick<PushDevice, 'id' | 'createdAt' | 'updatedAt'>>;
+
+export const registerPushDevice = async (
+  userId: string,
+  payload: PushDevicePayload,
+  config?: ApiConfig
+): Promise<PushDevice> => {
+  const response = await fetch(createUrl(`/users/${userId}/push-devices`, resolveBaseUrl(config)), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  if (!response.ok) throw new Error('Failed to register push device');
   return response.json();
 };

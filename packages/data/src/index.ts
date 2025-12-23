@@ -1,6 +1,11 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-import { CreateOrderInput, DataClient, MenuItemInput, RewardActivityInput, Subscription } from './dataClient';
+import {
+  DataClient,
+  LoyaltyLedgerEntryInput,
+  OrderSnapshotInput,
+  PushDeviceInput
+} from './dataClient';
 import { createMockDataClient, MockDataClient, MockDataSeed } from './mockData';
 import type { Database } from './supabaseClient';
 
@@ -8,8 +13,8 @@ export * from './models';
 export * from './dataClient';
 export * from './supabaseClient';
 export * from './mockData';
-export * from './auth';
 export * from './session';
+export * from './vendor';
 
 export type DataClientFactoryOptions = {
   supabase?: SupabaseClient<Database>;
@@ -37,13 +42,12 @@ export const createDataClient = (options: DataClientFactoryOptions = {}): DataCl
 };
 
 export type {
-  CreateOrderInput,
   DataClient,
   Database,
-  MenuItemInput,
   MockDataSeed,
-  RewardActivityInput,
-  Subscription
+  LoyaltyLedgerEntryInput,
+  OrderSnapshotInput,
+  PushDeviceInput
 };
 export { MockDataClient };
 

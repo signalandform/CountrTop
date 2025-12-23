@@ -10,7 +10,6 @@
     "lint": "eslint 'src/**/*.{ts,tsx}'"
   },
   "dependencies": {
-    "@countrtop/data": "workspace:*",
-    "stripe": "^17.0.0"
+    "@countrtop/data": "workspace:*"
   }
 }

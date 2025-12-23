@@ -1,151 +1,86 @@
-import { RealtimeChannel, SupabaseClient, User as SupabaseAuthUser } from '@supabase/supabase-js';
+import { SupabaseClient, User as SupabaseAuthUser } from '@supabase/supabase-js';
 
-import { CreateOrderInput, DataClient, MenuItemInput, Subscription } from './dataClient';
-import {
-  MenuItem,
-  MenuItemOption,
-  Order,
-  OrderItem,
-  OrderStatus,
-  RewardActivity,
-   RewardActivityInput,
-  User,
-  VendorSettings
-} from './models';
+import { DataClient, LoyaltyLedgerEntryInput, OrderSnapshotInput, PushDeviceInput } from './dataClient';
+import { LoyaltyLedgerEntry, OrderSnapshot, PushDevice, User, Vendor } from './models';
 
 export type Database = {
   public: {
     Tables: {
-      menu_items: {
+      vendors: {
+        Row: {
+          id: string;
+          slug: string;
+          display_name: string;
+          square_location_id: string;
+          square_credential_ref: string | null;
+          status: string | null;
+        };
+        Insert: {
+          id?: string;
+          slug: string;
+          display_name: string;
+          square_location_id: string;
+          square_credential_ref?: string | null;
+          status?: string | null;
+        };
+        Update: Partial<Database['public']['Tables']['vendors']['Insert']>;
+      };
+      order_snapshots: {
         Row: {
           id: string;
           vendor_id: string;
-          name: string;
-          description: string | null;
-          price: number;
-          currency: string | null;
-          category: string | null;
-          tags: string[] | null;
-          image_url: string | null;
-          is_available: boolean;
-          options: MenuItemOption[] | null;
+          user_id: string | null;
+          square_order_id: string;
+          placed_at: string;
+          snapshot_json: Record<string, unknown>;
+        };
+        Insert: {
+          id?: string;
+          vendor_id: string;
+          user_id?: string | null;
+          square_order_id: string;
+          placed_at?: string;
+          snapshot_json: Record<string, unknown>;
+        };
+        Update: Partial<Database['public']['Tables']['order_snapshots']['Insert']>;
+      };
+      loyalty_ledger: {
+        Row: {
+          id: string;
+          vendor_id: string;
+          user_id: string;
+          order_id: string;
+          points_delta: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          vendor_id: string;
+          user_id: string;
+          order_id: string;
+          points_delta: number;
+          created_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['loyalty_ledger']['Insert']>;
+      };
+      push_devices: {
+        Row: {
+          id: string;
+          user_id: string;
+          device_token: string;
+          platform: string;
           created_at: string;
           updated_at: string | null;
         };
         Insert: {
           id?: string;
-          vendor_id: string;
-          name: string;
-          description?: string | null;
-          price: number;
-          currency?: string | null;
-          category?: string | null;
-          tags?: string[] | null;
-          image_url?: string | null;
-          is_available: boolean;
-          options?: MenuItemOption[] | null;
+          user_id: string;
+          device_token: string;
+          platform: string;
           created_at?: string;
           updated_at?: string | null;
         };
-        Update: Partial<Database['public']['Tables']['menu_items']['Insert']>;
-      };
-      orders: {
-        Row: {
-          id: string;
-          vendor_id: string;
-          user_id: string;
-          items: OrderItem[];
-          status: OrderStatus;
-          total: number;
-          created_at: string;
-          updated_at: string | null;
-          eta_minutes: number | null;
-          note: string | null;
-        };
-        Insert: {
-          id?: string;
-          vendor_id: string;
-          user_id: string;
-          items: OrderItem[];
-          status?: OrderStatus;
-          total: number;
-          created_at?: string;
-          updated_at?: string | null;
-          eta_minutes?: number | null;
-          note?: string | null;
-        };
-        Update: Partial<Database['public']['Tables']['orders']['Insert']>;
-      };
-      reward_activities: {
-        Row: {
-          id: string;
-          user_id: string;
-          vendor_id: string;
-          points: number;
-          type: 'earn' | 'redeem';
-          description: string | null;
-          occurred_at: string;
-          order_id: string | null;
-        };
-        Insert: {
-          id?: string;
-          user_id: string;
-          vendor_id: string;
-          points: number;
-          type: 'earn' | 'redeem';
-          description?: string | null;
-          occurred_at?: string;
-          order_id?: string | null;
-        };
-        Update: Partial<Database['public']['Tables']['reward_activities']['Insert']>;
-      };
-      users: {
-        Row: {
-          id: string;
-          email: string;
-          role: string;
-          display_name: string | null;
-          phone_number: string | null;
-          photo_url: string | null;
-          loyalty_points: number | null;
-          preferred_vendor_id: string | null;
-        };
-        Insert: {
-          id?: string;
-          email: string;
-          role: string;
-          display_name?: string | null;
-          phone_number?: string | null;
-          photo_url?: string | null;
-          loyalty_points?: number | null;
-          preferred_vendor_id?: string | null;
-        };
-        Update: Partial<Database['public']['Tables']['users']['Insert']>;
-      };
-      vendor_settings: {
-        Row: {
-          vendor_id: string;
-          currency: string;
-          timezone: string | null;
-          enable_loyalty: boolean;
-          loyalty_earn_rate: number | null;
-          loyalty_redeem_rate: number | null;
-          allow_scheduled_orders: boolean | null;
-          default_prep_minutes: number | null;
-          menu_version: string | null;
-        };
-        Insert: {
-          vendor_id: string;
-          currency: string;
-          timezone?: string | null;
-          enable_loyalty?: boolean;
-          loyalty_earn_rate?: number | null;
-          loyalty_redeem_rate?: number | null;
-          allow_scheduled_orders?: boolean | null;
-          default_prep_minutes?: number | null;
-          menu_version?: string | null;
-        };
-        Update: Partial<Database['public']['Tables']['vendor_settings']['Insert']>;
+        Update: Partial<Database['public']['Tables']['push_devices']['Insert']>;
       };
     };
     Views: never;
@@ -158,8 +93,11 @@ export type Database = {
 export class SupabaseDataClient implements DataClient {
   constructor(private readonly client: SupabaseClient<Database>) {}
 
-  async signInWithEmail(email: string, password: string): Promise<User> {
-    const { data, error } = await this.client.auth.signInWithPassword({ email, password });
+  async signInWithProvider(provider: User['provider'], idToken: string): Promise<User> {
+    const { data, error } = await this.client.auth.signInWithIdToken({
+      provider,
+      token: idToken
+    });
     if (error) throw error;
     const authUser = data.user;
     if (!authUser) throw new Error('User could not be loaded after sign-in');
@@ -177,296 +115,187 @@ export class SupabaseDataClient implements DataClient {
     return mapAuthUser(data.user ?? null);
   }
 
-  async getMenuItems(vendorId: string): Promise<MenuItem[]> {
-    const { data, error } = await this.client.from('menu_items').select('*').eq('vendor_id', vendorId);
+  async getVendorBySlug(slug: string): Promise<Vendor | null> {
+    const { data, error } = await this.client.from('vendors').select('*').eq('slug', slug).maybeSingle();
     if (error) throw error;
-    return (data ?? []).map(mapMenuItemFromRow);
+    return data ? mapVendorFromRow(data) : null;
   }
 
-  async upsertMenuItem(menuItem: MenuItemInput): Promise<MenuItem> {
+  async getVendorById(vendorId: string): Promise<Vendor | null> {
+    const { data, error } = await this.client.from('vendors').select('*').eq('id', vendorId).maybeSingle();
+    if (error) throw error;
+    return data ? mapVendorFromRow(data) : null;
+  }
+
+  async createOrderSnapshot(order: OrderSnapshotInput): Promise<OrderSnapshot> {
     const { data, error } = await this.client
-      .from('menu_items')
-      .upsert(toMenuItemInsert(menuItem))
+      .from('order_snapshots')
+      .insert(toOrderSnapshotInsert(order))
       .select()
       .single();
     if (error) throw error;
-    return mapMenuItemFromRow(data);
+    return mapOrderSnapshotFromRow(data);
   }
 
-  async deleteMenuItem(menuItemId: string): Promise<void> {
-    const { error } = await this.client.from('menu_items').delete().eq('id', menuItemId);
-    if (error) throw error;
-  }
-
-  async createOrder(order: CreateOrderInput): Promise<Order> {
+  async getOrderSnapshot(orderId: string): Promise<OrderSnapshot | null> {
     const { data, error } = await this.client
-      .from('orders')
-      .insert(toOrderInsert(order))
-      .select()
-      .single();
-    if (error) throw error;
-    return mapOrderFromRow(data);
-  }
-
-  async getOrder(orderId: string): Promise<Order | null> {
-    const { data, error } = await this.client.from('orders').select('*').eq('id', orderId).single();
-    if (error) {
-      if (error.code === 'PGRST116') return null; // row not found
-      throw error;
-    }
-    return data ? mapOrderFromRow(data) : null;
-  }
-
-  async listOrdersForUser(userId: string): Promise<Order[]> {
-    const { data, error } = await this.client
-      .from('orders')
+      .from('order_snapshots')
       .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
+      .eq('id', orderId)
+      .maybeSingle();
     if (error) throw error;
-    return (data ?? []).map(mapOrderFromRow);
+    return data ? mapOrderSnapshotFromRow(data) : null;
   }
 
-  async listOrdersForVendor(vendorId: string): Promise<Order[]> {
+  async listOrderSnapshotsForUser(vendorId: string, userId: string): Promise<OrderSnapshot[]> {
     const { data, error } = await this.client
-      .from('orders')
+      .from('order_snapshots')
       .select('*')
       .eq('vendor_id', vendorId)
+      .eq('user_id', userId)
+      .order('placed_at', { ascending: false });
+    if (error) throw error;
+    return (data ?? []).map(mapOrderSnapshotFromRow);
+  }
+
+  async listOrderSnapshotsForVendor(vendorId: string): Promise<OrderSnapshot[]> {
+    const { data, error } = await this.client
+      .from('order_snapshots')
+      .select('*')
+      .eq('vendor_id', vendorId)
+      .order('placed_at', { ascending: false });
+    if (error) throw error;
+    return (data ?? []).map(mapOrderSnapshotFromRow);
+  }
+
+  async recordLoyaltyEntry(entry: LoyaltyLedgerEntryInput): Promise<LoyaltyLedgerEntry> {
+    const { data, error } = await this.client
+      .from('loyalty_ledger')
+      .insert(toLoyaltyLedgerInsert(entry))
+      .select()
+      .single();
+    if (error) throw error;
+    return mapLoyaltyLedgerFromRow(data);
+  }
+
+  async listLoyaltyEntriesForUser(vendorId: string, userId: string): Promise<LoyaltyLedgerEntry[]> {
+    const { data, error } = await this.client
+      .from('loyalty_ledger')
+      .select('*')
+      .eq('vendor_id', vendorId)
+      .eq('user_id', userId)
       .order('created_at', { ascending: false });
     if (error) throw error;
-    return (data ?? []).map(mapOrderFromRow);
+    return (data ?? []).map(mapLoyaltyLedgerFromRow);
   }
 
-  async updateOrderStatus(orderId: string, status: OrderStatus): Promise<Order> {
+  async getLoyaltyBalance(vendorId: string, userId: string): Promise<number> {
+    const entries = await this.listLoyaltyEntriesForUser(vendorId, userId);
+    return entries.reduce((sum, entry) => sum + entry.pointsDelta, 0);
+  }
+
+  async upsertPushDevice(device: PushDeviceInput): Promise<PushDevice> {
+    const payload = toPushDeviceInsert(device);
     const { data, error } = await this.client
-      .from('orders')
-      .update({ status, updated_at: new Date().toISOString() })
-      .eq('id', orderId)
+      .from('push_devices')
+      .upsert(payload, { onConflict: 'user_id,device_token' })
       .select()
       .single();
     if (error) throw error;
-    return mapOrderFromRow(data);
+    return mapPushDeviceFromRow(data);
   }
 
-  async fetchVendorSettings(vendorId: string): Promise<VendorSettings | null> {
-    const { data, error } = await this.client.from('vendor_settings').select('*').eq('vendor_id', vendorId).single();
-    if (error) {
-      if (error.code === 'PGRST116') return null;
-      throw error;
-    }
-    return data ? mapVendorSettingsFromRow(data) : null;
-  }
-
-  async updateVendorSettings(vendorId: string, settings: Partial<VendorSettings>): Promise<VendorSettings> {
-    const { data, error } = await this.client
-      .from('vendor_settings')
-      .upsert(toVendorSettingsUpdate(vendorId, settings), { onConflict: 'vendor_id' })
-      .select()
-      .single();
+  async listPushDevicesForUser(userId: string): Promise<PushDevice[]> {
+    const { data, error } = await this.client.from('push_devices').select('*').eq('user_id', userId);
     if (error) throw error;
-    return mapVendorSettingsFromRow(data);
-  }
-
-  async fetchRewardActivities(userId: string): Promise<RewardActivity[]> {
-    const { data, error } = await this.client
-      .from('reward_activities')
-      .select('*')
-      .eq('user_id', userId)
-      .order('occurred_at', { ascending: false });
-    if (error) throw error;
-    return (data ?? []).map(mapRewardActivityFromRow);
-  }
-
-  async recordRewardActivity(activity: RewardActivityInput): Promise<RewardActivity> {
-    const { data, error } = await this.client
-      .from('reward_activities')
-      .insert(toRewardActivityInsert(activity))
-      .select()
-      .single();
-    if (error) throw error;
-    return mapRewardActivityFromRow(data);
-  }
-
-  async adjustUserLoyaltyPoints(userId: string, delta: number): Promise<number> {
-    const { data: existing, error: fetchError } = await this.client
-      .from('users')
-      .select('loyalty_points')
-      .eq('id', userId)
-      .single();
-
-    if (fetchError) throw fetchError;
-    const current = existing?.loyalty_points ?? 0;
-    const next = Math.max(0, current + delta);
-
-    const { error: updateError } = await this.client
-      .from('users')
-      .update({ loyalty_points: next })
-      .eq('id', userId);
-
-    if (updateError) throw updateError;
-    return next;
-  }
-
-  subscribeToOrders(vendorId: string, handler: (order: Order) => void): Subscription {
-    const channel = this.client
-      .channel(`orders:${vendorId}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'orders', filter: `vendor_id=eq.${vendorId}` },
-        payload => {
-          if (payload.new) {
-            handler(mapOrderFromRow(payload.new as Database['public']['Tables']['orders']['Row']));
-          }
-        }
-      )
-      .subscribe();
-    return wrapRealtimeChannel(channel);
-  }
-
-  subscribeToMenu(vendorId: string, handler: (menuItem: MenuItem) => void): Subscription {
-    const channel = this.client
-      .channel(`menu:${vendorId}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'menu_items', filter: `vendor_id=eq.${vendorId}` },
-        payload => {
-          if (payload.new) {
-            handler(mapMenuItemFromRow(payload.new as Database['public']['Tables']['menu_items']['Row']));
-          }
-        }
-      )
-      .subscribe();
-    return wrapRealtimeChannel(channel);
+    return (data ?? []).map(mapPushDeviceFromRow);
   }
 }
 
-const wrapRealtimeChannel = (channel: RealtimeChannel): Subscription => ({
-  unsubscribe: () => channel.unsubscribe()
-});
-
-const mapAuthUser = (authUser: SupabaseAuthUser | null): User | null => {
-  if (!authUser) return null;
-  const metadata = authUser.user_metadata ?? {};
-  return {
-    id: authUser.id,
-    email: authUser.email ?? '',
-    role: (metadata.role as User['role']) ?? 'customer',
-    displayName: (metadata.displayName as string | undefined) ?? (metadata.full_name as string | undefined),
-    phoneNumber: (metadata.phone_number as string | undefined) ?? undefined,
-    photoUrl: (metadata.avatar_url as string | undefined) ?? undefined,
-    loyaltyPoints: (metadata.loyaltyPoints as number | undefined) ?? undefined,
-    preferredVendorId: (metadata.preferredVendorId as string | undefined) ?? undefined
-  };
-};
-
-const mapMenuItemFromRow = (row: Database['public']['Tables']['menu_items']['Row']): MenuItem => ({
+const mapVendorFromRow = (row: Database['public']['Tables']['vendors']['Row']): Vendor => ({
   id: row.id,
-  vendorId: row.vendor_id,
-  name: row.name,
-  description: row.description ?? undefined,
-  price: row.price,
-  currency: row.currency ?? undefined,
-  category: row.category ?? undefined,
-  tags: row.tags ?? undefined,
-  imageUrl: row.image_url ?? undefined,
-  isAvailable: row.is_available,
-  options: row.options ?? undefined
+  slug: row.slug,
+  displayName: row.display_name,
+  squareLocationId: row.square_location_id,
+  squareCredentialRef: row.square_credential_ref ?? undefined,
+  status: row.status ?? undefined
 });
 
-const toMenuItemInsert = (
-  menuItem: MenuItemInput
-): Database['public']['Tables']['menu_items']['Insert'] => ({
-  id: menuItem.id,
-  vendor_id: menuItem.vendorId,
-  name: menuItem.name,
-  description: menuItem.description ?? null,
-  price: menuItem.price,
-  currency: menuItem.currency ?? null,
-  category: menuItem.category ?? null,
-  tags: menuItem.tags ?? null,
-  image_url: menuItem.imageUrl ?? null,
-  is_available: menuItem.isAvailable,
-  options: menuItem.options ?? null,
-  updated_at: new Date().toISOString()
-});
-
-const mapOrderFromRow = (row: Database['public']['Tables']['orders']['Row']): Order => ({
+const mapOrderSnapshotFromRow = (
+  row: Database['public']['Tables']['order_snapshots']['Row']
+): OrderSnapshot => ({
   id: row.id,
   vendorId: row.vendor_id,
   userId: row.user_id,
-  items: row.items,
-  status: row.status,
-  total: row.total,
-  createdAt: row.created_at,
-  updatedAt: row.updated_at ?? undefined,
-  etaMinutes: row.eta_minutes ?? undefined,
-  note: row.note ?? undefined
+  squareOrderId: row.square_order_id,
+  placedAt: row.placed_at,
+  snapshotJson: row.snapshot_json
 });
 
-const toOrderInsert = (order: CreateOrderInput): Database['public']['Tables']['orders']['Insert'] => ({
+const mapLoyaltyLedgerFromRow = (
+  row: Database['public']['Tables']['loyalty_ledger']['Row']
+): LoyaltyLedgerEntry => ({
+  id: row.id,
+  vendorId: row.vendor_id,
+  userId: row.user_id,
+  orderId: row.order_id,
+  pointsDelta: row.points_delta,
+  createdAt: row.created_at
+});
+
+const mapPushDeviceFromRow = (
+  row: Database['public']['Tables']['push_devices']['Row']
+): PushDevice => ({
+  id: row.id,
+  userId: row.user_id,
+  deviceToken: row.device_token,
+  platform: row.platform as PushDevice['platform'],
+  createdAt: row.created_at,
+  updatedAt: row.updated_at ?? undefined
+});
+
+const toOrderSnapshotInsert = (
+  order: OrderSnapshotInput
+): Database['public']['Tables']['order_snapshots']['Insert'] => ({
   id: order.id,
   vendor_id: order.vendorId,
-  user_id: order.userId,
-  items: order.items,
-  status: order.status ?? 'pending',
-  total: order.total,
-  created_at: order.createdAt ?? new Date().toISOString(),
-  updated_at: order.updatedAt ?? null,
-  eta_minutes: order.etaMinutes ?? null,
-  note: order.note ?? null
+  user_id: order.userId ?? null,
+  square_order_id: order.squareOrderId,
+  placed_at: order.placedAt ?? new Date().toISOString(),
+  snapshot_json: order.snapshotJson
 });
 
-const toRewardActivityInsert = (
-  activity: RewardActivityInput
-): Database['public']['Tables']['reward_activities']['Insert'] => ({
-  id: activity.id,
-  user_id: activity.userId,
-  vendor_id: activity.vendorId,
-  points: activity.points,
-  type: activity.type,
-  description: activity.description ?? null,
-  occurred_at: activity.occurredAt ?? new Date().toISOString(),
-  order_id: activity.orderId ?? null
+const toLoyaltyLedgerInsert = (
+  entry: LoyaltyLedgerEntryInput
+): Database['public']['Tables']['loyalty_ledger']['Insert'] => ({
+  id: entry.id,
+  vendor_id: entry.vendorId,
+  user_id: entry.userId,
+  order_id: entry.orderId,
+  points_delta: entry.pointsDelta,
+  created_at: entry.createdAt ?? new Date().toISOString()
 });
 
-const mapRewardActivityFromRow = (
-  row: Database['public']['Tables']['reward_activities']['Row']
-): RewardActivity => ({
-  id: row.id,
-  userId: row.user_id,
-  vendorId: row.vendor_id,
-  points: row.points,
-  type: row.type,
-  description: row.description ?? undefined,
-  occurredAt: row.occurred_at,
-  orderId: row.order_id ?? undefined
+const toPushDeviceInsert = (
+  device: PushDeviceInput
+): Database['public']['Tables']['push_devices']['Insert'] => ({
+  id: device.id,
+  user_id: device.userId,
+  device_token: device.deviceToken,
+  platform: device.platform,
+  created_at: device.createdAt ?? new Date().toISOString(),
+  updated_at: device.updatedAt ?? new Date().toISOString()
 });
 
-const mapVendorSettingsFromRow = (
-  row: Database['public']['Tables']['vendor_settings']['Row']
-): VendorSettings => ({
-  vendorId: row.vendor_id,
-  currency: row.currency,
-  timezone: row.timezone ?? undefined,
-  enableLoyalty: row.enable_loyalty,
-  loyaltyEarnRate: row.loyalty_earn_rate ?? undefined,
-  loyaltyRedeemRate: row.loyalty_redeem_rate ?? undefined,
-  allowScheduledOrders: row.allow_scheduled_orders ?? undefined,
-  defaultPrepMinutes: row.default_prep_minutes ?? undefined,
-  menuVersion: row.menu_version ?? undefined
-});
-
-const toVendorSettingsUpdate = (
-  vendorId: string,
-  settings: Partial<VendorSettings>
-): Database['public']['Tables']['vendor_settings']['Insert'] => ({
-  vendor_id: vendorId,
-  currency: settings.currency ?? 'USD',
-  timezone: settings.timezone ?? null,
-  enable_loyalty: settings.enableLoyalty ?? false,
-  loyalty_earn_rate: settings.loyaltyEarnRate ?? null,
-  loyalty_redeem_rate: settings.loyaltyRedeemRate ?? null,
-  allow_scheduled_orders: settings.allowScheduledOrders ?? null,
-  default_prep_minutes: settings.defaultPrepMinutes ?? null,
-  menu_version: settings.menuVersion ?? null
-});
+const mapAuthUser = (user: SupabaseAuthUser | null): User | null => {
+  if (!user) return null;
+  const provider = (user.app_metadata?.provider as User['provider']) ?? 'apple';
+  const providerUserId =
+    (user.identities?.[0]?.id ?? user.user_metadata?.sub ?? user.id) as string;
+  return {
+    id: user.id,
+    provider,
+    providerUserId,
+    displayName: user.user_metadata?.full_name ?? user.user_metadata?.name ?? undefined
+  };
+};

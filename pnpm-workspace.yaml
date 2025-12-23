@@ -1,4 +1,5 @@
 packages:
+  - "apps/customer-web"
   - "apps/customer-mobile"
   - "apps/vendor-ops-mobile"
   - "apps/vendor-admin-web"

@@ -1,17 +1,16 @@
 # CountrTop
 
-**CountrTop Kit** now ships as a 3-pronged starter for food and beverage teams: a customer-facing mobile app, a tablet-friendly vendor ops console, and a web-based vendor admin command center. Everything lives in a single PNPM monorepo with shared data models, API helpers, and UI primitives.
+CountrTop v0.1 is a **Tenant Lite** ordering layer: multi-vendor capable, single-vendor operated. The canonical experience is the **customer web app** at `https://{vendor}.countrtop.com`, with an iOS WebView shell for mobile access.
 
 ---
 
 ## 🔧 Tech Stack
 
-- **React Native (Expo)** – cross-platform iOS/Android app
-- **Next.js or React** – vendor admin dashboard
-- **Firebase / Supabase** – backend (auth, data, functions)
-- **Stripe** – payments
-- **Expo Push** – notifications
-- **Codex** – AI pair programmer for rapid iteration
+- **Next.js** – customer web + vendor admin (Insights)
+- **React Native (Expo)** – customer iOS shell + vendor ops tablet app
+- **Supabase** – auth + data + RLS
+- **Square** – catalog, pricing, checkout, and official orders
+- **Expo Push** – notifications (single type: “Order Ready”)
 
 ---
 
@@ -20,46 +19,61 @@
 ```
 .
 ├── apps
-│   ├── customer-mobile     # Expo app for customer browsing, ordering, rewards
-│   ├── vendor-ops-mobile   # Expo app for kitchen/ops teams (orders queue, analytics)
-│   └── vendor-admin-web    # Next.js admin for onboarding, menu, billing, analytics
+│   ├── customer-web        # Canonical customer experience (Next.js)
+│   ├── customer-mobile     # iOS WebView shell + push token capture (Expo)
+│   ├── vendor-admin-web    # Vendor Insights (read-only)
+│   └── vendor-ops-mobile   # Order queue + "Mark Ready" (tablet optimized)
 ├── packages
-│   ├── api-client          # REST helpers for customer app + loyalty
-│   ├── data                # Supabase/mock data client, auth helpers
-│   ├── functions           # Server-side helpers + webhooks
-│   ├── models              # Shared data contracts + enums
-│   └── ui                  # Reusable dashboard UI primitives
+│   ├── api-client          # Minimal REST helpers
+│   ├── data                # Supabase + mock data client
+│   ├── models              # Shared v0.1 types
+│   └── ui                  # Shared UI primitives
 ├── pnpm-workspace.yaml
 ├── package.json
 └── tsconfig.json
 ```
 
-### Quickstart
+---
+
+## 🚀 Quickstart
 
 1. Install dependencies: `pnpm install`
-2. Customer app (Expo): `pnpm dev:customer`
-3. Vendor Ops (Expo): `pnpm dev:vendor-ops`
-4. Vendor Admin (Next.js): `pnpm dev:vendor-admin`
+2. Customer web (canonical): `pnpm dev:customer-web`
+3. Customer mobile shell (Expo): `pnpm dev:customer`
+4. Vendor admin (Insights): `pnpm dev:vendor-admin`
+5. Vendor ops (Expo): `pnpm dev:vendor-ops`
 
-Build commands are also namespaced per surface: `pnpm build:customer`, `pnpm build:vendor-ops`, and `pnpm build:vendor-admin`.
+Build commands are namespaced: `pnpm build:customer-web`, `pnpm build:customer`, `pnpm build:vendor-ops`, `pnpm build:vendor-admin`.
 
-### What’s included
+---
 
-- **Shared models + enums** consumed by every app, keeping order status + roles consistent.
-- **Data layer** (`packages/data`) that powers vendor menu CRUD, order queues, loyalty, and realtime/polling subscriptions.
-- **Vendor Admin web** with onboarding tracker, menu management (list/create/edit/delete), vendor settings surface, billing placeholders, and analytics tied to shared data.
-- **Vendor Ops mobile** with auth gating, live orders queue, order detail + status actions, lightweight analytics, and realtime/polling fallback.
-- **Customer mobile** tabbed experience for discover / orders / rewards / account, plus push notification bootstrap + loyalty stubs.
+## ✅ v0.1 Principles
 
-### Environment configuration
+- Tenant Lite: vendor resolved from subdomain on every request
+- All persisted data is `vendor_id` scoped
+- Square is canonical for catalog/pricing/checkout/orders
+- Loyalty is accumulation only
+- Push notifications: one type (“Order Ready”)
+- Prefer deletion/simplification over abstraction
 
-- Copy the sample envs to configure each app:
-  - `apps/customer-mobile/.env.example`
-  - `apps/vendor-ops-mobile/.env.example`
-  - `apps/vendor-admin-web/.env.example`
-- Set `EXPO_PUBLIC_USE_MOCK_DATA=true` (default) to run against mock data; flip to `false` and configure Supabase/API URLs when backend is ready.
-- For payments, set `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` in the admin web env.
+---
 
-### CI
+## 🔐 Environment configuration
 
-GitHub Actions workflow `CI` runs lint and test (where present) on pushes/PRs. Use `pnpm lint` and `pnpm test` locally before pushing.
+Copy the sample envs to configure each app:
+
+- `apps/customer-web/.env.example`
+- `apps/customer-mobile/.env.example`
+- `apps/vendor-admin-web/.env.example`
+- `apps/vendor-ops-mobile/.env.example`
+
+For local development:
+
+- Set `DEFAULT_VENDOR_SLUG=sunset`
+- Use `NEXT_PUBLIC_USE_MOCK_DATA=true` on web apps to read mock data
+
+---
+
+## ✅ CI
+
+GitHub Actions workflow `CI` runs lint and test (where present). Use `pnpm lint` and `pnpm test` locally before pushing.

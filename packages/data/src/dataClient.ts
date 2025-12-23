@@ -1,43 +1,45 @@
 import {
-  MenuItem,
-  Order,
-  OrderStatus,
-  RewardActivity,
-  RewardActivityInput,
+  AuthProvider,
+  LoyaltyLedgerEntry,
+  OrderSnapshot,
+  PushDevice,
+  PushPlatform,
   User,
-  VendorSettings
+  Vendor
 } from './models';
 
 export type Subscription = {
   unsubscribe: () => Promise<void> | void;
 };
 
-export type CreateOrderInput = Omit<Order, 'id' | 'createdAt' | 'updatedAt' | 'status'> &
-  Partial<Pick<Order, 'id' | 'createdAt' | 'updatedAt' | 'status'>>;
+export type OrderSnapshotInput = Omit<OrderSnapshot, 'id' | 'placedAt'> &
+  Partial<Pick<OrderSnapshot, 'id' | 'placedAt'>>;
 
-export type MenuItemInput = Omit<MenuItem, 'id'> & { id?: string };
+export type LoyaltyLedgerEntryInput = Omit<LoyaltyLedgerEntry, 'id' | 'createdAt'> &
+  Partial<Pick<LoyaltyLedgerEntry, 'id' | 'createdAt'>>;
+
+export type PushDeviceInput = Omit<PushDevice, 'id' | 'createdAt' | 'updatedAt'> &
+  Partial<Pick<PushDevice, 'id' | 'createdAt' | 'updatedAt'>> & {
+    platform: PushPlatform;
+  };
 
 export interface DataClient {
-  signInWithEmail(email: string, password: string): Promise<User>;
+  signInWithProvider(provider: AuthProvider, idToken: string): Promise<User>;
   signOut(): Promise<void>;
   getCurrentUser(): Promise<User | null>;
 
-  getMenuItems(vendorId: string): Promise<MenuItem[]>;
-  upsertMenuItem(menuItem: MenuItemInput): Promise<MenuItem>;
-  deleteMenuItem(menuItemId: string): Promise<void>;
+  getVendorBySlug(slug: string): Promise<Vendor | null>;
+  getVendorById(vendorId: string): Promise<Vendor | null>;
 
-  createOrder(order: CreateOrderInput): Promise<Order>;
-  getOrder(orderId: string): Promise<Order | null>;
-  listOrdersForUser(userId: string): Promise<Order[]>;
-  listOrdersForVendor(vendorId: string): Promise<Order[]>;
-  updateOrderStatus(orderId: string, status: OrderStatus): Promise<Order>;
+  createOrderSnapshot(order: OrderSnapshotInput): Promise<OrderSnapshot>;
+  getOrderSnapshot(orderId: string): Promise<OrderSnapshot | null>;
+  listOrderSnapshotsForUser(vendorId: string, userId: string): Promise<OrderSnapshot[]>;
+  listOrderSnapshotsForVendor(vendorId: string): Promise<OrderSnapshot[]>;
 
-  fetchVendorSettings(vendorId: string): Promise<VendorSettings | null>;
-  updateVendorSettings(vendorId: string, settings: Partial<VendorSettings>): Promise<VendorSettings>;
-  fetchRewardActivities(userId: string): Promise<RewardActivity[]>;
-  recordRewardActivity(activity: RewardActivityInput): Promise<RewardActivity>;
-  adjustUserLoyaltyPoints(userId: string, delta: number): Promise<number>;
+  recordLoyaltyEntry(entry: LoyaltyLedgerEntryInput): Promise<LoyaltyLedgerEntry>;
+  listLoyaltyEntriesForUser(vendorId: string, userId: string): Promise<LoyaltyLedgerEntry[]>;
+  getLoyaltyBalance(vendorId: string, userId: string): Promise<number>;
 
-  subscribeToOrders(vendorId: string, handler: (order: Order) => void): Subscription;
-  subscribeToMenu(vendorId: string, handler: (menuItem: MenuItem) => void): Subscription;
+  upsertPushDevice(device: PushDeviceInput): Promise<PushDevice>;
+  listPushDevicesForUser(userId: string): Promise<PushDevice[]>;
 }

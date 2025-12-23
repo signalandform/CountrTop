@@ -4,7 +4,7 @@ import * as Notifications from 'expo-notifications';
 
 const STORAGE_KEY = 'countrtop:pushToken';
 
-export type PushProvider = 'expo' | 'fcm' | 'apns';
+export type PushProvider = 'expo';
 
 export type StoredPushToken = {
   token: string;
@@ -21,13 +21,6 @@ export type ExpoPushMessage = {
   sound?: 'default' | null;
 };
 
-export type FcmPushMessage = {
-  to: string;
-  title?: string;
-  body: string;
-  data?: Record<string, string>;
-  priority?: 'normal' | 'high';
-};
 
 const storeToken = async (token: StoredPushToken) => {
   await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(token));
@@ -77,28 +70,6 @@ export const obtainExpoPushToken = async (projectId?: string): Promise<StoredPus
   return token;
 };
 
-export const obtainDevicePushToken = async (): Promise<StoredPushToken> => {
-  if (!Device.isDevice) {
-    throw new Error('Push notifications require running on a physical device.');
-  }
-
-  const permission = await ensureNotificationPermissions();
-  if (permission !== 'granted') {
-    throw new Error('Notifications are not permitted on this device.');
-  }
-
-  const deviceToken = await Notifications.getDevicePushTokenAsync();
-  const provider: PushProvider =
-    deviceToken.type === 'fcm' ? 'fcm' : deviceToken.type === 'apns' ? 'apns' : 'expo';
-  const token: StoredPushToken = {
-    token: deviceToken.data,
-    provider,
-    updatedAt: new Date().toISOString()
-  };
-  await storeToken(token);
-  return token;
-};
-
 export const sendExpoPush = async (
   message: ExpoPushMessage,
   accessToken?: string
@@ -114,34 +85,6 @@ export const sendExpoPush = async (
 
   if (!response.ok) {
     throw new Error(`Expo push failed with status ${response.status}`);
-  }
-
-  return response.json();
-};
-
-export const sendFcmPush = async (
-  message: FcmPushMessage,
-  serverKey: string
-): Promise<unknown> => {
-  const response = await fetch('https://fcm.googleapis.com/fcm/send', {
-    method: 'POST',
-    headers: {
-      Authorization: `key=${serverKey}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      to: message.to,
-      notification: {
-        title: message.title,
-        body: message.body
-      },
-      data: message.data,
-      priority: message.priority ?? 'high'
-    })
-  });
-
-  if (!response.ok) {
-    throw new Error(`FCM push failed with status ${response.status}`);
   }
 
   return response.json();
