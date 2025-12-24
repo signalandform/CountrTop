@@ -164,6 +164,21 @@ export default function CustomerHome({ vendorSlug, vendorName }: CustomerHomePro
     };
   }, [supabase]);
 
+  useEffect(() => {
+    if (!isClient) return;
+    const bridge = (window as typeof window & {
+      ReactNativeWebView?: { postMessage?: (message: string) => void };
+    }).ReactNativeWebView;
+    if (!bridge?.postMessage) return;
+    bridge.postMessage(
+      JSON.stringify({
+        type: 'ct-auth',
+        userId: authUser?.id ?? null,
+        email: authUser?.email ?? null
+      })
+    );
+  }, [authUser, isClient]);
+
   const refreshOrderHistory = async (userId: string) => {
     if (!vendorSlug) return;
     setOrderStatus('loading');

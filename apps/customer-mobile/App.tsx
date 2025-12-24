@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
-import { SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Platform, SafeAreaView, StyleSheet, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { WebView } from 'react-native-webview';
+import { WebView, WebViewMessageEvent } from 'react-native-webview';
 
 import {
   ensureNotificationPermissions,
@@ -18,12 +18,28 @@ const resolveCustomerUrl = () => {
   return `https://${vendorSlug}.countrtop.com`;
 };
 
+const resolveApiBaseUrl = () => {
+  const explicit = process.env.EXPO_PUBLIC_API_BASE_URL;
+  if (explicit) return explicit;
+  try {
+    return new URL(resolveCustomerUrl()).origin;
+  } catch {
+    return resolveCustomerUrl();
+  }
+};
+
 export default function App() {
   const [pushToken, setPushToken] = useState<StoredPushToken | null>(null);
   const [notificationStatus, setNotificationStatus] = useState<'checking' | 'ready' | 'denied' | 'error'>(
     'checking'
   );
   const [notificationError, setNotificationError] = useState<string | null>(null);
+  const [linkedUserId, setLinkedUserId] = useState<string | null>(null);
+  const [registrationStatus, setRegistrationStatus] = useState<'idle' | 'sending' | 'ready' | 'error'>(
+    'idle'
+  );
+  const [registrationError, setRegistrationError] = useState<string | null>(null);
+  const lastRegistered = useRef<string | null>(null);
 
   useEffect(() => {
     const bootstrapNotifications = async () => {
@@ -53,6 +69,39 @@ export default function App() {
     bootstrapNotifications();
   }, []);
 
+  useEffect(() => {
+    if (!pushToken || !linkedUserId) return;
+    const key = `${linkedUserId}:${pushToken.token}`;
+    if (lastRegistered.current === key) return;
+
+    const register = async () => {
+      setRegistrationStatus('sending');
+      setRegistrationError(null);
+      try {
+        const response = await fetch(`${resolveApiBaseUrl()}/api/push/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: linkedUserId,
+            deviceToken: pushToken.token,
+            platform: Platform.OS === 'ios' ? 'ios' : 'android'
+          })
+        });
+        const payload = await response.json();
+        if (!response.ok || !payload.ok) {
+          throw new Error(payload.error ?? 'Failed to register push token');
+        }
+        lastRegistered.current = key;
+        setRegistrationStatus('ready');
+      } catch (error) {
+        setRegistrationStatus('error');
+        setRegistrationError(error instanceof Error ? error.message : 'Unable to register push token');
+      }
+    };
+
+    register();
+  }, [linkedUserId, pushToken]);
+
   const notificationCopy = useMemo(() => {
     if (notificationStatus === 'checking') {
       return 'Checking push permissions…';
@@ -66,13 +115,38 @@ export default function App() {
     return notificationError ?? 'Unable to configure notifications.';
   }, [notificationError, notificationStatus, pushToken]);
 
+  const registrationCopy = useMemo(() => {
+    if (!linkedUserId) return 'Sign in to connect push notifications.';
+    if (registrationStatus === 'sending') return 'Registering push token…';
+    if (registrationStatus === 'ready') return 'Push token linked to account.';
+    if (registrationStatus === 'error') return registrationError ?? 'Push token registration failed.';
+    return 'Push token ready to link.';
+  }, [linkedUserId, registrationError, registrationStatus]);
+
+  const handleWebMessage = (event: WebViewMessageEvent) => {
+    try {
+      const payload = JSON.parse(event.nativeEvent.data);
+      if (payload?.type === 'ct-auth') {
+        setLinkedUserId(payload.userId ?? null);
+        if (!payload.userId) {
+          setRegistrationStatus('idle');
+          setRegistrationError(null);
+          lastRegistered.current = null;
+        }
+      }
+    } catch {
+      // Ignore messages that are not JSON.
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar style="dark" />
       <View style={styles.statusBar}>
         <Text style={styles.statusText}>{notificationCopy}</Text>
+        <Text style={styles.statusText}>{registrationCopy}</Text>
       </View>
-      <WebView source={{ uri: resolveCustomerUrl() }} />
+      <WebView source={{ uri: resolveCustomerUrl() }} onMessage={handleWebMessage} />
     </SafeAreaView>
   );
 }

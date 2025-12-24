@@ -1,9 +1,11 @@
 import Head from 'next/head';
 import type { GetServerSideProps } from 'next';
 
-import { createDataClient, resolveVendorSlugFromHost } from '@countrtop/data';
+import { resolveVendorSlugFromHost } from '@countrtop/data';
 import { OrderSnapshot, Vendor, VendorInsights } from '@countrtop/models';
 import { Section, StatCard } from '@countrtop/ui';
+
+import { getServerDataClient } from '../lib/dataClient';
 
 type VendorAdminProps = {
   vendorSlug: string | null;
@@ -16,7 +18,7 @@ const formatMetric = (value: number) => value.toLocaleString();
 const summarizeInsights = async (
   vendor: Vendor | null,
   orders: OrderSnapshot[],
-  dataClient: ReturnType<typeof createDataClient>
+  dataClient: ReturnType<typeof getServerDataClient>
 ): Promise<VendorInsights> => {
   if (!vendor) {
     return {
@@ -67,8 +69,7 @@ const summarizeInsights = async (
 export const getServerSideProps: GetServerSideProps<VendorAdminProps> = async ({ req }) => {
   const fallback = process.env.DEFAULT_VENDOR_SLUG;
   const vendorSlug = resolveVendorSlugFromHost(req.headers.host, fallback);
-  const useMockData = process.env.NEXT_PUBLIC_USE_MOCK_DATA !== 'false';
-  const dataClient = createDataClient({ useMockData });
+  const dataClient = getServerDataClient();
 
   const vendor = vendorSlug ? await dataClient.getVendorBySlug(vendorSlug) : null;
   const orders = vendor ? await dataClient.listOrderSnapshotsForVendor(vendor.id) : [];

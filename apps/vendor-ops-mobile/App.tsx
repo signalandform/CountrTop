@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 
@@ -11,46 +11,80 @@ type OrderItem = {
 type OrderTicket = {
   id: string;
   placedAt: string;
-  status: 'new' | 'preparing' | 'ready';
+  status: 'new' | 'ready';
   items: OrderItem[];
   total: number;
+  currency: string;
+  squareOrderId: string;
 };
 
 const formatCurrency = (value: number) => `$${(value / 100).toFixed(2)}`;
 
-const demoOrders: OrderTicket[] = [
-  {
-    id: 'square_order_001',
-    placedAt: new Date(Date.now() - 1000 * 60 * 12).toISOString(),
-    status: 'preparing',
-    total: 1650,
-    items: [
-      { name: 'Espresso', quantity: 2, price: 325 },
-      { name: 'Butter Croissant', quantity: 1, price: 1000 }
-    ]
-  },
-  {
-    id: 'square_order_002',
-    placedAt: new Date(Date.now() - 1000 * 60 * 5).toISOString(),
-    status: 'new',
-    total: 1099,
-    items: [{ name: 'Chipotle Chicken Sandwich', quantity: 1, price: 1099 }]
-  }
-];
+const resolveApiBaseUrl = () => process.env.EXPO_PUBLIC_API_BASE_URL ?? 'http://localhost:3000';
+const vendorSlug = process.env.EXPO_PUBLIC_VENDOR_SLUG ?? 'sunset';
 
 export default function VendorOpsApp() {
-  const [orders, setOrders] = useState<OrderTicket[]>(demoOrders);
-  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(orders[0]?.id ?? null);
+  const [orders, setOrders] = useState<OrderTicket[]>([]);
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const [orderStatus, setOrderStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
+  const [orderError, setOrderError] = useState<string | null>(null);
 
   const selectedOrder = useMemo(
     () => orders.find((order) => order.id === selectedOrderId) ?? orders[0] ?? null,
     [orders, selectedOrderId]
   );
 
-  const markReady = (orderId: string) => {
-    setOrders((current) =>
-      current.map((order) => (order.id === orderId ? { ...order, status: 'ready' } : order))
-    );
+  const loadOrders = async () => {
+    setOrderStatus('loading');
+    setOrderError(null);
+    try {
+      const response = await fetch(`${resolveApiBaseUrl()}/api/vendors/${vendorSlug}/ops/orders`);
+      const payload = await response.json();
+      if (!response.ok || !payload.ok) {
+        throw new Error(payload.error ?? 'Failed to load orders');
+      }
+      const mapped: OrderTicket[] = (payload.orders ?? []).map((order: any) => ({
+        id: order.id,
+        squareOrderId: order.squareOrderId,
+        placedAt: order.placedAt,
+        status: order.status ?? 'new',
+        items: order.items ?? [],
+        total: order.total ?? 0,
+        currency: order.currency ?? 'USD'
+      }));
+      setOrders(mapped);
+      setOrderStatus('ready');
+      if (mapped.length > 0 && !mapped.find((order) => order.id === selectedOrderId)) {
+        setSelectedOrderId(mapped[0].id);
+      }
+    } catch (error) {
+      setOrderStatus('error');
+      setOrderError(error instanceof Error ? error.message : 'Unable to load orders');
+    }
+  };
+
+  useEffect(() => {
+    loadOrders();
+  }, []);
+
+  const markReady = async (orderId: string) => {
+    setOrderError(null);
+    try {
+      const response = await fetch(`${resolveApiBaseUrl()}/api/vendors/${vendorSlug}/ops/ready`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId })
+      });
+      const payload = await response.json();
+      if (!response.ok || !payload.ok) {
+        throw new Error(payload.error ?? 'Unable to mark ready');
+      }
+      setOrders((current) =>
+        current.map((order) => (order.id === orderId ? { ...order, status: 'ready' } : order))
+      );
+    } catch (error) {
+      setOrderError(error instanceof Error ? error.message : 'Unable to mark ready');
+    }
   };
 
   return (
@@ -62,7 +96,17 @@ export default function VendorOpsApp() {
       </View>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Order queue</Text>
+          <View style={styles.cardHeader}>
+            <Text style={styles.cardTitle}>Order queue</Text>
+            <TouchableOpacity style={styles.refreshButton} onPress={loadOrders}>
+              <Text style={styles.refreshButtonText}>Refresh</Text>
+            </TouchableOpacity>
+          </View>
+          {orderStatus === 'loading' && <Text style={styles.helperText}>Loading orders…</Text>}
+          {orderStatus === 'error' && <Text style={styles.helperText}>{orderError}</Text>}
+          {orderError && orderStatus !== 'error' && (
+            <Text style={[styles.helperText, styles.errorText]}>{orderError}</Text>
+          )}
           {orders.map((order) => (
             <TouchableOpacity
               key={order.id}
@@ -83,14 +127,16 @@ export default function VendorOpsApp() {
               </View>
             </TouchableOpacity>
           ))}
-          {orders.length === 0 && <Text style={styles.helperText}>No active orders.</Text>}
+          {orderStatus === 'ready' && orders.length === 0 && (
+            <Text style={styles.helperText}>No active orders.</Text>
+          )}
         </View>
 
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Order detail</Text>
           {selectedOrder ? (
             <>
-              <Text style={styles.orderId}>Order #{selectedOrder.id}</Text>
+              <Text style={styles.orderId}>Order #{selectedOrder.squareOrderId.slice(-6)}</Text>
               <Text style={styles.orderMeta}>
                 Placed {new Date(selectedOrder.placedAt).toLocaleTimeString()}
               </Text>
@@ -167,9 +213,29 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 12
   },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12
+  },
+  refreshButton: {
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: '#1f2937'
+  },
+  refreshButtonText: {
+    color: '#e2e8f0',
+    fontSize: 12,
+    fontWeight: '600'
+  },
   helperText: {
     color: '#94a3b8',
     marginTop: 8
+  },
+  errorText: {
+    color: '#fecaca'
   },
   orderRow: {
     flexDirection: 'row',
