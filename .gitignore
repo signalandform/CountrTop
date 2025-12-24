@@ -14,3 +14,4 @@ build
 .DS_Store
 coverage
 **/.env
+docs/phase-3-notes.md
