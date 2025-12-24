@@ -51,7 +51,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     });
 
     const items: CatalogItem[] = (result.objects ?? [])
-      .filter((object) => object.type === 'ITEM' && object.itemData?.variations?.length)
+      .filter((object) => {
+        if (object.type !== 'ITEM') return false;
+        if (!object.itemData?.variations?.length) return false;
+        if (object.isDeleted) return false;
+        if (object.itemData?.isArchived) return false;
+        return true;
+      })
       .map((object) => {
         const variation = object.itemData?.variations?.[0];
         const priceMoney = variation?.itemVariationData?.priceMoney;

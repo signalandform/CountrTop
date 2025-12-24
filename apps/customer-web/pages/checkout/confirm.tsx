@@ -60,6 +60,11 @@ export default function ConfirmPage({ vendorName }: ConfirmProps) {
     }
   }, [orderId, status]);
 
+  useEffect(() => {
+    if (!orderId) return;
+    sessionStorage.setItem('ct_refresh_after_checkout', orderId);
+  }, [orderId]);
+
   return (
     <>
       <Head>

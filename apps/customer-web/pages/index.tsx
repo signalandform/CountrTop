@@ -18,12 +18,20 @@ type MenuItem = {
 
 type CartItem = MenuItem & { quantity: number };
 
+type SnapshotItem = {
+  id: string;
+  name: string;
+  quantity: number;
+  price: number;
+  modifiers?: string[];
+};
+
 type OrderHistoryEntry = {
   id: string;
   placedAt: string;
   squareOrderId: string;
   snapshotJson: {
-    items?: Array<{ id: string; name: string; quantity: number; price: number }>;
+    items?: SnapshotItem[];
     total?: number;
     currency?: string;
   };
@@ -32,6 +40,11 @@ type OrderHistoryEntry = {
 type CustomerHomeProps = {
   vendorSlug: string | null;
   vendorName: string;
+};
+
+type Notice = {
+  type: 'info' | 'warning' | 'error';
+  message: string;
 };
 
 export const getServerSideProps: GetServerSideProps<CustomerHomeProps> = async ({ req }) => {
@@ -59,6 +72,7 @@ export default function CustomerHome({ vendorSlug, vendorName }: CustomerHomePro
   const appleEnabled = process.env.NEXT_PUBLIC_APPLE_SIGNIN === 'true';
   const [isClient, setIsClient] = useState(false);
   const [supabase, setSupabase] = useState<ReturnType<typeof getBrowserSupabaseClient>>(null);
+  const [notice, setNotice] = useState<Notice | null>(null);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [menuStatus, setMenuStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
   const [menuError, setMenuError] = useState<string | null>(null);
@@ -79,6 +93,23 @@ export default function CustomerHome({ vendorSlug, vendorName }: CustomerHomePro
 
   const cartCurrency = cartItems[0]?.currency ?? 'USD';
 
+  const toFriendlyError = (error: unknown, fallback: string) => {
+    if (error instanceof Error) {
+      if (/failed to fetch|networkerror/i.test(error.message)) {
+        return 'Network issue. Please try again.';
+      }
+      return error.message;
+    }
+    if (typeof error === 'string' && error.trim().length > 0) {
+      return error;
+    }
+    return fallback;
+  };
+
+  const pushNotice = (type: Notice['type'], message: string) => {
+    setNotice({ type, message });
+  };
+
   const loadMenu = async () => {
     if (!vendorSlug) return;
     setMenuStatus('loading');
@@ -93,7 +124,7 @@ export default function CustomerHome({ vendorSlug, vendorName }: CustomerHomePro
       setMenuStatus('ready');
     } catch (error) {
       setMenuStatus('error');
-      setMenuError(error instanceof Error ? error.message : 'Unable to load menu');
+      setMenuError(toFriendlyError(error, 'Unable to load menu'));
     }
   };
 
@@ -133,39 +164,63 @@ export default function CustomerHome({ vendorSlug, vendorName }: CustomerHomePro
     };
   }, [supabase]);
 
-  useEffect(() => {
-    if (!authUser || !vendorSlug) return;
+  const refreshOrderHistory = async (userId: string) => {
+    if (!vendorSlug) return;
     setOrderStatus('loading');
     setOrderError(null);
-    fetch(`/api/vendors/${vendorSlug}/orders?userId=${encodeURIComponent(authUser.id)}`)
-      .then(async (response) => {
-        const payload = await response.json();
-        if (!response.ok || !payload.ok) {
-          throw new Error(payload.error ?? 'Failed to load order history');
-        }
-        setOrderHistory(payload.orders ?? []);
-        setOrderStatus('ready');
-      })
-      .catch((error) => {
-        setOrderStatus('error');
-        setOrderError(error instanceof Error ? error.message : 'Unable to load order history');
-      });
+    try {
+      const response = await fetch(`/api/vendors/${vendorSlug}/orders?userId=${encodeURIComponent(userId)}`);
+      const payload = await response.json();
+      if (!response.ok || !payload.ok) {
+        throw new Error(payload.error ?? 'Failed to load order history');
+      }
+      setOrderHistory(payload.orders ?? []);
+      setOrderStatus('ready');
+    } catch (error) {
+      const message = toFriendlyError(error, 'Unable to load order history');
+      console.warn('Order history load failed', { error, userId, vendorSlug });
+      setOrderStatus('error');
+      setOrderError(message);
+      pushNotice('error', message);
+    }
+  };
+
+  const refreshLoyalty = async (userId: string) => {
+    if (!vendorSlug) return;
+    try {
+      const response = await fetch(`/api/vendors/${vendorSlug}/loyalty/${encodeURIComponent(userId)}`);
+      const payload = await response.json();
+      if (!response.ok || !payload.ok) {
+        throw new Error(payload.error ?? 'Failed to load loyalty');
+      }
+      setLoyaltyBalance(payload.balance ?? 0);
+    } catch (error) {
+      const message = toFriendlyError(error, 'Unable to load loyalty points.');
+      console.warn('Loyalty load failed', { error, userId, vendorSlug });
+      pushNotice('warning', message);
+    }
+  };
+
+  useEffect(() => {
+    if (!authUser || !vendorSlug) {
+      setOrderHistory([]);
+      setOrderStatus('idle');
+      setLoyaltyBalance(null);
+      return;
+    }
+
+    void refreshOrderHistory(authUser.id);
+    void refreshLoyalty(authUser.id);
   }, [authUser, vendorSlug]);
 
   useEffect(() => {
-    if (!authUser || !vendorSlug) return;
-    fetch(`/api/vendors/${vendorSlug}/loyalty/${encodeURIComponent(authUser.id)}`)
-      .then(async (response) => {
-        const payload = await response.json();
-        if (!response.ok || !payload.ok) {
-          throw new Error(payload.error ?? 'Failed to load loyalty');
-        }
-        setLoyaltyBalance(payload.balance ?? 0);
-      })
-      .catch(() => {
-        setLoyaltyBalance(null);
-      });
-  }, [authUser, vendorSlug]);
+    if (!isClient || !authUser || !vendorSlug) return;
+    const refreshKey = sessionStorage.getItem('ct_refresh_after_checkout');
+    if (!refreshKey) return;
+    sessionStorage.removeItem('ct_refresh_after_checkout');
+    void refreshOrderHistory(authUser.id);
+    void refreshLoyalty(authUser.id);
+  }, [authUser, isClient, vendorSlug]);
 
   const addToCart = (item: MenuItem) => {
     setCartItems((current) => {
@@ -227,25 +282,73 @@ export default function CustomerHome({ vendorSlug, vendorName }: CustomerHomePro
       sessionStorage.setItem(`ct_order_${payload.orderId}`, JSON.stringify(snapshot));
       window.location.href = payload.checkoutUrl;
     } catch (error) {
-      setCheckoutError(error instanceof Error ? error.message : 'Unable to start checkout');
+      setCheckoutError(toFriendlyError(error, 'Unable to start checkout'));
     } finally {
       setCheckingOut(false);
     }
   };
 
   const handleReorder = (entry: OrderHistoryEntry) => {
+    if (menuStatus !== 'ready') {
+      pushNotice('warning', 'Menu is still loading. Try reordering in a moment.');
+      return;
+    }
+
     const items = entry.snapshotJson?.items ?? [];
-    if (!items.length) return;
-    setCartItems(
-      items.map((item) => ({
-        id: item.id,
-        name: item.name,
-        price: item.price,
-        currency: entry.snapshotJson?.currency ?? 'USD',
-        variationId: item.id,
-        quantity: item.quantity
-      }))
-    );
+    if (!items.length) {
+      pushNotice('warning', 'No items found for that order.');
+      return;
+    }
+
+    const menuByVariationId = new Map(menuItems.map((item) => [item.variationId, item]));
+    const menuByItemId = new Map(menuItems.map((item) => [item.id, item]));
+    let missingCount = 0;
+    let unavailableCount = 0;
+    let modifiersSkipped = false;
+    const nextItems: CartItem[] = [];
+
+    items.forEach((item) => {
+      const menuItem = menuByVariationId.get(item.id) ?? menuByItemId.get(item.id);
+      if (!menuItem) {
+        missingCount += 1;
+        return;
+      }
+      if (!menuItem.price || menuItem.price <= 0) {
+        unavailableCount += 1;
+        return;
+      }
+      modifiersSkipped = modifiersSkipped || !!(item.modifiers && item.modifiers.length > 0);
+
+      nextItems.push({
+        ...menuItem,
+        quantity: Math.max(1, item.quantity || 1)
+      });
+    });
+
+    if (!nextItems.length) {
+      pushNotice('warning', 'No items from that order are available right now.');
+      return;
+    }
+
+    setCartItems(nextItems);
+
+    if (missingCount + unavailableCount + (modifiersSkipped ? 1 : 0) > 0) {
+      const messages: string[] = [];
+      if (missingCount + unavailableCount > 0) {
+        messages.push('Some items from that order are no longer available.');
+      }
+      if (modifiersSkipped) {
+        messages.push('Modifiers from past orders are not re-applied.');
+      }
+      console.warn('Reorder warnings', {
+        missingCount,
+        unavailableCount,
+        modifiersSkipped,
+        orderId: entry.id,
+        vendorSlug
+      });
+      pushNotice('warning', messages.join(' '));
+    }
   };
 
   const startOAuth = async (provider: 'apple' | 'google') => {
@@ -269,6 +372,9 @@ export default function CustomerHome({ vendorSlug, vendorName }: CustomerHomePro
   const signOut = async () => {
     if (!supabase) return;
     await supabase.auth.signOut();
+    setOrderHistory([]);
+    setOrderStatus('idle');
+    setLoyaltyBalance(null);
   };
 
   const authReady = isClient && supabase;
@@ -293,6 +399,25 @@ export default function CustomerHome({ vendorSlug, vendorName }: CustomerHomePro
             </div>
           </div>
         </section>
+
+        {notice && (
+          <section
+            style={{
+              ...styles.notice,
+              ...(notice.type === 'error'
+                ? styles.noticeError
+                : notice.type === 'warning'
+                  ? styles.noticeWarning
+                  : styles.noticeInfo)
+            }}
+            role="status"
+          >
+            <span style={styles.noticeText}>{notice.message}</span>
+            <button type="button" onClick={() => setNotice(null)} style={styles.noticeDismiss}>
+              Dismiss
+            </button>
+          </section>
+        )}
 
         <section style={styles.content} className="ct-grid">
           <div style={styles.menuColumn}>
@@ -381,39 +506,63 @@ export default function CustomerHome({ vendorSlug, vendorName }: CustomerHomePro
               )}
             </div>
 
-            {authUser && (
-              <div style={styles.historyCard}>
-                <div style={styles.sectionHeader}>
-                  <h2 style={styles.sectionTitle}>Order history</h2>
-                  <span style={styles.cartCount}>{orderHistory.length} orders</span>
-                </div>
-                {orderStatus === 'loading' && <p style={styles.helperText}>Loading history…</p>}
-                {orderStatus === 'error' && (
-                  <p style={{ ...styles.helperText, color: '#b91c1c' }}>{orderError}</p>
-                )}
-                {orderStatus === 'ready' && orderHistory.length === 0 && (
-                  <p style={styles.helperText}>No orders yet. Your first order will appear here.</p>
-                )}
-                {orderHistory.map((order) => (
-                  <div key={order.id} style={styles.historyRow}>
-                    <div>
-                      <div style={styles.historyTitle}>Order {order.squareOrderId.slice(-6)}</div>
-                      <div style={styles.historyMeta}>
-                        {new Date(order.placedAt).toLocaleString()} ·{' '}
-                        {formatCurrency(order.snapshotJson?.total ?? 0, order.snapshotJson?.currency ?? 'USD')}
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      style={styles.historyButton}
-                      onClick={() => handleReorder(order)}
-                    >
-                      Order again
-                    </button>
-                  </div>
-                ))}
+            <div style={styles.historyCard}>
+              <div style={styles.sectionHeader}>
+                <h2 style={styles.sectionTitle}>Order history</h2>
+                <span style={styles.cartCount}>
+                  {authUser ? `${orderHistory.length} orders` : 'Sign in'}
+                </span>
               </div>
-            )}
+              {!authUser && authStatus === 'loading' && (
+                <p style={styles.helperText}>Checking your session…</p>
+              )}
+              {!authUser && authStatus === 'ready' && (
+                <p style={styles.helperText}>Sign in to see past orders and reorder favorites.</p>
+              )}
+              {authUser && orderStatus === 'loading' && (
+                <div style={styles.skeletonStack}>
+                  {[0, 1].map((index) => (
+                    <div key={`history-skeleton-${index}`} style={styles.skeletonRow}>
+                      <div className="ct-skeleton" style={styles.skeletonLine} />
+                      <div className="ct-skeleton" style={styles.skeletonLineSmall} />
+                    </div>
+                  ))}
+                </div>
+              )}
+              {authUser && orderStatus === 'error' && (
+                <p style={{ ...styles.helperText, color: '#b91c1c' }}>{orderError}</p>
+              )}
+              {authUser && orderStatus === 'ready' && orderHistory.length === 0 && (
+                <p style={styles.helperText}>No orders yet. Your first order will appear here.</p>
+              )}
+              {authUser &&
+                orderHistory.map((order) => {
+                  const items = order.snapshotJson?.items ?? [];
+                  const itemCount = items.reduce((sum, item) => sum + (item.quantity ?? 0), 0);
+                  const itemLabel = itemCount === 1 ? '1 item' : `${itemCount} items`;
+                  return (
+                    <div key={order.id} style={styles.historyRow}>
+                      <div>
+                        <div style={styles.historyTitle}>Order {order.squareOrderId.slice(-6)}</div>
+                        <div style={styles.historyMeta}>
+                          {new Date(order.placedAt).toLocaleString()} · {itemLabel} ·{' '}
+                          {formatCurrency(
+                            order.snapshotJson?.total ?? 0,
+                            order.snapshotJson?.currency ?? 'USD'
+                          )}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        style={styles.historyButton}
+                        onClick={() => handleReorder(order)}
+                      >
+                        Order again
+                      </button>
+                    </div>
+                  );
+                })}
+            </div>
           </div>
 
           <aside style={styles.cartColumn} className="ct-cart">
@@ -487,6 +636,27 @@ export default function CustomerHome({ vendorSlug, vendorName }: CustomerHomePro
               position: static;
             }
           }
+
+          .ct-skeleton {
+            position: relative;
+            overflow: hidden;
+            background: #e2e8f0;
+          }
+
+          .ct-skeleton::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            transform: translateX(-100%);
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent);
+            animation: shimmer 1.4s infinite;
+          }
+
+          @keyframes shimmer {
+            100% {
+              transform: translateX(100%);
+            }
+          }
         `}</style>
       </main>
     </>
@@ -544,6 +714,42 @@ const styles: Record<string, CSSProperties> = {
     gridTemplateColumns: 'minmax(0, 2fr) minmax(280px, 1fr)',
     gap: 24,
     padding: '24px 8vw 80px'
+  },
+  notice: {
+    margin: '0 8vw 16px',
+    padding: '12px 16px',
+    borderRadius: 16,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    border: '1px solid transparent'
+  },
+  noticeInfo: {
+    backgroundColor: '#f1f5f9',
+    borderColor: '#cbd5f5',
+    color: '#0f172a'
+  },
+  noticeWarning: {
+    backgroundColor: '#fef3c7',
+    borderColor: '#f59e0b',
+    color: '#7c2d12'
+  },
+  noticeError: {
+    backgroundColor: '#fee2e2',
+    borderColor: '#fca5a5',
+    color: '#7f1d1d'
+  },
+  noticeText: {
+    fontSize: 13,
+    fontWeight: 600
+  },
+  noticeDismiss: {
+    border: 'none',
+    background: 'transparent',
+    color: 'inherit',
+    fontWeight: 600,
+    cursor: 'pointer'
   },
   menuColumn: {
     minWidth: 0
@@ -754,6 +960,28 @@ const styles: Record<string, CSSProperties> = {
     display: 'flex',
     flexDirection: 'column',
     gap: 12
+  },
+  skeletonStack: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 12
+  },
+  skeletonRow: {
+    borderRadius: 16,
+    border: '1px solid #e2e8f0',
+    padding: '12px 14px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 8
+  },
+  skeletonLine: {
+    height: 12,
+    borderRadius: 999
+  },
+  skeletonLineSmall: {
+    height: 10,
+    borderRadius: 999,
+    width: '60%'
   },
   cartTotalRow: {
     display: 'flex',
