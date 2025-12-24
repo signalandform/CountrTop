@@ -54,6 +54,13 @@ const normalizePayment = (payment: any) => ({
   amountMoney: payment?.amountMoney ?? payment?.amount_money ?? null
 });
 
+const parseUserIdFromReference = (referenceId: string | null | undefined) => {
+  if (!referenceId) return null;
+  const parts = referenceId.split('__');
+  if (parts.length < 2) return null;
+  return parts.slice(1).join('__') || null;
+};
+
 const formatSquareError = (error: unknown) => {
   if (error && typeof error === 'object') {
     const withErrors = error as { errors?: unknown; result?: { errors?: unknown } };
@@ -165,9 +172,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const total = Number(order?.totalMoney?.amount ?? payment.amountMoney?.amount ?? 0);
     const currency = order?.totalMoney?.currency ?? payment.amountMoney?.currency ?? 'USD';
 
-    await dataClient.createOrderSnapshot({
+    const userId = order?.metadata?.ct_user_id ?? parseUserIdFromReference(order?.referenceId);
+    const snapshot = await dataClient.createOrderSnapshot({
       vendorId: vendor.id,
-      userId: null,
+      userId: userId ?? null,
       squareOrderId: orderId,
       placedAt: order?.createdAt ?? payment.createdAt ?? new Date().toISOString(),
       snapshotJson: {
@@ -179,6 +187,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         squareReferenceId: order?.referenceId ?? null
       }
     });
+
+    if (userId) {
+      const points = Math.max(0, Math.floor(total / 100));
+      if (points > 0) {
+        await dataClient.recordLoyaltyEntry({
+          id: crypto.randomUUID(),
+          vendorId: vendor.id,
+          userId,
+          orderId: snapshot.id,
+          pointsDelta: points
+        });
+      }
+    }
 
     return res.status(200).json({ ok: true, status: 'processed' });
   } catch (error) {

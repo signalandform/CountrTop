@@ -198,9 +198,13 @@ export class SupabaseDataClient implements DataClient {
   }
 
   async recordLoyaltyEntry(entry: LoyaltyLedgerEntryInput): Promise<LoyaltyLedgerEntry> {
+    const withId = {
+      ...entry,
+      id: entry.id ?? randomUUID()
+    };
     const { data, error } = await this.client
       .from('loyalty_ledger')
-      .insert(toLoyaltyLedgerInsert(entry))
+      .insert(toLoyaltyLedgerInsert(withId))
       .select()
       .single();
     if (error) throw error;

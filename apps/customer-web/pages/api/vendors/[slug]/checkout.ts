@@ -15,6 +15,7 @@ type CheckoutItem = {
 
 type CheckoutRequest = {
   items: CheckoutItem[];
+  userId?: string | null;
 };
 
 type CheckoutResponse =
@@ -29,6 +30,8 @@ const getBaseUrl = (req: NextApiRequest) => {
   const host = (req.headers['x-forwarded-host'] as string | undefined) ?? req.headers.host ?? 'localhost:3000';
   return `${proto}://${host}`;
 };
+
+const buildReferenceId = () => `ct_${randomUUID()}`;
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<CheckoutResponse>) {
   if (req.method !== 'POST') {
@@ -54,7 +57,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     return res.status(404).json({ ok: false, error: 'Vendor not found' });
   }
 
-  const orderReferenceId = `ct_${randomUUID()}`;
+  const orderReferenceId = buildReferenceId();
   const baseUrl = getBaseUrl(req);
   const redirectUrl = `${baseUrl}/checkout/confirm?orderId=${encodeURIComponent(orderReferenceId)}`;
 
@@ -76,6 +79,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       order: {
         locationId: vendor.squareLocationId,
         referenceId: orderReferenceId,
+        ...(body.userId ? { metadata: { ct_user_id: body.userId } } : {}),
         lineItems: body.items.map((item) => ({
           catalogObjectId: item.variationId,
           name: item.name,

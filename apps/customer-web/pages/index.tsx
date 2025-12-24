@@ -4,6 +4,7 @@ import { CSSProperties, useEffect, useMemo, useState } from 'react';
 
 import { resolveVendorSlugFromHost } from '@countrtop/data';
 import { getServerDataClient } from '../lib/dataClient';
+import { getBrowserSupabaseClient } from '../lib/supabaseBrowser';
 
 type MenuItem = {
   id: string;
@@ -16,6 +17,17 @@ type MenuItem = {
 };
 
 type CartItem = MenuItem & { quantity: number };
+
+type OrderHistoryEntry = {
+  id: string;
+  placedAt: string;
+  squareOrderId: string;
+  snapshotJson: {
+    items?: Array<{ id: string; name: string; quantity: number; price: number }>;
+    total?: number;
+    currency?: string;
+  };
+};
 
 type CustomerHomeProps = {
   vendorSlug: string | null;
@@ -44,12 +56,22 @@ const formatCurrency = (value: number, currency: string) =>
   }).format(value / 100);
 
 export default function CustomerHome({ vendorSlug, vendorName }: CustomerHomeProps) {
+  const appleEnabled = process.env.NEXT_PUBLIC_APPLE_SIGNIN === 'true';
+  const [isClient, setIsClient] = useState(false);
+  const [supabase, setSupabase] = useState<ReturnType<typeof getBrowserSupabaseClient>>(null);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [menuStatus, setMenuStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
   const [menuError, setMenuError] = useState<string | null>(null);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [checkingOut, setCheckingOut] = useState(false);
+  const [authStatus, setAuthStatus] = useState<'idle' | 'loading' | 'ready'>('idle');
+  const [authUser, setAuthUser] = useState<{ id: string; email?: string | null } | null>(null);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [orderHistory, setOrderHistory] = useState<OrderHistoryEntry[]>([]);
+  const [orderStatus, setOrderStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
+  const [orderError, setOrderError] = useState<string | null>(null);
+  const [loyaltyBalance, setLoyaltyBalance] = useState<number | null>(null);
 
   const cartTotal = useMemo(() => {
     return cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
@@ -80,6 +102,70 @@ export default function CustomerHome({ vendorSlug, vendorName }: CustomerHomePro
       void loadMenu();
     }
   }, [menuStatus, vendorSlug]);
+
+  useEffect(() => {
+    setIsClient(true);
+    setSupabase(getBrowserSupabaseClient());
+  }, []);
+
+  useEffect(() => {
+    if (!supabase) return;
+    setAuthStatus('loading');
+    supabase.auth
+      .getSession()
+      .then(({ data }) => {
+        const sessionUser = data.session?.user ?? null;
+        setAuthUser(sessionUser ? { id: sessionUser.id, email: sessionUser.email } : null);
+        setAuthStatus('ready');
+      })
+      .catch((error) => {
+        setAuthError(error instanceof Error ? error.message : 'Unable to load session');
+        setAuthStatus('ready');
+      });
+
+    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+      const sessionUser = session?.user ?? null;
+      setAuthUser(sessionUser ? { id: sessionUser.id, email: sessionUser.email } : null);
+    });
+
+    return () => {
+      data.subscription.unsubscribe();
+    };
+  }, [supabase]);
+
+  useEffect(() => {
+    if (!authUser || !vendorSlug) return;
+    setOrderStatus('loading');
+    setOrderError(null);
+    fetch(`/api/vendors/${vendorSlug}/orders?userId=${encodeURIComponent(authUser.id)}`)
+      .then(async (response) => {
+        const payload = await response.json();
+        if (!response.ok || !payload.ok) {
+          throw new Error(payload.error ?? 'Failed to load order history');
+        }
+        setOrderHistory(payload.orders ?? []);
+        setOrderStatus('ready');
+      })
+      .catch((error) => {
+        setOrderStatus('error');
+        setOrderError(error instanceof Error ? error.message : 'Unable to load order history');
+      });
+  }, [authUser, vendorSlug]);
+
+  useEffect(() => {
+    if (!authUser || !vendorSlug) return;
+    fetch(`/api/vendors/${vendorSlug}/loyalty/${encodeURIComponent(authUser.id)}`)
+      .then(async (response) => {
+        const payload = await response.json();
+        if (!response.ok || !payload.ok) {
+          throw new Error(payload.error ?? 'Failed to load loyalty');
+        }
+        setLoyaltyBalance(payload.balance ?? 0);
+      })
+      .catch(() => {
+        setLoyaltyBalance(null);
+      });
+  }, [authUser, vendorSlug]);
 
   const addToCart = (item: MenuItem) => {
     setCartItems((current) => {
@@ -112,6 +198,7 @@ export default function CustomerHome({ vendorSlug, vendorName }: CustomerHomePro
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          userId: authUser?.id ?? null,
           items: cartItems.map((item) => ({
             id: item.id,
             name: item.name,
@@ -146,6 +233,46 @@ export default function CustomerHome({ vendorSlug, vendorName }: CustomerHomePro
     }
   };
 
+  const handleReorder = (entry: OrderHistoryEntry) => {
+    const items = entry.snapshotJson?.items ?? [];
+    if (!items.length) return;
+    setCartItems(
+      items.map((item) => ({
+        id: item.id,
+        name: item.name,
+        price: item.price,
+        currency: entry.snapshotJson?.currency ?? 'USD',
+        variationId: item.id,
+        quantity: item.quantity
+      }))
+    );
+  };
+
+  const startOAuth = async (provider: 'apple' | 'google') => {
+    if (!supabase) {
+      setAuthError('Supabase auth is not configured for this environment.');
+      return;
+    }
+    setAuthError(null);
+    try {
+      await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo: window.location.origin
+        }
+      });
+    } catch (error) {
+      setAuthError(error instanceof Error ? error.message : 'Unable to start sign-in');
+    }
+  };
+
+  const signOut = async () => {
+    if (!supabase) return;
+    await supabase.auth.signOut();
+  };
+
+  const authReady = isClient && supabase;
+
   return (
     <>
       <Head>
@@ -169,16 +296,61 @@ export default function CustomerHome({ vendorSlug, vendorName }: CustomerHomePro
 
         <section style={styles.content} className="ct-grid">
           <div style={styles.menuColumn}>
-          <div style={styles.sectionHeader}>
-            <h2 style={styles.sectionTitle}>Menu</h2>
-            <button type="button" onClick={loadMenu} style={styles.refreshButton}>
-              Refresh
-            </button>
-          </div>
-          {!vendorSlug && (
-            <p style={{ ...styles.helperText, color: '#b91c1c' }}>No vendor resolved for this host.</p>
-          )}
-          {menuStatus === 'loading' && <p style={styles.helperText}>Loading Square catalog…</p>}
+            <div style={styles.accountCard}>
+              <div style={styles.sectionHeader}>
+                <h2 style={styles.sectionTitle}>Account</h2>
+                {authUser && (
+                  <button type="button" onClick={signOut} style={styles.refreshButton}>
+                    Sign out
+                  </button>
+                )}
+              </div>
+              {!authReady && <p style={styles.helperText}>Loading sign-in…</p>}
+              {isClient && !supabase && (
+                <p style={{ ...styles.helperText, color: '#b91c1c' }}>
+                  Supabase auth is not configured.
+                </p>
+              )}
+              {authUser ? (
+                <div style={styles.accountRow}>
+                  <div>
+                    <div style={styles.accountName}>Signed in</div>
+                    <div style={styles.accountMeta}>{authUser.email ?? authUser.id}</div>
+                  </div>
+                  <div style={styles.pointsChip}>
+                    {loyaltyBalance !== null ? `${loyaltyBalance} pts` : '—'}
+                  </div>
+                </div>
+              ) : (
+                <div style={styles.authButtons}>
+                  {appleEnabled && (
+                    <button type="button" style={styles.authButton} onClick={() => startOAuth('apple')}>
+                      Sign in with Apple
+                    </button>
+                  )}
+                  <button type="button" style={styles.authButton} onClick={() => startOAuth('google')}>
+                    Sign in with Google
+                  </button>
+                </div>
+              )}
+              {authError && <p style={{ ...styles.helperText, color: '#b91c1c' }}>{authError}</p>}
+              {authUser && (
+                <p style={styles.helperText}>
+                  Points accumulate automatically after each completed order.
+                </p>
+              )}
+            </div>
+
+            <div style={styles.sectionHeader}>
+              <h2 style={styles.sectionTitle}>Menu</h2>
+              <button type="button" onClick={loadMenu} style={styles.refreshButton}>
+                Refresh
+              </button>
+            </div>
+            {!vendorSlug && (
+              <p style={{ ...styles.helperText, color: '#b91c1c' }}>No vendor resolved for this host.</p>
+            )}
+            {menuStatus === 'loading' && <p style={styles.helperText}>Loading Square catalog…</p>}
             {menuStatus === 'error' && (
               <p style={{ ...styles.helperText, color: '#b91c1c' }}>{menuError}</p>
             )}
@@ -208,6 +380,40 @@ export default function CustomerHome({ vendorSlug, vendorName }: CustomerHomePro
                 <p style={styles.helperText}>No menu items available yet.</p>
               )}
             </div>
+
+            {authUser && (
+              <div style={styles.historyCard}>
+                <div style={styles.sectionHeader}>
+                  <h2 style={styles.sectionTitle}>Order history</h2>
+                  <span style={styles.cartCount}>{orderHistory.length} orders</span>
+                </div>
+                {orderStatus === 'loading' && <p style={styles.helperText}>Loading history…</p>}
+                {orderStatus === 'error' && (
+                  <p style={{ ...styles.helperText, color: '#b91c1c' }}>{orderError}</p>
+                )}
+                {orderStatus === 'ready' && orderHistory.length === 0 && (
+                  <p style={styles.helperText}>No orders yet. Your first order will appear here.</p>
+                )}
+                {orderHistory.map((order) => (
+                  <div key={order.id} style={styles.historyRow}>
+                    <div>
+                      <div style={styles.historyTitle}>Order {order.squareOrderId.slice(-6)}</div>
+                      <div style={styles.historyMeta}>
+                        {new Date(order.placedAt).toLocaleString()} ·{' '}
+                        {formatCurrency(order.snapshotJson?.total ?? 0, order.snapshotJson?.currency ?? 'USD')}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      style={styles.historyButton}
+                      onClick={() => handleReorder(order)}
+                    >
+                      Order again
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <aside style={styles.cartColumn} className="ct-cart">
@@ -342,6 +548,49 @@ const styles: Record<string, CSSProperties> = {
   menuColumn: {
     minWidth: 0
   },
+  accountCard: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 20,
+    boxShadow: '0 16px 32px rgba(15, 23, 42, 0.08)'
+  },
+  accountRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 12
+  },
+  accountName: {
+    fontWeight: 600
+  },
+  accountMeta: {
+    color: '#64748b',
+    fontSize: 13
+  },
+  authButtons: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: 12
+  },
+  authButton: {
+    flex: '1 1 180px',
+    padding: '10px 14px',
+    borderRadius: 12,
+    border: '1px solid #0f172a',
+    backgroundColor: '#fff',
+    color: '#0f172a',
+    fontWeight: 600,
+    cursor: 'pointer'
+  },
+  pointsChip: {
+    backgroundColor: '#0f172a',
+    color: '#fff',
+    borderRadius: 999,
+    padding: '6px 12px',
+    fontSize: 12,
+    fontWeight: 600
+  },
   cartColumn: {
     position: 'sticky',
     top: 24,
@@ -368,6 +617,39 @@ const styles: Record<string, CSSProperties> = {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
     gap: 16
+  },
+  historyCard: {
+    marginTop: 24,
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 20,
+    boxShadow: '0 16px 32px rgba(15, 23, 42, 0.08)'
+  },
+  historyRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 12,
+    border: '1px solid #e2e8f0',
+    borderRadius: 16,
+    padding: '12px 14px',
+    marginBottom: 12
+  },
+  historyTitle: {
+    fontWeight: 600
+  },
+  historyMeta: {
+    fontSize: 12,
+    color: '#64748b'
+  },
+  historyButton: {
+    padding: '8px 12px',
+    borderRadius: 12,
+    border: '1px solid #0f172a',
+    backgroundColor: '#fff',
+    color: '#0f172a',
+    fontWeight: 600,
+    cursor: 'pointer'
   },
   menuCard: {
     backgroundColor: '#fff',
