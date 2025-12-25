@@ -501,7 +501,7 @@ export default function CustomerHome({ vendorSlug, vendorName }: CustomerHomePro
   };
 
   const authReady = isClient && supabase;
-  const contentStyle = isNativeWebView
+  const contentStyle: CSSProperties = isNativeWebView
     ? { ...styles.content, display: 'flex', flexDirection: 'column', alignItems: 'stretch' }
     : styles.content;
 
