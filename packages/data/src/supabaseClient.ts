@@ -2,7 +2,7 @@ import { randomUUID } from 'crypto';
 import { SupabaseClient, User as SupabaseAuthUser } from '@supabase/supabase-js';
 
 import { DataClient, LoyaltyLedgerEntryInput, OrderSnapshotInput, PushDeviceInput } from './dataClient';
-import { LoyaltyLedgerEntry, OrderSnapshot, PushDevice, User, Vendor } from './models';
+import { LoyaltyLedgerEntry, OrderSnapshot, PushDevice, User, Vendor, VendorStatus } from './models';
 
 export type Database = {
   public: {
@@ -14,7 +14,7 @@ export type Database = {
           display_name: string;
           square_location_id: string;
           square_credential_ref: string | null;
-          status: string | null;
+          status: VendorStatus | null;
         };
         Insert: {
           id?: string;
@@ -22,9 +22,10 @@ export type Database = {
           display_name: string;
           square_location_id: string;
           square_credential_ref?: string | null;
-          status?: string | null;
+          status?: VendorStatus | null;
         };
         Update: Partial<Database['public']['Tables']['vendors']['Insert']>;
+        Relationships: [];
       };
       order_snapshots: {
         Row: {
@@ -44,6 +45,7 @@ export type Database = {
           snapshot_json: Record<string, unknown>;
         };
         Update: Partial<Database['public']['Tables']['order_snapshots']['Insert']>;
+        Relationships: [];
       };
       loyalty_ledger: {
         Row: {
@@ -63,6 +65,7 @@ export type Database = {
           created_at?: string;
         };
         Update: Partial<Database['public']['Tables']['loyalty_ledger']['Insert']>;
+        Relationships: [];
       };
       push_devices: {
         Row: {
@@ -82,12 +85,13 @@ export type Database = {
           updated_at?: string | null;
         };
         Update: Partial<Database['public']['Tables']['push_devices']['Insert']>;
+        Relationships: [];
       };
     };
-    Views: never;
-    Functions: never;
-    Enums: never;
-    CompositeTypes: never;
+    Views: Record<string, never>;
+    Functions: Record<string, never>;
+    Enums: Record<string, never>;
+    CompositeTypes: Record<string, never>;
   };
 };
 
@@ -113,19 +117,19 @@ export class SupabaseDataClient implements DataClient {
   async getCurrentUser(): Promise<User | null> {
     const { data, error } = await this.client.auth.getUser();
     if (error) throw error;
-    return mapAuthUser(data.user ?? null);
+    return mapAuthUserNullable(data.user ?? null);
   }
 
   async getVendorBySlug(slug: string): Promise<Vendor | null> {
     const { data, error } = await this.client.from('vendors').select('*').eq('slug', slug).maybeSingle();
     if (error) throw error;
-    return data ? mapVendorFromRow(data) : null;
+    return data ? mapVendorFromRow(data as Database['public']['Tables']['vendors']['Row']) : null;
   }
 
   async getVendorById(vendorId: string): Promise<Vendor | null> {
     const { data, error } = await this.client.from('vendors').select('*').eq('id', vendorId).maybeSingle();
     if (error) throw error;
-    return data ? mapVendorFromRow(data) : null;
+    return data ? mapVendorFromRow(data as Database['public']['Tables']['vendors']['Row']) : null;
   }
 
   async getVendorBySquareLocationId(locationId: string): Promise<Vendor | null> {
@@ -135,7 +139,7 @@ export class SupabaseDataClient implements DataClient {
       .eq('square_location_id', locationId)
       .maybeSingle();
     if (error) throw error;
-    return data ? mapVendorFromRow(data) : null;
+    return data ? mapVendorFromRow(data as Database['public']['Tables']['vendors']['Row']) : null;
   }
 
   async createOrderSnapshot(order: OrderSnapshotInput): Promise<OrderSnapshot> {
@@ -149,7 +153,7 @@ export class SupabaseDataClient implements DataClient {
       .select()
       .single();
     if (error) throw error;
-    return mapOrderSnapshotFromRow(data);
+    return mapOrderSnapshotFromRow(data as Database['public']['Tables']['order_snapshots']['Row']);
   }
 
   async getOrderSnapshot(orderId: string): Promise<OrderSnapshot | null> {
@@ -159,7 +163,9 @@ export class SupabaseDataClient implements DataClient {
       .eq('id', orderId)
       .maybeSingle();
     if (error) throw error;
-    return data ? mapOrderSnapshotFromRow(data) : null;
+    return data
+      ? mapOrderSnapshotFromRow(data as Database['public']['Tables']['order_snapshots']['Row'])
+      : null;
   }
 
   async getOrderSnapshotBySquareOrderId(
@@ -173,7 +179,9 @@ export class SupabaseDataClient implements DataClient {
       .eq('square_order_id', squareOrderId)
       .maybeSingle();
     if (error) throw error;
-    return data ? mapOrderSnapshotFromRow(data) : null;
+    return data
+      ? mapOrderSnapshotFromRow(data as Database['public']['Tables']['order_snapshots']['Row'])
+      : null;
   }
 
   async listOrderSnapshotsForUser(vendorId: string, userId: string): Promise<OrderSnapshot[]> {
@@ -184,7 +192,9 @@ export class SupabaseDataClient implements DataClient {
       .eq('user_id', userId)
       .order('placed_at', { ascending: false });
     if (error) throw error;
-    return (data ?? []).map(mapOrderSnapshotFromRow);
+    return (data ?? []).map(
+      (row) => mapOrderSnapshotFromRow(row as Database['public']['Tables']['order_snapshots']['Row'])
+    );
   }
 
   async listOrderSnapshotsForVendor(vendorId: string): Promise<OrderSnapshot[]> {
@@ -194,7 +204,9 @@ export class SupabaseDataClient implements DataClient {
       .eq('vendor_id', vendorId)
       .order('placed_at', { ascending: false });
     if (error) throw error;
-    return (data ?? []).map(mapOrderSnapshotFromRow);
+    return (data ?? []).map(
+      (row) => mapOrderSnapshotFromRow(row as Database['public']['Tables']['order_snapshots']['Row'])
+    );
   }
 
   async recordLoyaltyEntry(entry: LoyaltyLedgerEntryInput): Promise<LoyaltyLedgerEntry> {
@@ -208,7 +220,7 @@ export class SupabaseDataClient implements DataClient {
       .select()
       .single();
     if (error) throw error;
-    return mapLoyaltyLedgerFromRow(data);
+    return mapLoyaltyLedgerFromRow(data as Database['public']['Tables']['loyalty_ledger']['Row']);
   }
 
   async listLoyaltyEntriesForUser(vendorId: string, userId: string): Promise<LoyaltyLedgerEntry[]> {
@@ -219,7 +231,9 @@ export class SupabaseDataClient implements DataClient {
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
     if (error) throw error;
-    return (data ?? []).map(mapLoyaltyLedgerFromRow);
+    return (data ?? []).map((row) =>
+      mapLoyaltyLedgerFromRow(row as Database['public']['Tables']['loyalty_ledger']['Row'])
+    );
   }
 
   async getLoyaltyBalance(vendorId: string, userId: string): Promise<number> {
@@ -238,13 +252,15 @@ export class SupabaseDataClient implements DataClient {
       .select()
       .single();
     if (error) throw error;
-    return mapPushDeviceFromRow(data);
+    return mapPushDeviceFromRow(data as Database['public']['Tables']['push_devices']['Row']);
   }
 
   async listPushDevicesForUser(userId: string): Promise<PushDevice[]> {
     const { data, error } = await this.client.from('push_devices').select('*').eq('user_id', userId);
     if (error) throw error;
-    return (data ?? []).map(mapPushDeviceFromRow);
+    return (data ?? []).map((row) =>
+      mapPushDeviceFromRow(row as Database['public']['Tables']['push_devices']['Row'])
+    );
   }
 }
 
@@ -323,8 +339,7 @@ const toPushDeviceInsert = (
   updated_at: device.updatedAt ?? new Date().toISOString()
 });
 
-const mapAuthUser = (user: SupabaseAuthUser | null): User | null => {
-  if (!user) return null;
+const mapAuthUser = (user: SupabaseAuthUser): User => {
   const provider = (user.app_metadata?.provider as User['provider']) ?? 'apple';
   const providerUserId =
     (user.identities?.[0]?.id ?? user.user_metadata?.sub ?? user.id) as string;
@@ -334,4 +349,9 @@ const mapAuthUser = (user: SupabaseAuthUser | null): User | null => {
     providerUserId,
     displayName: user.user_metadata?.full_name ?? user.user_metadata?.name ?? undefined
   };
+};
+
+const mapAuthUserNullable = (user: SupabaseAuthUser | null): User | null => {
+  if (!user) return null;
+  return mapAuthUser(user);
 };

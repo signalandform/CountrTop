@@ -27,9 +27,9 @@ type SupabaseModule = typeof import('./supabaseClient');
 let cachedSupabaseModule: SupabaseModule | null = null;
 const loadSupabaseModule = (): SupabaseModule => {
   if (!cachedSupabaseModule) {
-    cachedSupabaseModule = require('./supabaseClient');
+    cachedSupabaseModule = require('./supabaseClient') as SupabaseModule;
   }
-  return cachedSupabaseModule;
+  return cachedSupabaseModule as SupabaseModule;
 };
 
 export const createDataClient = (options: DataClientFactoryOptions = {}): DataClient => {

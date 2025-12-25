@@ -1,6 +1,6 @@
 import type { GetServerSideProps } from 'next';
 import Head from 'next/head';
-import { CSSProperties, useEffect, useMemo, useState } from 'react';
+import { CSSProperties, useCallback, useEffect, useMemo, useState } from 'react';
 
 import { resolveVendorSlugFromHost } from '@countrtop/data';
 import { getServerDataClient } from '../lib/dataClient';
@@ -68,6 +68,19 @@ const formatCurrency = (value: number, currency: string) =>
     maximumFractionDigits: 2
   }).format(value / 100);
 
+const toFriendlyError = (error: unknown, fallback: string) => {
+  if (error instanceof Error) {
+    if (/failed to fetch|networkerror/i.test(error.message)) {
+      return 'Network issue. Please try again.';
+    }
+    return error.message;
+  }
+  if (typeof error === 'string' && error.trim().length > 0) {
+    return error;
+  }
+  return fallback;
+};
+
 export default function CustomerHome({ vendorSlug, vendorName }: CustomerHomeProps) {
   const appleEnabled = process.env.NEXT_PUBLIC_APPLE_SIGNIN === 'true';
   const [isClient, setIsClient] = useState(false);
@@ -116,33 +129,20 @@ export default function CustomerHome({ vendorSlug, vendorName }: CustomerHomePro
     return () => window.clearInterval(interval);
   }, [isClient]);
 
-  const toFriendlyError = (error: unknown, fallback: string) => {
-    if (error instanceof Error) {
-      if (/failed to fetch|networkerror/i.test(error.message)) {
-        return 'Network issue. Please try again.';
-      }
-      return error.message;
-    }
-    if (typeof error === 'string' && error.trim().length > 0) {
-      return error;
-    }
-    return fallback;
-  };
-
-  const pushNotice = (type: Notice['type'], message: string) => {
+  const pushNotice = useCallback((type: Notice['type'], message: string) => {
     setNotice({ type, message });
-  };
+  }, []);
 
-  const postToNative = (payload: Record<string, unknown>) => {
+  const postToNative = useCallback((payload: Record<string, unknown>) => {
     if (!isNativeWebView) return;
     const bridge = (window as typeof window & {
       ReactNativeWebView?: { postMessage?: (message: string) => void };
     }).ReactNativeWebView;
     if (!bridge?.postMessage) return;
     bridge.postMessage(JSON.stringify(payload));
-  };
+  }, [isNativeWebView]);
 
-  const loadMenu = async () => {
+  const loadMenu = useCallback(async () => {
     if (!vendorSlug) return;
     setMenuStatus('loading');
     setMenuError(null);
@@ -158,13 +158,13 @@ export default function CustomerHome({ vendorSlug, vendorName }: CustomerHomePro
       setMenuStatus('error');
       setMenuError(toFriendlyError(error, 'Unable to load menu'));
     }
-  };
+  }, [vendorSlug]);
 
   useEffect(() => {
     if (menuStatus === 'idle' && vendorSlug) {
       void loadMenu();
     }
-  }, [menuStatus, vendorSlug]);
+  }, [loadMenu, menuStatus, vendorSlug]);
 
   useEffect(() => {
     setIsClient(true);
@@ -203,7 +203,7 @@ export default function CustomerHome({ vendorSlug, vendorName }: CustomerHomePro
       userId: authUser?.id ?? null,
       email: authUser?.email ?? null
     });
-  }, [authUser, isNativeWebView]);
+  }, [authUser, isNativeWebView, postToNative]);
 
   useEffect(() => {
     if (!supabase || !isNativeWebView) return;
@@ -271,7 +271,7 @@ export default function CustomerHome({ vendorSlug, vendorName }: CustomerHomePro
     };
   }, [isNativeWebView, supabase]);
 
-  const refreshOrderHistory = async (userId: string) => {
+  const refreshOrderHistory = useCallback(async (userId: string) => {
     if (!vendorSlug) return;
     setOrderStatus('loading');
     setOrderError(null);
@@ -290,9 +290,9 @@ export default function CustomerHome({ vendorSlug, vendorName }: CustomerHomePro
       setOrderError(message);
       pushNotice('error', message);
     }
-  };
+  }, [pushNotice, vendorSlug]);
 
-  const refreshLoyalty = async (userId: string) => {
+  const refreshLoyalty = useCallback(async (userId: string) => {
     if (!vendorSlug) return;
     try {
       const response = await fetch(`/api/vendors/${vendorSlug}/loyalty/${encodeURIComponent(userId)}`);
@@ -306,7 +306,7 @@ export default function CustomerHome({ vendorSlug, vendorName }: CustomerHomePro
       console.warn('Loyalty load failed', { error, userId, vendorSlug });
       pushNotice('warning', message);
     }
-  };
+  }, [pushNotice, vendorSlug]);
 
   useEffect(() => {
     if (!authUser || !vendorSlug) {
@@ -318,7 +318,7 @@ export default function CustomerHome({ vendorSlug, vendorName }: CustomerHomePro
 
     void refreshOrderHistory(authUser.id);
     void refreshLoyalty(authUser.id);
-  }, [authUser, vendorSlug]);
+  }, [authUser, refreshLoyalty, refreshOrderHistory, vendorSlug]);
 
   useEffect(() => {
     if (!isClient || !authUser || !vendorSlug) return;
@@ -327,7 +327,7 @@ export default function CustomerHome({ vendorSlug, vendorName }: CustomerHomePro
     sessionStorage.removeItem('ct_refresh_after_checkout');
     void refreshOrderHistory(authUser.id);
     void refreshLoyalty(authUser.id);
-  }, [authUser, isClient, vendorSlug]);
+  }, [authUser, isClient, refreshLoyalty, refreshOrderHistory, vendorSlug]);
 
   const addToCart = (item: MenuItem) => {
     setCartItems((current) => {
@@ -673,6 +673,7 @@ export default function CustomerHome({ vendorSlug, vendorName }: CustomerHomePro
                 <div key={item.id} style={styles.menuCard}>
                   <div style={styles.menuImage}>
                     {item.imageUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
                       <img src={item.imageUrl} alt={item.name} style={styles.menuImgTag} />
                     ) : (
                       <span style={styles.menuPlaceholder}>☕</span>
