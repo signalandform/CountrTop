@@ -5,13 +5,48 @@
   "extends": [
     "eslint:recommended",
     "plugin:react/recommended",
+    "plugin:react-hooks/recommended",
     "plugin:@typescript-eslint/recommended",
     "prettier"
   ],
   "overrides": [
     {
+      "files": ["apps/customer-web/**/*"],
+      "extends": ["next/core-web-vitals"],
+      "rules": {
+        "react/no-unknown-property": ["error", { "ignore": ["jsx", "global"] }]
+      }
+    },
+    {
+      "files": ["apps/customer-web/pages/api/**/*"],
+      "rules": {
+        "@typescript-eslint/no-explicit-any": "off"
+      }
+    },
+    {
+      "files": ["apps/customer-web/pages/index.tsx"],
+      "rules": {
+        "@typescript-eslint/no-explicit-any": "off"
+      }
+    },
+    {
       "files": ["apps/vendor-admin-web/**/*"],
-      "extends": ["next/core-web-vitals"]
+      "extends": ["next/core-web-vitals"],
+      "rules": {
+        "react/no-unknown-property": ["error", { "ignore": ["jsx", "global"] }]
+      }
+    },
+    {
+      "files": ["apps/vendor-admin-web/pages/api/**/*"],
+      "rules": {
+        "@typescript-eslint/no-explicit-any": "off"
+      }
+    },
+    {
+      "files": ["apps/vendor-admin-web/pages/index.tsx"],
+      "rules": {
+        "@typescript-eslint/no-explicit-any": "off"
+      }
     }
   ],
   "parserOptions": {
