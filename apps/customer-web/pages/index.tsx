@@ -235,10 +235,11 @@ export default function CustomerHome({ vendorSlug, vendorName }: CustomerHomePro
     };
 
     window.addEventListener('message', handleNativeMessage);
-    document.addEventListener('message', handleNativeMessage as EventListener);
+    const docAny = document as { addEventListener?: (...args: any[]) => void; removeEventListener?: (...args: any[]) => void };
+    docAny.addEventListener?.('message', handleNativeMessage);
     return () => {
       window.removeEventListener('message', handleNativeMessage);
-      document.removeEventListener('message', handleNativeMessage as EventListener);
+      docAny.removeEventListener?.('message', handleNativeMessage);
     };
   }, [isNativeWebView, supabase]);
 
