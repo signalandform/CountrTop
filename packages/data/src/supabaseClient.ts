@@ -228,7 +228,10 @@ export class SupabaseDataClient implements DataClient {
   }
 
   async upsertPushDevice(device: PushDeviceInput): Promise<PushDevice> {
-    const payload = toPushDeviceInsert(device);
+    const payload = toPushDeviceInsert({
+      ...device,
+      id: device.id ?? randomUUID()
+    });
     const { data, error } = await this.client
       .from('push_devices')
       .upsert(payload, { onConflict: 'user_id,device_token' })

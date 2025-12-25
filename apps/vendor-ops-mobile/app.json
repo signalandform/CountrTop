@@ -4,7 +4,7 @@
     "slug": "countrtop-vendor-ops",
     "version": "0.1.0",
     "orientation": "portrait",
-    "sdkVersion": "51.0.0",
+    "sdkVersion": "54.0.0",
     "platforms": ["ios", "android"],
     "assetBundlePatterns": ["**/*"],
     "ios": {

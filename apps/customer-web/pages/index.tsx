@@ -86,12 +86,35 @@ export default function CustomerHome({ vendorSlug, vendorName }: CustomerHomePro
   const [orderStatus, setOrderStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
   const [orderError, setOrderError] = useState<string | null>(null);
   const [loyaltyBalance, setLoyaltyBalance] = useState<number | null>(null);
+  const [isNativeWebView, setIsNativeWebView] = useState(false);
 
   const cartTotal = useMemo(() => {
     return cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
   }, [cartItems]);
 
   const cartCurrency = cartItems[0]?.currency ?? 'USD';
+  useEffect(() => {
+    if (!isClient || typeof window === 'undefined') return;
+    const userAgent = window.navigator?.userAgent ?? '';
+    if (userAgent.includes('CountrTop')) {
+      setIsNativeWebView(true);
+      return;
+    }
+
+    if ((window as any).ReactNativeWebView) {
+      setIsNativeWebView(true);
+      return;
+    }
+
+    const interval = window.setInterval(() => {
+      if ((window as any).ReactNativeWebView) {
+        setIsNativeWebView(true);
+        window.clearInterval(interval);
+      }
+    }, 250);
+
+    return () => window.clearInterval(interval);
+  }, [isClient]);
 
   const toFriendlyError = (error: unknown, fallback: string) => {
     if (error instanceof Error) {
@@ -108,6 +131,15 @@ export default function CustomerHome({ vendorSlug, vendorName }: CustomerHomePro
 
   const pushNotice = (type: Notice['type'], message: string) => {
     setNotice({ type, message });
+  };
+
+  const postToNative = (payload: Record<string, unknown>) => {
+    if (!isNativeWebView) return;
+    const bridge = (window as typeof window & {
+      ReactNativeWebView?: { postMessage?: (message: string) => void };
+    }).ReactNativeWebView;
+    if (!bridge?.postMessage) return;
+    bridge.postMessage(JSON.stringify(payload));
   };
 
   const loadMenu = async () => {
@@ -165,19 +197,78 @@ export default function CustomerHome({ vendorSlug, vendorName }: CustomerHomePro
   }, [supabase]);
 
   useEffect(() => {
-    if (!isClient) return;
-    const bridge = (window as typeof window & {
-      ReactNativeWebView?: { postMessage?: (message: string) => void };
-    }).ReactNativeWebView;
-    if (!bridge?.postMessage) return;
-    bridge.postMessage(
-      JSON.stringify({
-        type: 'ct-auth',
-        userId: authUser?.id ?? null,
-        email: authUser?.email ?? null
-      })
-    );
-  }, [authUser, isClient]);
+    if (!isNativeWebView) return;
+    postToNative({
+      type: 'ct-auth',
+      userId: authUser?.id ?? null,
+      email: authUser?.email ?? null
+    });
+  }, [authUser, isNativeWebView]);
+
+  useEffect(() => {
+    if (!supabase || !isNativeWebView) return;
+
+    const handleNativeMessage = async (event: MessageEvent) => {
+      const raw = typeof event.data === 'string' ? event.data : '';
+      if (!raw) return;
+      let payload: any;
+      try {
+        payload = JSON.parse(raw);
+      } catch {
+        return;
+      }
+      if (payload?.type !== 'ct-auth-token') return;
+
+      try {
+        const { access_token, refresh_token } = payload;
+        if (!access_token || !refresh_token) {
+          throw new Error('Missing auth tokens from native sign-in.');
+        }
+        const { error } = await supabase.auth.setSession({
+          access_token,
+          refresh_token
+        });
+        if (error) throw error;
+      } catch (error) {
+        setAuthError(toFriendlyError(error, 'Unable to complete sign-in.'));
+      }
+    };
+
+    window.addEventListener('message', handleNativeMessage);
+    document.addEventListener('message', handleNativeMessage as EventListener);
+    return () => {
+      window.removeEventListener('message', handleNativeMessage);
+      document.removeEventListener('message', handleNativeMessage as EventListener);
+    };
+  }, [isNativeWebView, supabase]);
+
+  useEffect(() => {
+    if (!supabase || !isNativeWebView) return;
+
+    const handleToken = async (payload: { access_token?: string; refresh_token?: string }) => {
+      try {
+        const { access_token, refresh_token } = payload;
+        if (!access_token || !refresh_token) {
+          throw new Error('Missing auth tokens from native sign-in.');
+        }
+        const { error } = await supabase.auth.setSession({
+          access_token,
+          refresh_token
+        });
+        if (error) throw error;
+      } catch (error) {
+        setAuthError(toFriendlyError(error, 'Unable to complete sign-in.'));
+      }
+    };
+
+    (window as typeof window & { ctHandleNativeAuth?: typeof handleToken }).ctHandleNativeAuth =
+      handleToken;
+
+    return () => {
+      const target = window as typeof window & { ctHandleNativeAuth?: typeof handleToken };
+      delete target.ctHandleNativeAuth;
+    };
+  }, [isNativeWebView, supabase]);
 
   const refreshOrderHistory = async (userId: string) => {
     if (!vendorSlug) return;
@@ -373,6 +464,22 @@ export default function CustomerHome({ vendorSlug, vendorName }: CustomerHomePro
     }
     setAuthError(null);
     try {
+      if (isNativeWebView) {
+        const { data, error } = await supabase.auth.signInWithOAuth({
+          provider,
+          options: {
+            redirectTo: 'countrtop://auth-callback',
+            skipBrowserRedirect: true
+          }
+        });
+        if (error) throw error;
+        if (!data?.url) {
+          throw new Error('Unable to start sign-in in app.');
+        }
+        postToNative({ type: 'ct-auth-url', url: data.url, provider });
+        return;
+      }
+
       await supabase.auth.signInWithOAuth({
         provider,
         options: {
@@ -393,13 +500,16 @@ export default function CustomerHome({ vendorSlug, vendorName }: CustomerHomePro
   };
 
   const authReady = isClient && supabase;
+  const contentStyle = isNativeWebView
+    ? { ...styles.content, display: 'flex', flexDirection: 'column', alignItems: 'stretch' }
+    : styles.content;
 
   return (
     <>
       <Head>
         <title>{`${vendorName} · CountrTop`}</title>
       </Head>
-      <main style={styles.page}>
+      <main style={styles.page} className={isNativeWebView ? 'ct-native' : undefined}>
         <section style={styles.hero}>
           <div style={styles.heroCard}>
             <p style={styles.heroEyebrow}>CountrTop</p>
@@ -434,8 +544,8 @@ export default function CustomerHome({ vendorSlug, vendorName }: CustomerHomePro
           </section>
         )}
 
-        <section style={styles.content} className="ct-grid">
-          <div style={styles.menuColumn}>
+        <section style={contentStyle} className="ct-grid">
+          <div style={styles.menuColumn} className="ct-account">
             <div style={styles.accountCard}>
               <div style={styles.sectionHeader}>
                 <h2 style={styles.sectionTitle}>Account</h2>
@@ -480,7 +590,70 @@ export default function CustomerHome({ vendorSlug, vendorName }: CustomerHomePro
                 </p>
               )}
             </div>
+          </div>
 
+          <aside style={styles.cartColumn} className="ct-cart">
+            <div style={styles.cartCard}>
+              <div style={styles.sectionHeader}>
+                <h2 style={styles.sectionTitle}>Your cart</h2>
+                <span style={styles.cartCount}>{cartItems.length} items</span>
+              </div>
+              {cartItems.length === 0 ? (
+                <p style={styles.helperText}>Add items to start your order.</p>
+              ) : (
+                <div style={styles.cartList}>
+                  {cartItems.map((item) => (
+                    <div key={item.id} style={styles.cartRow}>
+                      <div>
+                        <div style={styles.cartName}>{item.name}</div>
+                        <div style={styles.cartMeta}>
+                          {formatCurrency(item.price, item.currency)} · Qty {item.quantity}
+                        </div>
+                      </div>
+                      <div style={styles.cartActions}>
+                        <button
+                          type="button"
+                          style={styles.cartActionButton}
+                          onClick={() => removeFromCart(item.id)}
+                        >
+                          −
+                        </button>
+                        <button
+                          type="button"
+                          style={styles.cartActionButton}
+                          onClick={() => addToCart(item)}
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div style={styles.cartFooter}>
+                <div style={styles.cartTotalRow}>
+                  <span>Total</span>
+                  <strong>{formatCurrency(cartTotal, cartCurrency)}</strong>
+                </div>
+                <button
+                  type="button"
+                  style={{
+                    ...styles.checkoutButton,
+                    opacity: cartItems.length === 0 || checkingOut ? 0.6 : 1
+                  }}
+                  disabled={cartItems.length === 0 || checkingOut}
+                  onClick={handleCheckout}
+                >
+                  {checkingOut ? 'Starting checkout…' : 'Checkout with Square'}
+                </button>
+                {checkoutError && (
+                  <p style={{ ...styles.helperText, color: '#b91c1c' }}>{checkoutError}</p>
+                )}
+              </div>
+            </div>
+          </aside>
+
+          <div style={styles.menuColumn} className="ct-menu">
             <div style={styles.sectionHeader}>
               <h2 style={styles.sectionTitle}>Menu</h2>
               <button type="button" onClick={loadMenu} style={styles.refreshButton}>
@@ -579,76 +752,74 @@ export default function CustomerHome({ vendorSlug, vendorName }: CustomerHomePro
                 })}
             </div>
           </div>
-
-          <aside style={styles.cartColumn} className="ct-cart">
-            <div style={styles.cartCard}>
-              <div style={styles.sectionHeader}>
-                <h2 style={styles.sectionTitle}>Your cart</h2>
-                <span style={styles.cartCount}>{cartItems.length} items</span>
-              </div>
-              {cartItems.length === 0 ? (
-                <p style={styles.helperText}>Add items to start your order.</p>
-              ) : (
-                <div style={styles.cartList}>
-                  {cartItems.map((item) => (
-                    <div key={item.id} style={styles.cartRow}>
-                      <div>
-                        <div style={styles.cartName}>{item.name}</div>
-                        <div style={styles.cartMeta}>
-                          {formatCurrency(item.price, item.currency)} · Qty {item.quantity}
-                        </div>
-                      </div>
-                      <div style={styles.cartActions}>
-                        <button
-                          type="button"
-                          style={styles.cartActionButton}
-                          onClick={() => removeFromCart(item.id)}
-                        >
-                          −
-                        </button>
-                        <button
-                          type="button"
-                          style={styles.cartActionButton}
-                          onClick={() => addToCart(item)}
-                        >
-                          +
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-              <div style={styles.cartFooter}>
-                <div style={styles.cartTotalRow}>
-                  <span>Total</span>
-                  <strong>{formatCurrency(cartTotal, cartCurrency)}</strong>
-                </div>
-                <button
-                  type="button"
-                  style={{
-                    ...styles.checkoutButton,
-                    opacity: cartItems.length === 0 || checkingOut ? 0.6 : 1
-                  }}
-                  disabled={cartItems.length === 0 || checkingOut}
-                  onClick={handleCheckout}
-                >
-                  {checkingOut ? 'Starting checkout…' : 'Checkout with Square'}
-                </button>
-                {checkoutError && (
-                  <p style={{ ...styles.helperText, color: '#b91c1c' }}>{checkoutError}</p>
-                )}
-              </div>
-            </div>
-          </aside>
         </section>
         <style jsx>{`
-          @media (max-width: 960px) {
+          .ct-grid {
+            grid-template-areas:
+              'account cart'
+              'menu cart';
+          }
+
+          .ct-account {
+            grid-area: account;
+          }
+
+          .ct-menu {
+            grid-area: menu;
+          }
+
+          .ct-cart {
+            grid-area: cart;
+          }
+
+          .ct-native .ct-grid {
+            display: flex;
+            flex-direction: column;
+          }
+
+          .ct-native .ct-account,
+          .ct-native .ct-cart,
+          .ct-native .ct-menu {
+            width: 100%;
+            align-self: stretch;
+          }
+
+          .ct-native .ct-cart {
+            position: static;
+            order: -1;
+          }
+
+          .ct-native .ct-account {
+            order: -2;
+          }
+
+          @media (min-width: 901px) {
+            .ct-cart {
+              position: sticky;
+              top: 24px;
+            }
+          }
+
+          @media (max-width: 900px), (max-device-width: 900px), (hover: none) and (pointer: coarse) {
             .ct-grid {
-              grid-template-columns: 1fr;
+              display: flex;
+              flex-direction: column;
+            }
+
+            .ct-account,
+            .ct-cart,
+            .ct-menu {
+              width: 100%;
+              align-self: stretch;
             }
 
             .ct-cart {
               position: static;
+              order: -1;
+            }
+
+            .ct-account {
+              order: -2;
             }
           }
 
@@ -678,21 +849,26 @@ export default function CustomerHome({ vendorSlug, vendorName }: CustomerHomePro
   );
 }
 
+const panelWidth: CSSProperties = {
+  minWidth: 0
+};
+
 const styles: Record<string, CSSProperties> = {
   page: {
     minHeight: '100vh',
     background: 'radial-gradient(circle at top, #f1f5f9, #e2e8f0)',
     color: '#0f172a',
-    fontFamily: '"Space Grotesk", "Segoe UI", sans-serif'
+    fontFamily: '"Space Grotesk", "Segoe UI", sans-serif',
+    paddingBottom: 'env(safe-area-inset-bottom)'
   },
   hero: {
-    padding: '48px 8vw 24px'
+    padding: 'clamp(28px, 6vw, 48px) clamp(16px, 8vw, 96px) 20px'
   },
   heroCard: {
     background: 'linear-gradient(120deg, #0f172a, #1e293b)',
     color: '#f8fafc',
-    padding: '32px',
-    borderRadius: 24,
+    padding: 'clamp(20px, 5vw, 32px)',
+    borderRadius: 'clamp(18px, 4vw, 24px)',
     boxShadow: '0 24px 60px rgba(15, 23, 42, 0.25)'
   },
   heroEyebrow: {
@@ -703,35 +879,36 @@ const styles: Record<string, CSSProperties> = {
     margin: 0
   },
   heroTitle: {
-    fontSize: 36,
+    fontSize: 'clamp(28px, 7vw, 36px)',
     margin: '8px 0 12px'
   },
   heroSubtitle: {
-    fontSize: 16,
+    fontSize: 'clamp(14px, 4vw, 16px)',
     maxWidth: 520,
     color: '#cbd5f5',
-    margin: 0
+    margin: 0,
+    lineHeight: 1.4
   },
   heroBadgeRow: {
     display: 'flex',
     flexWrap: 'wrap',
     gap: 8,
-    marginTop: 16
+    marginTop: 12
   },
   heroBadge: {
     backgroundColor: 'rgba(148, 163, 184, 0.2)',
     borderRadius: 999,
-    padding: '6px 12px',
+    padding: '6px 10px',
     fontSize: 12
   },
   content: {
     display: 'grid',
     gridTemplateColumns: 'minmax(0, 2fr) minmax(280px, 1fr)',
-    gap: 24,
-    padding: '24px 8vw 80px'
+    gap: 20,
+    padding: '24px clamp(16px, 8vw, 96px) 72px'
   },
   notice: {
-    margin: '0 8vw 16px',
+    margin: '0 clamp(16px, 8vw, 96px) 16px',
     padding: '12px 16px',
     borderRadius: 16,
     display: 'flex',
@@ -770,9 +947,10 @@ const styles: Record<string, CSSProperties> = {
     minWidth: 0
   },
   accountCard: {
+    ...panelWidth,
     backgroundColor: '#fff',
-    borderRadius: 20,
-    padding: 20,
+    borderRadius: 'clamp(16px, 4vw, 20px)',
+    padding: 'clamp(16px, 4vw, 20px)',
     marginBottom: 20,
     boxShadow: '0 16px 32px rgba(15, 23, 42, 0.08)'
   },
@@ -780,7 +958,8 @@ const styles: Record<string, CSSProperties> = {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    gap: 12
+    gap: 12,
+    flexWrap: 'wrap'
   },
   accountName: {
     fontWeight: 600
@@ -792,11 +971,11 @@ const styles: Record<string, CSSProperties> = {
   authButtons: {
     display: 'flex',
     flexWrap: 'wrap',
-    gap: 12
+    gap: 10
   },
   authButton: {
     flex: '1 1 180px',
-    padding: '10px 14px',
+    padding: '12px 16px',
     borderRadius: 12,
     border: '1px solid #0f172a',
     backgroundColor: '#fff',
@@ -813,18 +992,18 @@ const styles: Record<string, CSSProperties> = {
     fontWeight: 600
   },
   cartColumn: {
-    position: 'sticky',
-    top: 24,
     alignSelf: 'start'
   },
   sectionHeader: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16
+    marginBottom: 16,
+    flexWrap: 'wrap',
+    gap: 8
   },
   sectionTitle: {
-    fontSize: 20,
+    fontSize: 'clamp(18px, 4.5vw, 20px)',
     margin: 0
   },
   refreshButton: {
@@ -836,14 +1015,15 @@ const styles: Record<string, CSSProperties> = {
   },
   menuGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
     gap: 16
   },
   historyCard: {
+    ...panelWidth,
     marginTop: 24,
     backgroundColor: '#fff',
-    borderRadius: 20,
-    padding: 20,
+    borderRadius: 'clamp(16px, 4vw, 20px)',
+    padding: 'clamp(16px, 4vw, 20px)',
     boxShadow: '0 16px 32px rgba(15, 23, 42, 0.08)'
   },
   historyRow: {
@@ -851,6 +1031,7 @@ const styles: Record<string, CSSProperties> = {
     justifyContent: 'space-between',
     alignItems: 'center',
     gap: 12,
+    flexWrap: 'wrap',
     border: '1px solid #e2e8f0',
     borderRadius: 16,
     padding: '12px 14px',
@@ -874,15 +1055,15 @@ const styles: Record<string, CSSProperties> = {
   },
   menuCard: {
     backgroundColor: '#fff',
-    borderRadius: 20,
-    padding: 16,
+    borderRadius: 'clamp(16px, 4vw, 20px)',
+    padding: 'clamp(14px, 4vw, 16px)',
     display: 'flex',
     flexDirection: 'column',
     gap: 12,
     boxShadow: '0 16px 32px rgba(15, 23, 42, 0.08)'
   },
   menuImage: {
-    height: 140,
+    height: 'clamp(120px, 40vw, 150px)',
     borderRadius: 16,
     backgroundColor: '#e2e8f0',
     display: 'flex',
@@ -909,7 +1090,7 @@ const styles: Record<string, CSSProperties> = {
     gap: 12
   },
   menuName: {
-    fontSize: 16,
+    fontSize: 'clamp(15px, 4.2vw, 16px)',
     margin: 0
   },
   menuPrice: {
@@ -922,16 +1103,17 @@ const styles: Record<string, CSSProperties> = {
   },
   menuButton: {
     borderRadius: 12,
-    padding: '10px 12px',
+    padding: '12px 14px',
     backgroundColor: '#0f172a',
     color: '#fff',
     border: 'none',
     cursor: 'pointer'
   },
   cartCard: {
+    ...panelWidth,
     backgroundColor: '#fff',
-    borderRadius: 24,
-    padding: 20,
+    borderRadius: 'clamp(18px, 4vw, 24px)',
+    padding: 'clamp(16px, 4vw, 20px)',
     boxShadow: '0 20px 40px rgba(15, 23, 42, 0.12)'
   },
   cartCount: {
@@ -947,6 +1129,8 @@ const styles: Record<string, CSSProperties> = {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 10,
     border: '1px solid #e2e8f0',
     borderRadius: 16,
     padding: '12px 14px'
@@ -963,8 +1147,8 @@ const styles: Record<string, CSSProperties> = {
     gap: 8
   },
   cartActionButton: {
-    width: 28,
-    height: 28,
+    width: 32,
+    height: 32,
     borderRadius: 8,
     border: '1px solid #cbd5f5',
     backgroundColor: '#f8fafc',
@@ -1001,15 +1185,16 @@ const styles: Record<string, CSSProperties> = {
   cartTotalRow: {
     display: 'flex',
     justifyContent: 'space-between',
-    fontSize: 16
+    fontSize: 'clamp(15px, 4vw, 16px)'
   },
   checkoutButton: {
-    padding: '12px 16px',
+    padding: '14px 16px',
     borderRadius: 14,
     border: 'none',
     backgroundColor: '#38bdf8',
     color: '#0f172a',
     fontWeight: 700,
+    fontSize: 'clamp(14px, 4vw, 16px)',
     cursor: 'pointer'
   },
   helperText: {

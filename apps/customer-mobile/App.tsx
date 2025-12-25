@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Platform, SafeAreaView, StyleSheet, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { WebView, WebViewMessageEvent } from 'react-native-webview';
+import * as WebBrowser from 'expo-web-browser';
 
 import {
   ensureNotificationPermissions,
@@ -17,6 +18,8 @@ const resolveCustomerUrl = () => {
   const vendorSlug = process.env.EXPO_PUBLIC_DEFAULT_VENDOR_SLUG ?? 'sunset';
   return `https://${vendorSlug}.countrtop.com`;
 };
+
+const resolveAuthRedirect = () => 'countrtop://auth-callback';
 
 const resolveApiBaseUrl = () => {
   const explicit = process.env.EXPO_PUBLIC_API_BASE_URL;
@@ -39,7 +42,16 @@ export default function App() {
     'idle'
   );
   const [registrationError, setRegistrationError] = useState<string | null>(null);
+  const [authFlowError, setAuthFlowError] = useState<string | null>(null);
+  const [webStatus, setWebStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
+  const [webError, setWebError] = useState<string | null>(null);
   const lastRegistered = useRef<string | null>(null);
+  const webViewRef = useRef<WebView>(null);
+  const expoProjectId = process.env.EXPO_PUBLIC_EXPO_PROJECT_ID;
+  const webUserAgent = useMemo(() => {
+    const platformTag = Platform.OS === 'ios' ? 'CountrTopiOS' : 'CountrTopAndroid';
+    return `${platformTag}/1.0 (ngrok-skip)`;
+  }, []);
 
   useEffect(() => {
     const bootstrapNotifications = async () => {
@@ -57,7 +69,13 @@ export default function App() {
           return;
         }
 
-        const token = await obtainExpoPushToken();
+        if (!expoProjectId) {
+          setNotificationStatus('error');
+          setNotificationError('Missing Expo project ID for push. Set EXPO_PUBLIC_EXPO_PROJECT_ID.');
+          return;
+        }
+
+        const token = await obtainExpoPushToken(expoProjectId);
         setPushToken(token);
         setNotificationStatus('ready');
       } catch (error) {
@@ -123,9 +141,47 @@ export default function App() {
     return 'Push token ready to link.';
   }, [linkedUserId, registrationError, registrationStatus]);
 
+  const launchOAuth = async (authUrl: string) => {
+    setAuthFlowError(null);
+    const redirectUri = resolveAuthRedirect();
+    const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
+    if (result.type !== 'success' || !result.url) {
+      throw new Error('Sign-in was cancelled or blocked.');
+    }
+
+    const hash = result.url.split('#')[1] ?? '';
+    const params = new URLSearchParams(hash);
+    const accessToken = params.get('access_token');
+    const refreshToken = params.get('refresh_token');
+    const expiresIn = params.get('expires_in');
+    const tokenType = params.get('token_type');
+
+    if (!accessToken || !refreshToken) {
+      throw new Error('Missing tokens in auth response.');
+    }
+
+    const payload = {
+      type: 'ct-auth-token',
+      access_token: accessToken,
+      refresh_token: refreshToken,
+      expires_in: expiresIn,
+      token_type: tokenType
+    };
+
+    webViewRef.current?.injectJavaScript(
+      `window.ctHandleNativeAuth && window.ctHandleNativeAuth(${JSON.stringify(payload)}); true;`
+    );
+  };
+
   const handleWebMessage = (event: WebViewMessageEvent) => {
     try {
       const payload = JSON.parse(event.nativeEvent.data);
+      if (payload?.type === 'ct-auth-url' && payload?.url) {
+        launchOAuth(payload.url).catch((error) => {
+          setAuthFlowError(error instanceof Error ? error.message : 'Unable to complete sign-in.');
+        });
+        return;
+      }
       if (payload?.type === 'ct-auth') {
         setLinkedUserId(payload.userId ?? null);
         if (!payload.userId) {
@@ -139,14 +195,73 @@ export default function App() {
     }
   };
 
+  const customerUrl = resolveCustomerUrl();
+
+  useEffect(() => {
+    setWebStatus('loading');
+    setWebError(null);
+  }, [customerUrl]);
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar style="dark" />
       <View style={styles.statusBar}>
         <Text style={styles.statusText}>{notificationCopy}</Text>
         <Text style={styles.statusText}>{registrationCopy}</Text>
+        {authFlowError && <Text style={styles.statusText}>{authFlowError}</Text>}
+        {webStatus === 'error' && <Text style={styles.statusText}>{webError}</Text>}
       </View>
-      <WebView source={{ uri: resolveCustomerUrl() }} onMessage={handleWebMessage} />
+      <WebView
+        ref={webViewRef}
+        source={{
+          uri: customerUrl,
+          headers: {
+            'ngrok-skip-browser-warning': 'true'
+          }
+        }}
+        style={styles.webView}
+        userAgent={webUserAgent}
+        originWhitelist={['https://*', 'http://*']}
+        javaScriptEnabled
+        domStorageEnabled
+        cacheEnabled={false}
+        incognito
+        sharedCookiesEnabled
+        thirdPartyCookiesEnabled
+        startInLoadingState
+        renderLoading={() => (
+          <View style={styles.loadingState}>
+            <Text style={styles.loadingText}>Loading customer web…</Text>
+          </View>
+        )}
+        renderError={(errorName, errorDescription) => (
+          <View style={styles.loadingState}>
+            <Text style={styles.loadingText}>{errorName}</Text>
+            <Text style={styles.loadingText}>{errorDescription}</Text>
+          </View>
+        )}
+        onLoadStart={() => {
+          setWebStatus('loading');
+          setWebError(null);
+        }}
+        onLoadEnd={() => {
+          setWebStatus('ready');
+        }}
+        onError={(event) => {
+          setWebStatus('error');
+          setWebError(event.nativeEvent.description ?? 'Unable to load customer web.');
+        }}
+        onHttpError={(event) => {
+          setWebStatus('error');
+          setWebError(`HTTP ${event.nativeEvent.statusCode} loading ${event.nativeEvent.url}`);
+        }}
+        onContentProcessDidTerminate={() => {
+          setWebStatus('error');
+          setWebError('WebView process terminated. Reloading…');
+          webViewRef.current?.reload();
+        }}
+        onMessage={handleWebMessage}
+      />
     </SafeAreaView>
   );
 }
@@ -166,5 +281,19 @@ const styles = StyleSheet.create({
   statusText: {
     color: '#475569',
     fontSize: 12
+  },
+  webView: {
+    flex: 1,
+    backgroundColor: '#fff'
+  },
+  loadingState: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff'
+  },
+  loadingText: {
+    color: '#475569',
+    fontSize: 14
   }
 });

@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
-import { getServerDataClient } from '../../lib/dataClient';
+import { getServerDataClient } from '../../../lib/dataClient';
 
 type RegisterRequest = {
   userId?: string;
