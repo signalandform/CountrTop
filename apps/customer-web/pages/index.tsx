@@ -757,6 +757,8 @@ export default function CustomerHome({ vendorSlug, vendorName }: CustomerHomePro
         </section>
         <style jsx>{`
           .ct-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
             grid-template-areas:
               'account cart'
               'menu cart';
@@ -904,8 +906,6 @@ const styles: Record<string, CSSProperties> = {
     fontSize: 12
   },
   content: {
-    display: 'grid',
-    gridTemplateColumns: 'minmax(0, 2fr) minmax(280px, 1fr)',
     gap: 20,
     padding: '24px clamp(16px, 8vw, 96px) 72px'
   },
