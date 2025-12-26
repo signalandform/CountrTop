@@ -146,7 +146,7 @@ export const defaultMockVendors: Vendor[] = [
     id: 'vendor_cafe',
     slug: 'sunset',
     displayName: 'Sunset Coffee Cart',
-    squareLocationId: 'SQUARE_LOCATION_DEMO',
+    squareLocationId: 'SQUARE_LOCATION_REQUIRED',
     squareCredentialRef: 'square_demo',
     status: 'active'
   }

@@ -61,7 +61,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
   const baseUrl = getBaseUrl(req);
   const redirectUrl = `${baseUrl}/checkout/confirm?orderId=${encodeURIComponent(orderReferenceId)}`;
 
-  const useMockData = process.env.NEXT_PUBLIC_USE_MOCK_DATA !== 'false';
+  const useMockData = process.env.NEXT_PUBLIC_USE_MOCK_DATA === 'true';
   if (useMockData) {
     return res.status(200).json({
       ok: true,
@@ -72,12 +72,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
   }
 
   try {
+    const locationId = vendor.squareLocationId;
+    if (!locationId || locationId === 'SQUARE_LOCATION_DEMO') {
+      return res.status(400).json({ ok: false, error: 'Vendor Square location id not configured' });
+    }
+
+    console.log('CT Square Checkout Debug', {
+      slug,
+      useMockData,
+      vendorId: vendor?.id,
+      vendorSquareLocationId: vendor?.squareLocationId,
+      locationId
+    });
+
     const square = squareClientForVendor(vendor);
 
     const { result } = await square.checkoutApi.createPaymentLink({
       idempotencyKey: randomUUID(),
       order: {
-        locationId: vendor.squareLocationId,
+        locationId,
         referenceId: orderReferenceId,
         ...(body.userId ? { metadata: { ct_user_id: body.userId } } : {}),
         lineItems: body.items.map((item) => ({

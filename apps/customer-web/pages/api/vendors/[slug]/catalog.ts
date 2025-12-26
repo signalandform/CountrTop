@@ -34,7 +34,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     return res.status(404).json({ ok: false, error: 'Vendor not found' });
   }
 
-  const useMockData = process.env.NEXT_PUBLIC_USE_MOCK_DATA !== 'false';
+  const useMockData = process.env.NEXT_PUBLIC_USE_MOCK_DATA === 'true';
   if (useMockData) {
     return res.status(200).json({ ok: true, items: mockCatalogItems });
   }
