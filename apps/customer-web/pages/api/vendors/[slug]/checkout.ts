@@ -82,12 +82,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         ...(body.userId ? { metadata: { ct_user_id: body.userId } } : {}),
         lineItems: body.items.map((item) => ({
           catalogObjectId: item.variationId,
-          name: item.name,
-          quantity: item.quantity.toString(),
-          basePriceMoney: {
-            amount: BigInt(Math.round(item.price)),
-            currency: item.currency
-          }
+          quantity: item.quantity.toString()
         }))
       },
       checkoutOptions: {
@@ -108,8 +103,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       orderId: orderReferenceId,
       squareOrderId
     });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to create checkout link';
+  } catch (error: any) {
+    console.error('Square createPaymentLink error:', JSON.stringify(error, null, 2));
+    const message =
+      error?.result?.errors?.map((entry: { code?: string; detail?: string }) => `${entry.code}: ${entry.detail ?? ''}`).join(' | ') ||
+      error?.errors?.map((entry: { code?: string; detail?: string }) => `${entry.code}: ${entry.detail ?? ''}`).join(' | ') ||
+      error?.message ||
+      'Failed to create checkout link';
     return res.status(500).json({ ok: false, error: message });
   }
 }
