@@ -671,7 +671,7 @@ export default function CustomerHome({ vendorSlug, vendorName }: CustomerHomePro
             <div style={styles.menuGrid}>
               {menuItems.map((item) => (
                 <div key={item.id} style={styles.menuCard}>
-                  <div style={styles.menuImage}>
+                  <div style={styles.menuImage} className="ct-menu-image">
                     {item.imageUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={item.imageUrl} alt={item.name} style={styles.menuImgTag} />
@@ -772,6 +772,10 @@ export default function CustomerHome({ vendorSlug, vendorName }: CustomerHomePro
             grid-area: menu;
           }
 
+          .ct-menu-image {
+            height: 150px;
+          }
+
           .ct-cart {
             grid-area: cart;
           }
@@ -815,6 +819,10 @@ export default function CustomerHome({ vendorSlug, vendorName }: CustomerHomePro
             .ct-menu {
               width: 100%;
               align-self: stretch;
+            }
+
+            .ct-menu-image {
+              height: 120px;
             }
 
             .ct-cart {
@@ -1065,7 +1073,6 @@ const styles: Record<string, CSSProperties> = {
     boxShadow: '0 16px 32px rgba(15, 23, 42, 0.08)'
   },
   menuImage: {
-    height: 'clamp(120px, 40vw, 150px)',
     borderRadius: 16,
     backgroundColor: '#e2e8f0',
     display: 'flex',
