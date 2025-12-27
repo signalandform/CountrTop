@@ -25,6 +25,27 @@ export function VendorInsightsDashboard({
       </p>
       {statusMessage && <p style={{ color: '#b91c1c', marginBottom: 24 }}>{statusMessage}</p>}
 
+      {vendorSlug && (
+        <div style={{ marginBottom: 20 }}>
+          <a
+            href={`/vendors/${vendorSlug}/orders`}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '10px 14px',
+              borderRadius: 999,
+              border: '1px solid #e2e8f0',
+              color: '#0f172a',
+              textDecoration: 'none',
+              fontWeight: 600
+            }}
+          >
+            View orders
+          </a>
+        </div>
+      )}
+
       <Section title="CountrTop impact" subtitle="Read-only summary">
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
           <StatCard label="Orders via CountrTop" value={formatMetric(insights.orders)} helperText="Total" />
