@@ -1,42 +1,32 @@
 import Head from 'next/head';
 import type { GetServerSideProps } from 'next';
 
-import { resolveVendorSlugFromHost } from '@countrtop/data';
 import { VendorInsights } from '@countrtop/models';
 
-import { VendorInsightsDashboard } from '../components/VendorInsightsDashboard';
-import { getServerDataClient } from '../lib/dataClient';
-import { summarizeInsights } from '../lib/insights';
+import { VendorInsightsDashboard } from '../../components/VendorInsightsDashboard';
+import { getServerDataClient } from '../../lib/dataClient';
+import { summarizeInsights } from '../../lib/insights';
 
 type VendorAdminProps = {
-  vendorSlug: string | null;
+  vendorSlug: string;
   vendorName: string;
   insights: VendorInsights;
   statusMessage?: string | null;
 };
 
-export const getServerSideProps: GetServerSideProps<VendorAdminProps> = async ({ req }) => {
-  const defaultSlug = process.env.DEFAULT_VENDOR_SLUG;
-  if (defaultSlug) {
-    return {
-      redirect: {
-        destination: `/vendors/${defaultSlug}`,
-        permanent: false
-      }
-    };
-  }
+export const getServerSideProps: GetServerSideProps<VendorAdminProps> = async ({ params }) => {
+  const slugParam = params?.slug;
+  const slug = Array.isArray(slugParam) ? slugParam[0] : slugParam;
 
-  const vendorSlug = resolveVendorSlugFromHost(req.headers.host, defaultSlug);
   const dataClient = getServerDataClient();
-
-  const vendor = vendorSlug ? await dataClient.getVendorBySlug(vendorSlug) : null;
+  const vendor = slug ? await dataClient.getVendorBySlug(slug) : null;
   const orders = vendor ? await dataClient.listOrderSnapshotsForVendor(vendor.id) : [];
   const insights = await summarizeInsights(vendor, orders, dataClient);
-  const statusMessage = vendorSlug && !vendor ? 'Vendor not found' : null;
+  const statusMessage = vendor ? null : 'Vendor not found';
 
   return {
     props: {
-      vendorSlug: vendorSlug ?? null,
+      vendorSlug: slug ?? 'unknown',
       vendorName: vendor?.displayName ?? 'Unknown vendor',
       insights,
       statusMessage
@@ -44,7 +34,7 @@ export const getServerSideProps: GetServerSideProps<VendorAdminProps> = async ({
   };
 };
 
-export default function VendorAdminDashboard({
+export default function VendorAdminVendorPage({
   vendorSlug,
   vendorName,
   insights,
