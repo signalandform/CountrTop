@@ -29,12 +29,18 @@ export const summarizeInsights = async (
     pointsIssued += entries.reduce((sum, entry) => sum + Math.max(0, entry.pointsDelta), 0);
   }
 
+  type SnapshotItem = {
+    name?: unknown;
+    quantity?: unknown;
+  };
+
   const itemCounts = new Map<string, number>();
   orders.forEach((order) => {
     const items = Array.isArray(order.snapshotJson?.items) ? order.snapshotJson.items : [];
-    items.forEach((item: any) => {
-      const label = typeof item?.name === 'string' ? item.name : 'Item';
-      const quantity = typeof item?.quantity === 'number' ? item.quantity : 1;
+    items.forEach((item) => {
+      const raw = item as SnapshotItem;
+      const label = typeof raw.name === 'string' ? raw.name : 'Item';
+      const quantity = typeof raw.quantity === 'number' ? raw.quantity : 1;
       itemCounts.set(label, (itemCounts.get(label) ?? 0) + quantity);
     });
   });
