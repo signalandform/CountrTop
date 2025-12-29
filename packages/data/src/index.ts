@@ -27,6 +27,7 @@ type SupabaseModule = typeof import('./supabaseClient');
 let cachedSupabaseModule: SupabaseModule | null = null;
 const loadSupabaseModule = (): SupabaseModule => {
   if (!cachedSupabaseModule) {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires -- lazy load to avoid bundling server-only deps
     cachedSupabaseModule = require('./supabaseClient') as SupabaseModule;
   }
   return cachedSupabaseModule as SupabaseModule;

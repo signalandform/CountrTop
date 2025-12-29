@@ -18,6 +18,15 @@ type OrderTicket = {
   squareOrderId: string;
 };
 
+type ApiOrder = Partial<OrderTicket>;
+
+const hasRequiredOrderFields = (
+  order: ApiOrder
+): order is ApiOrder & { id: string; squareOrderId: string; placedAt: string } =>
+  typeof order.id === 'string' &&
+  typeof order.squareOrderId === 'string' &&
+  typeof order.placedAt === 'string';
+
 const formatCurrency = (value: number) => `$${(value / 100).toFixed(2)}`;
 
 const resolveApiBaseUrl = () => process.env.EXPO_PUBLIC_API_BASE_URL ?? 'http://localhost:3000';
@@ -43,14 +52,15 @@ export default function VendorOpsApp() {
       if (!response.ok || !payload.ok) {
         throw new Error(payload.error ?? 'Failed to load orders');
       }
-      const mapped: OrderTicket[] = (payload.orders ?? []).map((order: any) => ({
+      const rawOrders = Array.isArray(payload.orders) ? (payload.orders as ApiOrder[]) : [];
+      const mapped: OrderTicket[] = rawOrders.filter(hasRequiredOrderFields).map((order) => ({
         id: order.id,
         squareOrderId: order.squareOrderId,
         placedAt: order.placedAt,
         status: order.status ?? 'new',
-        items: order.items ?? [],
-        total: order.total ?? 0,
-        currency: order.currency ?? 'USD'
+        items: Array.isArray(order.items) ? order.items : [],
+        total: typeof order.total === 'number' ? order.total : 0,
+        currency: typeof order.currency === 'string' ? order.currency : 'USD'
       }));
       setOrders(mapped);
       setOrderStatus('ready');
