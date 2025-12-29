@@ -23,11 +23,16 @@ export const summarizeInsights = async (
     counts.set(order.userId, (counts.get(order.userId) ?? 0) + 1);
   });
 
-  let pointsIssued = 0;
-  for (const userId of counts.keys()) {
-    const entries = await dataClient.listLoyaltyEntriesForUser(vendor.id, userId);
-    pointsIssued += entries.reduce((sum, entry) => sum + Math.max(0, entry.pointsDelta), 0);
-  }
+  // Batch loyalty entry queries using Promise.all for better performance
+  const userIds = Array.from(counts.keys());
+  const loyaltyEntryPromises = userIds.map((userId) =>
+    dataClient.listLoyaltyEntriesForUser(vendor.id, userId)
+  );
+  const loyaltyEntryResults = await Promise.all(loyaltyEntryPromises);
+  const pointsIssued = loyaltyEntryResults.reduce(
+    (total, entries) => total + entries.reduce((sum, entry) => sum + Math.max(0, entry.pointsDelta), 0),
+    0
+  );
 
   type SnapshotItem = {
     name?: unknown;

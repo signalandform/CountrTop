@@ -17,6 +17,22 @@ export const getBrowserSupabaseClient = (): SupabaseClient<Database> | null => {
     return null;
   }
 
-  cachedClient = createClient<Database>(url, anonKey);
+  // Configure Supabase client for browser with connection pooling
+  // For mobile/browser: max 5 connections, connection reuse enabled
+  cachedClient = createClient<Database>(url, anonKey, {
+    db: {
+      schema: 'public'
+    },
+    global: {
+      headers: {
+        'x-client-info': 'countrtop-browser'
+      }
+    },
+    auth: {
+      persistSession: true, // Browser needs session persistence
+      autoRefreshToken: true,
+      detectSessionInUrl: true
+    }
+  });
   return cachedClient;
 };

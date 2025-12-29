@@ -32,6 +32,8 @@
     "typescript": "^5.3.3"
   },
   "dependencies": {
-    "@babel/runtime": "^7.28.4"
+    "@babel/runtime": "^7.28.4",
+    "pino": "^10.1.0",
+    "pino-pretty": "^13.1.3"
   }
 }

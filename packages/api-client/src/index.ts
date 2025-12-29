@@ -67,3 +67,10 @@ export const registerPushDevice = async (
   if (!response.ok) throw new Error('Failed to register push device');
   return response.json();
 };
+
+// Export Square client utilities
+export { createResilientSquareClient, squareClientForVendor } from './square';
+
+// Export logger utilities
+export { getLogger, createLogger, logger } from './logger';
+export type { LogContext, LogLevel } from './logger';

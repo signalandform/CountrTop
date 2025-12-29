@@ -1,8 +1,12 @@
 import { randomUUID } from 'crypto';
 import type { NextApiRequest, NextApiResponse } from 'next';
 
+import { createLogger } from '@countrtop/api-client';
 import { getServerDataClient } from '../../../../lib/dataClient';
+import { rateLimiters } from '../../../../lib/rateLimit';
 import { squareClientForVendor } from '../../../../lib/square';
+
+const logger = createLogger({ requestId: 'checkout' });
 
 type CheckoutItem = {
   id: string;
@@ -33,7 +37,7 @@ const getBaseUrl = (req: NextApiRequest) => {
 
 const buildReferenceId = () => `ct_${randomUUID()}`;
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse<CheckoutResponse>) {
+async function handler(req: NextApiRequest, res: NextApiResponse<CheckoutResponse>) {
   if (req.method !== 'POST') {
     return res.status(405).json({ ok: false, error: 'Method not allowed' });
   }
@@ -77,7 +81,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       return res.status(400).json({ ok: false, error: 'Vendor Square location id not configured' });
     }
 
-    console.log('CT Square Checkout Debug', {
+    logger.debug('Square checkout initiated', {
       slug,
       useMockData,
       vendorId: vendor?.id,
@@ -117,7 +121,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       squareOrderId
     });
   } catch (error: any) {
-    console.error('Square createPaymentLink error:', JSON.stringify(error, null, 2));
+    logger.error('Square createPaymentLink error', error, {
+      slug,
+      vendorId: vendor?.id
+    });
     const message =
       error?.result?.errors?.map((entry: { code?: string; detail?: string }) => `${entry.code}: ${entry.detail ?? ''}`).join(' | ') ||
       error?.errors?.map((entry: { code?: string; detail?: string }) => `${entry.code}: ${entry.detail ?? ''}`).join(' | ') ||
@@ -126,3 +133,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     return res.status(500).json({ ok: false, error: message });
   }
 }
+
+// Apply rate limiting: 10 requests per minute (more restrictive for checkout)
+export default rateLimiters.checkout(handler);

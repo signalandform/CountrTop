@@ -4,6 +4,72 @@ import { SupabaseClient, User as SupabaseAuthUser } from '@supabase/supabase-js'
 import { DataClient, LoyaltyLedgerEntryInput, OrderSnapshotInput, PushDeviceInput } from './dataClient';
 import { LoyaltyLedgerEntry, OrderSnapshot, PushDevice, User, Vendor, VendorStatus } from './models';
 
+// Query result cache with TTL
+type CacheEntry<T> = {
+  data: T;
+  expiresAt: number;
+};
+
+class QueryCache {
+  private cache = new Map<string, CacheEntry<unknown>>();
+  private readonly defaultTtl = 5 * 60 * 1000; // 5 minutes
+
+  get<T>(key: string): T | null {
+    const entry = this.cache.get(key);
+    if (!entry) return null;
+    if (Date.now() > entry.expiresAt) {
+      this.cache.delete(key);
+      return null;
+    }
+    return entry.data as T;
+  }
+
+  set<T>(key: string, data: T, ttlMs = this.defaultTtl): void {
+    this.cache.set(key, {
+      data,
+      expiresAt: Date.now() + ttlMs
+    });
+  }
+
+  clear(): void {
+    this.cache.clear();
+  }
+
+  delete(key: string): void {
+    this.cache.delete(key);
+  }
+}
+
+const queryCache = new QueryCache();
+
+// Performance logging helper
+const logQueryPerformance = (operation: string, startTime: number, success: boolean, error?: unknown) => {
+  const duration = Date.now() - startTime;
+  
+  // Use structured logging if available, fallback to console
+  try {
+    const { getLogger } = require('@countrtop/api-client');
+    const logger = getLogger();
+    if (success) {
+      logger.info('Query performance', { operation, durationMs: duration });
+      // Log slow queries as warnings
+      if (duration > 1000) {
+        logger.warn('Slow query detected', { operation, durationMs: duration });
+      }
+    } else {
+      logger.error('Query failed', error, { operation, durationMs: duration });
+    }
+  } catch {
+    // Fallback to console if logger not available
+    const message = `[Query Performance] ${operation} - ${duration}ms`;
+    if (success) {
+      console.log(message);
+    } else {
+      console.error(message, error);
+    }
+  }
+};
+
 export type Database = {
   public: {
     Tables: {
@@ -121,146 +187,337 @@ export class SupabaseDataClient implements DataClient {
   }
 
   async getVendorBySlug(slug: string): Promise<Vendor | null> {
-    const { data, error } = await this.client.from('vendors').select('*').eq('slug', slug).maybeSingle();
-    if (error) throw error;
-    return data ? mapVendorFromRow(data as Database['public']['Tables']['vendors']['Row']) : null;
+    const cacheKey = `vendor:slug:${slug}`;
+    const cached = queryCache.get<Vendor | null>(cacheKey);
+    if (cached !== null) return cached;
+
+    const startTime = Date.now();
+    try {
+      // Field limiting: only select needed columns
+      const { data, error } = await this.client
+        .from('vendors')
+        .select('id,slug,display_name,square_location_id,square_credential_ref,status')
+        .eq('slug', slug)
+        .maybeSingle();
+      if (error) throw error;
+      const result = data ? mapVendorFromRow(data as Database['public']['Tables']['vendors']['Row']) : null;
+      queryCache.set(cacheKey, result);
+      logQueryPerformance('getVendorBySlug', startTime, true);
+      return result;
+    } catch (error) {
+      logQueryPerformance('getVendorBySlug', startTime, false, error);
+      throw error;
+    }
   }
 
   async getVendorById(vendorId: string): Promise<Vendor | null> {
-    const { data, error } = await this.client.from('vendors').select('*').eq('id', vendorId).maybeSingle();
-    if (error) throw error;
-    return data ? mapVendorFromRow(data as Database['public']['Tables']['vendors']['Row']) : null;
+    const cacheKey = `vendor:id:${vendorId}`;
+    const cached = queryCache.get<Vendor | null>(cacheKey);
+    if (cached !== null) return cached;
+
+    const startTime = Date.now();
+    try {
+      // Field limiting: only select needed columns
+      const { data, error } = await this.client
+        .from('vendors')
+        .select('id,slug,display_name,square_location_id,square_credential_ref,status')
+        .eq('id', vendorId)
+        .maybeSingle();
+      if (error) throw error;
+      const result = data ? mapVendorFromRow(data as Database['public']['Tables']['vendors']['Row']) : null;
+      queryCache.set(cacheKey, result);
+      logQueryPerformance('getVendorById', startTime, true);
+      return result;
+    } catch (error) {
+      logQueryPerformance('getVendorById', startTime, false, error);
+      throw error;
+    }
   }
 
   async getVendorBySquareLocationId(locationId: string): Promise<Vendor | null> {
-    const { data, error } = await this.client
-      .from('vendors')
-      .select('*')
-      .eq('square_location_id', locationId)
-      .maybeSingle();
-    if (error) throw error;
-    return data ? mapVendorFromRow(data as Database['public']['Tables']['vendors']['Row']) : null;
+    const cacheKey = `vendor:square_location:${locationId}`;
+    const cached = queryCache.get<Vendor | null>(cacheKey);
+    if (cached !== null) return cached;
+
+    const startTime = Date.now();
+    try {
+      // Field limiting: only select needed columns
+      const { data, error } = await this.client
+        .from('vendors')
+        .select('id,slug,display_name,square_location_id,square_credential_ref,status')
+        .eq('square_location_id', locationId)
+        .maybeSingle();
+      if (error) throw error;
+      const result = data ? mapVendorFromRow(data as Database['public']['Tables']['vendors']['Row']) : null;
+      queryCache.set(cacheKey, result);
+      logQueryPerformance('getVendorBySquareLocationId', startTime, true);
+      return result;
+    } catch (error) {
+      logQueryPerformance('getVendorBySquareLocationId', startTime, false, error);
+      throw error;
+    }
   }
 
   async createOrderSnapshot(order: OrderSnapshotInput): Promise<OrderSnapshot> {
-    const withId = {
-      ...order,
-      id: order.id ?? randomUUID()
-    };
-    const { data, error } = await this.client
-      .from('order_snapshots')
-      .insert(toOrderSnapshotInsert(withId))
-      .select()
-      .single();
-    if (error) throw error;
-    return mapOrderSnapshotFromRow(data as Database['public']['Tables']['order_snapshots']['Row']);
+    const startTime = Date.now();
+    try {
+      const withId = {
+        ...order,
+        id: order.id ?? randomUUID()
+      };
+      const { data, error } = await this.client
+        .from('order_snapshots')
+        .insert(toOrderSnapshotInsert(withId))
+        .select('id,vendor_id,user_id,square_order_id,placed_at,snapshot_json')
+        .single();
+      if (error) throw error;
+      const result = mapOrderSnapshotFromRow(data as Database['public']['Tables']['order_snapshots']['Row']);
+      // Invalidate related cache entries
+      queryCache.delete(`orders:vendor:${result.vendorId}`);
+      if (result.userId) {
+        queryCache.delete(`orders:user:${result.vendorId}:${result.userId}`);
+      }
+      logQueryPerformance('createOrderSnapshot', startTime, true);
+      return result;
+    } catch (error) {
+      logQueryPerformance('createOrderSnapshot', startTime, false, error);
+      throw error;
+    }
   }
 
   async getOrderSnapshot(orderId: string): Promise<OrderSnapshot | null> {
-    const { data, error } = await this.client
-      .from('order_snapshots')
-      .select('*')
-      .eq('id', orderId)
-      .maybeSingle();
-    if (error) throw error;
-    return data
-      ? mapOrderSnapshotFromRow(data as Database['public']['Tables']['order_snapshots']['Row'])
-      : null;
+    const cacheKey = `order:${orderId}`;
+    const cached = queryCache.get<OrderSnapshot | null>(cacheKey);
+    if (cached !== null) return cached;
+
+    const startTime = Date.now();
+    try {
+      // Field limiting: select only needed columns
+      const { data, error } = await this.client
+        .from('order_snapshots')
+        .select('id,vendor_id,user_id,square_order_id,placed_at,snapshot_json')
+        .eq('id', orderId)
+        .maybeSingle();
+      if (error) throw error;
+      const result = data
+        ? mapOrderSnapshotFromRow(data as Database['public']['Tables']['order_snapshots']['Row'])
+        : null;
+      queryCache.set(cacheKey, result);
+      logQueryPerformance('getOrderSnapshot', startTime, true);
+      return result;
+    } catch (error) {
+      logQueryPerformance('getOrderSnapshot', startTime, false, error);
+      throw error;
+    }
   }
 
   async getOrderSnapshotBySquareOrderId(
     vendorId: string,
     squareOrderId: string
   ): Promise<OrderSnapshot | null> {
-    const { data, error } = await this.client
-      .from('order_snapshots')
-      .select('*')
-      .eq('vendor_id', vendorId)
-      .eq('square_order_id', squareOrderId)
-      .maybeSingle();
-    if (error) throw error;
-    return data
-      ? mapOrderSnapshotFromRow(data as Database['public']['Tables']['order_snapshots']['Row'])
-      : null;
+    const cacheKey = `order:square:${vendorId}:${squareOrderId}`;
+    const cached = queryCache.get<OrderSnapshot | null>(cacheKey);
+    if (cached !== null) return cached;
+
+    const startTime = Date.now();
+    try {
+      // Field limiting: select only needed columns
+      const { data, error } = await this.client
+        .from('order_snapshots')
+        .select('id,vendor_id,user_id,square_order_id,placed_at,snapshot_json')
+        .eq('vendor_id', vendorId)
+        .eq('square_order_id', squareOrderId)
+        .maybeSingle();
+      if (error) throw error;
+      const result = data
+        ? mapOrderSnapshotFromRow(data as Database['public']['Tables']['order_snapshots']['Row'])
+        : null;
+      queryCache.set(cacheKey, result);
+      logQueryPerformance('getOrderSnapshotBySquareOrderId', startTime, true);
+      return result;
+    } catch (error) {
+      logQueryPerformance('getOrderSnapshotBySquareOrderId', startTime, false, error);
+      throw error;
+    }
   }
 
   async listOrderSnapshotsForUser(vendorId: string, userId: string): Promise<OrderSnapshot[]> {
-    const { data, error } = await this.client
-      .from('order_snapshots')
-      .select('*')
-      .eq('vendor_id', vendorId)
-      .eq('user_id', userId)
-      .order('placed_at', { ascending: false });
-    if (error) throw error;
-    return (data ?? []).map(
-      (row) => mapOrderSnapshotFromRow(row as Database['public']['Tables']['order_snapshots']['Row'])
-    );
+    const cacheKey = `orders:user:${vendorId}:${userId}`;
+    const cached = queryCache.get<OrderSnapshot[]>(cacheKey);
+    if (cached) return cached;
+
+    const startTime = Date.now();
+    try {
+      // Field limiting: select only needed columns
+      const { data, error } = await this.client
+        .from('order_snapshots')
+        .select('id,vendor_id,user_id,square_order_id,placed_at,snapshot_json')
+        .eq('vendor_id', vendorId)
+        .eq('user_id', userId)
+        .order('placed_at', { ascending: false });
+      if (error) throw error;
+      const result = (data ?? []).map(
+        (row) => mapOrderSnapshotFromRow(row as Database['public']['Tables']['order_snapshots']['Row'])
+      );
+      queryCache.set(cacheKey, result);
+      logQueryPerformance('listOrderSnapshotsForUser', startTime, true);
+      return result;
+    } catch (error) {
+      logQueryPerformance('listOrderSnapshotsForUser', startTime, false, error);
+      throw error;
+    }
   }
 
   async listOrderSnapshotsForVendor(vendorId: string): Promise<OrderSnapshot[]> {
-    const { data, error } = await this.client
-      .from('order_snapshots')
-      .select('*')
-      .eq('vendor_id', vendorId)
-      .order('placed_at', { ascending: false });
-    if (error) throw error;
-    return (data ?? []).map(
-      (row) => mapOrderSnapshotFromRow(row as Database['public']['Tables']['order_snapshots']['Row'])
-    );
+    const cacheKey = `orders:vendor:${vendorId}`;
+    const cached = queryCache.get<OrderSnapshot[]>(cacheKey);
+    if (cached) return cached;
+
+    const startTime = Date.now();
+    try {
+      // Field limiting: select only needed columns
+      const { data, error } = await this.client
+        .from('order_snapshots')
+        .select('id,vendor_id,user_id,square_order_id,placed_at,snapshot_json')
+        .eq('vendor_id', vendorId)
+        .order('placed_at', { ascending: false });
+      if (error) throw error;
+      const result = (data ?? []).map(
+        (row) => mapOrderSnapshotFromRow(row as Database['public']['Tables']['order_snapshots']['Row'])
+      );
+      queryCache.set(cacheKey, result);
+      logQueryPerformance('listOrderSnapshotsForVendor', startTime, true);
+      return result;
+    } catch (error) {
+      logQueryPerformance('listOrderSnapshotsForVendor', startTime, false, error);
+      throw error;
+    }
   }
 
   async recordLoyaltyEntry(entry: LoyaltyLedgerEntryInput): Promise<LoyaltyLedgerEntry> {
-    const withId = {
-      ...entry,
-      id: entry.id ?? randomUUID()
-    };
-    const { data, error } = await this.client
-      .from('loyalty_ledger')
-      .insert(toLoyaltyLedgerInsert(withId))
-      .select()
-      .single();
-    if (error) throw error;
-    return mapLoyaltyLedgerFromRow(data as Database['public']['Tables']['loyalty_ledger']['Row']);
+    const startTime = Date.now();
+    try {
+      const withId = {
+        ...entry,
+        id: entry.id ?? randomUUID()
+      };
+      const { data, error } = await this.client
+        .from('loyalty_ledger')
+        .insert(toLoyaltyLedgerInsert(withId))
+        .select('id,vendor_id,user_id,order_id,points_delta,created_at')
+        .single();
+      if (error) throw error;
+      const result = mapLoyaltyLedgerFromRow(data as Database['public']['Tables']['loyalty_ledger']['Row']);
+      // Invalidate related cache entries
+      queryCache.delete(`loyalty:user:${result.vendorId}:${result.userId}`);
+      logQueryPerformance('recordLoyaltyEntry', startTime, true);
+      return result;
+    } catch (error) {
+      logQueryPerformance('recordLoyaltyEntry', startTime, false, error);
+      throw error;
+    }
   }
 
   async listLoyaltyEntriesForUser(vendorId: string, userId: string): Promise<LoyaltyLedgerEntry[]> {
-    const { data, error } = await this.client
-      .from('loyalty_ledger')
-      .select('*')
-      .eq('vendor_id', vendorId)
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
-    if (error) throw error;
-    return (data ?? []).map((row) =>
-      mapLoyaltyLedgerFromRow(row as Database['public']['Tables']['loyalty_ledger']['Row'])
-    );
+    const cacheKey = `loyalty:user:${vendorId}:${userId}`;
+    const cached = queryCache.get<LoyaltyLedgerEntry[]>(cacheKey);
+    if (cached) return cached;
+
+    const startTime = Date.now();
+    try {
+      // Field limiting: select only needed columns
+      const { data, error } = await this.client
+        .from('loyalty_ledger')
+        .select('id,vendor_id,user_id,order_id,points_delta,created_at')
+        .eq('vendor_id', vendorId)
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      const result = (data ?? []).map((row) =>
+        mapLoyaltyLedgerFromRow(row as Database['public']['Tables']['loyalty_ledger']['Row'])
+      );
+      queryCache.set(cacheKey, result);
+      logQueryPerformance('listLoyaltyEntriesForUser', startTime, true);
+      return result;
+    } catch (error) {
+      logQueryPerformance('listLoyaltyEntriesForUser', startTime, false, error);
+      throw error;
+    }
   }
 
   async getLoyaltyBalance(vendorId: string, userId: string): Promise<number> {
-    const entries = await this.listLoyaltyEntriesForUser(vendorId, userId);
-    return entries.reduce((sum, entry) => sum + entry.pointsDelta, 0);
+    const startTime = Date.now();
+    try {
+      // Batch: get entries and calculate balance in parallel if needed
+      // For balance, we can optimize by using a sum query, but for now use existing method
+      const entries = await this.listLoyaltyEntriesForUser(vendorId, userId);
+      const balance = entries.reduce((sum, entry) => sum + entry.pointsDelta, 0);
+      logQueryPerformance('getLoyaltyBalance', startTime, true);
+      return balance;
+    } catch (error) {
+      logQueryPerformance('getLoyaltyBalance', startTime, false, error);
+      throw error;
+    }
   }
 
   async upsertPushDevice(device: PushDeviceInput): Promise<PushDevice> {
-    const payload = toPushDeviceInsert({
-      ...device,
-      id: device.id ?? randomUUID()
-    });
-    const { data, error } = await this.client
-      .from('push_devices')
-      .upsert(payload, { onConflict: 'user_id,device_token' })
-      .select()
-      .single();
-    if (error) throw error;
-    return mapPushDeviceFromRow(data as Database['public']['Tables']['push_devices']['Row']);
+    const startTime = Date.now();
+    try {
+      const payload = toPushDeviceInsert({
+        ...device,
+        id: device.id ?? randomUUID()
+      });
+      const { data, error } = await this.client
+        .from('push_devices')
+        .upsert(payload, { onConflict: 'user_id,device_token' })
+        .select('id,user_id,device_token,platform,created_at,updated_at')
+        .single();
+      if (error) throw error;
+      const result = mapPushDeviceFromRow(data as Database['public']['Tables']['push_devices']['Row']);
+      // Invalidate related cache entries
+      queryCache.delete(`push_devices:user:${result.userId}`);
+      logQueryPerformance('upsertPushDevice', startTime, true);
+      return result;
+    } catch (error) {
+      logQueryPerformance('upsertPushDevice', startTime, false, error);
+      throw error;
+    }
   }
 
   async listPushDevicesForUser(userId: string): Promise<PushDevice[]> {
-    const { data, error } = await this.client.from('push_devices').select('*').eq('user_id', userId);
-    if (error) throw error;
-    return (data ?? []).map((row) =>
-      mapPushDeviceFromRow(row as Database['public']['Tables']['push_devices']['Row'])
-    );
+    const cacheKey = `push_devices:user:${userId}`;
+    const cached = queryCache.get<PushDevice[]>(cacheKey);
+    if (cached) return cached;
+
+    const startTime = Date.now();
+    try {
+      // Field limiting: select only needed columns
+      const { data, error } = await this.client
+        .from('push_devices')
+        .select('id,user_id,device_token,platform,created_at,updated_at')
+        .eq('user_id', userId);
+      if (error) throw error;
+      const result = (data ?? []).map((row) =>
+        mapPushDeviceFromRow(row as Database['public']['Tables']['push_devices']['Row'])
+      );
+      queryCache.set(cacheKey, result);
+      logQueryPerformance('listPushDevicesForUser', startTime, true);
+      return result;
+    } catch (error) {
+      logQueryPerformance('listPushDevicesForUser', startTime, false, error);
+      throw error;
+    }
+  }
+
+  // Helper method to invalidate cache when data changes
+  invalidateCache(pattern?: string): void {
+    if (pattern) {
+      // In a production system, use a more sophisticated cache invalidation
+      // For now, clear all cache entries matching the pattern
+      queryCache.clear();
+    } else {
+      queryCache.clear();
+    }
   }
 }
 

@@ -1,32 +1,11 @@
-import { Client, Environment } from 'square';
+import { squareClientForVendor as createSquareClient } from '@countrtop/api-client';
 
 import { Vendor } from '@countrtop/models';
 
-const resolveEnvironment = (): Environment => {
-  const value = (process.env.SQUARE_ENVIRONMENT ?? 'sandbox').toLowerCase();
-  return value === 'production' ? Environment.Production : Environment.Sandbox;
-};
-
-const normalizeCredentialRef = (value: string) => value.trim().toUpperCase().replace(/[^A-Z0-9_]/g, '_');
-
-const resolveAccessToken = (vendor: Vendor) => {
-  if (vendor.squareCredentialRef) {
-    const refKey = `SQUARE_ACCESS_TOKEN_${normalizeCredentialRef(vendor.squareCredentialRef)}`;
-    const refToken = process.env[refKey];
-    if (refToken) return refToken;
-  }
-
-  return process.env.SQUARE_ACCESS_TOKEN ?? null;
-};
-
+/**
+ * Creates a Square client for a vendor with retry logic and circuit breaker.
+ * Uses the resilient Square client from @countrtop/api-client.
+ */
 export const squareClientForVendor = (vendor: Vendor) => {
-  const accessToken = resolveAccessToken(vendor);
-  if (!accessToken) {
-    throw new Error('Square access token not configured for vendor.');
-  }
-
-  return new Client({
-    accessToken,
-    environment: resolveEnvironment()
-  });
+  return createSquareClient(vendor);
 };

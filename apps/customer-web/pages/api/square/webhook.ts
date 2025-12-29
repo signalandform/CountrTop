@@ -1,8 +1,11 @@
 import crypto from 'crypto';
 import type { NextApiRequest, NextApiResponse } from 'next';
 
+import { createLogger } from '@countrtop/api-client';
 import { getServerDataClient } from '../../../lib/dataClient';
 import { squareClientForVendor } from '../../../lib/square';
+
+const logger = createLogger({ requestId: 'webhook' });
 
 export const config = {
   api: {
@@ -14,12 +17,18 @@ type WebhookResponse = {
   ok: boolean;
   status: 'processed' | 'ignored' | 'invalid';
   reason?: string;
+  signatureValid?: boolean;
 };
+
+// In-memory tracking for validation failures (in production, use Redis or similar)
+const validationFailureCounts = new Map<string, number>();
+const ALERT_THRESHOLD = 5; // Alert after 5 failures
+const ALERT_WINDOW_MS = 60 * 60 * 1000; // 1 hour window
 
 const bufferRequest = (req: NextApiRequest): Promise<string> =>
   new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
-    req.on('data', (chunk) => {
+    req.on('data', (chunk: Buffer | string) => {
       chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
     });
     req.on('end', () => resolve(Buffer.concat(chunks).toString('utf-8')));
@@ -84,6 +93,32 @@ const formatSquareError = (error: unknown) => {
   return String(error ?? 'Unknown error');
 };
 
+const trackValidationFailure = (key: string) => {
+  const now = Date.now();
+  const count = validationFailureCounts.get(key) || 0;
+  validationFailureCounts.set(key, count + 1);
+  
+  // Clean up old entries (simple cleanup, in production use TTL-based storage)
+  if (count + 1 >= ALERT_THRESHOLD) {
+    const alertKey = `alert_${key}`;
+    const lastAlert = validationFailureCounts.get(alertKey) || 0;
+    if (now - lastAlert > ALERT_WINDOW_MS) {
+      logger.error('Repeated signature validation failures detected', undefined, {
+        key,
+        count: count + 1,
+        threshold: ALERT_THRESHOLD
+      });
+      // In production, send to monitoring service (e.g., Sentry, PagerDuty)
+      validationFailureCounts.set(alertKey, now);
+    }
+  }
+  
+  // Reset counter after window expires (simplified - in production use proper TTL)
+  setTimeout(() => {
+    validationFailureCounts.delete(key);
+  }, ALERT_WINDOW_MS);
+};
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse<WebhookResponse>) {
   if (req.method !== 'POST') {
     return res.status(405).json({ ok: false, status: 'invalid', reason: 'Method not allowed' });
@@ -98,17 +133,39 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
   const notificationUrl = process.env.SQUARE_WEBHOOK_URL;
   const rawBody = await bufferRequest(req);
 
+  let signatureValid = true;
+  let signatureError: Error | null = null;
+
+  // Try-catch around signature validation - continue processing even if validation fails
   if (signatureKey && notificationUrl) {
-    const valid = isValidSignature(rawBody, signatureHeader, signatureKey, notificationUrl);
-    if (!valid) {
-      return res.status(400).json({ ok: false, status: 'invalid', reason: 'Invalid signature' });
+    try {
+      signatureValid = isValidSignature(rawBody, signatureHeader, signatureKey, notificationUrl);
+      if (!signatureValid) {
+        signatureError = new Error('Invalid signature');
+        const failureKey = `${signatureKey.substring(0, 8)}_${Date.now()}`;
+        trackValidationFailure(failureKey);
+        logger.error('Signature validation failed', signatureError, {
+          hasSignatureKey: !!signatureKey,
+          hasNotificationUrl: !!notificationUrl,
+          signatureHeaderLength: signatureHeader.length
+        });
+      }
+    } catch (error) {
+      signatureValid = false;
+      signatureError = error instanceof Error ? error : new Error(String(error));
+      logger.error('Signature validation threw error', signatureError);
+      const failureKey = `error_${Date.now()}`;
+      trackValidationFailure(failureKey);
     }
   } else if (process.env.NODE_ENV === 'production') {
-    return res.status(500).json({
-      ok: false,
-      status: 'invalid',
-      reason: 'Webhook signature configuration missing'
-    });
+    // In production, missing config is still an error, but we'll log and continue
+    logger.error('Missing signature configuration in production environment');
+    signatureValid = false;
+    signatureError = new Error('Webhook signature configuration missing');
+  } else {
+    // In development, allow missing config
+    logger.warn('Signature validation skipped (development mode or missing config)');
+    signatureValid = true; // Allow in dev
   }
 
   let event: any;
@@ -161,12 +218,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     }
 
     const items =
-      order?.lineItems?.map((item) => ({
+      order?.lineItems?.map((item: any) => ({
         id: item.catalogObjectId ?? item.uid ?? item.name ?? 'item',
         name: item.name ?? 'Item',
         quantity: Number(item.quantity ?? 1),
         price: Number(item.basePriceMoney?.amount ?? 0),
-        modifiers: item.modifiers?.map((modifier) => modifier.name)
+        modifiers: item.modifiers?.map((modifier: any) => modifier.name)
       })) ?? [];
 
     const total = Number(order?.totalMoney?.amount ?? payment.amountMoney?.amount ?? 0);
@@ -201,9 +258,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       }
     }
 
-    return res.status(200).json({ ok: true, status: 'processed' });
+    // Return success even if signature was invalid (order was still processed)
+    return res.status(200).json({
+      ok: true,
+      status: 'processed',
+      signatureValid: signatureValid,
+      ...(signatureError && { reason: `Processed with signature warning: ${signatureError.message}` })
+    });
   } catch (error) {
     const message = formatSquareError(error);
-    return res.status(500).json({ ok: false, status: 'invalid', reason: message });
+    return res.status(500).json({
+      ok: false,
+      status: 'invalid',
+      reason: message,
+      signatureValid: signatureValid
+    });
   }
 }

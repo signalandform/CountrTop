@@ -1,14 +1,14 @@
 import type { AppProps } from 'next/app';
 import Head from 'next/head';
 
-import { validateEnvProduction, customerWebEnvSchema } from '@countrtop/models';
+import { validateEnvProduction, vendorAdminWebEnvSchema } from '@countrtop/models';
 import { ErrorBoundary } from '@countrtop/ui';
 
 // Validate environment variables on startup (fail fast in production, warn in development)
 if (typeof window === 'undefined') {
   // Server-side validation
   try {
-    validateEnvProduction(customerWebEnvSchema, 'customer-web');
+    validateEnvProduction(vendorAdminWebEnvSchema, 'vendor-admin-web');
   } catch (error) {
     console.error('Environment validation failed:', error);
     // In production, this will throw and prevent the app from starting
@@ -18,7 +18,7 @@ if (typeof window === 'undefined') {
   }
 }
 
-export default function CustomerWebApp({ Component, pageProps }: AppProps) {
+export default function VendorAdminApp({ Component, pageProps }: AppProps) {
   return (
     <ErrorBoundary
       onError={(error, errorInfo) => {
@@ -37,3 +37,4 @@ export default function CustomerWebApp({ Component, pageProps }: AppProps) {
     </ErrorBoundary>
   );
 }
+
