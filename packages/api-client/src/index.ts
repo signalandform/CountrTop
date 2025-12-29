@@ -68,9 +68,11 @@ export const registerPushDevice = async (
   return response.json();
 };
 
-// Export Square client utilities
-export { createResilientSquareClient, squareClientForVendor } from './square';
-
-// Export logger utilities
+// Export logger utilities (always available, Edge Runtime safe)
 export { getLogger, createLogger, logger } from './logger';
 export type { LogContext, LogLevel } from './logger';
+
+// Export Square client utilities
+// Note: These use Square SDK which is not Edge Runtime compatible
+// Only import in API routes, not in middleware
+export { createResilientSquareClient, squareClientForVendor } from './square';

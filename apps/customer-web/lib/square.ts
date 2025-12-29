@@ -1,3 +1,5 @@
+// Import Square client directly to avoid Edge Runtime issues
+// This file is only used in API routes, not middleware
 import { squareClientForVendor as createSquareClient } from '@countrtop/api-client';
 
 import { Vendor } from '@countrtop/models';

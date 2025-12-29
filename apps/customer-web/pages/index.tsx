@@ -8,14 +8,6 @@ import { useAuth } from '@countrtop/ui';
 import { getServerDataClient } from '../lib/dataClient';
 import { getBrowserSupabaseClient } from '../lib/supabaseBrowser';
 
-type SnapshotItem = {
-  id: string;
-  name: string;
-  quantity: number;
-  price: number;
-  modifiers?: string[];
-};
-
 type CustomerHomeProps = {
   vendorSlug: string | null;
   vendorName: string;
@@ -293,7 +285,13 @@ export default function CustomerHome({ vendorSlug, vendorName }: CustomerHomePro
       return;
     }
 
-    const items = entry.snapshotJson?.items ?? [];
+    const items = (Array.isArray(entry.snapshotJson?.items) ? entry.snapshotJson.items : []) as Array<{
+      id: string;
+      name: string;
+      quantity: number;
+      price: number;
+      modifiers?: string[];
+    }>;
     if (!items.length) {
       pushNotice('warning', 'No items found for that order.');
       return;
@@ -583,7 +581,9 @@ export default function CustomerHome({ vendorSlug, vendorName }: CustomerHomePro
               )}
               {authUser &&
                 orderHistory.map((order) => {
-                  const items = order.snapshotJson?.items ?? [];
+                  const items = (Array.isArray(order.snapshotJson?.items) ? order.snapshotJson.items : []) as Array<{
+                    quantity?: number;
+                  }>;
                   const itemCount = items.reduce((sum, item) => sum + (item.quantity ?? 0), 0);
                   const itemLabel = itemCount === 1 ? '1 item' : `${itemCount} items`;
                   return (
@@ -593,8 +593,8 @@ export default function CustomerHome({ vendorSlug, vendorName }: CustomerHomePro
                         <div style={styles.historyMeta}>
                           {new Date(order.placedAt).toLocaleString()} · {itemLabel} ·{' '}
                           {formatCurrency(
-                            order.snapshotJson?.total ?? 0,
-                            order.snapshotJson?.currency ?? 'USD'
+                            (typeof order.snapshotJson?.total === 'number' ? order.snapshotJson.total : 0),
+                            (typeof order.snapshotJson?.currency === 'string' ? order.snapshotJson.currency : 'USD')
                           )}
                         </div>
                       </div>

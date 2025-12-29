@@ -1,7 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
 import { getServerDataClient } from '../../lib/dataClient';
-import { squareClientForVendor } from '../../lib/square';
 
 type HealthStatus = 'healthy' | 'degraded' | 'unhealthy';
 

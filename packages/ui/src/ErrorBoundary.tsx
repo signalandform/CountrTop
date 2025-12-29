@@ -102,47 +102,36 @@ type DefaultErrorFallbackProps = {
  */
 function DefaultErrorFallback({ error, onRetry }: DefaultErrorFallbackProps) {
   // Check if we're in React Native environment
-  let isReactNative = false;
-  try {
-    // Try to detect React Native by checking for Platform or other RN-specific globals
-    if (typeof navigator !== 'undefined' && navigator.product === 'ReactNative') {
-      isReactNative = true;
-    } else if (typeof require !== 'undefined') {
-      // Try to require react-native to see if it's available
-      const rn = require('react-native');
-      if (rn && rn.Platform) {
-        isReactNative = true;
-      }
-    }
-  } catch {
-    // Not React Native, continue with web fallback
+  // Use a safer check that doesn't require() at build time
+  const isWeb = typeof window !== 'undefined' && typeof document !== 'undefined';
+  const isReactNative = !isWeb && typeof navigator !== 'undefined' && navigator.product === 'ReactNative';
+
+  // Always use web fallback for Next.js/web builds
+  // React Native apps will handle this differently
+  if (isWeb || !isReactNative) {
+    return (
+      <div style={webStyles.container}>
+        <div style={webStyles.content}>
+          <h1 style={webStyles.title}>Something went wrong</h1>
+          <p style={webStyles.message}>
+            {error?.message || 'An unexpected error occurred'}
+          </p>
+          {error?.stack && (
+            <details style={webStyles.details}>
+              <summary style={webStyles.summary}>Error details</summary>
+              <pre style={webStyles.stack}>{error.stack}</pre>
+            </details>
+          )}
+          <button style={webStyles.button} onClick={onRetry}>
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
   }
 
-  if (isReactNative) {
-    try {
-      // React Native fallback
-      const { View, Text, TouchableOpacity } = require('react-native');
-      
-      return (
-        <View style={styles.container}>
-          <View style={styles.content}>
-            <Text style={styles.title}>Something went wrong</Text>
-            <Text style={styles.message}>
-              {error?.message || 'An unexpected error occurred'}
-            </Text>
-            <TouchableOpacity style={styles.button} onPress={onRetry}>
-              <Text style={styles.buttonText}>Try Again</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      );
-    } catch (rnError) {
-      // Fall through to web fallback if React Native components fail to load
-      console.error('[ErrorBoundary] Failed to load React Native components:', rnError);
-    }
-  }
-
-  // React web fallback
+  // For React Native, this will be handled by the mobile app's ErrorBoundary wrapper
+  // Return a simple message as fallback
   return (
     <div style={webStyles.container}>
       <div style={webStyles.content}>
@@ -150,12 +139,6 @@ function DefaultErrorFallback({ error, onRetry }: DefaultErrorFallbackProps) {
         <p style={webStyles.message}>
           {error?.message || 'An unexpected error occurred'}
         </p>
-        {error?.stack && (
-          <details style={webStyles.details}>
-            <summary style={webStyles.summary}>Error details</summary>
-            <pre style={webStyles.stack}>{error.stack}</pre>
-          </details>
-        )}
         <button style={webStyles.button} onClick={onRetry}>
           Try Again
         </button>

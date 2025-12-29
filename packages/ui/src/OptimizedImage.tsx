@@ -4,6 +4,9 @@ import React, { useState } from 'react';
  * Optimized image component for React Native using expo-image.
  * Supports blurhash placeholders, lazy loading, and caching.
  * 
+ * NOTE: This component is designed for React Native/Expo apps only.
+ * For web apps, use standard HTML img tags or Next.js Image component.
+ * 
  * @example
  * ```tsx
  * <OptimizedImage
@@ -31,8 +34,21 @@ export type OptimizedImageProps = {
 /**
  * Optimized Image component that uses expo-image when available,
  * falls back to React Native Image otherwise.
+ * 
+ * This component should only be used in React Native/Expo environments.
+ * For web, it will throw an error to prevent accidental usage.
  */
 export function OptimizedImage(props: OptimizedImageProps) {
+  // Check if we're in a web environment
+  const isWeb = typeof window !== 'undefined' && typeof document !== 'undefined';
+  
+  if (isWeb) {
+    // In web environments, this component should not be used
+    // Return a placeholder or throw an error
+    console.warn('OptimizedImage is designed for React Native only. Use Next.js Image or HTML img tag for web.');
+    return null;
+  }
+
   const {
     source,
     blurhash,
@@ -80,26 +96,32 @@ export function OptimizedImage(props: OptimizedImageProps) {
     );
   } catch {
     // Fallback to React Native Image if expo-image is not available
-    const { Image } = require('react-native');
-    
-    return (
-      <Image
-        source={source}
-        style={style}
-        resizeMode={contentFit === 'cover' ? 'cover' : contentFit === 'contain' ? 'contain' : 'stretch'}
-        onLoad={() => {
-          setIsLoading(false);
-          onLoad?.();
-        }}
-        onError={(error: any) => {
-          setIsLoading(false);
-          setHasError(true);
-          onError?.(error);
-        }}
-        accessibilityLabel={accessibilityLabel}
-        testID={testID}
-      />
-    );
+    try {
+      const { Image } = require('react-native');
+      
+      return (
+        <Image
+          source={source}
+          style={style}
+          resizeMode={contentFit === 'cover' ? 'cover' : contentFit === 'contain' ? 'contain' : 'stretch'}
+          onLoad={() => {
+            setIsLoading(false);
+            onLoad?.();
+          }}
+          onError={(error: any) => {
+            setIsLoading(false);
+            setHasError(true);
+            onError?.(error);
+          }}
+          accessibilityLabel={accessibilityLabel}
+          testID={testID}
+        />
+      );
+    } catch {
+      // If neither is available, return null
+      console.warn('OptimizedImage: Neither expo-image nor react-native Image is available');
+      return null;
+    }
   }
 }
 
@@ -118,57 +140,33 @@ export function LazyImage(props: LazyImageProps) {
   const [shouldLoad, setShouldLoad] = React.useState(false);
   const imageRef = React.useRef<any>(null);
 
+  // Check if we're in a web environment
+  const isWeb = typeof window !== 'undefined' && typeof document !== 'undefined';
+  
+  if (isWeb) {
+    // In web environments, this component should not be used
+    console.warn('LazyImage is designed for React Native only. Use Next.js Image or HTML img tag for web.');
+    return null;
+  }
+
   React.useEffect(() => {
     if (shouldLoad) return;
 
-    // For React Native, we'll use a simpler approach - load immediately
-    // In a web environment, you could use Intersection Observer
+    // For React Native, load immediately
     // For true lazy loading in React Native, consider using libraries like react-native-lazy-load
-    const isWeb = typeof window !== 'undefined' && typeof window.IntersectionObserver !== 'undefined';
-    
-    if (isWeb) {
-      const observer = new IntersectionObserver(
-        (entries) => {
-          entries.forEach((entry) => {
-            if (entry.isIntersecting) {
-              setShouldLoad(true);
-              observer.disconnect();
-            }
-          });
-        },
-        { threshold, rootMargin }
-      );
-
-      if (imageRef.current) {
-        observer.observe(imageRef.current);
-      }
-
-      return () => {
-        observer.disconnect();
-      };
-    } else {
-      // React Native: Load immediately or use a viewport detection library
-      setShouldLoad(true);
-    }
-  }, [shouldLoad, threshold, rootMargin]);
+    setShouldLoad(true);
+  }, [shouldLoad]);
 
   if (!shouldLoad) {
-    // Use React Native View for React Native, div for web
-    const isWeb = typeof window !== 'undefined';
-    if (isWeb) {
-      const { default: ReactDOM } = require('react-dom');
-      return (
-        <div ref={imageRef} style={imageProps.style}>
-          {fallback || <div style={{ backgroundColor: '#f0f0f0', ...imageProps.style }} />}
-        </div>
-      );
-    } else {
+    try {
       const { View } = require('react-native');
       return (
         <View ref={imageRef} style={imageProps.style}>
           {fallback || <View style={{ backgroundColor: '#f0f0f0', ...imageProps.style }} />}
         </View>
       );
+    } catch {
+      return null;
     }
   }
 

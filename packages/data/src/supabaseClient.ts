@@ -43,13 +43,34 @@ class QueryCache {
 const queryCache = new QueryCache();
 
 // Performance logging helper
+// Use lazy loading to avoid pulling in Square SDK in Edge Runtime (middleware)
+let loggerModule: any = null;
+const getLoggerLazy = () => {
+  if (loggerModule === null) {
+    try {
+      // Only try to load logger if we're not in Edge Runtime
+      // Import from logger-only to avoid Square SDK
+      // @ts-ignore - EdgeRuntime is a global in Edge Runtime
+      if (typeof EdgeRuntime === 'undefined') {
+        // Use a string literal that webpack won't statically analyze
+        // Import logger directly to avoid pulling in Square SDK
+        // Use a dynamic path to prevent webpack from analyzing the import
+        const loggerPath = '@countrtop/api-client/logger-only';
+        loggerModule = require(loggerPath);
+      }
+    } catch {
+      loggerModule = false; // Mark as unavailable
+    }
+  }
+  return loggerModule === false ? null : loggerModule?.getLogger?.();
+};
+
 const logQueryPerformance = (operation: string, startTime: number, success: boolean, error?: unknown) => {
   const duration = Date.now() - startTime;
   
   // Use structured logging if available, fallback to console
-  try {
-    const { getLogger } = require('@countrtop/api-client');
-    const logger = getLogger();
+  const logger = getLoggerLazy();
+  if (logger) {
     if (success) {
       logger.info('Query performance', { operation, durationMs: duration });
       // Log slow queries as warnings
@@ -59,7 +80,7 @@ const logQueryPerformance = (operation: string, startTime: number, success: bool
     } else {
       logger.error('Query failed', error, { operation, durationMs: duration });
     }
-  } catch {
+  } else {
     // Fallback to console if logger not available
     const message = `[Query Performance] ${operation} - ${duration}ms`;
     if (success) {
