@@ -34,11 +34,14 @@ const normalizeSnapshot = (snapshot: Record<string, unknown>): NormalizedSnapsho
   const total = typeof snapshot.total === 'number' ? snapshot.total : 0;
   const currency = typeof snapshot.currency === 'string' ? snapshot.currency : 'USD';
   const rawItems = Array.isArray(snapshot.items) ? snapshot.items : [];
-  const items = rawItems.map((item: any) => ({
-    name: typeof item.name === 'string' ? item.name : 'Item',
-    quantity: typeof item.quantity === 'number' ? item.quantity : 1,
-    price: typeof item.price === 'number' ? item.price : 0
-  }));
+  const items = rawItems.map((item: unknown) => {
+    const i = item as Record<string, unknown>;
+    return {
+      name: typeof i.name === 'string' ? i.name : 'Item',
+      quantity: typeof i.quantity === 'number' ? i.quantity : 1,
+      price: typeof i.price === 'number' ? i.price : 0
+    };
+  });
   return { total, currency, items };
 };
 
