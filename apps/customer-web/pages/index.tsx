@@ -1,6 +1,6 @@
 import type { GetServerSideProps } from 'next';
 import Head from 'next/head';
-import { CSSProperties, useCallback, useEffect, useMemo, useState } from 'react';
+import { CSSProperties, useCallback, useEffect, useMemo, useState, useRef } from 'react';
 
 import { resolveVendorSlugFromHost } from '@countrtop/data';
 import { CartItem, MenuItem, OrderHistoryEntry } from '@countrtop/models';
@@ -69,6 +69,33 @@ export default function CustomerHome({ vendorSlug, vendorName }: CustomerHomePro
   const [loyaltyBalance, setLoyaltyBalance] = useState<number | null>(null);
   const [isNativeWebView, setIsNativeWebView] = useState(false);
 
+  /**
+   * Deduplication and loading guards to prevent fetch storms after sign-in.
+   * 
+   * WHY THIS IS NEEDED:
+   * Without these guards, the following cascade can occur:
+   * 1. User signs in → authUser changes → effect triggers fetches
+   * 2. Callbacks are recreated (due to dependencies) → effect re-runs
+   * 3. Multiple concurrent requests exhaust browser connections (ERR_INSUFFICIENT_RESOURCES)
+   * 
+   * SOLUTION:
+   * - Key-based deduplication: Skip if we've already fetched for this user/vendor combo
+   * - Loading guards: Skip if a request is already in flight
+   * - Stable callbacks: Use refs to avoid effect re-runs
+   */
+  const lastOrdersKeyRef = useRef<string | null>(null);
+  const isOrdersLoadingRef = useRef(false);
+  const lastLoyaltyKeyRef = useRef<string | null>(null);
+  const isLoyaltyLoadingRef = useRef(false);
+  const vendorSlugRef = useRef(vendorSlug);
+  // pushNoticeRef is initialized after pushNotice is declared (below)
+  const pushNoticeRef = useRef<(type: Notice['type'], message: string) => void>(() => {});
+
+  // Keep vendorSlugRef updated
+  useEffect(() => {
+    vendorSlugRef.current = vendorSlug;
+  }, [vendorSlug]);
+
   const cartTotal = useMemo(() => {
     return cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
   }, [cartItems]);
@@ -100,6 +127,11 @@ export default function CustomerHome({ vendorSlug, vendorName }: CustomerHomePro
   const pushNotice = useCallback((type: Notice['type'], message: string) => {
     setNotice({ type, message });
   }, []);
+
+  // Keep pushNoticeRef updated (declared early with empty fn, now updated)
+  useEffect(() => {
+    pushNoticeRef.current = pushNotice;
+  }, [pushNotice]);
 
   const postToNative = useCallback((payload: Record<string, unknown>) => {
     if (!isNativeWebView) return;
@@ -155,63 +187,161 @@ export default function CustomerHome({ vendorSlug, vendorName }: CustomerHomePro
     postToNative
   });
 
-  const refreshOrderHistory = useCallback(async (userId: string) => {
-    if (!vendorSlug) return;
+  // STABLE CALLBACK with deduplication guards to prevent fetch storm
+  const refreshOrderHistory = useCallback(async (userId: string, forceRefresh = false) => {
+    const currentVendorSlug = vendorSlugRef.current;
+    if (!currentVendorSlug || !userId) return;
+    
+    const ordersKey = `${currentVendorSlug}:${userId}`;
+    
+    // Deduplication: skip if already loaded for this key
+    if (!forceRefresh && lastOrdersKeyRef.current === ordersKey) {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[CustomerHome] Order history already loaded, skipping', { ordersKey });
+      }
+      return;
+    }
+    
+    // Loading guard: skip if already loading
+    if (isOrdersLoadingRef.current) {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[CustomerHome] Order history already loading, skipping');
+      }
+      return;
+    }
+    
+    isOrdersLoadingRef.current = true;
     setOrderStatus('loading');
     setOrderError(null);
+    
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[CustomerHome] Loading order history', { userId, vendorSlug: currentVendorSlug });
+    }
+    
     try {
-      const response = await fetch(`/api/vendors/${vendorSlug}/orders?userId=${encodeURIComponent(userId)}`);
+      const response = await fetch(`/api/vendors/${currentVendorSlug}/orders?userId=${encodeURIComponent(userId)}`);
       const payload = await response.json();
       if (!response.ok || !payload.ok) {
         throw new Error(payload.error ?? 'Failed to load order history');
       }
       setOrderHistory(payload.orders ?? []);
       setOrderStatus('ready');
+      lastOrdersKeyRef.current = ordersKey;
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[CustomerHome] Order history loaded successfully', { orderCount: payload.orders?.length ?? 0 });
+      }
     } catch (error) {
       const message = toFriendlyError(error, 'Unable to load order history');
-      console.warn('Order history load failed', { error, userId, vendorSlug });
+      console.warn('Order history load failed', { error, userId, vendorSlug: currentVendorSlug });
       setOrderStatus('error');
       setOrderError(message);
-      pushNotice('error', message);
+      pushNoticeRef.current('error', message);
+      // Clear key on error so retry is possible
+      lastOrdersKeyRef.current = null;
+    } finally {
+      isOrdersLoadingRef.current = false;
     }
-  }, [pushNotice, vendorSlug]);
+  }, []); // EMPTY DEPS: Stable callback - uses refs for all external values
 
-  const refreshLoyalty = useCallback(async (userId: string) => {
-    if (!vendorSlug) return;
+  // STABLE CALLBACK with deduplication guards to prevent fetch storm
+  const refreshLoyalty = useCallback(async (userId: string, forceRefresh = false) => {
+    const currentVendorSlug = vendorSlugRef.current;
+    if (!currentVendorSlug || !userId) return;
+    
+    const loyaltyKey = `${currentVendorSlug}:${userId}`;
+    
+    // Deduplication: skip if already loaded for this key
+    if (!forceRefresh && lastLoyaltyKeyRef.current === loyaltyKey) {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[CustomerHome] Loyalty already loaded, skipping', { loyaltyKey });
+      }
+      return;
+    }
+    
+    // Loading guard: skip if already loading
+    if (isLoyaltyLoadingRef.current) {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[CustomerHome] Loyalty already loading, skipping');
+      }
+      return;
+    }
+    
+    isLoyaltyLoadingRef.current = true;
+    
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[CustomerHome] Loading loyalty', { userId, vendorSlug: currentVendorSlug });
+    }
+    
     try {
-      const response = await fetch(`/api/vendors/${vendorSlug}/loyalty/${encodeURIComponent(userId)}`);
+      const response = await fetch(`/api/vendors/${currentVendorSlug}/loyalty/${encodeURIComponent(userId)}`);
       const payload = await response.json();
       if (!response.ok || !payload.ok) {
         throw new Error(payload.error ?? 'Failed to load loyalty');
       }
       setLoyaltyBalance(payload.balance ?? 0);
+      lastLoyaltyKeyRef.current = loyaltyKey;
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[CustomerHome] Loyalty loaded successfully', { balance: payload.balance ?? 0 });
+      }
     } catch (error) {
       const message = toFriendlyError(error, 'Unable to load loyalty points.');
-      console.warn('Loyalty load failed', { error, userId, vendorSlug });
-      pushNotice('warning', message);
+      console.warn('Loyalty load failed', { error, userId, vendorSlug: currentVendorSlug });
+      pushNoticeRef.current('warning', message);
+      // Clear key on error so retry is possible
+      lastLoyaltyKeyRef.current = null;
+    } finally {
+      isLoyaltyLoadingRef.current = false;
     }
-  }, [pushNotice, vendorSlug]);
+  }, []); // EMPTY DEPS: Stable callback - uses refs for all external values
 
+  // Auto-refresh orders and loyalty when userId changes
+  // CRITICAL: Depend on authUser?.id (not authUser object) to prevent effect cascade
   useEffect(() => {
-    if (!authUser || !vendorSlug) {
-      setOrderHistory([]);
-      setOrderStatus('idle');
-      setLoyaltyBalance(null);
+    const userId = authUser?.id ?? null;
+    
+    if (!userId || !vendorSlug) {
+      // Clear state and refs when no user
+      if (lastOrdersKeyRef.current !== null || lastLoyaltyKeyRef.current !== null) {
+        setOrderHistory([]);
+        setOrderStatus('idle');
+        setLoyaltyBalance(null);
+        lastOrdersKeyRef.current = null;
+        lastLoyaltyKeyRef.current = null;
+        
+        if (process.env.NODE_ENV === 'development') {
+          console.log('[CustomerHome] Cleared order/loyalty state - no user');
+        }
+      }
       return;
     }
+    
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[CustomerHome] Auto-refreshing orders and loyalty', { userId, vendorSlug });
+    }
 
-    void refreshOrderHistory(authUser.id);
-    void refreshLoyalty(authUser.id);
-  }, [authUser, refreshLoyalty, refreshOrderHistory, vendorSlug]);
+    void refreshOrderHistory(userId, false);
+    void refreshLoyalty(userId, false);
+  }, [authUser?.id, vendorSlug, refreshOrderHistory, refreshLoyalty]);
 
+  // Refresh after checkout (bypasses dedup with forceRefresh=true)
   useEffect(() => {
-    if (!isClient || !authUser || !vendorSlug) return;
+    const userId = authUser?.id ?? null;
+    if (!isClient || !userId || !vendorSlug) return;
+    
     const refreshKey = sessionStorage.getItem('ct_refresh_after_checkout');
     if (!refreshKey) return;
     sessionStorage.removeItem('ct_refresh_after_checkout');
-    void refreshOrderHistory(authUser.id);
-    void refreshLoyalty(authUser.id);
-  }, [authUser, isClient, refreshLoyalty, refreshOrderHistory, vendorSlug]);
+    
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[CustomerHome] Forcing refresh after checkout');
+    }
+    
+    // Force refresh after checkout (bypasses dedup)
+    void refreshOrderHistory(userId, true);
+    void refreshLoyalty(userId, true);
+  }, [authUser?.id, isClient, vendorSlug, refreshOrderHistory, refreshLoyalty]);
 
   const addToCart = (item: MenuItem) => {
     setCartItems((current) => {
