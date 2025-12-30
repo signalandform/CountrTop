@@ -1,71 +1,57 @@
 import Head from 'next/head';
+import Link from 'next/link';
 import type { GetServerSideProps } from 'next';
+import { useState } from 'react';
 
 import { OrderSnapshot } from '@countrtop/models';
-
 import { getServerDataClient } from '../../../lib/dataClient';
 
-type OrderPageProps = {
+type Props = {
   vendorSlug: string;
   vendorName: string;
   statusMessage?: string | null;
   orders: OrderSnapshot[];
 };
 
-type SnapshotItem = {
-  name?: unknown;
-  quantity?: unknown;
-  price?: unknown;
-};
+type NormalizedItem = { name: string; quantity: number; price: number };
+type NormalizedSnapshot = { total: number; currency: string; items: NormalizedItem[] };
 
-type NormalizedSnapshot = {
-  total: number;
-  currency: string;
-  items: { name: string; quantity: number; price: number }[];
-};
+const formatCurrency = (cents: number, currency: string) =>
+  new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(cents / 100);
 
-const formatCurrency = (value: number, currency: string) =>
-  new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency,
-    maximumFractionDigits: 2
-  }).format(value / 100);
-
-const formatPlacedAt = (value: string) => {
+const formatDate = (value: string) => {
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return 'Unknown time';
-  return new Intl.DateTimeFormat('en-US', {
-    dateStyle: 'medium',
-    timeStyle: 'short'
-  }).format(date);
+  if (Number.isNaN(date.getTime())) return 'Unknown';
+  return new Intl.DateTimeFormat('en-US', { dateStyle: 'medium', timeStyle: 'short' }).format(date);
 };
 
 const shortenId = (value: string | null | undefined) => {
   if (!value) return 'Guest';
-  if (value.length <= 12) return value;
-  return `${value.slice(0, 6)}…${value.slice(-4)}`;
+  return value.length <= 12 ? value : `${value.slice(0, 6)}…${value.slice(-4)}`;
 };
 
 const normalizeSnapshot = (snapshot: Record<string, unknown>): NormalizedSnapshot => {
   const total = typeof snapshot.total === 'number' ? snapshot.total : 0;
   const currency = typeof snapshot.currency === 'string' ? snapshot.currency : 'USD';
   const rawItems = Array.isArray(snapshot.items) ? snapshot.items : [];
-  const items = rawItems.map((item) => {
-    const raw = item as SnapshotItem;
-    const name = typeof raw.name === 'string' ? raw.name : 'Item';
-    const quantity = typeof raw.quantity === 'number' ? raw.quantity : 1;
-    const price = typeof raw.price === 'number' ? raw.price : 0;
-    return { name, quantity, price };
+  const items = rawItems.map((item: unknown) => {
+    const i = item as Record<string, unknown>;
+    return {
+      name: typeof i.name === 'string' ? i.name : 'Item',
+      quantity: typeof i.quantity === 'number' ? i.quantity : 1,
+      price: typeof i.price === 'number' ? i.price : 0
+    };
   });
   return { total, currency, items };
 };
 
-export const getServerSideProps: GetServerSideProps<OrderPageProps> = async ({ params }) => {
+export const getServerSideProps: GetServerSideProps<Props> = async ({ params }) => {
   const slugParam = params?.slug;
   const slug = Array.isArray(slugParam) ? slugParam[0] : slugParam;
 
   const dataClient = getServerDataClient();
   const vendor = slug ? await dataClient.getVendorBySlug(slug) : null;
+
   if (!vendor) {
     return {
       props: {
@@ -80,7 +66,7 @@ export const getServerSideProps: GetServerSideProps<OrderPageProps> = async ({ p
   const orders = await dataClient.listOrderSnapshotsForVendor(vendor.id);
   const sortedOrders = [...orders]
     .sort((a, b) => new Date(b.placedAt).getTime() - new Date(a.placedAt).getTime())
-    .slice(0, 30);
+    .slice(0, 50);
 
   return {
     props: {
@@ -91,108 +77,295 @@ export const getServerSideProps: GetServerSideProps<OrderPageProps> = async ({ p
   };
 };
 
-export default function VendorOrdersPage({
-  vendorSlug,
-  vendorName,
-  orders,
-  statusMessage
-}: OrderPageProps) {
+export default function VendorOrdersPage({ vendorSlug, vendorName, orders, statusMessage }: Props) {
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  const toggleExpand = (id: string) => {
+    setExpandedId(expandedId === id ? null : id);
+  };
+
   return (
     <>
       <Head>
         <title>{`Orders – ${vendorName}`}</title>
       </Head>
-      <main style={{ padding: '32px', fontFamily: 'Inter, sans-serif' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
-          <div>
-            <h1 style={{ marginBottom: 8 }}>{vendorName} Orders</h1>
-            <p style={{ color: '#6b7280', margin: 0 }}>Recent order snapshots</p>
+      <main className="page">
+        {/* Header */}
+        <header className="header">
+          <div className="header-content">
+            <p className="eyebrow">CountrTop Admin</p>
+            <h1 className="title">{vendorName} Orders</h1>
+            <p className="subtitle">Recent order snapshots</p>
           </div>
-          <a
-            href={`/vendors/${vendorSlug}`}
-            style={{
-              alignSelf: 'center',
-              padding: '8px 12px',
-              borderRadius: 999,
-              border: '1px solid #e2e8f0',
-              color: '#0f172a',
-              textDecoration: 'none',
-              fontWeight: 600
-            }}
-          >
-            Back to insights
-          </a>
-        </div>
+          <Link href={`/vendors/${vendorSlug}`} className="btn-secondary">
+            ← Back to Insights
+          </Link>
+        </header>
 
-        {statusMessage && <p style={{ color: '#b91c1c', marginTop: 16 }}>{statusMessage}</p>}
+        {statusMessage && <div className="error-banner">{statusMessage}</div>}
 
         {!statusMessage && orders.length === 0 && (
-          <p style={{ color: '#6b7280', marginTop: 16 }}>No orders yet.</p>
+          <div className="empty-state">
+            <span className="empty-icon">📦</span>
+            <p>No orders yet</p>
+          </div>
         )}
 
-        <div style={{ display: 'grid', gap: 12, marginTop: 20 }}>
+        {/* Orders List */}
+        <div className="orders-list">
           {orders.map((order) => {
-            const normalized = normalizeSnapshot(order.snapshotJson);
-            const itemCount = normalized.items.reduce((sum, item) => sum + item.quantity, 0);
-            const previewItems = normalized.items.slice(0, 2).map((item) => item.name).join(', ');
+            const data = normalizeSnapshot(order.snapshotJson);
+            const itemCount = data.items.reduce((sum, i) => sum + i.quantity, 0);
+            const isExpanded = expandedId === order.id;
+
             return (
-              <details
-                key={order.id}
-                style={{
-                  border: '1px solid #e2e8f0',
-                  borderRadius: 16,
-                  padding: '12px 16px',
-                  background: '#fff'
-                }}
-              >
-                <summary style={{ cursor: 'pointer', listStyle: 'none' }}>
-                  <div
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: '1.2fr 1fr 1fr 1fr 1.2fr',
-                      gap: 12,
-                      alignItems: 'center'
-                    }}
-                  >
-                    <div>
-                      <div style={{ fontWeight: 600 }}>{formatPlacedAt(order.placedAt)}</div>
-                      <div style={{ color: '#94a3b8', fontSize: 12 }}>
-                        {order.squareOrderId}
-                      </div>
-                    </div>
-                    <div style={{ fontWeight: 600 }}>
-                      {formatCurrency(normalized.total, normalized.currency)}
-                    </div>
-                    <div style={{ color: '#475569' }}>{itemCount} items</div>
-                    <div style={{ color: '#475569' }}>{previewItems || '—'}</div>
-                    <div style={{ color: '#475569' }}>{shortenId(order.userId)}</div>
+              <div key={order.id} className={`order-card ${isExpanded ? 'expanded' : ''}`}>
+                <button className="order-header" onClick={() => toggleExpand(order.id)}>
+                  <div className="order-main">
+                    <div className="order-date">{formatDate(order.placedAt)}</div>
+                    <div className="order-id">{order.squareOrderId}</div>
                   </div>
-                </summary>
-                {normalized.items.length > 0 && (
-                  <div style={{ marginTop: 12, display: 'grid', gap: 8 }}>
-                    {normalized.items.map((item, index) => (
-                      <div
-                        key={`${order.id}-${index}`}
-                        style={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          borderTop: '1px solid #f1f5f9',
-                          paddingTop: 8,
-                          color: '#475569'
-                        }}
-                      >
-                        <span>
-                          {item.quantity} × {item.name}
+                  <div className="order-total">{formatCurrency(data.total, data.currency)}</div>
+                  <div className="order-items">{itemCount} items</div>
+                  <div className="order-customer">{shortenId(order.userId)}</div>
+                  <div className="order-expand">{isExpanded ? '−' : '+'}</div>
+                </button>
+
+                {isExpanded && data.items.length > 0 && (
+                  <div className="order-details">
+                    {data.items.map((item, idx) => (
+                      <div key={idx} className="detail-row">
+                        <span className="detail-qty">{item.quantity}×</span>
+                        <span className="detail-name">{item.name}</span>
+                        <span className="detail-price">
+                          {formatCurrency(item.price * item.quantity, data.currency)}
                         </span>
-                        <span>{formatCurrency(item.price * item.quantity, normalized.currency)}</span>
                       </div>
                     ))}
                   </div>
                 )}
-              </details>
+              </div>
             );
           })}
         </div>
+
+        <style jsx>{`
+          .page {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 50%, #16213e 100%);
+            color: #e8e8e8;
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+            padding: 0 24px 48px;
+          }
+
+          .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding: 48px 0 32px;
+            flex-wrap: wrap;
+            gap: 20px;
+          }
+
+          .header-content {
+            max-width: 500px;
+          }
+
+          .eyebrow {
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            font-size: 11px;
+            color: #a78bfa;
+            margin: 0 0 8px;
+          }
+
+          .title {
+            font-size: 32px;
+            font-weight: 700;
+            margin: 0 0 8px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+          }
+
+          .subtitle {
+            font-size: 16px;
+            color: #888;
+            margin: 0;
+          }
+
+          .btn-secondary {
+            padding: 12px 20px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.05);
+            color: #e8e8e8;
+            font-weight: 600;
+            text-decoration: none;
+            transition: background 0.2s;
+          }
+
+          .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.1);
+          }
+
+          .error-banner {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #fca5a5;
+            padding: 12px 16px;
+            border-radius: 12px;
+            margin-bottom: 24px;
+          }
+
+          .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+          }
+
+          .empty-icon {
+            font-size: 48px;
+            display: block;
+            margin-bottom: 16px;
+          }
+
+          .orders-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+          }
+
+          .order-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            overflow: hidden;
+            transition: border-color 0.2s;
+          }
+
+          .order-card:hover {
+            border-color: rgba(255, 255, 255, 0.15);
+          }
+
+          .order-card.expanded {
+            border-color: rgba(102, 126, 234, 0.4);
+          }
+
+          .order-header {
+            width: 100%;
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1fr 40px;
+            gap: 16px;
+            align-items: center;
+            padding: 16px 20px;
+            background: transparent;
+            border: none;
+            color: inherit;
+            cursor: pointer;
+            text-align: left;
+            font-family: inherit;
+          }
+
+          @media (max-width: 700px) {
+            .order-header {
+              grid-template-columns: 1fr 1fr;
+              gap: 12px;
+            }
+            .order-items,
+            .order-customer {
+              display: none;
+            }
+          }
+
+          .order-main {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+          }
+
+          .order-date {
+            font-weight: 600;
+            font-size: 14px;
+          }
+
+          .order-id {
+            color: #666;
+            font-size: 12px;
+            font-family: monospace;
+          }
+
+          .order-total {
+            font-weight: 700;
+            font-size: 16px;
+            color: #a78bfa;
+          }
+
+          .order-items {
+            color: #888;
+            font-size: 14px;
+          }
+
+          .order-customer {
+            color: #666;
+            font-size: 13px;
+            font-family: monospace;
+          }
+
+          .order-expand {
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            font-size: 18px;
+            color: #888;
+          }
+
+          .order-details {
+            padding: 0 20px 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+            margin-top: 0;
+          }
+
+          .detail-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+          }
+
+          .detail-row:last-child {
+            border-bottom: none;
+          }
+
+          .detail-qty {
+            width: 36px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(102, 126, 234, 0.2);
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #a78bfa;
+          }
+
+          .detail-name {
+            flex: 1;
+            color: #ccc;
+          }
+
+          .detail-price {
+            color: #888;
+            font-size: 14px;
+          }
+        `}</style>
       </main>
     </>
   );
