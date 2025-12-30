@@ -91,12 +91,19 @@ const sleep = (ms: number): Promise<void> => {
  * Checks if an error is retryable based on status code
  */
 const isRetryableError = (error: unknown, retryableStatusCodes: number[]): boolean => {
-  const statusCode = error?.statusCode ?? error?.code ?? error?.status;
-  if (typeof statusCode === 'number') {
-    return retryableStatusCodes.includes(statusCode);
+  // Type guard to check if error is an object with statusCode/code/status properties
+  if (error && typeof error === 'object') {
+    const err = error as { statusCode?: number; code?: number; status?: number; message?: string };
+    const statusCode = err.statusCode ?? err.code ?? err.status;
+    if (typeof statusCode === 'number') {
+      return retryableStatusCodes.includes(statusCode);
+    }
+    // Retry on network errors or timeouts
+    if (err.message) {
+      return err.message.includes('timeout') || err.message.includes('ECONNRESET');
+    }
   }
-  // Retry on network errors or timeouts
-  return error?.message?.includes('timeout') || error?.message?.includes('ECONNRESET');
+  return false;
 };
 
 /**
@@ -129,9 +136,12 @@ async function withRetry<T>(
       }
 
       // Log retry attempt
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorObj = error && typeof error === 'object' ? error as { statusCode?: number; code?: number } : null;
+      const statusCode = errorObj?.statusCode ?? errorObj?.code;
       console.warn(`[Square API] Retry attempt ${attempt + 1}/${maxRetries} after ${delay}ms:`, {
-        error: error?.message ?? String(error),
-        statusCode: error?.statusCode ?? error?.code
+        error: errorMessage,
+        statusCode
       });
 
       await sleep(delay);

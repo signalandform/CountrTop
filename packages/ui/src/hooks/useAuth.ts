@@ -121,9 +121,10 @@ export function useAuth(options: UseAuthOptions): UseAuthReturn {
     };
 
     window.addEventListener('message', handleNativeMessage);
+    // For React Native WebView compatibility
     const docAny = document as { 
-      addEventListener?: (type: string, listener: EventListener) => void; 
-      removeEventListener?: (type: string, listener: EventListener) => void 
+      addEventListener?: (type: string, listener: (event: MessageEvent) => void) => void; 
+      removeEventListener?: (type: string, listener: (event: MessageEvent) => void) => void 
     };
     docAny.addEventListener?.('message', handleNativeMessage);
     
