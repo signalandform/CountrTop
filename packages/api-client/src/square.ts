@@ -90,7 +90,7 @@ const sleep = (ms: number): Promise<void> => {
 /**
  * Checks if an error is retryable based on status code
  */
-const isRetryableError = (error: any, retryableStatusCodes: number[]): boolean => {
+const isRetryableError = (error: unknown, retryableStatusCodes: number[]): boolean => {
   const statusCode = error?.statusCode ?? error?.code ?? error?.status;
   if (typeof statusCode === 'number') {
     return retryableStatusCodes.includes(statusCode);
@@ -114,13 +114,13 @@ async function withRetry<T>(
     retryableStatusCodes = [429, 500, 502, 503, 504]
   } = config;
 
-  let lastError: any;
+  let lastError: unknown;
   let delay = initialDelayMs;
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       return await fn();
-    } catch (error: any) {
+    } catch (error: unknown) {
       lastError = error;
 
       // Don't retry if it's the last attempt or error is not retryable
@@ -180,7 +180,9 @@ export function createResilientSquareClient(
   const circuitBreaker = new CircuitBreaker(circuitBreakerConfig);
 
   // Wrap API methods with retry and circuit breaker
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const wrapApiMethod = <T extends (...args: any[]) => Promise<any>>(method: T): T => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return (async (...args: any[]) => {
       return circuitBreaker.execute(() => withRetry(() => method(...args), retryConfig));
     }) as T;

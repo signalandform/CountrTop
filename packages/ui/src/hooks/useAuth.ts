@@ -96,7 +96,7 @@ export function useAuth(options: UseAuthOptions): UseAuthReturn {
       const raw = typeof event.data === 'string' ? event.data : '';
       if (!raw) return;
       
-      let payload: any;
+      let payload: { type?: string; access_token?: string; refresh_token?: string };
       try {
         payload = JSON.parse(raw);
       } catch {
@@ -122,8 +122,8 @@ export function useAuth(options: UseAuthOptions): UseAuthReturn {
 
     window.addEventListener('message', handleNativeMessage);
     const docAny = document as { 
-      addEventListener?: (...args: any[]) => void; 
-      removeEventListener?: (...args: any[]) => void 
+      addEventListener?: (type: string, listener: EventListener) => void; 
+      removeEventListener?: (type: string, listener: EventListener) => void 
     };
     docAny.addEventListener?.('message', handleNativeMessage);
     

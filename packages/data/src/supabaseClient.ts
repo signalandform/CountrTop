@@ -44,13 +44,13 @@ const queryCache = new QueryCache();
 
 // Performance logging helper
 // Use lazy loading to avoid pulling in Square SDK in Edge Runtime (middleware)
-let loggerModule: any = null;
+let loggerModule: { getLogger?: () => { info: (msg: string, data?: unknown) => void; warn: (msg: string, data?: unknown) => void; error: (msg: string, error?: unknown, data?: unknown) => void } } | null | false = null;
 const getLoggerLazy = () => {
   if (loggerModule === null) {
     try {
       // Only try to load logger if we're not in Edge Runtime
       // Import from logger-only to avoid Square SDK
-      // @ts-ignore - EdgeRuntime is a global in Edge Runtime
+      // @ts-expect-error - EdgeRuntime is a global in Edge Runtime
       if (typeof EdgeRuntime === 'undefined') {
         // Use a string literal that webpack won't statically analyze
         // Import logger directly to avoid pulling in Square SDK

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 
-import { OpsOrder, OrderItem, validateEnvProduction, vendorOpsMobileEnvSchema } from '@countrtop/models';
+import { OpsOrder, validateEnvProduction, vendorOpsMobileEnvSchema } from '@countrtop/models';
 import { ErrorBoundary } from '@countrtop/ui';
 
 // Validate environment variables on startup (warn in development, fail in production)

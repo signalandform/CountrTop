@@ -147,7 +147,8 @@ function DefaultErrorFallback({ error, onRetry }: DefaultErrorFallbackProps) {
   );
 }
 
-// React Native styles
+// React Native styles (unused in web, but kept for potential future use)
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const styles = {
   container: {
     flex: 1,
