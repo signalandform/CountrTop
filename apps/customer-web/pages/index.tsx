@@ -376,7 +376,10 @@ export default function CustomerHome({ vendorSlug, vendorName }: Props) {
               <h2>Account</h2>
               {user && <button onClick={signOut} className="btn-secondary">Sign out</button>}
             </div>
-            {!isReady && <p className="muted">Loading…</p>}
+            {!mounted && <p className="muted">Loading…</p>}
+            {mounted && !supabase && (
+              <p className="muted">Sign-in not available (auth not configured)</p>
+            )}
             {user ? (
               <div className="account-info">
                 <div>
@@ -386,7 +389,7 @@ export default function CustomerHome({ vendorSlug, vendorName }: Props) {
                 <div className="points">{loyalty !== null ? `${loyalty} pts` : '—'}</div>
               </div>
             ) : (
-              isReady && (
+              mounted && supabase && (
                 <div className="auth-buttons">
                   {appleEnabled && (
                     <button onClick={() => signIn('apple')} className="btn-auth">
