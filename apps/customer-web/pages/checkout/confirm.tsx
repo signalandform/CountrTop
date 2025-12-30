@@ -1,6 +1,5 @@
 import type { GetServerSideProps } from 'next';
 import Head from 'next/head';
-import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useEffect, useMemo, useState } from 'react';
 
@@ -107,9 +106,9 @@ export default function ConfirmPage({ vendorName }: ConfirmProps) {
                   </div>
                 </div>
                 <div style={{ marginTop: 20 }}>
-                  <Link href="/" className="btn-primary">
+                  <button onClick={() => router.push('/')} className="btn-primary">
                     Back to Home
-                  </Link>
+                  </button>
                 </div>
               </>
             )}
