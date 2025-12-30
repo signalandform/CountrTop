@@ -54,3 +54,58 @@ export type VendorInsights = {
   pointsIssued: number;
   topReorderedItems: { label: string; count: number }[];
 };
+
+// Menu and Catalog Types
+export type MenuItem = {
+  id: string;
+  name: string;
+  description?: string;
+  price: number;
+  currency: string;
+  variationId: string;
+  imageUrl?: string | null;
+};
+
+export type CartItem = MenuItem & {
+  quantity: number;
+};
+
+// Order Types
+export type OrderItem = {
+  name: string;
+  quantity: number;
+  price: number;
+};
+
+export type OrderHistoryEntry = {
+  id: string;
+  placedAt: string;
+  squareOrderId: string;
+  snapshotJson: Record<string, unknown>;
+};
+
+export type OpsOrder = {
+  id: string;
+  squareOrderId: string;
+  placedAt: string;
+  status: 'new' | 'ready';
+  items: OrderItem[];
+  total: number;
+  currency: string;
+  userId: string | null;
+};
+
+// Environment validation exports
+export {
+  validateEnv,
+  validateEnvOrThrow,
+  validateEnvProduction,
+  validateUrl,
+  validateNonEmpty,
+  validateBoolean,
+  customerWebEnvSchema,
+  vendorAdminWebEnvSchema,
+  customerMobileEnvSchema,
+  vendorOpsMobileEnvSchema
+} from './env';
+export type { EnvValidationResult, EnvSchema } from './env';

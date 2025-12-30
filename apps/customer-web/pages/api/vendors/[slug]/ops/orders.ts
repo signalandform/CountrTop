@@ -1,23 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
+import { OpsOrder, OrderItem } from '@countrtop/models';
 import { getServerDataClient } from '../../../../../lib/dataClient';
-
-type OrderItem = {
-  name: string;
-  quantity: number;
-  price: number;
-};
-
-type OpsOrder = {
-  id: string;
-  squareOrderId: string;
-  placedAt: string;
-  status: 'new';
-  items: OrderItem[];
-  total: number;
-  currency: string;
-  userId: string | null;
-};
 
 type OrdersResponse = { ok: true; orders: OpsOrder[] } | { ok: false; error: string };
 
@@ -60,7 +44,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       id: order.id,
       squareOrderId: order.squareOrderId,
       placedAt: order.placedAt,
-      status: 'new' as const,
+      status: 'new' as OpsOrder['status'],
       items: normalizeItems(order.snapshotJson),
       total: Number(order.snapshotJson?.total ?? 0),
       currency: (order.snapshotJson?.currency as string) ?? 'USD',

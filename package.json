@@ -28,10 +28,13 @@
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-react": "^7.35.0",
     "eslint-plugin-react-hooks": "^5.1.0-rc.0",
+    "null-loader": "^4.0.1",
     "prettier": "^3.3.3",
     "typescript": "^5.3.3"
   },
   "dependencies": {
-    "@babel/runtime": "^7.28.4"
+    "@babel/runtime": "^7.28.4",
+    "pino": "^10.1.0",
+    "pino-pretty": "^13.1.3"
   }
 }

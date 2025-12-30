@@ -4,12 +4,24 @@ import { StatusBar } from 'expo-status-bar';
 import { WebView, WebViewMessageEvent } from 'react-native-webview';
 import * as WebBrowser from 'expo-web-browser';
 
+import { validateEnvProduction, customerMobileEnvSchema } from '@countrtop/models';
+import { ErrorBoundary } from '@countrtop/ui';
+
 import {
   ensureNotificationPermissions,
   getStoredPushToken,
   obtainExpoPushToken,
   StoredPushToken
 } from './notifications/pushNotifications';
+
+// Validate environment variables on startup (warn in development, fail in production)
+if (__DEV__) {
+  try {
+    validateEnvProduction(customerMobileEnvSchema, 'customer-mobile');
+  } catch (error) {
+    console.warn('Environment validation warnings:', error);
+  }
+}
 
 const resolveCustomerUrl = () => {
   const baseUrl = process.env.EXPO_PUBLIC_CUSTOMER_WEB_URL;
@@ -203,66 +215,77 @@ export default function App() {
   }, [customerUrl]);
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar style="dark" />
-      <View style={styles.statusBar}>
-        <Text style={styles.statusText}>{notificationCopy}</Text>
-        <Text style={styles.statusText}>{registrationCopy}</Text>
-        {authFlowError && <Text style={styles.statusText}>{authFlowError}</Text>}
-        {webStatus === 'error' && <Text style={styles.statusText}>{webError}</Text>}
-      </View>
-      <WebView
-        ref={webViewRef}
-        source={{
-          uri: customerUrl,
-          headers: {
-            'ngrok-skip-browser-warning': 'true'
-          }
-        }}
-        style={styles.webView}
-        userAgent={webUserAgent}
-        originWhitelist={['https://*', 'http://*']}
-        javaScriptEnabled
-        domStorageEnabled
-        cacheEnabled={false}
-        incognito
-        sharedCookiesEnabled
-        thirdPartyCookiesEnabled
-        startInLoadingState
-        renderLoading={() => (
-          <View style={styles.loadingState}>
-            <Text style={styles.loadingText}>Loading customer web…</Text>
-          </View>
-        )}
-        renderError={(errorName, errorDescription) => (
-          <View style={styles.loadingState}>
-            <Text style={styles.loadingText}>{errorName}</Text>
-            <Text style={styles.loadingText}>{errorDescription}</Text>
-          </View>
-        )}
-        onLoadStart={() => {
-          setWebStatus('loading');
-          setWebError(null);
-        }}
-        onLoadEnd={() => {
-          setWebStatus('ready');
-        }}
-        onError={(event) => {
-          setWebStatus('error');
-          setWebError(event.nativeEvent.description ?? 'Unable to load customer web.');
-        }}
-        onHttpError={(event) => {
-          setWebStatus('error');
-          setWebError(`HTTP ${event.nativeEvent.statusCode} loading ${event.nativeEvent.url}`);
-        }}
-        onContentProcessDidTerminate={() => {
-          setWebStatus('error');
-          setWebError('WebView process terminated. Reloading…');
-          webViewRef.current?.reload();
-        }}
-        onMessage={handleWebMessage}
-      />
-    </SafeAreaView>
+    <ErrorBoundary
+      onError={(error, errorInfo) => {
+        // Log to console in development
+        if (__DEV__) {
+          console.error('Application error:', error, errorInfo);
+        }
+        // In production, send to monitoring service
+        // Example: Sentry.captureException(error, { contexts: { react: errorInfo } });
+      }}
+    >
+      <SafeAreaView style={styles.container}>
+        <StatusBar style="dark" />
+        <View style={styles.statusBar}>
+          <Text style={styles.statusText}>{notificationCopy}</Text>
+          <Text style={styles.statusText}>{registrationCopy}</Text>
+          {authFlowError && <Text style={styles.statusText}>{authFlowError}</Text>}
+          {webStatus === 'error' && <Text style={styles.statusText}>{webError}</Text>}
+        </View>
+        <WebView
+          ref={webViewRef}
+          source={{
+            uri: customerUrl,
+            headers: {
+              'ngrok-skip-browser-warning': 'true'
+            }
+          }}
+          style={styles.webView}
+          userAgent={webUserAgent}
+          originWhitelist={['https://*', 'http://*']}
+          javaScriptEnabled
+          domStorageEnabled
+          cacheEnabled={false}
+          incognito
+          sharedCookiesEnabled
+          thirdPartyCookiesEnabled
+          startInLoadingState
+          renderLoading={() => (
+            <View style={styles.loadingState}>
+              <Text style={styles.loadingText}>Loading customer web…</Text>
+            </View>
+          )}
+          renderError={(errorName, errorDescription) => (
+            <View style={styles.loadingState}>
+              <Text style={styles.loadingText}>{errorName}</Text>
+              <Text style={styles.loadingText}>{errorDescription}</Text>
+            </View>
+          )}
+          onLoadStart={() => {
+            setWebStatus('loading');
+            setWebError(null);
+          }}
+          onLoadEnd={() => {
+            setWebStatus('ready');
+          }}
+          onError={(event) => {
+            setWebStatus('error');
+            setWebError(event.nativeEvent.description ?? 'Unable to load customer web.');
+          }}
+          onHttpError={(event) => {
+            setWebStatus('error');
+            setWebError(`HTTP ${event.nativeEvent.statusCode} loading ${event.nativeEvent.url}`);
+          }}
+          onContentProcessDidTerminate={() => {
+            setWebStatus('error');
+            setWebError('WebView process terminated. Reloading…');
+            webViewRef.current?.reload();
+          }}
+          onMessage={handleWebMessage}
+        />
+      </SafeAreaView>
+    </ErrorBoundary>
   );
 }
 

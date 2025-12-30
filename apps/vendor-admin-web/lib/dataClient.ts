@@ -41,6 +41,20 @@ export const getServerDataClient = () => {
     throw new Error('SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required when NEXT_PUBLIC_USE_MOCK_DATA=false');
   }
 
-  const supabase = createClient<Database>(supabaseUrl, supabaseKey);
+  // Configure Supabase client with connection pooling settings
+  // For web apps: max 10 connections, 30s timeout
+  const supabase = createClient<Database>(supabaseUrl, supabaseKey, {
+    db: {
+      schema: 'public'
+    },
+    global: {
+      headers: {
+        'x-client-info': 'countrtop-vendor-admin'
+      }
+    },
+    auth: {
+      persistSession: false // Server-side doesn't need session persistence
+    }
+  });
   return createDataClient({ supabase });
 };

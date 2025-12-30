@@ -3,39 +3,10 @@ import Head from 'next/head';
 import { CSSProperties, useCallback, useEffect, useMemo, useState } from 'react';
 
 import { resolveVendorSlugFromHost } from '@countrtop/data';
+import { CartItem, MenuItem, OrderHistoryEntry } from '@countrtop/models';
+import { useAuth } from '@countrtop/ui';
 import { getServerDataClient } from '../lib/dataClient';
 import { getBrowserSupabaseClient } from '../lib/supabaseBrowser';
-
-type MenuItem = {
-  id: string;
-  name: string;
-  description?: string;
-  price: number;
-  currency: string;
-  variationId: string;
-  imageUrl?: string | null;
-};
-
-type CartItem = MenuItem & { quantity: number };
-
-type SnapshotItem = {
-  id: string;
-  name: string;
-  quantity: number;
-  price: number;
-  modifiers?: string[];
-};
-
-type OrderHistoryEntry = {
-  id: string;
-  placedAt: string;
-  squareOrderId: string;
-  snapshotJson: {
-    items?: SnapshotItem[];
-    total?: number;
-    currency?: string;
-  };
-};
 
 type CustomerHomeProps = {
   vendorSlug: string | null;
@@ -92,9 +63,6 @@ export default function CustomerHome({ vendorSlug, vendorName }: CustomerHomePro
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [checkingOut, setCheckingOut] = useState(false);
-  const [authStatus, setAuthStatus] = useState<'idle' | 'loading' | 'ready'>('idle');
-  const [authUser, setAuthUser] = useState<{ id: string; email?: string | null } | null>(null);
-  const [authError, setAuthError] = useState<string | null>(null);
   const [orderHistory, setOrderHistory] = useState<OrderHistoryEntry[]>([]);
   const [orderStatus, setOrderStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
   const [orderError, setOrderError] = useState<string | null>(null);
@@ -171,105 +139,21 @@ export default function CustomerHome({ vendorSlug, vendorName }: CustomerHomePro
     setSupabase(getBrowserSupabaseClient());
   }, []);
 
-  useEffect(() => {
-    if (!supabase) return;
-    setAuthStatus('loading');
-    supabase.auth
-      .getSession()
-      .then(({ data }) => {
-        const sessionUser = data.session?.user ?? null;
-        setAuthUser(sessionUser ? { id: sessionUser.id, email: sessionUser.email } : null);
-        setAuthStatus('ready');
-      })
-      .catch((error) => {
-        setAuthError(error instanceof Error ? error.message : 'Unable to load session');
-        setAuthStatus('ready');
-      });
-
-    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
-      const sessionUser = session?.user ?? null;
-      setAuthUser(sessionUser ? { id: sessionUser.id, email: sessionUser.email } : null);
-    });
-
-    return () => {
-      data.subscription.unsubscribe();
-    };
-  }, [supabase]);
-
-  useEffect(() => {
-    if (!isNativeWebView) return;
-    postToNative({
-      type: 'ct-auth',
-      userId: authUser?.id ?? null,
-      email: authUser?.email ?? null
-    });
-  }, [authUser, isNativeWebView, postToNative]);
-
-  useEffect(() => {
-    if (!supabase || !isNativeWebView) return;
-
-    const handleNativeMessage = async (event: MessageEvent) => {
-      const raw = typeof event.data === 'string' ? event.data : '';
-      if (!raw) return;
-      let payload: any;
-      try {
-        payload = JSON.parse(raw);
-      } catch {
-        return;
-      }
-      if (payload?.type !== 'ct-auth-token') return;
-
-      try {
-        const { access_token, refresh_token } = payload;
-        if (!access_token || !refresh_token) {
-          throw new Error('Missing auth tokens from native sign-in.');
-        }
-        const { error } = await supabase.auth.setSession({
-          access_token,
-          refresh_token
+  // Use shared auth hook
+  const { user: authUser, status: authStatus, error: authError, signIn: startOAuth, signOut: signOutBase, isReady: authReady } = useAuth({
+    supabase,
+    isNativeWebView,
+    onNativeAuthUpdate: (user) => {
+      if (isNativeWebView) {
+        postToNative({
+          type: 'ct-auth',
+          userId: user?.id ?? null,
+          email: user?.email ?? null
         });
-        if (error) throw error;
-      } catch (error) {
-        setAuthError(toFriendlyError(error, 'Unable to complete sign-in.'));
       }
-    };
-
-    window.addEventListener('message', handleNativeMessage);
-    const docAny = document as { addEventListener?: (...args: any[]) => void; removeEventListener?: (...args: any[]) => void };
-    docAny.addEventListener?.('message', handleNativeMessage);
-    return () => {
-      window.removeEventListener('message', handleNativeMessage);
-      docAny.removeEventListener?.('message', handleNativeMessage);
-    };
-  }, [isNativeWebView, supabase]);
-
-  useEffect(() => {
-    if (!supabase || !isNativeWebView) return;
-
-    const handleToken = async (payload: { access_token?: string; refresh_token?: string }) => {
-      try {
-        const { access_token, refresh_token } = payload;
-        if (!access_token || !refresh_token) {
-          throw new Error('Missing auth tokens from native sign-in.');
-        }
-        const { error } = await supabase.auth.setSession({
-          access_token,
-          refresh_token
-        });
-        if (error) throw error;
-      } catch (error) {
-        setAuthError(toFriendlyError(error, 'Unable to complete sign-in.'));
-      }
-    };
-
-    (window as typeof window & { ctHandleNativeAuth?: typeof handleToken }).ctHandleNativeAuth =
-      handleToken;
-
-    return () => {
-      const target = window as typeof window & { ctHandleNativeAuth?: typeof handleToken };
-      delete target.ctHandleNativeAuth;
-    };
-  }, [isNativeWebView, supabase]);
+    },
+    postToNative
+  });
 
   const refreshOrderHistory = useCallback(async (userId: string) => {
     if (!vendorSlug) return;
@@ -401,7 +285,13 @@ export default function CustomerHome({ vendorSlug, vendorName }: CustomerHomePro
       return;
     }
 
-    const items = entry.snapshotJson?.items ?? [];
+    const items = (Array.isArray(entry.snapshotJson?.items) ? entry.snapshotJson.items : []) as Array<{
+      id: string;
+      name: string;
+      quantity: number;
+      price: number;
+      modifiers?: string[];
+    }>;
     if (!items.length) {
       pushNotice('warning', 'No items found for that order.');
       return;
@@ -458,49 +348,13 @@ export default function CustomerHome({ vendorSlug, vendorName }: CustomerHomePro
     }
   };
 
-  const startOAuth = async (provider: 'apple' | 'google') => {
-    if (!supabase) {
-      setAuthError('Supabase auth is not configured for this environment.');
-      return;
-    }
-    setAuthError(null);
-    try {
-      if (isNativeWebView) {
-        const { data, error } = await supabase.auth.signInWithOAuth({
-          provider,
-          options: {
-            redirectTo: 'countrtop://auth-callback',
-            skipBrowserRedirect: true
-          }
-        });
-        if (error) throw error;
-        if (!data?.url) {
-          throw new Error('Unable to start sign-in in app.');
-        }
-        postToNative({ type: 'ct-auth-url', url: data.url, provider });
-        return;
-      }
-
-      await supabase.auth.signInWithOAuth({
-        provider,
-        options: {
-          redirectTo: window.location.origin
-        }
-      });
-    } catch (error) {
-      setAuthError(error instanceof Error ? error.message : 'Unable to start sign-in');
-    }
-  };
-
-  const signOut = async () => {
-    if (!supabase) return;
-    await supabase.auth.signOut();
+  // Wrap signOut to clear app-specific state
+  const signOut = useCallback(async () => {
+    await signOutBase();
     setOrderHistory([]);
     setOrderStatus('idle');
     setLoyaltyBalance(null);
-  };
-
-  const authReady = isClient && supabase;
+  }, [signOutBase]);
   const contentStyle: CSSProperties = isNativeWebView
     ? { ...styles.content, display: 'flex', flexDirection: 'column', alignItems: 'stretch' }
     : styles.content;
@@ -727,7 +581,9 @@ export default function CustomerHome({ vendorSlug, vendorName }: CustomerHomePro
               )}
               {authUser &&
                 orderHistory.map((order) => {
-                  const items = order.snapshotJson?.items ?? [];
+                  const items = (Array.isArray(order.snapshotJson?.items) ? order.snapshotJson.items : []) as Array<{
+                    quantity?: number;
+                  }>;
                   const itemCount = items.reduce((sum, item) => sum + (item.quantity ?? 0), 0);
                   const itemLabel = itemCount === 1 ? '1 item' : `${itemCount} items`;
                   return (
@@ -737,8 +593,8 @@ export default function CustomerHome({ vendorSlug, vendorName }: CustomerHomePro
                         <div style={styles.historyMeta}>
                           {new Date(order.placedAt).toLocaleString()} · {itemLabel} ·{' '}
                           {formatCurrency(
-                            order.snapshotJson?.total ?? 0,
-                            order.snapshotJson?.currency ?? 'USD'
+                            (typeof order.snapshotJson?.total === 'number' ? order.snapshotJson.total : 0),
+                            (typeof order.snapshotJson?.currency === 'string' ? order.snapshotJson.currency : 'USD')
                           )}
                         </div>
                       </div>

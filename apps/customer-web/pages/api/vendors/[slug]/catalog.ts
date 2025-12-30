@@ -1,24 +1,16 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
+import { MenuItem } from '@countrtop/models';
 import { getServerDataClient } from '../../../../lib/dataClient';
+import { rateLimiters } from '../../../../lib/rateLimit';
 import { squareClientForVendor } from '../../../../lib/square';
 
-type CatalogItem = {
-  id: string;
-  name: string;
-  description?: string;
-  price: number;
-  currency: string;
-  variationId: string;
-  imageUrl?: string | null;
-};
-
-type CatalogResponse = { ok: true; items: CatalogItem[] } | { ok: false; error: string };
+type CatalogResponse = { ok: true; items: MenuItem[] } | { ok: false; error: string };
 
 const normalizeSlug = (value: string | string[] | undefined) =>
   Array.isArray(value) ? value[0] : value;
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse<CatalogResponse>) {
+async function handler(req: NextApiRequest, res: NextApiResponse<CatalogResponse>) {
   if (req.method !== 'GET') {
     return res.status(405).json({ ok: false, error: 'Method not allowed' });
   }
@@ -50,7 +42,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       }
     });
 
-    const items: CatalogItem[] = (result.objects ?? [])
+    const items: MenuItem[] = (result.objects ?? [])
       .filter((object) => {
         if (object.type !== 'ITEM') return false;
         if (!object.itemData?.variations?.length) return false;
@@ -82,7 +74,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
   }
 }
 
-const mockCatalogItems: CatalogItem[] = [
+const mockCatalogItems: MenuItem[] = [
   {
     id: 'mock_espresso',
     name: 'Espresso',
@@ -111,3 +103,6 @@ const mockCatalogItems: CatalogItem[] = [
     imageUrl: null
   }
 ];
+
+// Apply rate limiting: 100 requests per minute
+export default rateLimiters.catalog(handler);

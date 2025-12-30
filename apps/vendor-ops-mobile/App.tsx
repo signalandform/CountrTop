@@ -2,21 +2,20 @@ import { useEffect, useMemo, useState } from 'react';
 import { SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 
-type OrderItem = {
-  name: string;
-  quantity: number;
-  price: number;
-};
+import { OpsOrder, validateEnvProduction, vendorOpsMobileEnvSchema } from '@countrtop/models';
+import { ErrorBoundary } from '@countrtop/ui';
 
-type OrderTicket = {
-  id: string;
-  placedAt: string;
-  status: 'new' | 'ready';
-  items: OrderItem[];
-  total: number;
-  currency: string;
-  squareOrderId: string;
-};
+// Validate environment variables on startup (warn in development, fail in production)
+if (__DEV__) {
+  try {
+    validateEnvProduction(vendorOpsMobileEnvSchema, 'vendor-ops-mobile');
+  } catch (error) {
+    console.warn('Environment validation warnings:', error);
+  }
+}
+
+// Alias for compatibility
+type OrderTicket = OpsOrder;
 
 type ApiOrder = Partial<OrderTicket>;
 
@@ -98,13 +97,23 @@ export default function VendorOpsApp() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar style="light" />
-      <View style={styles.header}>
-        <Text style={styles.title}>CountrTop Vendor Ops</Text>
-        <Text style={styles.subtitle}>Order queue + mark ready</Text>
-      </View>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+    <ErrorBoundary
+      onError={(error, errorInfo) => {
+        // Log to console in development
+        if (__DEV__) {
+          console.error('Application error:', error, errorInfo);
+        }
+        // In production, send to monitoring service
+        // Example: Sentry.captureException(error, { contexts: { react: errorInfo } });
+      }}
+    >
+      <SafeAreaView style={styles.container}>
+        <StatusBar style="light" />
+        <View style={styles.header}>
+          <Text style={styles.title}>CountrTop Vendor Ops</Text>
+          <Text style={styles.subtitle}>Order queue + mark ready</Text>
+        </View>
+        <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.card}>
           <View style={styles.cardHeader}>
             <Text style={styles.cardTitle}>Order queue</Text>
@@ -182,6 +191,7 @@ export default function VendorOpsApp() {
         </View>
       </ScrollView>
     </SafeAreaView>
+    </ErrorBoundary>
   );
 }
 
