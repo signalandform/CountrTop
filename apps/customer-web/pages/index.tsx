@@ -107,6 +107,18 @@ export default function CustomerHome({ vendorSlug, vendorName }: Props) {
   const cartTotal = useMemo(() => cart.reduce((sum, i) => sum + i.price * i.quantity, 0), [cart]);
   const cartCurrency = cart[0]?.currency ?? 'USD';
   const appleEnabled = process.env.NEXT_PUBLIC_APPLE_SIGNIN === 'true';
+  const recentOrder = useMemo(() => {
+    if (orders.length === 0) return null;
+    return orders[0]; // Orders are already sorted by date (most recent first)
+  }, [orders]);
+  const recentOrderDetails = useMemo(() => {
+    if (!recentOrder) return null;
+    const items = (recentOrder.snapshotJson?.items ?? []) as Array<{ quantity?: number }>;
+    const count = items.reduce((s, i) => s + (i.quantity ?? 0), 0);
+    const total = typeof recentOrder.snapshotJson?.total === 'number' ? recentOrder.snapshotJson.total : 0;
+    const currency = typeof recentOrder.snapshotJson?.currency === 'string' ? recentOrder.snapshotJson.currency : 'USD';
+    return { count, total, currency };
+  }, [recentOrder]);
 
   // ---------------------------------------------------------------------------
   // Mount effects
@@ -405,6 +417,32 @@ export default function CustomerHome({ vendorSlug, vendorName }: Props) {
             {authError && <p className="error">{authError}</p>}
           </section>
 
+          {/* Order Tracking */}
+          <section className="card order-tracking">
+            <div className="card-header">
+              <h2>Order Tracking</h2>
+            </div>
+            {!mounted && <p className="muted">Loading…</p>}
+            {mounted && !user && (
+              <p className="muted">Sign in to track orders.</p>
+            )}
+            {user && ordersLoading && <p className="muted">Loading orders…</p>}
+            {user && ordersError && <p className="error">{ordersError}</p>}
+            {user && !ordersLoading && !recentOrder && (
+              <p className="muted">No orders yet.</p>
+            )}
+            {user && !ordersLoading && recentOrder && recentOrderDetails && (
+              <div className="order-tracking-info">
+                <div>
+                  <div className="label">Order {recentOrder.squareOrderId.slice(-6)}</div>
+                  <div className="muted">
+                    {new Date(recentOrder.placedAt).toLocaleDateString()} · {recentOrderDetails.count} items · {formatCurrency(recentOrderDetails.total, recentOrderDetails.currency)}
+                  </div>
+                </div>
+              </div>
+            )}
+          </section>
+
           {/* Cart */}
           <aside className="card cart">
             <div className="card-header">
@@ -608,6 +646,7 @@ export default function CustomerHome({ vendorSlug, vendorName }: Props) {
             grid-template-columns: 1fr 300px;
             grid-template-areas:
               'account cart'
+              'order-tracking cart'
               'menu cart';
             gap: 20px;
             padding: 0 24px 48px;
@@ -619,6 +658,7 @@ export default function CustomerHome({ vendorSlug, vendorName }: Props) {
               grid-template-columns: 1fr;
               grid-template-areas:
                 'account'
+                'order-tracking'
                 'cart'
                 'menu';
             }
@@ -626,6 +666,10 @@ export default function CustomerHome({ vendorSlug, vendorName }: Props) {
 
           .account {
             grid-area: account;
+          }
+
+          .order-tracking {
+            grid-area: order-tracking;
           }
 
           .cart {
@@ -683,6 +727,12 @@ export default function CustomerHome({ vendorSlug, vendorName }: Props) {
           }
 
           .account-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+          }
+
+          .order-tracking-info {
             display: flex;
             justify-content: space-between;
             align-items: center;

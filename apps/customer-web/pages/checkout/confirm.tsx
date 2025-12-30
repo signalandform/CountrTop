@@ -1,7 +1,8 @@
 import type { GetServerSideProps } from 'next';
 import Head from 'next/head';
+import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { CSSProperties, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { resolveVendorSlugFromHost } from '@countrtop/data';
 
@@ -65,101 +66,181 @@ export default function ConfirmPage({ vendorName }: ConfirmProps) {
     sessionStorage.setItem('ct_refresh_after_checkout', orderId);
   }, [orderId]);
 
+  const formatCurrency = (cents: number, currency: string) =>
+    new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(cents / 100);
+
   return (
     <>
       <Head>
         <title>{`Order confirmed · ${vendorName}`}</title>
       </Head>
-      <main style={styles.page}>
-        <div style={styles.card}>
-          <p style={styles.eyebrow}>Order confirmed</p>
-          <h1 style={styles.title}>{vendorName}</h1>
-          <p style={styles.subtitle}>
-            Your order is in. We will notify you when it is ready.
-          </p>
-          {snapshot && (
-            <div style={styles.summary}>
-              <div style={styles.summaryHeader}>Order summary</div>
-              {snapshot.items.map((item) => (
-                <div key={item.id} style={styles.summaryRow}>
-                  <span>
-                    {item.quantity} × {item.name}
-                  </span>
-                  <span>
-                    ${(item.price * item.quantity / 100).toFixed(2)}
-                  </span>
-                </div>
-              ))}
-              <div style={styles.summaryTotal}>
-                <span>Total</span>
-                <strong>${(snapshot.total / 100).toFixed(2)}</strong>
-              </div>
-            </div>
-          )}
-          {status === 'idle' && <p style={styles.helper}>Finalizing your order…</p>}
-          {status === 'error' && <p style={{ ...styles.helper, color: '#b91c1c' }}>{error}</p>}
+      <main className="page">
+        <div className="hero">
+          <div className="hero-card">
+            <p className="eyebrow">Order confirmed</p>
+            <h1 className="title">{vendorName}</h1>
+            <p className="subtitle">Your order is in. We will notify you when it is ready.</p>
+          </div>
         </div>
+
+        <div className="content">
+          <section className="card">
+            {status === 'idle' && <p className="muted">Finalizing your order…</p>}
+            {status === 'error' && <p className="error">{error}</p>}
+            {snapshot && status === 'ready' && (
+              <>
+                <div className="card-header">
+                  <h2>Order Summary</h2>
+                </div>
+                <div className="order-summary">
+                  {snapshot.items.map((item) => (
+                    <div key={item.id} className="order-summary-row">
+                      <span>
+                        {item.quantity} × {item.name}
+                      </span>
+                      <span>{formatCurrency(item.price * item.quantity, snapshot.currency)}</span>
+                    </div>
+                  ))}
+                  <div className="order-summary-total">
+                    <span>Total</span>
+                    <strong>{formatCurrency(snapshot.total, snapshot.currency)}</strong>
+                  </div>
+                </div>
+                <div style={{ marginTop: 20 }}>
+                  <Link href="/" className="btn-primary">
+                    Back to Home
+                  </Link>
+                </div>
+              </>
+            )}
+          </section>
+        </div>
+
+        <style jsx>{`
+          .page {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 50%, #16213e 100%);
+            color: #e8e8e8;
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+          }
+
+          .hero {
+            padding: 48px 24px 24px;
+          }
+
+          .hero-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 24px;
+            padding: 32px;
+            max-width: 600px;
+            margin: 0 auto;
+          }
+
+          .eyebrow {
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            font-size: 11px;
+            opacity: 0.8;
+            margin: 0 0 8px;
+          }
+
+          .title {
+            font-size: 36px;
+            font-weight: 700;
+            margin: 0 0 12px;
+          }
+
+          .subtitle {
+            font-size: 16px;
+            opacity: 0.9;
+            margin: 0;
+          }
+
+          .content {
+            padding: 0 24px 48px;
+            max-width: 600px;
+            margin: 0 auto;
+          }
+
+          .card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 20px;
+          }
+
+          .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+          }
+
+          .card-header h2 {
+            font-size: 18px;
+            margin: 0;
+          }
+
+          .muted {
+            color: #888;
+            font-size: 13px;
+            margin: 0;
+          }
+
+          .error {
+            color: #f87171;
+            font-size: 13px;
+            margin: 8px 0 0;
+          }
+
+          .order-summary {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+          }
+
+          .order-summary-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 14px;
+            color: #e8e8e8;
+          }
+
+          .order-summary-total {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 8px;
+            padding-top: 12px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 16px;
+          }
+
+          .btn-primary {
+            width: 100%;
+            padding: 12px;
+            border-radius: 12px;
+            border: none;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.1s, opacity 0.2s;
+            text-decoration: none;
+            display: block;
+            text-align: center;
+          }
+
+          .btn-primary:hover {
+            opacity: 0.9;
+          }
+
+          .btn-primary:active {
+            transform: scale(0.98);
+          }
+        `}</style>
       </main>
     </>
   );
 }
 
-const styles: Record<string, CSSProperties> = {
-  page: {
-    minHeight: '100vh',
-    background: 'radial-gradient(circle at top, #f1f5f9, #e2e8f0)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
-    fontFamily: '"Space Grotesk", "Segoe UI", sans-serif'
-  },
-  card: {
-    background: '#fff',
-    borderRadius: 24,
-    padding: 32,
-    width: 'min(520px, 100%)',
-    boxShadow: '0 24px 48px rgba(15, 23, 42, 0.15)'
-  },
-  eyebrow: {
-    textTransform: 'uppercase',
-    letterSpacing: 2,
-    fontSize: 12,
-    color: '#64748b',
-    margin: 0
-  },
-  title: {
-    margin: '8px 0 12px',
-    fontSize: 32
-  },
-  subtitle: {
-    margin: 0,
-    color: '#475569'
-  },
-  summary: {
-    marginTop: 24,
-    borderTop: '1px solid #e2e8f0',
-    paddingTop: 16
-  },
-  summaryHeader: {
-    fontWeight: 600,
-    marginBottom: 12
-  },
-  summaryRow: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    fontSize: 14,
-    color: '#475569',
-    marginBottom: 6
-  },
-  summaryTotal: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    marginTop: 12,
-    fontSize: 16
-  },
-  helper: {
-    marginTop: 16,
-    color: '#64748b'
-  }
-};
