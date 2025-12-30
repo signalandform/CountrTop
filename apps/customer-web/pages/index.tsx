@@ -132,7 +132,7 @@ export default function CustomerHome({ vendorSlug, vendorName }: Props) {
     if (bridge?.postMessage) bridge.postMessage(JSON.stringify(payload));
   }, []);
 
-  const { user, status: authStatus, error: authError, signIn, signOut: baseSignOut, isReady } = useAuth({
+  const { user, status: authStatus, error: authError, signIn, signOut: baseSignOut } = useAuth({
     supabase,
     isNativeWebView: isNative,
     onNativeAuthUpdate: (u) => {
