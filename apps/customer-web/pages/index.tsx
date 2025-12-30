@@ -1,6 +1,6 @@
 import type { GetServerSideProps } from 'next';
 import Head from 'next/head';
-import { CSSProperties, useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { resolveVendorSlugFromHost } from '@countrtop/data';
 import { CartItem, MenuItem, OrderHistoryEntry } from '@countrtop/models';
@@ -8,7 +8,11 @@ import { useAuth } from '@countrtop/ui';
 import { getServerDataClient } from '../lib/dataClient';
 import { getBrowserSupabaseClient } from '../lib/supabaseBrowser';
 
-type CustomerHomeProps = {
+// ============================================================================
+// TYPES
+// ============================================================================
+
+type Props = {
   vendorSlug: string | null;
   vendorName: string;
 };
@@ -18,7 +22,11 @@ type Notice = {
   message: string;
 };
 
-export const getServerSideProps: GetServerSideProps<CustomerHomeProps> = async ({ req }) => {
+// ============================================================================
+// SERVER-SIDE PROPS
+// ============================================================================
+
+export const getServerSideProps: GetServerSideProps<Props> = async ({ req }) => {
   const fallback = process.env.DEFAULT_VENDOR_SLUG;
   const vendorSlug = resolveVendorSlugFromHost(req.headers.host, fallback);
   const dataClient = getServerDataClient();
@@ -32,1039 +40,866 @@ export const getServerSideProps: GetServerSideProps<CustomerHomeProps> = async (
   };
 };
 
-const formatCurrency = (value: number, currency: string) =>
-  new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency,
-    maximumFractionDigits: 2
-  }).format(value / 100);
+// ============================================================================
+// HELPERS
+// ============================================================================
 
-const toFriendlyError = (error: unknown, fallback: string) => {
-  if (error instanceof Error) {
-    if (/failed to fetch|networkerror/i.test(error.message)) {
-      return 'Network issue. Please try again.';
-    }
-    return error.message;
+const formatCurrency = (cents: number, currency: string) =>
+  new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(cents / 100);
+
+const friendlyError = (err: unknown, fallback: string): string => {
+  if (err instanceof Error) {
+    if (/failed to fetch|network/i.test(err.message)) return 'Network issue. Please try again.';
+    return err.message;
   }
-  if (typeof error === 'string' && error.trim().length > 0) {
-    return error;
-  }
-  return fallback;
+  return typeof err === 'string' && err.trim() ? err : fallback;
 };
 
-export default function CustomerHome({ vendorSlug, vendorName }: CustomerHomeProps) {
-  const appleEnabled = process.env.NEXT_PUBLIC_APPLE_SIGNIN === 'true';
-  const [isClient, setIsClient] = useState(false);
+// Simple fetch wrapper with error handling
+async function apiFetch<T>(url: string): Promise<{ ok: true; data: T } | { ok: false; error: string }> {
+  try {
+    const res = await fetch(url);
+    const json = await res.json();
+    if (!res.ok || !json.ok) {
+      return { ok: false, error: json.error ?? 'Request failed' };
+    }
+    return { ok: true, data: json };
+  } catch (err) {
+    return { ok: false, error: friendlyError(err, 'Request failed') };
+  }
+}
+
+// ============================================================================
+// COMPONENT
+// ============================================================================
+
+export default function CustomerHome({ vendorSlug, vendorName }: Props) {
+  // ---------------------------------------------------------------------------
+  // Core state
+  // ---------------------------------------------------------------------------
+  const [mounted, setMounted] = useState(false);
   const [supabase, setSupabase] = useState<ReturnType<typeof getBrowserSupabaseClient>>(null);
   const [notice, setNotice] = useState<Notice | null>(null);
-  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
-  const [menuStatus, setMenuStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
+  const [isNative, setIsNative] = useState(false);
+
+  // Menu state
+  const [menu, setMenu] = useState<MenuItem[]>([]);
+  const [menuLoading, setMenuLoading] = useState(false);
   const [menuError, setMenuError] = useState<string | null>(null);
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
-  const [checkoutError, setCheckoutError] = useState<string | null>(null);
+
+  // Cart state
+  const [cart, setCart] = useState<CartItem[]>([]);
   const [checkingOut, setCheckingOut] = useState(false);
-  const [orderHistory, setOrderHistory] = useState<OrderHistoryEntry[]>([]);
-  const [orderStatus, setOrderStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
-  const [orderError, setOrderError] = useState<string | null>(null);
-  const [loyaltyBalance, setLoyaltyBalance] = useState<number | null>(null);
-  const [isNativeWebView, setIsNativeWebView] = useState(false);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
-  const cartTotal = useMemo(() => {
-    return cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  }, [cartItems]);
+  // User data state (orders + loyalty)
+  const [orders, setOrders] = useState<OrderHistoryEntry[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [ordersError, setOrdersError] = useState<string | null>(null);
+  const [loyalty, setLoyalty] = useState<number | null>(null);
 
-  const cartCurrency = cartItems[0]?.currency ?? 'USD';
+  // Track what user data we've loaded to prevent duplicate fetches
+  const [loadedUserId, setLoadedUserId] = useState<string | null>(null);
+
+  // ---------------------------------------------------------------------------
+  // Derived state
+  // ---------------------------------------------------------------------------
+  const cartTotal = useMemo(() => cart.reduce((sum, i) => sum + i.price * i.quantity, 0), [cart]);
+  const cartCurrency = cart[0]?.currency ?? 'USD';
+  const appleEnabled = process.env.NEXT_PUBLIC_APPLE_SIGNIN === 'true';
+
+  // ---------------------------------------------------------------------------
+  // Mount effects
+  // ---------------------------------------------------------------------------
   useEffect(() => {
-    if (!isClient || typeof window === 'undefined') return;
-    const userAgent = window.navigator?.userAgent ?? '';
-    if (userAgent.includes('CountrTop')) {
-      setIsNativeWebView(true);
-      return;
-    }
-
-    if ((window as any).ReactNativeWebView) {
-      setIsNativeWebView(true);
-      return;
-    }
-
-    const interval = window.setInterval(() => {
-      if ((window as any).ReactNativeWebView) {
-        setIsNativeWebView(true);
-        window.clearInterval(interval);
-      }
-    }, 250);
-
-    return () => window.clearInterval(interval);
-  }, [isClient]);
-
-  const pushNotice = useCallback((type: Notice['type'], message: string) => {
-    setNotice({ type, message });
-  }, []);
-
-  const postToNative = useCallback((payload: Record<string, unknown>) => {
-    if (!isNativeWebView) return;
-    const bridge = (window as typeof window & {
-      ReactNativeWebView?: { postMessage?: (message: string) => void };
-    }).ReactNativeWebView;
-    if (!bridge?.postMessage) return;
-    bridge.postMessage(JSON.stringify(payload));
-  }, [isNativeWebView]);
-
-  const loadMenu = useCallback(async () => {
-    if (!vendorSlug) return;
-    setMenuStatus('loading');
-    setMenuError(null);
-    try {
-      const response = await fetch(`/api/vendors/${vendorSlug}/catalog`);
-      const payload = await response.json();
-      if (!payload.ok) {
-        throw new Error(payload.error ?? 'Failed to load menu');
-      }
-      setMenuItems(payload.items);
-      setMenuStatus('ready');
-    } catch (error) {
-      setMenuStatus('error');
-      setMenuError(toFriendlyError(error, 'Unable to load menu'));
-    }
-  }, [vendorSlug]);
-
-  useEffect(() => {
-    if (menuStatus === 'idle' && vendorSlug) {
-      void loadMenu();
-    }
-  }, [loadMenu, menuStatus, vendorSlug]);
-
-  useEffect(() => {
-    setIsClient(true);
+    setMounted(true);
     setSupabase(getBrowserSupabaseClient());
   }, []);
 
-  // Use shared auth hook
-  const { user: authUser, status: authStatus, error: authError, signIn: startOAuth, signOut: signOutBase, isReady: authReady } = useAuth({
+  useEffect(() => {
+    if (!mounted) return;
+    const ua = navigator.userAgent ?? '';
+    if (ua.includes('CountrTop') || (window as any).ReactNativeWebView) {
+      setIsNative(true);
+    }
+  }, [mounted]);
+
+  // ---------------------------------------------------------------------------
+  // Auth
+  // ---------------------------------------------------------------------------
+  const postToNative = useCallback((payload: Record<string, unknown>) => {
+    const bridge = (window as any).ReactNativeWebView;
+    if (bridge?.postMessage) bridge.postMessage(JSON.stringify(payload));
+  }, []);
+
+  const { user, status: authStatus, error: authError, signIn, signOut: baseSignOut } = useAuth({
     supabase,
-    isNativeWebView,
-    onNativeAuthUpdate: (user) => {
-      if (isNativeWebView) {
-        postToNative({
-          type: 'ct-auth',
-          userId: user?.id ?? null,
-          email: user?.email ?? null
-        });
-      }
+    isNativeWebView: isNative,
+    onNativeAuthUpdate: (u) => {
+      if (isNative) postToNative({ type: 'ct-auth', userId: u?.id ?? null, email: u?.email ?? null });
     },
     postToNative
   });
 
-  const refreshOrderHistory = useCallback(async (userId: string) => {
-    if (!vendorSlug) return;
-    setOrderStatus('loading');
-    setOrderError(null);
-    try {
-      const response = await fetch(`/api/vendors/${vendorSlug}/orders?userId=${encodeURIComponent(userId)}`);
-      const payload = await response.json();
-      if (!response.ok || !payload.ok) {
-        throw new Error(payload.error ?? 'Failed to load order history');
-      }
-      setOrderHistory(payload.orders ?? []);
-      setOrderStatus('ready');
-    } catch (error) {
-      const message = toFriendlyError(error, 'Unable to load order history');
-      console.warn('Order history load failed', { error, userId, vendorSlug });
-      setOrderStatus('error');
-      setOrderError(message);
-      pushNotice('error', message);
-    }
-  }, [pushNotice, vendorSlug]);
+  const signOut = useCallback(async () => {
+    await baseSignOut();
+    setOrders([]);
+    setLoyalty(null);
+    setLoadedUserId(null);
+  }, [baseSignOut]);
 
-  const refreshLoyalty = useCallback(async (userId: string) => {
-    if (!vendorSlug) return;
-    try {
-      const response = await fetch(`/api/vendors/${vendorSlug}/loyalty/${encodeURIComponent(userId)}`);
-      const payload = await response.json();
-      if (!response.ok || !payload.ok) {
-        throw new Error(payload.error ?? 'Failed to load loyalty');
-      }
-      setLoyaltyBalance(payload.balance ?? 0);
-    } catch (error) {
-      const message = toFriendlyError(error, 'Unable to load loyalty points.');
-      console.warn('Loyalty load failed', { error, userId, vendorSlug });
-      pushNotice('warning', message);
-    }
-  }, [pushNotice, vendorSlug]);
+  // ---------------------------------------------------------------------------
+  // Menu loading
+  // ---------------------------------------------------------------------------
+  const loadMenu = useCallback(async () => {
+    if (!vendorSlug || menuLoading) return;
+    setMenuLoading(true);
+    setMenuError(null);
 
+    const result = await apiFetch<{ items: MenuItem[] }>(`/api/vendors/${vendorSlug}/catalog`);
+    
+    if (result.ok) {
+      setMenu(result.data.items ?? []);
+    } else {
+      setMenuError(result.error);
+    }
+    setMenuLoading(false);
+  }, [vendorSlug, menuLoading]);
+
+  // Load menu once on mount
   useEffect(() => {
-    if (!authUser || !vendorSlug) {
-      setOrderHistory([]);
-      setOrderStatus('idle');
-      setLoyaltyBalance(null);
+    if (mounted && vendorSlug && menu.length === 0 && !menuLoading && !menuError) {
+      loadMenu();
+    }
+  }, [mounted, vendorSlug, menu.length, menuLoading, menuError, loadMenu]);
+
+  // ---------------------------------------------------------------------------
+  // User data loading (orders + loyalty)
+  // Simple pattern: only load when userId changes AND we haven't loaded for this user
+  // ---------------------------------------------------------------------------
+  useEffect(() => {
+    const userId = user?.id;
+    
+    // If no user, clear data
+    if (!userId) {
+      if (loadedUserId !== null) {
+        setOrders([]);
+        setLoyalty(null);
+        setLoadedUserId(null);
+      }
       return;
     }
 
-    void refreshOrderHistory(authUser.id);
-    void refreshLoyalty(authUser.id);
-  }, [authUser, refreshLoyalty, refreshOrderHistory, vendorSlug]);
+    // If we already loaded for this user, skip
+    if (loadedUserId === userId) return;
 
-  useEffect(() => {
-    if (!isClient || !authUser || !vendorSlug) return;
-    const refreshKey = sessionStorage.getItem('ct_refresh_after_checkout');
-    if (!refreshKey) return;
-    sessionStorage.removeItem('ct_refresh_after_checkout');
-    void refreshOrderHistory(authUser.id);
-    void refreshLoyalty(authUser.id);
-  }, [authUser, isClient, refreshLoyalty, refreshOrderHistory, vendorSlug]);
+    // Don't load if no vendor
+    if (!vendorSlug) return;
 
-  const addToCart = (item: MenuItem) => {
-    setCartItems((current) => {
-      const existing = current.find((entry) => entry.id === item.id);
-      if (existing) {
-        return current.map((entry) =>
-          entry.id === item.id ? { ...entry, quantity: entry.quantity + 1 } : entry
-        );
+    // Load user data
+    const load = async () => {
+      setOrdersLoading(true);
+      setOrdersError(null);
+
+      // Fetch orders
+      const ordersResult = await apiFetch<{ orders: OrderHistoryEntry[] }>(
+        `/api/vendors/${vendorSlug}/orders?userId=${encodeURIComponent(userId)}`
+      );
+      if (ordersResult.ok) {
+        setOrders(ordersResult.data.orders ?? []);
+      } else {
+        setOrdersError(ordersResult.error);
       }
-      return [...current, { ...item, quantity: 1 }];
+
+      // Fetch loyalty
+      const loyaltyResult = await apiFetch<{ balance: number }>(
+        `/api/vendors/${vendorSlug}/loyalty/${encodeURIComponent(userId)}`
+      );
+      if (loyaltyResult.ok) {
+        setLoyalty(loyaltyResult.data.balance ?? 0);
+      }
+
+      setOrdersLoading(false);
+      setLoadedUserId(userId);
+    };
+
+    load();
+  }, [user?.id, vendorSlug, loadedUserId]);
+
+  // Refresh after checkout
+  useEffect(() => {
+    if (!mounted || !user?.id || !vendorSlug) return;
+    const key = sessionStorage.getItem('ct_refresh_after_checkout');
+    if (!key) return;
+    sessionStorage.removeItem('ct_refresh_after_checkout');
+    // Force reload by clearing loaded user
+    setLoadedUserId(null);
+  }, [mounted, user?.id, vendorSlug]);
+
+  // ---------------------------------------------------------------------------
+  // Cart actions
+  // ---------------------------------------------------------------------------
+  const addToCart = (item: MenuItem) => {
+    setCart((prev) => {
+      const existing = prev.find((i) => i.id === item.id);
+      if (existing) {
+        return prev.map((i) => (i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i));
+      }
+      return [...prev, { ...item, quantity: 1 }];
     });
   };
 
-  const removeFromCart = (itemId: string) => {
-    setCartItems((current) =>
-      current
-        .map((entry) =>
-          entry.id === itemId ? { ...entry, quantity: Math.max(0, entry.quantity - 1) } : entry
-        )
-        .filter((entry) => entry.quantity > 0)
+  const removeFromCart = (id: string) => {
+    setCart((prev) =>
+      prev.map((i) => (i.id === id ? { ...i, quantity: i.quantity - 1 } : i)).filter((i) => i.quantity > 0)
     );
   };
 
   const handleCheckout = async () => {
-    if (!vendorSlug || cartItems.length === 0) return;
+    if (!vendorSlug || cart.length === 0 || checkingOut) return;
     setCheckoutError(null);
     setCheckingOut(true);
+
     try {
-      const response = await fetch(`/api/vendors/${vendorSlug}/checkout`, {
+      const res = await fetch(`/api/vendors/${vendorSlug}/checkout`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userId: authUser?.id ?? null,
-          items: cartItems.map((item) => ({
-            id: item.id,
-            name: item.name,
-            price: item.price,
-            currency: item.currency,
-            quantity: item.quantity,
-            variationId: item.variationId
+          userId: user?.id ?? null,
+          items: cart.map((i) => ({
+            id: i.id,
+            name: i.name,
+            price: i.price,
+            currency: i.currency,
+            quantity: i.quantity,
+            variationId: i.variationId
           }))
         })
       });
-      const payload = await response.json();
-      if (!payload.ok) {
-        throw new Error(payload.error ?? 'Checkout failed');
-      }
-      const snapshot = {
-        squareOrderId: payload.squareOrderId,
-        items: cartItems.map((item) => ({
-          id: item.id,
-          name: item.name,
-          quantity: item.quantity,
-          price: item.price
-        })),
-        total: cartTotal,
-        currency: cartCurrency
-      };
-      sessionStorage.setItem(`ct_order_${payload.orderId}`, JSON.stringify(snapshot));
-      window.location.href = payload.checkoutUrl;
-    } catch (error) {
-      setCheckoutError(toFriendlyError(error, 'Unable to start checkout'));
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error ?? 'Checkout failed');
+
+      sessionStorage.setItem(
+        `ct_order_${data.orderId}`,
+        JSON.stringify({
+          squareOrderId: data.squareOrderId,
+          items: cart.map((i) => ({ id: i.id, name: i.name, quantity: i.quantity, price: i.price })),
+          total: cartTotal,
+          currency: cartCurrency
+        })
+      );
+      window.location.href = data.checkoutUrl;
+    } catch (err) {
+      setCheckoutError(friendlyError(err, 'Unable to start checkout'));
     } finally {
       setCheckingOut(false);
     }
   };
 
   const handleReorder = (entry: OrderHistoryEntry) => {
-    if (menuStatus !== 'ready') {
-      pushNotice('warning', 'Menu is still loading. Try reordering in a moment.');
+    if (menu.length === 0) {
+      setNotice({ type: 'warning', message: 'Menu is still loading.' });
       return;
     }
 
-    const items = (Array.isArray(entry.snapshotJson?.items) ? entry.snapshotJson.items : []) as Array<{
+    const items = (entry.snapshotJson?.items ?? []) as Array<{
       id: string;
       name: string;
       quantity: number;
       price: number;
-      modifiers?: string[];
     }>;
     if (!items.length) {
-      pushNotice('warning', 'No items found for that order.');
+      setNotice({ type: 'warning', message: 'No items in that order.' });
       return;
     }
 
-    const menuByVariationId = new Map(menuItems.map((item) => [item.variationId, item]));
-    const menuByItemId = new Map(menuItems.map((item) => [item.id, item]));
-    let missingCount = 0;
-    let unavailableCount = 0;
-    let modifiersSkipped = false;
-    const nextItems: CartItem[] = [];
+    const byId = new Map(menu.map((m) => [m.id, m]));
+    const byVar = new Map(menu.map((m) => [m.variationId, m]));
+    const newCart: CartItem[] = [];
+    let missing = 0;
 
-    items.forEach((item) => {
-      const menuItem = menuByVariationId.get(item.id) ?? menuByItemId.get(item.id);
-      if (!menuItem) {
-        missingCount += 1;
-        return;
+    for (const item of items) {
+      const found = byVar.get(item.id) ?? byId.get(item.id);
+      if (found && found.price > 0) {
+        newCart.push({ ...found, quantity: item.quantity || 1 });
+      } else {
+        missing++;
       }
-      if (!menuItem.price || menuItem.price <= 0) {
-        unavailableCount += 1;
-        return;
-      }
-      modifiersSkipped = modifiersSkipped || !!(item.modifiers && item.modifiers.length > 0);
+    }
 
-      nextItems.push({
-        ...menuItem,
-        quantity: Math.max(1, item.quantity || 1)
-      });
-    });
-
-    if (!nextItems.length) {
-      pushNotice('warning', 'No items from that order are available right now.');
+    if (newCart.length === 0) {
+      setNotice({ type: 'warning', message: 'Items from that order are no longer available.' });
       return;
     }
 
-    setCartItems(nextItems);
-
-    if (missingCount + unavailableCount + (modifiersSkipped ? 1 : 0) > 0) {
-      const messages: string[] = [];
-      if (missingCount + unavailableCount > 0) {
-        messages.push('Some items from that order are no longer available.');
-      }
-      if (modifiersSkipped) {
-        messages.push('Modifiers from past orders are not re-applied.');
-      }
-      console.warn('Reorder warnings', {
-        missingCount,
-        unavailableCount,
-        modifiersSkipped,
-        orderId: entry.id,
-        vendorSlug
-      });
-      pushNotice('warning', messages.join(' '));
+    setCart(newCart);
+    if (missing > 0) {
+      setNotice({ type: 'warning', message: 'Some items are no longer available.' });
     }
   };
 
-  // Wrap signOut to clear app-specific state
-  const signOut = useCallback(async () => {
-    await signOutBase();
-    setOrderHistory([]);
-    setOrderStatus('idle');
-    setLoyaltyBalance(null);
-  }, [signOutBase]);
-  const contentStyle: CSSProperties = isNativeWebView
-    ? { ...styles.content, display: 'flex', flexDirection: 'column', alignItems: 'stretch' }
-    : styles.content;
-
+  // ---------------------------------------------------------------------------
+  // Render
+  // ---------------------------------------------------------------------------
   return (
     <>
       <Head>
         <title>{`${vendorName} · CountrTop`}</title>
       </Head>
-      <main style={styles.page} className={isNativeWebView ? 'ct-native' : undefined}>
-        <section style={styles.hero}>
-          <div style={styles.heroCard}>
-            <p style={styles.heroEyebrow}>CountrTop</p>
-            <h1 style={styles.heroTitle}>{vendorName}</h1>
-            <p style={styles.heroSubtitle}>
-              Order fast, earn points, and get notified when it&apos;s ready.
-            </p>
-            <div style={styles.heroBadgeRow}>
-              <span style={styles.heroBadge}>Square checkout</span>
-              <span style={styles.heroBadge}>Pickup only</span>
-              <span style={styles.heroBadge}>No account needed</span>
+      <main className="page">
+        {/* Hero */}
+        <section className="hero">
+          <div className="hero-card">
+            <p className="eyebrow">CountrTop</p>
+            <h1 className="title">{vendorName}</h1>
+            <p className="subtitle">Order fast, earn points, get notified when ready.</p>
+            <div className="badges">
+              <span className="badge">Square checkout</span>
+              <span className="badge">Pickup only</span>
             </div>
           </div>
         </section>
 
+        {/* Notice */}
         {notice && (
-          <section
-            style={{
-              ...styles.notice,
-              ...(notice.type === 'error'
-                ? styles.noticeError
-                : notice.type === 'warning'
-                  ? styles.noticeWarning
-                  : styles.noticeInfo)
-            }}
-            role="status"
-          >
-            <span style={styles.noticeText}>{notice.message}</span>
-            <button type="button" onClick={() => setNotice(null)} style={styles.noticeDismiss}>
-              Dismiss
-            </button>
-          </section>
+          <div className={`notice notice-${notice.type}`}>
+            <span>{notice.message}</span>
+            <button onClick={() => setNotice(null)}>Dismiss</button>
+          </div>
         )}
 
-        <section style={contentStyle} className="ct-grid">
-          <div style={styles.menuColumn} className="ct-account">
-            <div style={styles.accountCard}>
-              <div style={styles.sectionHeader}>
-                <h2 style={styles.sectionTitle}>Account</h2>
-                {authUser && (
-                  <button type="button" onClick={signOut} style={styles.refreshButton}>
-                    Sign out
-                  </button>
-                )}
-              </div>
-              {!authReady && <p style={styles.helperText}>Loading sign-in…</p>}
-              {isClient && !supabase && (
-                <p style={{ ...styles.helperText, color: '#b91c1c' }}>
-                  Supabase auth is not configured.
-                </p>
-              )}
-              {authUser ? (
-                <div style={styles.accountRow}>
-                  <div>
-                    <div style={styles.accountName}>Signed in</div>
-                    <div style={styles.accountMeta}>{authUser.email ?? authUser.id}</div>
-                  </div>
-                  <div style={styles.pointsChip}>
-                    {loyaltyBalance !== null ? `${loyaltyBalance} pts` : '—'}
-                  </div>
+        {/* Main content */}
+        <div className="content">
+          {/* Account */}
+          <section className="card account">
+            <div className="card-header">
+              <h2>Account</h2>
+              {user && <button onClick={signOut} className="btn-secondary">Sign out</button>}
+            </div>
+            {!mounted && <p className="muted">Loading…</p>}
+            {mounted && !supabase && (
+              <p className="muted">Sign-in not available (auth not configured)</p>
+            )}
+            {user ? (
+              <div className="account-info">
+                <div>
+                  <div className="label">Signed in</div>
+                  <div className="muted">{user.email ?? user.id}</div>
                 </div>
-              ) : (
-                <div style={styles.authButtons}>
+                <div className="points">{loyalty !== null ? `${loyalty} pts` : '—'}</div>
+              </div>
+            ) : (
+              mounted && supabase && (
+                <div className="auth-buttons">
                   {appleEnabled && (
-                    <button type="button" style={styles.authButton} onClick={() => startOAuth('apple')}>
+                    <button onClick={() => signIn('apple')} className="btn-auth">
                       Sign in with Apple
                     </button>
                   )}
-                  <button type="button" style={styles.authButton} onClick={() => startOAuth('google')}>
+                  <button onClick={() => signIn('google')} className="btn-auth">
                     Sign in with Google
                   </button>
                 </div>
-              )}
-              {authError && <p style={{ ...styles.helperText, color: '#b91c1c' }}>{authError}</p>}
-              {authUser && (
-                <p style={styles.helperText}>
-                  Points accumulate automatically after each completed order.
-                </p>
-              )}
-            </div>
-          </div>
+              )
+            )}
+            {authError && <p className="error">{authError}</p>}
+          </section>
 
-          <aside style={styles.cartColumn} className="ct-cart">
-            <div style={styles.cartCard}>
-              <div style={styles.sectionHeader}>
-                <h2 style={styles.sectionTitle}>Your cart</h2>
-                <span style={styles.cartCount}>{cartItems.length} items</span>
-              </div>
-              {cartItems.length === 0 ? (
-                <p style={styles.helperText}>Add items to start your order.</p>
-              ) : (
-                <div style={styles.cartList}>
-                  {cartItems.map((item) => (
-                    <div key={item.id} style={styles.cartRow}>
-                      <div>
-                        <div style={styles.cartName}>{item.name}</div>
-                        <div style={styles.cartMeta}>
-                          {formatCurrency(item.price, item.currency)} · Qty {item.quantity}
-                        </div>
-                      </div>
-                      <div style={styles.cartActions}>
-                        <button
-                          type="button"
-                          style={styles.cartActionButton}
-                          onClick={() => removeFromCart(item.id)}
-                        >
-                          −
-                        </button>
-                        <button
-                          type="button"
-                          style={styles.cartActionButton}
-                          onClick={() => addToCart(item)}
-                        >
-                          +
-                        </button>
+          {/* Cart */}
+          <aside className="card cart">
+            <div className="card-header">
+              <h2>Your Cart</h2>
+              <span className="muted">{cart.length} items</span>
+            </div>
+            {cart.length === 0 ? (
+              <p className="muted">Add items to start your order.</p>
+            ) : (
+              <div className="cart-items">
+                {cart.map((item) => (
+                  <div key={item.id} className="cart-item">
+                    <div>
+                      <div className="label">{item.name}</div>
+                      <div className="muted">
+                        {formatCurrency(item.price, item.currency)} × {item.quantity}
                       </div>
                     </div>
-                  ))}
-                </div>
-              )}
-              <div style={styles.cartFooter}>
-                <div style={styles.cartTotalRow}>
-                  <span>Total</span>
-                  <strong>{formatCurrency(cartTotal, cartCurrency)}</strong>
-                </div>
-                <button
-                  type="button"
-                  style={{
-                    ...styles.checkoutButton,
-                    opacity: cartItems.length === 0 || checkingOut ? 0.6 : 1
-                  }}
-                  disabled={cartItems.length === 0 || checkingOut}
-                  onClick={handleCheckout}
-                >
-                  {checkingOut ? 'Starting checkout…' : 'Checkout with Square'}
-                </button>
-                {checkoutError && (
-                  <p style={{ ...styles.helperText, color: '#b91c1c' }}>{checkoutError}</p>
-                )}
+                    <div className="cart-actions">
+                      <button onClick={() => removeFromCart(item.id)}>−</button>
+                      <button onClick={() => addToCart(item)}>+</button>
+                    </div>
+                  </div>
+                ))}
               </div>
+            )}
+            <div className="cart-footer">
+              <div className="cart-total">
+                <span>Total</span>
+                <strong>{formatCurrency(cartTotal, cartCurrency)}</strong>
+              </div>
+              <button
+                onClick={handleCheckout}
+                disabled={cart.length === 0 || checkingOut}
+                className="btn-checkout"
+              >
+                {checkingOut ? 'Processing…' : 'Checkout with Square'}
+              </button>
+              {checkoutError && <p className="error">{checkoutError}</p>}
             </div>
           </aside>
 
-          <div style={styles.menuColumn} className="ct-menu">
-            <div style={styles.sectionHeader}>
-              <h2 style={styles.sectionTitle}>Menu</h2>
-              <button type="button" onClick={loadMenu} style={styles.refreshButton}>
-                Refresh
+          {/* Menu */}
+          <section className="menu-section">
+            <div className="card-header">
+              <h2>Menu</h2>
+              <button onClick={loadMenu} className="btn-secondary" disabled={menuLoading}>
+                {menuLoading ? 'Loading…' : 'Refresh'}
               </button>
             </div>
-            {!vendorSlug && (
-              <p style={{ ...styles.helperText, color: '#b91c1c' }}>No vendor resolved for this host.</p>
-            )}
-            {menuStatus === 'loading' && <p style={styles.helperText}>Loading Square catalog…</p>}
-            {menuStatus === 'error' && (
-              <p style={{ ...styles.helperText, color: '#b91c1c' }}>{menuError}</p>
-            )}
-            <div style={styles.menuGrid}>
-              {menuItems.map((item) => (
-                <div key={item.id} style={styles.menuCard}>
-                  <div style={styles.menuImage} className="ct-menu-image">
+            {menuError && <p className="error">{menuError}</p>}
+            <div className="menu-grid">
+              {menu.map((item) => (
+                <div key={item.id} className="menu-card">
+                  <div className="menu-image">
                     {item.imageUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={item.imageUrl} alt={item.name} style={styles.menuImgTag} />
+                      <img src={item.imageUrl} alt={item.name} />
                     ) : (
-                      <span style={styles.menuPlaceholder}>☕</span>
+                      <span className="placeholder">☕</span>
                     )}
                   </div>
-                  <div style={styles.menuInfo}>
-                    <div style={styles.menuTopRow}>
-                      <h3 style={styles.menuName}>{item.name}</h3>
-                      <span style={styles.menuPrice}>{formatCurrency(item.price, item.currency)}</span>
+                  <div className="menu-info">
+                    <div className="menu-row">
+                      <h3>{item.name}</h3>
+                      <span className="price">{formatCurrency(item.price, item.currency)}</span>
                     </div>
-                    <p style={styles.menuDescription}>{item.description ?? 'Seasonal favorite.'}</p>
+                    <p className="muted">{item.description ?? 'Fresh and delicious.'}</p>
                   </div>
-                  <button type="button" style={styles.menuButton} onClick={() => addToCart(item)}>
+                  <button onClick={() => addToCart(item)} className="btn-primary">
                     Add to cart
                   </button>
                 </div>
               ))}
-              {menuStatus === 'ready' && menuItems.length === 0 && (
-                <p style={styles.helperText}>No menu items available yet.</p>
-              )}
+              {!menuLoading && menu.length === 0 && <p className="muted">No menu items yet.</p>}
             </div>
 
-            <div style={styles.historyCard}>
-              <div style={styles.sectionHeader}>
-                <h2 style={styles.sectionTitle}>Order history</h2>
-                <span style={styles.cartCount}>
-                  {authUser ? `${orderHistory.length} orders` : 'Sign in'}
-                </span>
+            {/* Order History */}
+            <div className="card history">
+              <div className="card-header">
+                <h2>Order History</h2>
+                <span className="muted">{user ? `${orders.length} orders` : 'Sign in'}</span>
               </div>
-              {!authUser && authStatus === 'loading' && (
-                <p style={styles.helperText}>Checking your session…</p>
+              {!user && authStatus === 'ready' && (
+                <p className="muted">Sign in to see past orders.</p>
               )}
-              {!authUser && authStatus === 'ready' && (
-                <p style={styles.helperText}>Sign in to see past orders and reorder favorites.</p>
+              {user && ordersLoading && <p className="muted">Loading orders…</p>}
+              {user && ordersError && <p className="error">{ordersError}</p>}
+              {user && !ordersLoading && orders.length === 0 && (
+                <p className="muted">No orders yet.</p>
               )}
-              {authUser && orderStatus === 'loading' && (
-                <div style={styles.skeletonStack}>
-                  {[0, 1].map((index) => (
-                    <div key={`history-skeleton-${index}`} style={styles.skeletonRow}>
-                      <div className="ct-skeleton" style={styles.skeletonLine} />
-                      <div className="ct-skeleton" style={styles.skeletonLineSmall} />
-                    </div>
-                  ))}
-                </div>
-              )}
-              {authUser && orderStatus === 'error' && (
-                <p style={{ ...styles.helperText, color: '#b91c1c' }}>{orderError}</p>
-              )}
-              {authUser && orderStatus === 'ready' && orderHistory.length === 0 && (
-                <p style={styles.helperText}>No orders yet. Your first order will appear here.</p>
-              )}
-              {authUser &&
-                orderHistory.map((order) => {
-                  const items = (Array.isArray(order.snapshotJson?.items) ? order.snapshotJson.items : []) as Array<{
-                    quantity?: number;
-                  }>;
-                  const itemCount = items.reduce((sum, item) => sum + (item.quantity ?? 0), 0);
-                  const itemLabel = itemCount === 1 ? '1 item' : `${itemCount} items`;
+              {user &&
+                orders.map((order) => {
+                  const items = (order.snapshotJson?.items ?? []) as Array<{ quantity?: number }>;
+                  const count = items.reduce((s, i) => s + (i.quantity ?? 0), 0);
+                  const total = typeof order.snapshotJson?.total === 'number' ? order.snapshotJson.total : 0;
+                  const currency = typeof order.snapshotJson?.currency === 'string' ? order.snapshotJson.currency : 'USD';
                   return (
-                    <div key={order.id} style={styles.historyRow}>
+                    <div key={order.id} className="history-item">
                       <div>
-                        <div style={styles.historyTitle}>Order {order.squareOrderId.slice(-6)}</div>
-                        <div style={styles.historyMeta}>
-                          {new Date(order.placedAt).toLocaleString()} · {itemLabel} ·{' '}
-                          {formatCurrency(
-                            (typeof order.snapshotJson?.total === 'number' ? order.snapshotJson.total : 0),
-                            (typeof order.snapshotJson?.currency === 'string' ? order.snapshotJson.currency : 'USD')
-                          )}
+                        <div className="label">Order {order.squareOrderId.slice(-6)}</div>
+                        <div className="muted">
+                          {new Date(order.placedAt).toLocaleDateString()} · {count} items · {formatCurrency(total, currency)}
                         </div>
                       </div>
-                      <button
-                        type="button"
-                        style={styles.historyButton}
-                        onClick={() => handleReorder(order)}
-                      >
-                        Order again
+                      <button onClick={() => handleReorder(order)} className="btn-secondary">
+                        Reorder
                       </button>
                     </div>
                   );
                 })}
             </div>
-          </div>
-        </section>
+          </section>
+        </div>
+
         <style jsx>{`
-          .ct-grid {
+          .page {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 50%, #16213e 100%);
+            color: #e8e8e8;
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+          }
+
+          .hero {
+            padding: 48px 24px 24px;
+          }
+
+          .hero-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 24px;
+            padding: 32px;
+            max-width: 600px;
+          }
+
+          .eyebrow {
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            font-size: 11px;
+            opacity: 0.8;
+            margin: 0 0 8px;
+          }
+
+          .title {
+            font-size: 36px;
+            font-weight: 700;
+            margin: 0 0 12px;
+          }
+
+          .subtitle {
+            font-size: 16px;
+            opacity: 0.9;
+            margin: 0 0 16px;
+          }
+
+          .badges {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+          }
+
+          .badge {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+          }
+
+          .notice {
+            margin: 0 24px 16px;
+            padding: 12px 16px;
+            border-radius: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+          }
+
+          .notice button {
+            background: none;
+            border: none;
+            color: inherit;
+            font-weight: 600;
+            cursor: pointer;
+          }
+
+          .notice-warning {
+            background: #fef3c7;
+            color: #92400e;
+          }
+
+          .notice-error {
+            background: #fee2e2;
+            color: #991b1b;
+          }
+
+          .notice-info {
+            background: #dbeafe;
+            color: #1e40af;
+          }
+
+          .content {
             display: grid;
-            grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+            grid-template-columns: 1fr 300px;
             grid-template-areas:
               'account cart'
               'menu cart';
+            gap: 20px;
+            padding: 0 24px 48px;
+            max-width: 1200px;
           }
 
-          .ct-account {
+          @media (max-width: 800px) {
+            .content {
+              grid-template-columns: 1fr;
+              grid-template-areas:
+                'account'
+                'cart'
+                'menu';
+            }
+          }
+
+          .account {
             grid-area: account;
           }
 
-          .ct-menu {
+          .cart {
+            grid-area: cart;
+            position: sticky;
+            top: 24px;
+            align-self: start;
+          }
+
+          @media (max-width: 800px) {
+            .cart {
+              position: static;
+            }
+          }
+
+          .menu-section {
             grid-area: menu;
           }
 
-          .ct-menu-image {
-            height: 150px;
+          .card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 20px;
           }
 
-          .ct-cart {
-            grid-area: cart;
+          .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
           }
 
-          .ct-native .ct-grid {
+          .card-header h2 {
+            font-size: 18px;
+            margin: 0;
+          }
+
+          .muted {
+            color: #888;
+            font-size: 13px;
+            margin: 0;
+          }
+
+          .error {
+            color: #f87171;
+            font-size: 13px;
+            margin: 8px 0 0;
+          }
+
+          .label {
+            font-weight: 600;
+            font-size: 14px;
+          }
+
+          .account-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+          }
+
+          .points {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 13px;
+          }
+
+          .auth-buttons {
             display: flex;
             flex-direction: column;
+            gap: 10px;
           }
 
-          .ct-native .ct-account,
-          .ct-native .ct-cart,
-          .ct-native .ct-menu {
+          .btn-auth {
+            padding: 14px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.05);
+            color: #fff;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+          }
+
+          .btn-auth:hover {
+            background: rgba(255, 255, 255, 0.1);
+          }
+
+          .btn-primary {
             width: 100%;
-            align-self: stretch;
+            padding: 12px;
+            border-radius: 12px;
+            border: none;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.1s, opacity 0.2s;
           }
 
-          .ct-native .ct-cart {
-            position: static;
-            order: -1;
+          .btn-primary:hover {
+            opacity: 0.9;
           }
 
-          .ct-native .ct-account {
-            order: -2;
+          .btn-primary:active {
+            transform: scale(0.98);
           }
 
-          @media (min-width: 901px) {
-            .ct-cart {
-              position: sticky;
-              top: 24px;
-            }
+          .btn-secondary {
+            padding: 8px 16px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: transparent;
+            color: #e8e8e8;
+            font-size: 13px;
+            cursor: pointer;
+            transition: background 0.2s;
           }
 
-          @media (max-width: 900px), (max-device-width: 900px), (hover: none) and (pointer: coarse) {
-            .ct-grid {
-              display: flex;
-              flex-direction: column;
-            }
-
-            .ct-account,
-            .ct-cart,
-            .ct-menu {
-              width: 100%;
-              align-self: stretch;
-            }
-
-            .ct-menu-image {
-              height: 120px;
-            }
-
-            .ct-cart {
-              position: static;
-              order: -1;
-            }
-
-            .ct-account {
-              order: -2;
-            }
+          .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.1);
           }
 
-          .ct-skeleton {
-            position: relative;
+          .btn-secondary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+          }
+
+          .cart-items {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+          }
+
+          .cart-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 12px;
+          }
+
+          .cart-actions {
+            display: flex;
+            gap: 8px;
+          }
+
+          .cart-actions button {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: transparent;
+            color: #e8e8e8;
+            font-size: 18px;
+            cursor: pointer;
+          }
+
+          .cart-actions button:hover {
+            background: rgba(255, 255, 255, 0.1);
+          }
+
+          .cart-footer {
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+          }
+
+          .cart-total {
+            display: flex;
+            justify-content: space-between;
+            font-size: 16px;
+            margin-bottom: 12px;
+          }
+
+          .btn-checkout {
+            width: 100%;
+            padding: 16px;
+            border-radius: 14px;
+            border: none;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: #fff;
+            font-weight: 700;
+            font-size: 15px;
+            cursor: pointer;
+            transition: opacity 0.2s;
+          }
+
+          .btn-checkout:hover:not(:disabled) {
+            opacity: 0.9;
+          }
+
+          .btn-checkout:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+          }
+
+          .menu-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 16px;
+            margin-top: 16px;
+          }
+
+          .menu-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+          }
+
+          .menu-image {
+            height: 120px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.03);
+            display: flex;
+            align-items: center;
+            justify-content: center;
             overflow: hidden;
-            background: #e2e8f0;
           }
 
-          .ct-skeleton::after {
-            content: '';
-            position: absolute;
-            inset: 0;
-            transform: translateX(-100%);
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent);
-            animation: shimmer 1.4s infinite;
+          .menu-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
           }
 
-          @keyframes shimmer {
-            100% {
-              transform: translateX(100%);
-            }
+          .placeholder {
+            font-size: 32px;
+          }
+
+          .menu-info {
+            flex: 1;
+          }
+
+          .menu-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 8px;
+          }
+
+          .menu-row h3 {
+            font-size: 15px;
+            margin: 0;
+          }
+
+          .price {
+            font-weight: 700;
+            color: #a78bfa;
+          }
+
+          .history {
+            margin-top: 24px;
+          }
+
+          .history-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 12px;
+            margin-top: 12px;
           }
         `}</style>
       </main>
     </>
   );
 }
-
-const panelWidth: CSSProperties = {
-  minWidth: 0
-};
-
-const styles: Record<string, CSSProperties> = {
-  page: {
-    minHeight: '100vh',
-    background: 'radial-gradient(circle at top, #f1f5f9, #e2e8f0)',
-    color: '#0f172a',
-    fontFamily: '"Space Grotesk", "Segoe UI", sans-serif',
-    paddingBottom: 'env(safe-area-inset-bottom)'
-  },
-  hero: {
-    padding: 'clamp(28px, 6vw, 48px) clamp(16px, 8vw, 96px) 20px'
-  },
-  heroCard: {
-    background: 'linear-gradient(120deg, #0f172a, #1e293b)',
-    color: '#f8fafc',
-    padding: 'clamp(20px, 5vw, 32px)',
-    borderRadius: 'clamp(18px, 4vw, 24px)',
-    boxShadow: '0 24px 60px rgba(15, 23, 42, 0.25)'
-  },
-  heroEyebrow: {
-    textTransform: 'uppercase',
-    letterSpacing: 2,
-    fontSize: 12,
-    color: '#94a3b8',
-    margin: 0
-  },
-  heroTitle: {
-    fontSize: 'clamp(28px, 7vw, 36px)',
-    margin: '8px 0 12px'
-  },
-  heroSubtitle: {
-    fontSize: 'clamp(14px, 4vw, 16px)',
-    maxWidth: 520,
-    color: '#cbd5f5',
-    margin: 0,
-    lineHeight: 1.4
-  },
-  heroBadgeRow: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 12
-  },
-  heroBadge: {
-    backgroundColor: 'rgba(148, 163, 184, 0.2)',
-    borderRadius: 999,
-    padding: '6px 10px',
-    fontSize: 12
-  },
-  content: {
-    gap: 20,
-    padding: '24px clamp(16px, 8vw, 96px) 72px'
-  },
-  notice: {
-    margin: '0 clamp(16px, 8vw, 96px) 16px',
-    padding: '12px 16px',
-    borderRadius: 16,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-    border: '1px solid transparent'
-  },
-  noticeInfo: {
-    backgroundColor: '#f1f5f9',
-    borderColor: '#cbd5f5',
-    color: '#0f172a'
-  },
-  noticeWarning: {
-    backgroundColor: '#fef3c7',
-    borderColor: '#f59e0b',
-    color: '#7c2d12'
-  },
-  noticeError: {
-    backgroundColor: '#fee2e2',
-    borderColor: '#fca5a5',
-    color: '#7f1d1d'
-  },
-  noticeText: {
-    fontSize: 13,
-    fontWeight: 600
-  },
-  noticeDismiss: {
-    border: 'none',
-    background: 'transparent',
-    color: 'inherit',
-    fontWeight: 600,
-    cursor: 'pointer'
-  },
-  menuColumn: {
-    minWidth: 0
-  },
-  accountCard: {
-    ...panelWidth,
-    backgroundColor: '#fff',
-    borderRadius: 'clamp(16px, 4vw, 20px)',
-    padding: 'clamp(16px, 4vw, 20px)',
-    marginBottom: 20,
-    boxShadow: '0 16px 32px rgba(15, 23, 42, 0.08)'
-  },
-  accountRow: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: 12,
-    flexWrap: 'wrap'
-  },
-  accountName: {
-    fontWeight: 600
-  },
-  accountMeta: {
-    color: '#64748b',
-    fontSize: 13
-  },
-  authButtons: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    gap: 10
-  },
-  authButton: {
-    flex: '1 1 180px',
-    padding: '12px 16px',
-    borderRadius: 12,
-    border: '1px solid #0f172a',
-    backgroundColor: '#fff',
-    color: '#0f172a',
-    fontWeight: 600,
-    cursor: 'pointer'
-  },
-  pointsChip: {
-    backgroundColor: '#0f172a',
-    color: '#fff',
-    borderRadius: 999,
-    padding: '6px 12px',
-    fontSize: 12,
-    fontWeight: 600
-  },
-  cartColumn: {
-    alignSelf: 'start'
-  },
-  sectionHeader: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-    flexWrap: 'wrap',
-    gap: 8
-  },
-  sectionTitle: {
-    fontSize: 'clamp(18px, 4.5vw, 20px)',
-    margin: 0
-  },
-  refreshButton: {
-    border: '1px solid #cbd5f5',
-    padding: '6px 12px',
-    borderRadius: 999,
-    backgroundColor: '#f8fafc',
-    cursor: 'pointer'
-  },
-  menuGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-    gap: 16
-  },
-  historyCard: {
-    ...panelWidth,
-    marginTop: 24,
-    backgroundColor: '#fff',
-    borderRadius: 'clamp(16px, 4vw, 20px)',
-    padding: 'clamp(16px, 4vw, 20px)',
-    boxShadow: '0 16px 32px rgba(15, 23, 42, 0.08)'
-  },
-  historyRow: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: 12,
-    flexWrap: 'wrap',
-    border: '1px solid #e2e8f0',
-    borderRadius: 16,
-    padding: '12px 14px',
-    marginBottom: 12
-  },
-  historyTitle: {
-    fontWeight: 600
-  },
-  historyMeta: {
-    fontSize: 12,
-    color: '#64748b'
-  },
-  historyButton: {
-    padding: '8px 12px',
-    borderRadius: 12,
-    border: '1px solid #0f172a',
-    backgroundColor: '#fff',
-    color: '#0f172a',
-    fontWeight: 600,
-    cursor: 'pointer'
-  },
-  menuCard: {
-    backgroundColor: '#fff',
-    borderRadius: 'clamp(16px, 4vw, 20px)',
-    padding: 'clamp(14px, 4vw, 16px)',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 12,
-    boxShadow: '0 16px 32px rgba(15, 23, 42, 0.08)'
-  },
-  menuImage: {
-    borderRadius: 16,
-    backgroundColor: '#e2e8f0',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden'
-  },
-  menuImgTag: {
-    width: '100%',
-    height: '100%',
-    objectFit: 'cover'
-  },
-  menuPlaceholder: {
-    fontSize: 32
-  },
-  menuInfo: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 6
-  },
-  menuTopRow: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    gap: 12
-  },
-  menuName: {
-    fontSize: 'clamp(15px, 4.2vw, 16px)',
-    margin: 0
-  },
-  menuPrice: {
-    fontWeight: 600
-  },
-  menuDescription: {
-    margin: 0,
-    color: '#64748b',
-    fontSize: 13
-  },
-  menuButton: {
-    borderRadius: 12,
-    padding: '12px 14px',
-    backgroundColor: '#0f172a',
-    color: '#fff',
-    border: 'none',
-    cursor: 'pointer'
-  },
-  cartCard: {
-    ...panelWidth,
-    backgroundColor: '#fff',
-    borderRadius: 'clamp(18px, 4vw, 24px)',
-    padding: 'clamp(16px, 4vw, 20px)',
-    boxShadow: '0 20px 40px rgba(15, 23, 42, 0.12)'
-  },
-  cartCount: {
-    fontSize: 12,
-    color: '#64748b'
-  },
-  cartList: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 12
-  },
-  cartRow: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 10,
-    border: '1px solid #e2e8f0',
-    borderRadius: 16,
-    padding: '12px 14px'
-  },
-  cartName: {
-    fontWeight: 600
-  },
-  cartMeta: {
-    fontSize: 12,
-    color: '#64748b'
-  },
-  cartActions: {
-    display: 'flex',
-    gap: 8
-  },
-  cartActionButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    border: '1px solid #cbd5f5',
-    backgroundColor: '#f8fafc',
-    cursor: 'pointer'
-  },
-  cartFooter: {
-    marginTop: 16,
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 12
-  },
-  skeletonStack: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 12
-  },
-  skeletonRow: {
-    borderRadius: 16,
-    border: '1px solid #e2e8f0',
-    padding: '12px 14px',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 8
-  },
-  skeletonLine: {
-    height: 12,
-    borderRadius: 999
-  },
-  skeletonLineSmall: {
-    height: 10,
-    borderRadius: 999,
-    width: '60%'
-  },
-  cartTotalRow: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    fontSize: 'clamp(15px, 4vw, 16px)'
-  },
-  checkoutButton: {
-    padding: '14px 16px',
-    borderRadius: 14,
-    border: 'none',
-    backgroundColor: '#38bdf8',
-    color: '#0f172a',
-    fontWeight: 700,
-    fontSize: 'clamp(14px, 4vw, 16px)',
-    cursor: 'pointer'
-  },
-  helperText: {
-    margin: 0,
-    color: '#64748b',
-    fontSize: 13
-  }
-};
