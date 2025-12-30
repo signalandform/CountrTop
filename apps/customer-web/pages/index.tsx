@@ -111,6 +111,15 @@ export default function CustomerHome({ vendorSlug, vendorName }: Props) {
     if (orders.length === 0) return null;
     return orders[0]; // Orders are already sorted by date (most recent first)
   }, [orders]);
+  
+  // An order is considered "active" if it was placed within the last 2 hours
+  const hasActiveOrder = useMemo(() => {
+    if (!recentOrder) return false;
+    const orderTime = new Date(recentOrder.placedAt).getTime();
+    const twoHoursAgo = Date.now() - 2 * 60 * 60 * 1000;
+    return orderTime > twoHoursAgo;
+  }, [recentOrder]);
+  
   const recentOrderDetails = useMemo(() => {
     if (!recentOrder) return null;
     const items = (recentOrder.snapshotJson?.items ?? []) as Array<{ quantity?: number }>;
@@ -417,21 +426,13 @@ export default function CustomerHome({ vendorSlug, vendorName }: Props) {
             {authError && <p className="error">{authError}</p>}
           </section>
 
-          {/* Order Tracking */}
-          <section className="card order-tracking">
-            <div className="card-header">
-              <h2>Order Tracking</h2>
-            </div>
-            {!mounted && <p className="muted">Loading…</p>}
-            {mounted && !user && (
-              <p className="muted">Sign in to track orders.</p>
-            )}
-            {user && ordersLoading && <p className="muted">Loading orders…</p>}
-            {user && ordersError && <p className="error">{ordersError}</p>}
-            {user && !ordersLoading && !recentOrder && (
-              <p className="muted">No orders yet.</p>
-            )}
-            {user && !ordersLoading && recentOrder && recentOrderDetails && (
+          {/* Order Tracking - Only show when user is signed in and has an active order */}
+          {user && !ordersLoading && hasActiveOrder && recentOrder && recentOrderDetails && (
+            <section className="card order-tracking">
+              <div className="card-header">
+                <h2>Order Tracking</h2>
+              </div>
+              {ordersError && <p className="error">{ordersError}</p>}
               <div className="order-tracking-info">
                 <div>
                   <div className="label">Order {recentOrder.squareOrderId.slice(-6)}</div>
@@ -440,8 +441,8 @@ export default function CustomerHome({ vendorSlug, vendorName }: Props) {
                   </div>
                 </div>
               </div>
-            )}
-          </section>
+            </section>
+          )}
 
           {/* Cart */}
           <aside className="card cart">
