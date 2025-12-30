@@ -105,13 +105,13 @@ export default function ConfirmPage({ vendorName }: ConfirmProps) {
                     <strong>{formatCurrency(snapshot.total, snapshot.currency)}</strong>
                   </div>
                 </div>
-                <div style={{ marginTop: 20 }}>
-                  <button type="button" onClick={() => router.push('/')} className="btn-primary">
-                    Back to Home
-                  </button>
-                </div>
               </>
             )}
+            <div style={{ marginTop: 20 }}>
+              <button type="button" onClick={() => router.push('/')} className="btn-primary">
+                Back to Home
+              </button>
+            </div>
           </section>
         </div>
 
