@@ -106,7 +106,7 @@ export default function ConfirmPage({ vendorName }: ConfirmProps) {
                   </div>
                 </div>
                 <div style={{ marginTop: 20 }}>
-                  <button onClick={() => router.push('/')} className="btn-primary">
+                  <button type="button" onClick={() => router.push('/')} className="btn-primary">
                     Back to Home
                   </button>
                 </div>
@@ -225,9 +225,6 @@ export default function ConfirmPage({ vendorName }: ConfirmProps) {
             font-weight: 600;
             cursor: pointer;
             transition: transform 0.1s, opacity 0.2s;
-            text-decoration: none;
-            display: block;
-            text-align: center;
           }
 
           .btn-primary:hover {
