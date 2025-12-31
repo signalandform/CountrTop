@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import type { NextApiRequest, NextApiResponse } from 'next';
+import { createClient } from '@supabase/supabase-js';
 
 import { createLogger } from '@countrtop/api-client';
 import { getServerDataClient } from '../../../lib/dataClient';
@@ -230,6 +231,37 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const currency = order?.totalMoney?.currency ?? payment.amountMoney?.currency ?? 'USD';
 
     const userId = order?.metadata?.ct_user_id ?? parseUserIdFromReference(order?.referenceId);
+    
+    // Get user display name if userId exists
+    let customerDisplayName: string | null = null;
+    if (userId) {
+      try {
+        const supabaseUrl = process.env.SUPABASE_URL;
+        const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+        if (supabaseUrl && supabaseKey) {
+          const supabaseAdmin = createClient(supabaseUrl, supabaseKey, {
+            auth: {
+              autoRefreshToken: false,
+              persistSession: false
+            }
+          });
+          const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(userId);
+          if (authUser?.user) {
+            customerDisplayName = authUser.user.user_metadata?.full_name ?? 
+                                 authUser.user.user_metadata?.name ?? 
+                                 authUser.user.email?.split('@')[0] ?? 
+                                 null;
+          }
+        }
+      } catch (error) {
+        // Log but don't fail order creation if user lookup fails
+        logger.warn('Failed to get user display name', { userId, error });
+      }
+    }
+    
+    // Generate pickup label: use display name if available, otherwise fallback to order ID
+    const pickupLabel = customerDisplayName ?? `Order ${orderId.slice(-6).toUpperCase()}`;
+    
     const snapshot = await dataClient.createOrderSnapshot({
       vendorId: vendor.id,
       userId: userId ?? null,
@@ -242,7 +274,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         squarePaymentId: payment.id,
         squareLocationId: locationId,
         squareReferenceId: order?.referenceId ?? null
-      }
+      },
+      customerDisplayName: customerDisplayName ?? null,
+      pickupLabel
     });
 
     if (userId) {

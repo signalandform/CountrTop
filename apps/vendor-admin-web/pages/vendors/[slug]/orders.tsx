@@ -185,7 +185,9 @@ export default function VendorOrdersPage({ vendorSlug, vendorName, orders: initi
                       {currentStatus}
                     </span>
                   </div>
-                  <div className="order-customer">{shortenId(order.userId)}</div>
+                  <div className="order-customer">
+                    {order.pickupLabel || order.customerDisplayName || shortenId(order.userId)}
+                  </div>
                   <div className="order-expand">{isExpanded ? '−' : '+'}</div>
                 </button>
 
