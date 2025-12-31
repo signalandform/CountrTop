@@ -384,7 +384,7 @@ export class SupabaseDataClient implements DataClient {
       // Field limiting: select only needed columns
       const { data, error } = await this.client
         .from('order_snapshots')
-        .select('id,vendor_id,user_id,square_order_id,placed_at,snapshot_json')
+        .select('id,vendor_id,user_id,square_order_id,placed_at,snapshot_json,fulfillment_status,ready_at,completed_at,updated_at,customer_display_name,pickup_label')
         .eq('vendor_id', vendorId)
         .eq('user_id', userId)
         .order('placed_at', { ascending: false });

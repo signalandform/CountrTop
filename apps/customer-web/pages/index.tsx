@@ -523,7 +523,21 @@ export default function CustomerHome({ vendorSlug, vendorName }: Props) {
             <div className="card history">
               <div className="card-header">
                 <h2>Order History</h2>
-                <span className="muted">{user ? `${orders.length} orders` : 'Sign in'}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <span className="muted">{user ? `${orders.length} orders` : 'Sign in'}</span>
+                  {user && (
+                    <button
+                      onClick={() => {
+                        setLoadedUserId(null);
+                      }}
+                      className="btn-secondary"
+                      style={{ padding: '6px 12px', fontSize: '14px' }}
+                      disabled={ordersLoading}
+                    >
+                      {ordersLoading ? 'Loading...' : 'Refresh'}
+                    </button>
+                  )}
+                </div>
               </div>
               {!user && authStatus === 'ready' && (
                 <p className="muted">Sign in to see past orders.</p>
@@ -539,12 +553,45 @@ export default function CustomerHome({ vendorSlug, vendorName }: Props) {
                   const count = items.reduce((s, i) => s + (i.quantity ?? 0), 0);
                   const total = typeof order.snapshotJson?.total === 'number' ? order.snapshotJson.total : 0;
                   const currency = typeof order.snapshotJson?.currency === 'string' ? order.snapshotJson.currency : 'USD';
+                  const status = order.fulfillmentStatus ?? 'PLACED';
+                  const statusLabels: Record<string, string> = {
+                    PLACED: 'Placed',
+                    READY: 'Ready',
+                    COMPLETE: 'Complete'
+                  };
+                  const statusColors: Record<string, string> = {
+                    PLACED: '#888',
+                    READY: '#fbbf24',
+                    COMPLETE: '#4ade80'
+                  };
                   return (
                     <div key={order.id} className="history-item">
                       <div>
-                        <div className="label">Order {order.squareOrderId.slice(-6)}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                          <div className="label">Order {order.squareOrderId.slice(-6)}</div>
+                          <span
+                            style={{
+                              padding: '2px 8px',
+                              borderRadius: '12px',
+                              fontSize: '11px',
+                              fontWeight: 600,
+                              textTransform: 'uppercase',
+                              backgroundColor: `${statusColors[status]}20`,
+                              color: statusColors[status],
+                              border: `1px solid ${statusColors[status]}40`
+                            }}
+                          >
+                            {statusLabels[status] || status}
+                          </span>
+                        </div>
                         <div className="muted">
                           {new Date(order.placedAt).toLocaleDateString()} · {count} items · {formatCurrency(total, currency)}
+                          {order.readyAt && (
+                            <> · Ready {new Date(order.readyAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</>
+                          )}
+                          {order.completedAt && (
+                            <> · Complete {new Date(order.completedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</>
+                          )}
                         </div>
                       </div>
                       <button onClick={() => handleReorder(order)} className="btn-secondary">

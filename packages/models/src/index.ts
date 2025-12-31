@@ -88,6 +88,9 @@ export type OrderHistoryEntry = {
   placedAt: string;
   squareOrderId: string;
   snapshotJson: Record<string, unknown>;
+  fulfillmentStatus?: string | null;
+  readyAt?: string | null;
+  completedAt?: string | null;
 };
 
 export type OpsOrder = {

@@ -3,7 +3,18 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { getServerDataClient } from '../../../../lib/dataClient';
 
 type OrderHistoryResponse =
-  | { ok: true; orders: Array<{ id: string; placedAt: string; squareOrderId: string; snapshotJson: unknown }> }
+  | {
+      ok: true;
+      orders: Array<{
+        id: string;
+        placedAt: string;
+        squareOrderId: string;
+        snapshotJson: unknown;
+        fulfillmentStatus?: string | null;
+        readyAt?: string | null;
+        completedAt?: string | null;
+      }>;
+    }
   | { ok: false; error: string };
 
 const normalizeSlug = (value: string | string[] | undefined) =>
@@ -34,7 +45,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         id: order.id,
         placedAt: order.placedAt,
         squareOrderId: order.squareOrderId,
-        snapshotJson: order.snapshotJson
+        snapshotJson: order.snapshotJson,
+        fulfillmentStatus: order.fulfillmentStatus,
+        readyAt: order.readyAt,
+        completedAt: order.completedAt
       }))
     });
   } catch (error) {
