@@ -672,7 +672,7 @@ const toOrderSnapshotInsert = (
   fulfillment_status: order.fulfillmentStatus ?? 'PLACED',
   ready_at: order.readyAt ?? null,
   completed_at: order.completedAt ?? null,
-  updated_at: order.updatedAt ?? null,
+  // omit updated_at so DB default/trigger populates it
   customer_display_name: order.customerDisplayName ?? null,
   pickup_label: order.pickupLabel ?? null
 });
