@@ -25,6 +25,12 @@ export type OrderSnapshot = {
   squareOrderId: string;
   placedAt: string;
   snapshotJson: Record<string, unknown>;
+  fulfillmentStatus?: string | null;
+  readyAt?: string | null;
+  completedAt?: string | null;
+  updatedAt?: string | null;
+  customerDisplayName?: string | null;
+  pickupLabel?: string | null;
 };
 
 export type LoyaltyLedgerEntry = {

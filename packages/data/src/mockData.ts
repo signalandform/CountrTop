@@ -90,6 +90,28 @@ export class MockDataClient implements DataClient {
     return this.orderSnapshots.filter((order) => order.vendorId === vendorId);
   }
 
+  async updateOrderSnapshotStatus(
+    orderId: string,
+    vendorId: string,
+    status: 'READY' | 'COMPLETE'
+  ): Promise<OrderSnapshot> {
+    const order = this.orderSnapshots.find((o) => o.id === orderId && o.vendorId === vendorId);
+    if (!order) {
+      throw new Error('Order not found or does not belong to vendor');
+    }
+
+    const now = new Date().toISOString();
+    order.fulfillmentStatus = status;
+    if (status === 'READY') {
+      order.readyAt = now;
+    } else if (status === 'COMPLETE') {
+      order.completedAt = now;
+    }
+    order.updatedAt = now;
+
+    return order;
+  }
+
   async recordLoyaltyEntry(entry: LoyaltyLedgerEntryInput): Promise<LoyaltyLedgerEntry> {
     const id = entry.id ?? this.createId('ledger');
     const createdAt = entry.createdAt ?? new Date().toISOString();

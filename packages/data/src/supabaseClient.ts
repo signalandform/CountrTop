@@ -122,6 +122,12 @@ export type Database = {
           square_order_id: string;
           placed_at: string;
           snapshot_json: Record<string, unknown>;
+          fulfillment_status: string | null;
+          ready_at: string | null;
+          completed_at: string | null;
+          updated_at: string | null;
+          customer_display_name: string | null;
+          pickup_label: string | null;
         };
         Insert: {
           id?: string;
@@ -130,6 +136,12 @@ export type Database = {
           square_order_id: string;
           placed_at?: string;
           snapshot_json: Record<string, unknown>;
+          fulfillment_status?: string | null;
+          ready_at?: string | null;
+          completed_at?: string | null;
+          updated_at?: string | null;
+          customer_display_name?: string | null;
+          pickup_label?: string | null;
         };
         Update: Partial<Database['public']['Tables']['order_snapshots']['Insert']>;
         Relationships: [];
@@ -289,7 +301,7 @@ export class SupabaseDataClient implements DataClient {
       const { data, error } = await this.client
         .from('order_snapshots')
         .insert(toOrderSnapshotInsert(withId))
-        .select('id,vendor_id,user_id,square_order_id,placed_at,snapshot_json')
+        .select('id,vendor_id,user_id,square_order_id,placed_at,snapshot_json,fulfillment_status,ready_at,completed_at,updated_at,customer_display_name,pickup_label')
         .single();
       if (error) throw error;
       const result = mapOrderSnapshotFromRow(data as Database['public']['Tables']['order_snapshots']['Row']);
@@ -316,7 +328,7 @@ export class SupabaseDataClient implements DataClient {
       // Field limiting: select only needed columns
       const { data, error } = await this.client
         .from('order_snapshots')
-        .select('id,vendor_id,user_id,square_order_id,placed_at,snapshot_json')
+        .select('id,vendor_id,user_id,square_order_id,placed_at,snapshot_json,fulfillment_status,ready_at,completed_at,updated_at,customer_display_name,pickup_label')
         .eq('id', orderId)
         .maybeSingle();
       if (error) throw error;
@@ -345,7 +357,7 @@ export class SupabaseDataClient implements DataClient {
       // Field limiting: select only needed columns
       const { data, error } = await this.client
         .from('order_snapshots')
-        .select('id,vendor_id,user_id,square_order_id,placed_at,snapshot_json')
+        .select('id,vendor_id,user_id,square_order_id,placed_at,snapshot_json,fulfillment_status,ready_at,completed_at,updated_at,customer_display_name,pickup_label')
         .eq('vendor_id', vendorId)
         .eq('square_order_id', squareOrderId)
         .maybeSingle();
@@ -399,7 +411,7 @@ export class SupabaseDataClient implements DataClient {
       // Field limiting: select only needed columns
       const { data, error } = await this.client
         .from('order_snapshots')
-        .select('id,vendor_id,user_id,square_order_id,placed_at,snapshot_json')
+        .select('id,vendor_id,user_id,square_order_id,placed_at,snapshot_json,fulfillment_status,ready_at,completed_at,updated_at,customer_display_name,pickup_label')
         .eq('vendor_id', vendorId)
         .order('placed_at', { ascending: false });
       if (error) throw error;
@@ -411,6 +423,63 @@ export class SupabaseDataClient implements DataClient {
       return result;
     } catch (error) {
       logQueryPerformance('listOrderSnapshotsForVendor', startTime, false, error);
+      throw error;
+    }
+  }
+
+  async updateOrderSnapshotStatus(
+    orderId: string,
+    vendorId: string,
+    status: 'READY' | 'COMPLETE'
+  ): Promise<OrderSnapshot> {
+    const startTime = Date.now();
+    try {
+      // First verify the order exists and belongs to the vendor
+      const { data: existing, error: fetchError } = await this.client
+        .from('order_snapshots')
+        .select('id,vendor_id')
+        .eq('id', orderId)
+        .eq('vendor_id', vendorId)
+        .maybeSingle();
+      if (fetchError) throw fetchError;
+      if (!existing) {
+        throw new Error('Order not found or does not belong to vendor');
+      }
+
+      // Build update payload
+      const updatePayload: Database['public']['Tables']['order_snapshots']['Update'] = {
+        fulfillment_status: status
+      };
+
+      if (status === 'READY') {
+        updatePayload.ready_at = new Date().toISOString();
+      } else if (status === 'COMPLETE') {
+        updatePayload.completed_at = new Date().toISOString();
+      }
+
+      // Update the order
+      const { data, error } = await this.client
+        .from('order_snapshots')
+        .update(updatePayload)
+        .eq('id', orderId)
+        .eq('vendor_id', vendorId)
+        .select('id,vendor_id,user_id,square_order_id,placed_at,snapshot_json,fulfillment_status,ready_at,completed_at,updated_at,customer_display_name,pickup_label')
+        .single();
+      if (error) throw error;
+
+      const result = mapOrderSnapshotFromRow(data as Database['public']['Tables']['order_snapshots']['Row']);
+
+      // Invalidate related cache entries
+      queryCache.delete(`order:${orderId}`);
+      queryCache.delete(`orders:vendor:${vendorId}`);
+      if (result.userId) {
+        queryCache.delete(`orders:user:${vendorId}:${result.userId}`);
+      }
+
+      logQueryPerformance('updateOrderSnapshotStatus', startTime, true);
+      return result;
+    } catch (error) {
+      logQueryPerformance('updateOrderSnapshotStatus', startTime, false, error);
       throw error;
     }
   }
@@ -559,7 +628,13 @@ const mapOrderSnapshotFromRow = (
   userId: row.user_id,
   squareOrderId: row.square_order_id,
   placedAt: row.placed_at,
-  snapshotJson: row.snapshot_json
+  snapshotJson: row.snapshot_json,
+  fulfillmentStatus: row.fulfillment_status ?? undefined,
+  readyAt: row.ready_at ?? undefined,
+  completedAt: row.completed_at ?? undefined,
+  updatedAt: row.updated_at ?? undefined,
+  customerDisplayName: row.customer_display_name ?? undefined,
+  pickupLabel: row.pickup_label ?? undefined
 });
 
 const mapLoyaltyLedgerFromRow = (
@@ -592,7 +667,13 @@ const toOrderSnapshotInsert = (
   user_id: order.userId ?? null,
   square_order_id: order.squareOrderId,
   placed_at: order.placedAt ?? new Date().toISOString(),
-  snapshot_json: order.snapshotJson
+  snapshot_json: order.snapshotJson,
+  fulfillment_status: order.fulfillmentStatus ?? 'PLACED',
+  ready_at: order.readyAt ?? null,
+  completed_at: order.completedAt ?? null,
+  updated_at: order.updatedAt ?? null,
+  customer_display_name: order.customerDisplayName ?? null,
+  pickup_label: order.pickupLabel ?? null
 });
 
 const toLoyaltyLedgerInsert = (

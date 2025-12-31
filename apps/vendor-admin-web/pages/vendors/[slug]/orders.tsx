@@ -77,11 +77,57 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ params }) 
   };
 };
 
-export default function VendorOrdersPage({ vendorSlug, vendorName, orders, statusMessage }: Props) {
+export default function VendorOrdersPage({ vendorSlug, vendorName, orders: initialOrders, statusMessage }: Props) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [orders, setOrders] = useState<OrderSnapshot[]>(initialOrders);
+  const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const toggleExpand = (id: string) => {
     setExpandedId(expandedId === id ? null : id);
+  };
+
+  const updateOrderStatus = async (orderId: string, status: 'READY' | 'COMPLETE') => {
+    setUpdatingOrderId(orderId);
+    setError(null);
+
+    try {
+      const response = await fetch(`/api/orders/${orderId}/status`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ status })
+      });
+
+      const data = await response.json();
+
+      if (!data.ok) {
+        throw new Error(data.error || 'Failed to update order status');
+      }
+
+      // Update local state
+      setOrders((prevOrders) =>
+        prevOrders.map((order) => {
+          if (order.id === orderId) {
+            return {
+              ...order,
+              fulfillmentStatus: status,
+              readyAt: status === 'READY' ? new Date().toISOString() : order.readyAt,
+              completedAt: status === 'COMPLETE' ? new Date().toISOString() : order.completedAt,
+              updatedAt: new Date().toISOString()
+            };
+          }
+          return order;
+        })
+      );
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to update order status';
+      setError(message);
+      setTimeout(() => setError(null), 5000);
+    } finally {
+      setUpdatingOrderId(null);
+    }
   };
 
   return (
@@ -104,6 +150,8 @@ export default function VendorOrdersPage({ vendorSlug, vendorName, orders, statu
 
         {statusMessage && <div className="error-banner">{statusMessage}</div>}
 
+        {error && <div className="error-banner">{error}</div>}
+
         {!statusMessage && orders.length === 0 && (
           <div className="empty-state">
             <span className="empty-icon">📦</span>
@@ -118,6 +166,11 @@ export default function VendorOrdersPage({ vendorSlug, vendorName, orders, statu
             const itemCount = data.items.reduce((sum, i) => sum + i.quantity, 0);
             const isExpanded = expandedId === order.id;
 
+            const currentStatus = order.fulfillmentStatus ?? 'PLACED';
+            const isUpdating = updatingOrderId === order.id;
+            const canMarkReady = currentStatus === 'PLACED';
+            const canMarkComplete = currentStatus === 'READY';
+
             return (
               <div key={order.id} className={`order-card ${isExpanded ? 'expanded' : ''}`}>
                 <button className="order-header" onClick={() => toggleExpand(order.id)}>
@@ -127,21 +180,60 @@ export default function VendorOrdersPage({ vendorSlug, vendorName, orders, statu
                   </div>
                   <div className="order-total">{formatCurrency(data.total, data.currency)}</div>
                   <div className="order-items">{itemCount} items</div>
+                  <div className="order-status">
+                    <span className={`status-badge status-${currentStatus.toLowerCase()}`}>
+                      {currentStatus}
+                    </span>
+                  </div>
                   <div className="order-customer">{shortenId(order.userId)}</div>
                   <div className="order-expand">{isExpanded ? '−' : '+'}</div>
                 </button>
 
-                {isExpanded && data.items.length > 0 && (
+                {isExpanded && (
                   <div className="order-details">
-                    {data.items.map((item, idx) => (
-                      <div key={idx} className="detail-row">
-                        <span className="detail-qty">{item.quantity}×</span>
-                        <span className="detail-name">{item.name}</span>
-                        <span className="detail-price">
-                          {formatCurrency(item.price * item.quantity, data.currency)}
-                        </span>
-                      </div>
-                    ))}
+                    {data.items.length > 0 && (
+                      <>
+                        {data.items.map((item, idx) => (
+                          <div key={idx} className="detail-row">
+                            <span className="detail-qty">{item.quantity}×</span>
+                            <span className="detail-name">{item.name}</span>
+                            <span className="detail-price">
+                              {formatCurrency(item.price * item.quantity, data.currency)}
+                            </span>
+                          </div>
+                        ))}
+                        <div className="detail-divider" />
+                      </>
+                    )}
+                    <div className="order-actions">
+                      {canMarkReady && (
+                        <button
+                          className="btn-action btn-ready"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            updateOrderStatus(order.id, 'READY');
+                          }}
+                          disabled={isUpdating}
+                        >
+                          {isUpdating ? 'Updating...' : 'Mark Ready'}
+                        </button>
+                      )}
+                      {canMarkComplete && (
+                        <button
+                          className="btn-action btn-complete"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            updateOrderStatus(order.id, 'COMPLETE');
+                          }}
+                          disabled={isUpdating}
+                        >
+                          {isUpdating ? 'Updating...' : 'Mark Complete'}
+                        </button>
+                      )}
+                      {currentStatus === 'COMPLETE' && (
+                        <span className="status-complete-text">Order completed</span>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
@@ -256,7 +348,7 @@ export default function VendorOrdersPage({ vendorSlug, vendorName, orders, statu
           .order-header {
             width: 100%;
             display: grid;
-            grid-template-columns: 2fr 1fr 1fr 1fr 40px;
+            grid-template-columns: 2fr 1fr 1fr 1fr 1fr 40px;
             gap: 16px;
             align-items: center;
             padding: 16px 20px;
@@ -274,7 +366,8 @@ export default function VendorOrdersPage({ vendorSlug, vendorName, orders, statu
               gap: 12px;
             }
             .order-items,
-            .order-customer {
+            .order-customer,
+            .order-status {
               display: none;
             }
           }
@@ -313,6 +406,38 @@ export default function VendorOrdersPage({ vendorSlug, vendorName, orders, statu
             font-family: monospace;
           }
 
+          .order-status {
+            display: flex;
+            align-items: center;
+          }
+
+          .status-badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          }
+
+          .status-badge.status-placed {
+            background: rgba(102, 126, 234, 0.2);
+            color: #a78bfa;
+            border: 1px solid rgba(102, 126, 234, 0.3);
+          }
+
+          .status-badge.status-ready {
+            background: rgba(251, 191, 36, 0.2);
+            color: #fbbf24;
+            border: 1px solid rgba(251, 191, 36, 0.3);
+          }
+
+          .status-badge.status-complete {
+            background: rgba(34, 197, 94, 0.2);
+            color: #4ade80;
+            border: 1px solid rgba(34, 197, 94, 0.3);
+          }
+
           .order-expand {
             width: 32px;
             height: 32px;
@@ -329,6 +454,12 @@ export default function VendorOrdersPage({ vendorSlug, vendorName, orders, statu
             padding: 0 20px 20px;
             border-top: 1px solid rgba(255, 255, 255, 0.06);
             margin-top: 0;
+          }
+
+          .detail-divider {
+            height: 1px;
+            background: rgba(255, 255, 255, 0.06);
+            margin: 16px 0;
           }
 
           .detail-row {
@@ -364,6 +495,57 @@ export default function VendorOrdersPage({ vendorSlug, vendorName, orders, statu
           .detail-price {
             color: #888;
             font-size: 14px;
+          }
+
+          .order-actions {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            padding-top: 8px;
+          }
+
+          .btn-action {
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: none;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+          }
+
+          .btn-action:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+          }
+
+          .btn-ready {
+            background: rgba(251, 191, 36, 0.2);
+            color: #fbbf24;
+            border: 1px solid rgba(251, 191, 36, 0.3);
+          }
+
+          .btn-ready:hover:not(:disabled) {
+            background: rgba(251, 191, 36, 0.3);
+            border-color: rgba(251, 191, 36, 0.5);
+          }
+
+          .btn-complete {
+            background: rgba(34, 197, 94, 0.2);
+            color: #4ade80;
+            border: 1px solid rgba(34, 197, 94, 0.3);
+          }
+
+          .btn-complete:hover:not(:disabled) {
+            background: rgba(34, 197, 94, 0.3);
+            border-color: rgba(34, 197, 94, 0.5);
+          }
+
+          .status-complete-text {
+            color: #4ade80;
+            font-size: 14px;
+            font-weight: 600;
           }
         `}</style>
       </main>

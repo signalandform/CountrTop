@@ -7,7 +7,8 @@
   "source": "src/index.ts",
   "scripts": {
     "build": "tsc -p tsconfig.json --emitDeclarationOnly",
-    "lint": "eslint 'src/**/*.{ts,tsx}'"
+    "lint": "eslint 'src/**/*.{ts,tsx}'",
+    "gen:types": "supabase gen types typescript --project-id ${SUPABASE_PROJECT_ID:-} > src/database.types.ts || echo 'Error: SUPABASE_PROJECT_ID env var required, or install Supabase CLI and configure project'"
   },
   "dependencies": {
     "@countrtop/models": "workspace:*",

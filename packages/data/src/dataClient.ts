@@ -37,6 +37,11 @@ export interface DataClient {
   getOrderSnapshotBySquareOrderId(vendorId: string, squareOrderId: string): Promise<OrderSnapshot | null>;
   listOrderSnapshotsForUser(vendorId: string, userId: string): Promise<OrderSnapshot[]>;
   listOrderSnapshotsForVendor(vendorId: string): Promise<OrderSnapshot[]>;
+  updateOrderSnapshotStatus(
+    orderId: string,
+    vendorId: string,
+    status: 'READY' | 'COMPLETE'
+  ): Promise<OrderSnapshot>;
 
   recordLoyaltyEntry(entry: LoyaltyLedgerEntryInput): Promise<LoyaltyLedgerEntry>;
   listLoyaltyEntriesForUser(vendorId: string, userId: string): Promise<LoyaltyLedgerEntry[]>;
