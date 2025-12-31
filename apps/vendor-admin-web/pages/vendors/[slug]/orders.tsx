@@ -92,7 +92,7 @@ export default function VendorOrdersPage({ vendorSlug, vendorName, orders: initi
     setError(null);
 
     try {
-      const response = await fetch(`/api/orders/${orderId}/status`, {
+      const response = await fetch(`/api/vendors/${vendorSlug}/orders/${orderId}/status`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

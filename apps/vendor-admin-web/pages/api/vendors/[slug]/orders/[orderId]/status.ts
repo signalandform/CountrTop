@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
-import { getServerDataClient } from '../../../../lib/dataClient';
+import { getServerDataClient } from '../../../../../../lib/dataClient';
 
 type StatusRequest = {
   status?: 'READY' | 'COMPLETE';
@@ -10,12 +10,21 @@ type StatusResponse =
   | { ok: true; order: { id: string; fulfillmentStatus: string | null | undefined } }
   | { ok: false; error: string };
 
+const normalizeSlug = (value: string | string[] | undefined) =>
+  Array.isArray(value) ? value[0] : value;
+
 const normalizeOrderId = (value: string | string[] | undefined) =>
   Array.isArray(value) ? value[0] : value;
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<StatusResponse>) {
   if (req.method !== 'POST') {
     return res.status(405).json({ ok: false, error: 'Method not allowed' });
+  }
+
+  // Get vendor slug from route param (preferred) or fallback to header
+  const vendorSlug = normalizeSlug(req.query.slug) || (req.headers['x-vendor-slug'] as string | undefined);
+  if (!vendorSlug) {
+    return res.status(400).json({ ok: false, error: 'Vendor slug required' });
   }
 
   const orderId = normalizeOrderId(req.query.orderId);
@@ -26,12 +35,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
   const { status } = req.body as StatusRequest;
   if (!status || (status !== 'READY' && status !== 'COMPLETE')) {
     return res.status(400).json({ ok: false, error: 'Status must be READY or COMPLETE' });
-  }
-
-  // Get vendor slug from header (set by middleware) or fallback to query param
-  const vendorSlug = req.headers['x-vendor-slug'] as string | undefined;
-  if (!vendorSlug) {
-    return res.status(400).json({ ok: false, error: 'Vendor slug required' });
   }
 
   const dataClient = getServerDataClient();
