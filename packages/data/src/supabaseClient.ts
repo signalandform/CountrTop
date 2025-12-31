@@ -418,7 +418,8 @@ export class SupabaseDataClient implements DataClient {
       const result = (data ?? []).map(
         (row) => mapOrderSnapshotFromRow(row as Database['public']['Tables']['order_snapshots']['Row'])
       );
-      queryCache.set(cacheKey, result);
+      // Use short TTL (5 seconds) for vendor order list to ensure status updates appear quickly
+      queryCache.set(cacheKey, result, 5 * 1000);
       logQueryPerformance('listOrderSnapshotsForVendor', startTime, true);
       return result;
     } catch (error) {
