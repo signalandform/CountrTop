@@ -1,11 +1,9 @@
 import Head from 'next/head';
-import { useRouter } from 'next/router';
 import { useEffect, useRef, useState } from 'react';
 
 import { getBrowserSupabaseClient } from '../lib/supabaseBrowser';
 
 export default function LoginPage() {
-  const router = useRouter();
   const [supabase, setSupabase] = useState<ReturnType<typeof getBrowserSupabaseClient>>(null);
   const [loading, setLoading] = useState(true);
   const [signingIn, setSigningIn] = useState(false);
@@ -33,10 +31,30 @@ export default function LoginPage() {
           return;
         }
         
-        // Have a valid session - redirect directly to vendor orders to avoid root page loop
-        setTimeout(() => {
-          window.location.replace('/vendors/sunset/orders');
-        }, 100);
+        // Have a valid session - query vendor via API and redirect
+        if (client) {
+          (async () => {
+            try {
+              const response = await fetch('/api/me/vendor');
+              if (!response.ok) {
+                // No vendor found or error - redirect to access denied
+                setTimeout(() => {
+                  window.location.replace('/access-denied');
+                }, 100);
+                return;
+              }
+              const { slug } = await response.json();
+              // Redirect to vendor orders page
+              setTimeout(() => {
+                window.location.replace(`/vendors/${slug}/orders`);
+              }, 100);
+            } catch {
+              setLoading(false);
+            }
+          })();
+        } else {
+          setLoading(false);
+        }
       }).catch(() => {
         // If session check fails, just show login form
         setLoading(false);
@@ -62,12 +80,25 @@ export default function LoginPage() {
         setError(signInError.message);
         setSigningIn(false);
       } else if (data.session?.user?.id) {
-        // Success - redirect directly to vendor orders page to avoid root page redirect loop
-        // Wait a moment for session cookies to be set
-        setTimeout(() => {
-          // Redirect directly to sunset vendor orders (bypassing root page)
-          window.location.replace('/vendors/sunset/orders');
-        }, 200);
+        // Success - query vendor for this admin user via API and redirect
+        try {
+          const response = await fetch('/api/me/vendor');
+          if (!response.ok) {
+            // No vendor found or error - redirect to access denied
+            setTimeout(() => {
+              window.location.replace('/access-denied');
+            }, 200);
+            return;
+          }
+          const { slug } = await response.json();
+          // Redirect to vendor orders page
+          setTimeout(() => {
+            window.location.replace(`/vendors/${slug}/orders`);
+          }, 200);
+        } catch (err) {
+          setError('Failed to load vendor information');
+          setSigningIn(false);
+        }
       } else {
         setError('Sign in succeeded but no session was returned');
         setSigningIn(false);
