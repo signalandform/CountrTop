@@ -35,7 +35,13 @@ export default function LoginPage() {
         if (client) {
           (async () => {
             try {
-              const response = await fetch('/api/me/vendor');
+              // Wait a bit to ensure session is fully established
+              await new Promise(resolve => setTimeout(resolve, 300));
+              
+              const response = await fetch('/api/me/vendor', {
+                credentials: 'include' // Ensure cookies are sent
+              });
+              
               if (!response.ok) {
                 // No vendor found or error - redirect to access denied
                 setTimeout(() => {
@@ -43,7 +49,15 @@ export default function LoginPage() {
                 }, 100);
                 return;
               }
+              
               const { slug } = await response.json();
+              if (!slug) {
+                setTimeout(() => {
+                  window.location.replace('/access-denied');
+                }, 100);
+                return;
+              }
+              
               // Redirect to vendor orders page
               setTimeout(() => {
                 window.location.replace(`/vendors/${slug}/orders`);
@@ -80,22 +94,40 @@ export default function LoginPage() {
         setError(signInError.message);
         setSigningIn(false);
       } else if (data.session?.user?.id) {
-        // Success - query vendor for this admin user via API and redirect
+        // Success - wait a bit longer for session cookies to be set, then query vendor
         try {
-          const response = await fetch('/api/me/vendor');
+          // Wait longer to ensure session cookies are set
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+          const response = await fetch('/api/me/vendor', {
+            credentials: 'include' // Ensure cookies are sent
+          });
+          
           if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+            console.error('Vendor lookup failed:', response.status, errorData);
             // No vendor found or error - redirect to access denied
             setTimeout(() => {
               window.location.replace('/access-denied');
             }, 200);
             return;
           }
+          
           const { slug } = await response.json();
+          if (!slug) {
+            console.error('No vendor slug returned');
+            setTimeout(() => {
+              window.location.replace('/access-denied');
+            }, 200);
+            return;
+          }
+          
           // Redirect to vendor orders page
           setTimeout(() => {
             window.location.replace(`/vendors/${slug}/orders`);
           }, 200);
         } catch (err) {
+          console.error('Vendor lookup error:', err);
           setError('Failed to load vendor information');
           setSigningIn(false);
         }
