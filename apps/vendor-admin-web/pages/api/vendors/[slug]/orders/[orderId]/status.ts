@@ -29,7 +29,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
   }
 
   // Check vendor admin access
-  const authResult = await requireVendorAdminApi(req, vendorSlug);
+  const authResult = await requireVendorAdminApi(req, res, vendorSlug);
   if (!authResult.authorized) {
     const statusCode = authResult.statusCode ?? 401;
     return res.status(statusCode).json({ ok: false, error: authResult.error ?? 'Unauthorized' });

@@ -1,91 +1,88 @@
-import Head from 'next/head';
 import type { GetServerSideProps } from 'next';
+import { createClient } from '@supabase/supabase-js';
+import { createServerClient } from '@supabase/auth-helpers-nextjs';
 
-import { resolveVendorSlugFromHost } from '@countrtop/data';
-import { VendorInsights } from '@countrtop/models';
+import type { Database } from '@countrtop/data';
 
-import { VendorInsightsDashboard } from '../components/VendorInsightsDashboard';
-import { getServerDataClient } from '../lib/dataClient';
-import { summarizeInsights } from '../lib/insights';
-import { requireVendorAdmin } from '../lib/auth';
+export const getServerSideProps: GetServerSideProps = async (context) => {
+  // Get authenticated user using Supabase auth helpers
+  const supabase = createServerClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL ?? '',
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? process.env.SUPABASE_ANON_KEY ?? '',
+    {
+      cookies: {
+        get(name: string) {
+          return context.req.cookies[name] ?? undefined;
+        },
+        set(name: string, value: string, options?: any) {
+          context.res.setHeader('Set-Cookie', `${name}=${value}; ${options?.maxAge ? `Max-Age=${options.maxAge};` : ''} ${options?.path ? `Path=${options.path};` : ''} ${options?.sameSite ? `SameSite=${options.sameSite};` : ''} ${options?.httpOnly ? 'HttpOnly;' : ''} ${options?.secure ? 'Secure;' : ''}`);
+        },
+        remove(name: string, options?: any) {
+          context.res.setHeader('Set-Cookie', `${name}=; Max-Age=0; ${options?.path ? `Path=${options.path};` : ''}`);
+        }
+      }
+    }
+  );
 
-type VendorAdminProps = {
-  vendorSlug: string | null;
-  vendorName: string;
-  insights: VendorInsights;
-  statusMessage?: string | null;
-};
+  const { data: { user }, error } = await supabase.auth.getUser();
 
-export const getServerSideProps: GetServerSideProps<VendorAdminProps> = async (context) => {
-  const defaultSlug = process.env.DEFAULT_VENDOR_SLUG;
-  if (defaultSlug) {
+  // If no user, redirect to login
+  if (error || !user) {
     return {
       redirect: {
-        destination: `/vendors/${defaultSlug}`,
+        destination: '/login',
         permanent: false
       }
     };
   }
 
-  const vendorSlug = resolveVendorSlugFromHost(context.req.headers.host, defaultSlug);
-  
-  // Check vendor admin access if vendor slug exists
-  if (vendorSlug) {
-    const authResult = await requireVendorAdmin(context, vendorSlug);
-    if (!authResult.authorized) {
-      if (authResult.redirect) {
-        return { redirect: authResult.redirect };
+  // Find vendor where admin_user_id matches the authenticated user
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!supabaseUrl || !supabaseKey) {
+    return {
+      redirect: {
+        destination: '/access-denied',
+        permanent: false
       }
-      return {
-        props: {
-          vendorSlug: vendorSlug ?? null,
-          vendorName: 'Access Denied',
-          insights: {
-            orders: 0,
-            uniqueCustomers: 0,
-            repeatCustomers: 0,
-            pointsIssued: 0,
-            topReorderedItems: []
-          },
-          statusMessage: authResult.error ?? 'Access denied'
-        }
-      };
-    }
+    };
   }
 
-  const dataClient = getServerDataClient();
-  const vendor = vendorSlug ? await dataClient.getVendorBySlug(vendorSlug) : null;
-  const orders = vendor ? await dataClient.listOrderSnapshotsForVendor(vendor.id) : [];
-  const insights = await summarizeInsights(vendor, orders, dataClient);
-  const statusMessage = vendorSlug && !vendor ? 'Vendor not found' : null;
+  const serviceSupabase = createClient<Database>(supabaseUrl, supabaseKey, {
+    auth: {
+      persistSession: false
+    }
+  });
 
+  // Query for vendor(s) where admin_user_id matches user.id
+  // If multiple vendors exist, pick the first one (optional: could order by created_at desc)
+  const { data: vendors, error: vendorError } = await serviceSupabase
+    .from('vendors')
+    .select('slug')
+    .eq('admin_user_id', user.id)
+    .limit(1);
+
+  if (vendorError || !vendors || vendors.length === 0) {
+    // No vendor found for this admin user
+    return {
+      redirect: {
+        destination: '/access-denied',
+        permanent: false
+      }
+    };
+  }
+
+  // Redirect to the vendor's orders page
+  const vendorSlug = vendors[0].slug;
   return {
-    props: {
-      vendorSlug: vendorSlug ?? null,
-      vendorName: vendor?.displayName ?? 'Unknown vendor',
-      insights,
-      statusMessage
+    redirect: {
+      destination: `/vendors/${vendorSlug}/orders`,
+      permanent: false
     }
   };
 };
 
-export default function VendorAdminDashboard({
-  vendorSlug,
-  vendorName,
-  insights,
-  statusMessage
-}: VendorAdminProps) {
-  return (
-    <>
-      <Head>
-        <title>CountrTop Vendor Insights</title>
-      </Head>
-      <VendorInsightsDashboard
-        vendorSlug={vendorSlug}
-        vendorName={vendorName}
-        insights={insights}
-        statusMessage={statusMessage}
-      />
-    </>
-  );
+export default function VendorAdminRoot() {
+  // This component should never render since we always redirect
+  return null;
 }
