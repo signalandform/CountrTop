@@ -7,6 +7,7 @@ import { VendorInsights } from '@countrtop/models';
 import { VendorInsightsDashboard } from '../components/VendorInsightsDashboard';
 import { getServerDataClient } from '../lib/dataClient';
 import { summarizeInsights } from '../lib/insights';
+import { requireVendorAdmin } from '../lib/auth';
 
 type VendorAdminProps = {
   vendorSlug: string | null;
@@ -15,7 +16,7 @@ type VendorAdminProps = {
   statusMessage?: string | null;
 };
 
-export const getServerSideProps: GetServerSideProps<VendorAdminProps> = async ({ req }) => {
+export const getServerSideProps: GetServerSideProps<VendorAdminProps> = async (context) => {
   const defaultSlug = process.env.DEFAULT_VENDOR_SLUG;
   if (defaultSlug) {
     return {
@@ -26,9 +27,33 @@ export const getServerSideProps: GetServerSideProps<VendorAdminProps> = async ({
     };
   }
 
-  const vendorSlug = resolveVendorSlugFromHost(req.headers.host, defaultSlug);
-  const dataClient = getServerDataClient();
+  const vendorSlug = resolveVendorSlugFromHost(context.req.headers.host, defaultSlug);
+  
+  // Check vendor admin access if vendor slug exists
+  if (vendorSlug) {
+    const authResult = await requireVendorAdmin(context, vendorSlug);
+    if (!authResult.authorized) {
+      if (authResult.redirect) {
+        return { redirect: authResult.redirect };
+      }
+      return {
+        props: {
+          vendorSlug: vendorSlug ?? null,
+          vendorName: 'Access Denied',
+          insights: {
+            orders: 0,
+            uniqueCustomers: 0,
+            repeatCustomers: 0,
+            pointsIssued: 0,
+            topReorderedItems: []
+          },
+          statusMessage: authResult.error ?? 'Access denied'
+        }
+      };
+    }
+  }
 
+  const dataClient = getServerDataClient();
   const vendor = vendorSlug ? await dataClient.getVendorBySlug(vendorSlug) : null;
   const orders = vendor ? await dataClient.listOrderSnapshotsForVendor(vendor.id) : [];
   const insights = await summarizeInsights(vendor, orders, dataClient);

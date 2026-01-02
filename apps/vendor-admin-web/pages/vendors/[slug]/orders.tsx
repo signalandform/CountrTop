@@ -5,6 +5,7 @@ import { useState } from 'react';
 
 import { OrderSnapshot } from '@countrtop/models';
 import { getServerDataClient } from '../../../lib/dataClient';
+import { requireVendorAdmin } from '../../../lib/auth';
 
 type Props = {
   vendorSlug: string;
@@ -45,9 +46,25 @@ const normalizeSnapshot = (snapshot: Record<string, unknown>): NormalizedSnapsho
   return { total, currency, items };
 };
 
-export const getServerSideProps: GetServerSideProps<Props> = async ({ params }) => {
-  const slugParam = params?.slug;
+export const getServerSideProps: GetServerSideProps<Props> = async (context) => {
+  const slugParam = context.params?.slug;
   const slug = Array.isArray(slugParam) ? slugParam[0] : slugParam;
+
+  // Check vendor admin access
+  const authResult = await requireVendorAdmin(context, slug ?? null);
+  if (!authResult.authorized) {
+    if (authResult.redirect) {
+      return { redirect: authResult.redirect };
+    }
+    return {
+      props: {
+        vendorSlug: slug ?? 'unknown',
+        vendorName: 'Access Denied',
+        statusMessage: authResult.error ?? 'Access denied',
+        orders: []
+      }
+    };
+  }
 
   const dataClient = getServerDataClient();
   const vendor = slug ? await dataClient.getVendorBySlug(slug) : null;

@@ -102,6 +102,7 @@ export type Database = {
           square_location_id: string;
           square_credential_ref: string | null;
           status: VendorStatus | null;
+          admin_user_id: string | null;
         };
         Insert: {
           id?: string;
@@ -110,6 +111,7 @@ export type Database = {
           square_location_id: string;
           square_credential_ref?: string | null;
           status?: VendorStatus | null;
+          admin_user_id?: string | null;
         };
         Update: Partial<Database['public']['Tables']['vendors']['Insert']>;
         Relationships: [];

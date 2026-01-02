@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
 import { getServerDataClient } from '../../../../../../lib/dataClient';
+import { requireVendorAdminApi } from '../../../../../../lib/auth';
 
 type StatusRequest = {
   status?: 'READY' | 'COMPLETE';
@@ -25,6 +26,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
   const vendorSlug = normalizeSlug(req.query.slug) || (req.headers['x-vendor-slug'] as string | undefined);
   if (!vendorSlug) {
     return res.status(400).json({ ok: false, error: 'Vendor slug required' });
+  }
+
+  // Check vendor admin access
+  const authResult = await requireVendorAdminApi(req, vendorSlug);
+  if (!authResult.authorized) {
+    const statusCode = authResult.statusCode ?? 401;
+    return res.status(statusCode).json({ ok: false, error: authResult.error ?? 'Unauthorized' });
   }
 
   const orderId = normalizeOrderId(req.query.orderId);
