@@ -38,15 +38,8 @@ export default function LoginPage() {
               // Wait a bit to ensure session is fully established
               await new Promise(resolve => setTimeout(resolve, 300));
               
-              // Get access token from session to pass as Authorization header (fallback if cookies don't work)
-              const { data: { session: currentSession } } = await client.auth.getSession();
-              const accessToken = currentSession?.access_token;
-              
               const response = await fetch('/api/me/vendor', {
-                credentials: 'include', // Ensure cookies are sent
-                headers: accessToken ? {
-                  'Authorization': `Bearer ${accessToken}`
-                } : {}
+                credentials: 'include' // Ensure cookies are sent
               });
               
               if (!response.ok) {
@@ -113,14 +106,8 @@ export default function LoginPage() {
           // Wait longer to ensure session cookies are set
           await new Promise(resolve => setTimeout(resolve, 500));
           
-          // Get access token from session to pass as Authorization header (fallback if cookies don't work)
-          const accessToken = data.session.access_token;
-          
           const response = await fetch('/api/me/vendor', {
-            credentials: 'include', // Ensure cookies are sent
-            headers: accessToken ? {
-              'Authorization': `Bearer ${accessToken}`
-            } : {}
+            credentials: 'include' // Ensure cookies are sent
           });
           
           if (!response.ok) {

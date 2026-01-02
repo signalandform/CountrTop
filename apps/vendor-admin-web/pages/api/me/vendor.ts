@@ -14,10 +14,7 @@ export default async function handler(
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Try to get user from cookies first (via auth helpers), then fall back to Authorization header
-  let user: { id: string } | null = null;
-  
-  // First, try using auth helpers with cookies
+  // Get authenticated user using Supabase auth helpers
   const supabase = createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL ?? '',
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? process.env.SUPABASE_ANON_KEY ?? '',
@@ -36,42 +33,9 @@ export default async function handler(
     }
   );
 
-  const { data: { user: cookieUser }, error: userError } = await supabase.auth.getUser();
-  
-  if (!userError && cookieUser) {
-    user = cookieUser;
-  } else {
-    // Fallback: try Authorization header with access token
-    const authHeader = req.headers.authorization;
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      const token = authHeader.substring(7);
-      try {
-        const tokenSupabase = createClient<Database>(
-          process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL ?? '',
-          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? process.env.SUPABASE_ANON_KEY ?? '',
-          {
-            auth: {
-              persistSession: false
-            },
-            global: {
-              headers: {
-                Authorization: `Bearer ${token}`
-              }
-            }
-          }
-        );
-        // Validate token by calling getUser - it will use the Authorization header
-        const { data: { user: tokenUser }, error: tokenError } = await tokenSupabase.auth.getUser();
-        if (!tokenError && tokenUser) {
-          user = tokenUser;
-        }
-      } catch (err) {
-        console.error('Error validating token from Authorization header:', err);
-      }
-    }
-  }
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
 
-  if (!user) {
+  if (userError || !user) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
