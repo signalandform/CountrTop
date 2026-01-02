@@ -43,18 +43,23 @@ export default function LoginPage() {
               });
               
               if (!response.ok) {
-                // No vendor found or error - redirect to access denied
+                const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+                console.error('Vendor lookup failed on page load:', response.status, errorData);
+                // No vendor found or error - redirect to access denied after showing error briefly
+                setError(`Vendor lookup failed: ${errorData.error || `HTTP ${response.status}`}`);
                 setTimeout(() => {
                   window.location.replace('/access-denied');
-                }, 100);
+                }, 3000); // 3 second delay so user can see the error
                 return;
               }
               
               const { slug } = await response.json();
               if (!slug) {
+                console.error('No vendor slug returned on page load');
+                setError('Vendor lookup succeeded but no vendor slug was returned.');
                 setTimeout(() => {
                   window.location.replace('/access-denied');
-                }, 100);
+                }, 3000);
                 return;
               }
               
@@ -62,7 +67,9 @@ export default function LoginPage() {
               setTimeout(() => {
                 window.location.replace(`/vendors/${slug}/orders`);
               }, 100);
-            } catch {
+            } catch (err) {
+              console.error('Vendor lookup error on page load:', err);
+              setError(`Failed to load vendor information: ${err instanceof Error ? err.message : 'Unknown error'}`);
               setLoading(false);
             }
           })();
@@ -105,20 +112,29 @@ export default function LoginPage() {
           
           if (!response.ok) {
             const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+            const errorMessage = errorData.error || `HTTP ${response.status}`;
             console.error('Vendor lookup failed:', response.status, errorData);
-            // No vendor found or error - redirect to access denied
+            
+            // Show error to user and keep it visible
+            setError(`Vendor lookup failed: ${errorMessage}. Please try refreshing the page or contact support.`);
+            setSigningIn(false);
+            
+            // Only redirect to access denied after a delay, giving user time to see the error
             setTimeout(() => {
               window.location.replace('/access-denied');
-            }, 200);
+            }, 5000); // 5 second delay so user can read the error
             return;
           }
           
           const { slug } = await response.json();
           if (!slug) {
             console.error('No vendor slug returned');
+            setError('Vendor lookup succeeded but no vendor slug was returned. Please contact support.');
+            setSigningIn(false);
+            
             setTimeout(() => {
               window.location.replace('/access-denied');
-            }, 200);
+            }, 5000);
             return;
           }
           
@@ -127,8 +143,9 @@ export default function LoginPage() {
             window.location.replace(`/vendors/${slug}/orders`);
           }, 200);
         } catch (err) {
+          const errorMessage = err instanceof Error ? err.message : 'Unknown error';
           console.error('Vendor lookup error:', err);
-          setError('Failed to load vendor information');
+          setError(`Failed to load vendor information: ${errorMessage}. Please try refreshing the page.`);
           setSigningIn(false);
         }
       } else {
@@ -237,7 +254,18 @@ export default function LoginPage() {
                   autoComplete="current-password"
                 />
               </div>
-              {error && <p className="error">{error}</p>}
+              {error && (
+              <div className="error-container">
+                <p className="error">{error}</p>
+                <button 
+                  onClick={() => setError(null)} 
+                  className="error-dismiss"
+                  aria-label="Dismiss error"
+                >
+                  ×
+                </button>
+              </div>
+            )}
               <button type="submit" className="btn-signin" disabled={signingIn}>
                 {signingIn ? 'Signing in...' : 'Sign in'}
               </button>
@@ -396,11 +424,47 @@ export default function LoginPage() {
             background: rgba(255, 255, 255, 0.05);
           }
 
+          .error-container {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            margin: 16px 0;
+            padding: 12px 16px;
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 8px;
+            text-align: left;
+          }
+
           .error {
             color: #fca5a5;
-            margin: 8px 0;
+            margin: 0;
+            flex: 1;
             font-size: 14px;
-            text-align: left;
+            line-height: 1.5;
+            word-break: break-word;
+          }
+
+          .error-dismiss {
+            background: none;
+            border: none;
+            color: #fca5a5;
+            font-size: 24px;
+            line-height: 1;
+            cursor: pointer;
+            padding: 0;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            opacity: 0.7;
+            transition: opacity 0.2s;
+          }
+
+          .error-dismiss:hover {
+            opacity: 1;
           }
         `}</style>
       </main>
