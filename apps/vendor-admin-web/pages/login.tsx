@@ -31,12 +31,13 @@ export default function LoginPage() {
           return;
         }
         
-        // Have a valid session - query vendor via API and redirect
+        // Have a valid session - wait longer for cookies to be set, then query vendor
+        // Don't auto-redirect if we just came from a protected page (to prevent loops)
         if (client) {
           (async () => {
             try {
-              // Wait a bit to ensure session is fully established
-              await new Promise(resolve => setTimeout(resolve, 300));
+              // Wait longer to ensure session cookies are fully set on the server
+              await new Promise(resolve => setTimeout(resolve, 2000)); // Increased to 2 seconds
               
               const response = await fetch('/api/me/vendor', {
                 credentials: 'include' // Ensure cookies are sent
@@ -45,11 +46,9 @@ export default function LoginPage() {
               if (!response.ok) {
                 const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
                 console.error('Vendor lookup failed on page load:', response.status, errorData);
-                // No vendor found or error - redirect to access denied after showing error briefly
-                setError(`Vendor lookup failed: ${errorData.error || `HTTP ${response.status}`}`);
-                setTimeout(() => {
-                  window.location.replace('/access-denied');
-                }, 3000); // 3 second delay so user can see the error
+                // Don't redirect - just show error and let user try again
+                setError(`Vendor lookup failed: ${errorData.error || `HTTP ${response.status}`}. Please try signing in again.`);
+                setLoading(false);
                 return;
               }
               
@@ -57,9 +56,7 @@ export default function LoginPage() {
               if (!slug) {
                 console.error('No vendor slug returned on page load');
                 setError('Vendor lookup succeeded but no vendor slug was returned.');
-                setTimeout(() => {
-                  window.location.replace('/access-denied');
-                }, 3000);
+                setLoading(false);
                 return;
               }
               
@@ -69,7 +66,7 @@ export default function LoginPage() {
               }, 100);
             } catch (err) {
               console.error('Vendor lookup error on page load:', err);
-              setError(`Failed to load vendor information: ${err instanceof Error ? err.message : 'Unknown error'}`);
+              setError(`Failed to load vendor information: ${err instanceof Error ? err.message : 'Unknown error'}. Please try signing in again.`);
               setLoading(false);
             }
           })();
@@ -101,10 +98,10 @@ export default function LoginPage() {
         setError(signInError.message);
         setSigningIn(false);
       } else if (data.session?.user?.id) {
-        // Success - wait a bit longer for session cookies to be set, then query vendor
+        // Success - wait longer for session cookies to be set, then query vendor
         try {
-          // Wait longer to ensure session cookies are set
-          await new Promise(resolve => setTimeout(resolve, 500));
+          // Wait longer to ensure session cookies are fully set on the server
+          await new Promise(resolve => setTimeout(resolve, 2000)); // Increased to 2 seconds
           
           const response = await fetch('/api/me/vendor', {
             credentials: 'include' // Ensure cookies are sent
@@ -115,14 +112,9 @@ export default function LoginPage() {
             const errorMessage = errorData.error || `HTTP ${response.status}`;
             console.error('Vendor lookup failed:', response.status, errorData);
             
-            // Show error to user and keep it visible
+            // Show error to user and keep it visible - don't auto-redirect
             setError(`Vendor lookup failed: ${errorMessage}. Please try refreshing the page or contact support.`);
             setSigningIn(false);
-            
-            // Only redirect to access denied after a delay, giving user time to see the error
-            setTimeout(() => {
-              window.location.replace('/access-denied');
-            }, 5000); // 5 second delay so user can read the error
             return;
           }
           
@@ -131,10 +123,6 @@ export default function LoginPage() {
             console.error('No vendor slug returned');
             setError('Vendor lookup succeeded but no vendor slug was returned. Please contact support.');
             setSigningIn(false);
-            
-            setTimeout(() => {
-              window.location.replace('/access-denied');
-            }, 5000);
             return;
           }
           
