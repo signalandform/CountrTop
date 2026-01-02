@@ -9,6 +9,10 @@ export default function LoginPage() {
   const [supabase, setSupabase] = useState<ReturnType<typeof getBrowserSupabaseClient>>(null);
   const [loading, setLoading] = useState(true);
   const [signingIn, setSigningIn] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [resetEmailSent, setResetEmailSent] = useState(false);
 
   useEffect(() => {
     const client = getBrowserSupabaseClient();
@@ -29,37 +33,50 @@ export default function LoginPage() {
     }
   }, [router]);
 
-  const handleSignIn = async () => {
-    if (!supabase || signingIn) return;
+  const handleSignIn = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!supabase || signingIn || !email || !password) return;
 
     setSigningIn(true);
+    setError(null);
     try {
-      // Use absolute URL that matches Supabase redirect URL config exactly
-      // Must match exactly: https://admin.staging.countrtop.com/auth/callback
-      const redirectUrl = `${window.location.origin}/auth/callback`;
-      console.log('OAuth redirectTo:', redirectUrl); // Debug log
-      console.log('Current origin:', window.location.origin); // Debug log
-      
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: redirectUrl
-        }
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password
       });
       
-      if (error) {
-        console.error('Sign in error:', error);
+      if (signInError) {
+        setError(signInError.message);
         setSigningIn(false);
-      } else if (data?.url) {
-        console.log('OAuth URL generated:', data.url); // Debug log
-        // Check if the redirectTo is in the generated URL
-        const urlObj = new URL(data.url);
-        console.log('OAuth URL params:', urlObj.searchParams.toString()); // Debug log
-        // The redirect should happen automatically
+      } else if (data.session) {
+        // Success - redirect to home (which will redirect to vendor orders page)
+        router.push('/');
       }
-    } catch (error) {
-      console.error('Sign in error:', error);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to sign in');
       setSigningIn(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!supabase || !email) {
+      setError('Please enter your email address first');
+      return;
+    }
+
+    try {
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`
+      });
+
+      if (resetError) {
+        setError(resetError.message);
+      } else {
+        setResetEmailSent(true);
+        setError(null);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to send reset email');
     }
   };
 
@@ -103,9 +120,54 @@ export default function LoginPage() {
         <div className="login-container">
           <h1>CountrTop Vendor Admin</h1>
           <p className="subtitle">Sign in to access vendor admin</p>
-          <button onClick={handleSignIn} className="btn-signin" disabled={signingIn}>
-            {signingIn ? 'Signing in...' : 'Sign in with Google'}
-          </button>
+          
+          {resetEmailSent ? (
+            <div className="reset-message">
+              <p>Check your email for a password reset link.</p>
+              <button onClick={() => setResetEmailSent(false)} className="btn-link">
+                Back to sign in
+              </button>
+            </div>
+          ) : (
+            <form onSubmit={handleSignIn} className="login-form">
+              <div className="form-group">
+                <input
+                  type="email"
+                  placeholder="Email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="input-field"
+                  required
+                  disabled={signingIn}
+                  autoComplete="email"
+                />
+              </div>
+              <div className="form-group">
+                <input
+                  type="password"
+                  placeholder="Password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="input-field"
+                  required
+                  disabled={signingIn}
+                  autoComplete="current-password"
+                />
+              </div>
+              {error && <p className="error">{error}</p>}
+              <button type="submit" className="btn-signin" disabled={signingIn}>
+                {signingIn ? 'Signing in...' : 'Sign in'}
+              </button>
+              <button
+                type="button"
+                onClick={handleForgotPassword}
+                className="btn-forgot"
+                disabled={signingIn}
+              >
+                Forgot password?
+              </button>
+            </form>
+          )}
         </div>
 
         <style jsx>{`
@@ -169,9 +231,93 @@ export default function LoginPage() {
             cursor: not-allowed;
           }
 
+          .login-form {
+            width: 100%;
+          }
+
+          .form-group {
+            margin-bottom: 16px;
+          }
+
+          .input-field {
+            width: 100%;
+            padding: 12px 16px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.05);
+            color: #e8e8e8;
+            font-size: 16px;
+            font-family: inherit;
+            transition: border-color 0.2s;
+          }
+
+          .input-field:focus {
+            outline: none;
+            border-color: #667eea;
+          }
+
+          .input-field:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+          }
+
+          .input-field::placeholder {
+            color: #888;
+          }
+
+          .btn-forgot {
+            width: 100%;
+            margin-top: 12px;
+            padding: 8px;
+            background: transparent;
+            border: none;
+            color: #888;
+            font-size: 14px;
+            cursor: pointer;
+            text-decoration: underline;
+            font-family: inherit;
+            transition: color 0.2s;
+          }
+
+          .btn-forgot:hover:not(:disabled) {
+            color: #ccc;
+          }
+
+          .btn-forgot:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+          }
+
+          .reset-message {
+            text-align: center;
+          }
+
+          .reset-message p {
+            color: #ccc;
+            margin-bottom: 16px;
+          }
+
+          .btn-link {
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #e8e8e8;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 14px;
+            transition: background 0.2s;
+          }
+
+          .btn-link:hover {
+            background: rgba(255, 255, 255, 0.05);
+          }
+
           .error {
             color: #fca5a5;
-            margin-top: 16px;
+            margin: 8px 0;
+            font-size: 14px;
+            text-align: left;
           }
         `}</style>
       </main>
