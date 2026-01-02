@@ -31,13 +31,43 @@ export default function LoginPage() {
           return;
         }
         
-        // Have a valid session - wait longer for cookies to be set, then query vendor
+        // Have a valid session - set session cookies on server, then query vendor
         // Don't auto-redirect if we just came from a protected page (to prevent loops)
         if (client) {
           (async () => {
             try {
-              // Wait longer to ensure session cookies are fully set on the server
-              await new Promise(resolve => setTimeout(resolve, 2000)); // Increased to 2 seconds
+              // Get current session tokens
+              const { data: { session: currentSession } } = await client.auth.getSession();
+              
+              if (!currentSession?.access_token || !currentSession?.refresh_token) {
+                setError('Session found but tokens are missing. Please sign in again.');
+                setLoading(false);
+                return;
+              }
+
+              // Set the session cookies on the server so server-side code can read them
+              const setSessionResponse = await fetch('/api/auth/set-session', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json'
+                },
+                credentials: 'include',
+                body: JSON.stringify({
+                  access_token: currentSession.access_token,
+                  refresh_token: currentSession.refresh_token
+                })
+              });
+
+              if (!setSessionResponse.ok) {
+                const errorData = await setSessionResponse.json().catch(() => ({ error: 'Unknown error' }));
+                console.error('Failed to set session cookies on page load:', setSessionResponse.status, errorData);
+                setError(`Failed to set session: ${errorData.error || `HTTP ${setSessionResponse.status}`}. Please try signing in again.`);
+                setLoading(false);
+                return;
+              }
+
+              // Wait a moment for cookies to be set
+              await new Promise(resolve => setTimeout(resolve, 300));
               
               const response = await fetch('/api/me/vendor', {
                 credentials: 'include' // Ensure cookies are sent
@@ -98,10 +128,31 @@ export default function LoginPage() {
         setError(signInError.message);
         setSigningIn(false);
       } else if (data.session?.user?.id) {
-        // Success - wait longer for session cookies to be set, then query vendor
+        // Success - set session cookies on server, then query vendor
         try {
-          // Wait longer to ensure session cookies are fully set on the server
-          await new Promise(resolve => setTimeout(resolve, 2000)); // Increased to 2 seconds
+          // First, set the session cookies on the server so server-side code can read them
+          const setSessionResponse = await fetch('/api/auth/set-session', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            credentials: 'include',
+            body: JSON.stringify({
+              access_token: data.session.access_token,
+              refresh_token: data.session.refresh_token
+            })
+          });
+
+          if (!setSessionResponse.ok) {
+            const errorData = await setSessionResponse.json().catch(() => ({ error: 'Unknown error' }));
+            console.error('Failed to set session cookies:', setSessionResponse.status, errorData);
+            setError(`Failed to set session: ${errorData.error || `HTTP ${setSessionResponse.status}`}. Please try again.`);
+            setSigningIn(false);
+            return;
+          }
+
+          // Wait a moment for cookies to be set
+          await new Promise(resolve => setTimeout(resolve, 300));
           
           const response = await fetch('/api/me/vendor', {
             credentials: 'include' // Ensure cookies are sent
