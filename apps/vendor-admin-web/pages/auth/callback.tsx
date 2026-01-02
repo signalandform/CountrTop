@@ -6,13 +6,11 @@ import { getBrowserSupabaseClient } from '../../lib/supabaseBrowser';
 
 export default function AuthCallbackPage() {
   const router = useRouter();
-  const [supabase, setSupabase] = useState<ReturnType<typeof getBrowserSupabaseClient>>(null);
   const [status, setStatus] = useState<'exchanging' | 'success' | 'error'>('exchanging');
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const client = getBrowserSupabaseClient();
-    setSupabase(client);
 
     if (!client) {
       setStatus('error');
