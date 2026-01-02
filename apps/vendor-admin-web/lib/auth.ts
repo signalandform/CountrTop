@@ -138,6 +138,10 @@ export const verifyVendorAdminAccess = async (
   if (vendor.admin_user_id !== userId) {
     return {
       authorized: false,
+      redirect: {
+        destination: '/access-denied',
+        permanent: false
+      },
       statusCode: 403,
       error: 'Access denied: You are not authorized to access this vendor admin'
     };
