@@ -34,17 +34,29 @@ export default function LoginPage() {
 
     setSigningIn(true);
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
+      // Use absolute URL that matches Supabase redirect URL config exactly
+      // Must match exactly: https://admin.staging.countrtop.com/auth/callback
+      const redirectUrl = `${window.location.origin}/auth/callback`;
+      console.log('OAuth redirectTo:', redirectUrl); // Debug log
+      console.log('Current origin:', window.location.origin); // Debug log
+      
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`
+          redirectTo: redirectUrl
         }
       });
+      
       if (error) {
         console.error('Sign in error:', error);
         setSigningIn(false);
+      } else if (data?.url) {
+        console.log('OAuth URL generated:', data.url); // Debug log
+        // Check if the redirectTo is in the generated URL
+        const urlObj = new URL(data.url);
+        console.log('OAuth URL params:', urlObj.searchParams.toString()); // Debug log
+        // The redirect should happen automatically
       }
-      // If successful, OAuth redirect will happen automatically
     } catch (error) {
       console.error('Sign in error:', error);
       setSigningIn(false);

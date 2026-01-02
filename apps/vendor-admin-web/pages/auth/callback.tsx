@@ -43,9 +43,19 @@ export default function AuthCallbackPage() {
           return;
         }
 
+        // Verify session is accessible before redirecting
+        const { data: { session: verifySession } } = await client.auth.getSession();
+        if (!verifySession) {
+          setStatus('error');
+          setError('Session not accessible after exchange');
+          return;
+        }
+
         // Success - redirect to home (which will redirect to vendor orders page)
+        // Use window.location to ensure we stay on the admin domain
         setStatus('success');
-        router.push('/');
+        // Use replace to avoid adding to history
+        window.location.replace('/');
       } catch (err) {
         setStatus('error');
         setError(err instanceof Error ? err.message : 'Failed to complete sign in');
