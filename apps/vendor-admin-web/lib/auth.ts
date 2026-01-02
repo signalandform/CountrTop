@@ -1,7 +1,7 @@
 import type { GetServerSidePropsContext } from 'next';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
-import { createServerClient } from '@supabase/auth-helpers-nextjs';
+import { createServerClient, type CookieOptions } from '@supabase/auth-helpers-nextjs';
 
 import type { Database } from '@countrtop/data';
 
@@ -100,10 +100,10 @@ export const requireVendorAdmin = async (
         get(name: string) {
           return context.req.cookies[name] ?? undefined;
         },
-        set(name: string, value: string, options?: any) {
+        set(name: string, value: string, options?: CookieOptions) {
           context.res.setHeader('Set-Cookie', `${name}=${value}; ${options?.maxAge ? `Max-Age=${options.maxAge};` : ''} ${options?.path ? `Path=${options.path};` : ''} ${options?.sameSite ? `SameSite=${options.sameSite};` : ''} ${options?.httpOnly ? 'HttpOnly;' : ''} ${options?.secure ? 'Secure;' : ''}`);
         },
-        remove(name: string, options?: any) {
+        remove(name: string, options?: CookieOptions) {
           context.res.setHeader('Set-Cookie', `${name}=; Max-Age=0; ${options?.path ? `Path=${options.path};` : ''}`);
         }
       }
@@ -150,10 +150,10 @@ export const requireVendorAdminApi = async (
         get(name: string) {
           return req.cookies[name] ?? undefined;
         },
-        set(name: string, value: string, options?: any) {
+        set(name: string, value: string, options?: CookieOptions) {
           res.setHeader('Set-Cookie', `${name}=${value}; ${options?.maxAge ? `Max-Age=${options.maxAge};` : ''} ${options?.path ? `Path=${options.path};` : ''} ${options?.sameSite ? `SameSite=${options.sameSite};` : ''} ${options?.httpOnly ? 'HttpOnly;' : ''} ${options?.secure ? 'Secure;' : ''}`);
         },
-        remove(name: string, options?: any) {
+        remove(name: string, options?: CookieOptions) {
           res.setHeader('Set-Cookie', `${name}=; Max-Age=0; ${options?.path ? `Path=${options.path};` : ''}`);
         }
       }
