@@ -1,6 +1,6 @@
 import Head from 'next/head';
 import { useRouter } from 'next/router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { getBrowserSupabaseClient } from '../lib/supabaseBrowser';
 
@@ -13,25 +13,38 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [resetEmailSent, setResetEmailSent] = useState(false);
+  const hasCheckedSession = useRef(false);
 
   useEffect(() => {
+    // Prevent multiple session checks
+    if (hasCheckedSession.current) return;
+    hasCheckedSession.current = true;
+
     const client = getBrowserSupabaseClient();
     setSupabase(client);
 
     if (client) {
       // Check if user is already logged in
-      client.auth.getSession().then(({ data: { session } }) => {
-        if (session) {
-          // Already logged in, redirect to home
-          router.push('/');
-        } else {
+      // Only redirect if we have a valid session with a user ID
+      client.auth.getSession().then(({ data: { session }, error }) => {
+        if (error || !session?.user?.id) {
+          // No valid session, show login form
           setLoading(false);
+          return;
         }
+        
+        // Have a valid session - redirect directly to vendor orders to avoid root page loop
+        setTimeout(() => {
+          window.location.replace('/vendors/sunset/orders');
+        }, 100);
+      }).catch(() => {
+        // If session check fails, just show login form
+        setLoading(false);
       });
     } else {
       setLoading(false);
     }
-  }, [router]);
+  }, []);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,9 +61,16 @@ export default function LoginPage() {
       if (signInError) {
         setError(signInError.message);
         setSigningIn(false);
-      } else if (data.session) {
-        // Success - redirect to home (which will redirect to vendor orders page)
-        router.push('/');
+      } else if (data.session?.user?.id) {
+        // Success - redirect directly to vendor orders page to avoid root page redirect loop
+        // Wait a moment for session cookies to be set
+        setTimeout(() => {
+          // Redirect directly to sunset vendor orders (bypassing root page)
+          window.location.replace('/vendors/sunset/orders');
+        }, 200);
+      } else {
+        setError('Sign in succeeded but no session was returned');
+        setSigningIn(false);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to sign in');
