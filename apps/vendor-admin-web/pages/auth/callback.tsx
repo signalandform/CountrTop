@@ -1,6 +1,6 @@
 import Head from 'next/head';
 import { useRouter } from 'next/router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { getBrowserSupabaseClient } from '../../lib/supabaseBrowser';
 
@@ -8,8 +8,14 @@ export default function AuthCallbackPage() {
   const router = useRouter();
   const [status, setStatus] = useState<'exchanging' | 'success' | 'error'>('exchanging');
   const [error, setError] = useState<string | null>(null);
+  const hasProcessed = useRef(false);
 
   useEffect(() => {
+    // Prevent multiple executions
+    if (hasProcessed.current) {
+      return;
+    }
+
     const client = getBrowserSupabaseClient();
 
     if (!client) {
@@ -19,6 +25,9 @@ export default function AuthCallbackPage() {
     }
 
     const handleCallback = async () => {
+      // Mark as processed immediately to prevent re-execution
+      hasProcessed.current = true;
+
       try {
         // Get the code from URL query params
         const { code } = router.query;
@@ -66,7 +75,7 @@ export default function AuthCallbackPage() {
     if (router.isReady) {
       handleCallback();
     }
-  }, [router, router.isReady, router.query]);
+  }, [router.isReady, router.query.code]);
 
   return (
     <>
