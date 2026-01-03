@@ -90,9 +90,9 @@ export default function LoginPage() {
                 return;
               }
               
-              // Redirect to vendor orders page
+              // Redirect to vendor dashboard page
               setTimeout(() => {
-                window.location.replace(`/vendors/${slug}/orders`);
+                window.location.replace(`/vendors/${slug}`);
               }, 100);
             } catch (err) {
               console.error('Vendor lookup error on page load:', err);
@@ -177,9 +177,9 @@ export default function LoginPage() {
             return;
           }
           
-          // Redirect to vendor orders page
+          // Redirect to vendor dashboard page
           setTimeout(() => {
-            window.location.replace(`/vendors/${slug}/orders`);
+            window.location.replace(`/vendors/${slug}`);
           }, 200);
         } catch (err) {
           const errorMessage = err instanceof Error ? err.message : 'Unknown error';
