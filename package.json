@@ -17,7 +17,8 @@
     "build": "pnpm -r run build",
     "lint": "pnpm -r run lint",
     "test": "pnpm -r test --if-present",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "poll:square": "tsx scripts/pollSquareOrders.ts"
   },
   "devDependencies": {
     "@types/node": "^20.14.9",

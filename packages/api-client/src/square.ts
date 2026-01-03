@@ -212,7 +212,8 @@ export function createResilientSquareClient(
     ordersApi: {
       ...client.ordersApi,
       retrieveOrder: wrapApiMethod(client.ordersApi.retrieveOrder.bind(client.ordersApi)),
-      createOrder: wrapApiMethod(client.ordersApi.createOrder.bind(client.ordersApi))
+      createOrder: wrapApiMethod(client.ordersApi.createOrder.bind(client.ordersApi)),
+      searchOrders: wrapApiMethod(client.ordersApi.searchOrders.bind(client.ordersApi))
     },
     locationsApi: {
       ...client.locationsApi,
@@ -333,6 +334,107 @@ export async function getSquareOrder(
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     throw new Error(`Failed to fetch Square order ${orderId}: ${errorMessage}`);
+  }
+}
+
+/**
+ * Lists Square order IDs that were updated since a given timestamp
+ * @param vendor - Vendor object with Square credentials
+ * @param locationId - Square location ID to search
+ * @param updatedSinceISO - ISO timestamp string (e.g., "2024-01-01T00:00:00Z")
+ * @returns Array of order IDs
+ */
+export async function listSquareOrdersUpdatedSince(
+  vendor: Vendor,
+  locationId: string,
+  updatedSinceISO: string
+): Promise<string[]> {
+  const square = squareClientForVendor(vendor);
+  
+  try {
+    const { result } = await square.ordersApi.searchOrders({
+      locationIds: [locationId],
+      query: {
+        filter: {
+          stateFilter: {
+            states: ['OPEN', 'COMPLETED', 'CANCELED']
+          },
+          dateTimeFilter: {
+            updatedAt: {
+              startAt: updatedSinceISO
+            }
+          }
+        },
+        sort: {
+          sortField: 'UPDATED_AT',
+          sortOrder: 'DESC'
+        }
+      },
+      limit: 100 // Square's max is 100 per page
+    });
+    
+    if (result.errors && result.errors.length > 0) {
+      const errorMessages = result.errors.map(e => e.detail || e.code).join(', ');
+      throw new Error(`Square API error searching orders: ${errorMessages}`);
+    }
+    
+    // Extract order IDs from the results
+    const orderIds: string[] = [];
+    if (result.orders) {
+      for (const order of result.orders) {
+        if (order.id) {
+          orderIds.push(order.id);
+        }
+      }
+    }
+    
+    // Handle pagination if there are more results
+    let cursor = result.cursor;
+    while (cursor && orderIds.length < 1000) { // Safety limit
+      const { result: nextResult } = await square.ordersApi.searchOrders({
+        locationIds: [locationId],
+        query: {
+          filter: {
+            stateFilter: {
+              states: ['OPEN', 'COMPLETED', 'CANCELED']
+            },
+            dateTimeFilter: {
+              updatedAt: {
+                startAt: updatedSinceISO
+              }
+            }
+          },
+          sort: {
+            sortField: 'UPDATED_AT',
+            sortOrder: 'DESC'
+          }
+        },
+        cursor,
+        limit: 100
+      });
+      
+      if (nextResult.errors && nextResult.errors.length > 0) {
+        // Log but don't fail - we got some results
+        console.warn('Square API pagination error:', nextResult.errors);
+        break;
+      }
+      
+      if (nextResult.orders) {
+        for (const order of nextResult.orders) {
+          if (order.id) {
+            orderIds.push(order.id);
+          }
+        }
+      }
+      
+      cursor = nextResult.cursor;
+      if (!cursor) break;
+    }
+    
+    return orderIds;
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    throw new Error(`Failed to list Square orders updated since ${updatedSinceISO}: ${errorMessage}`);
   }
 }
 

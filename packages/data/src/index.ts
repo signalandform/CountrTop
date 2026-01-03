@@ -15,6 +15,7 @@ export * from './supabaseClient';
 export * from './mockData';
 export * from './session';
 export * from './vendor';
+export * from './reconcile';
 
 export type DataClientFactoryOptions = {
   supabase?: SupabaseClient<Database>;
