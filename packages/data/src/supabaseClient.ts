@@ -744,7 +744,7 @@ export class SupabaseDataClient implements DataClient {
   /**
    * Upserts a Square order into the square_orders table
    */
-  async upsertSquareOrderFromSquare(order: any): Promise<void> {
+  async upsertSquareOrderFromSquare(order: Record<string, unknown>): Promise<void> {
     const startTime = Date.now();
     try {
       const referenceId = order.referenceId ?? null;
@@ -787,7 +787,7 @@ export class SupabaseDataClient implements DataClient {
    * Only creates ticket if order.state === 'OPEN'
    * Does NOT overwrite existing ticket status (CountrTop-owned)
    */
-  async ensureKitchenTicketForOpenOrder(order: any): Promise<void> {
+  async ensureKitchenTicketForOpenOrder(order: Record<string, unknown>): Promise<void> {
     const startTime = Date.now();
     try {
       // Only process OPEN orders
@@ -820,16 +820,19 @@ export class SupabaseDataClient implements DataClient {
 
       if (existingTicket) {
         // Ticket exists - only update safe fields, preserve status
-        const updatePayload: Database['public']['Tables']['kitchen_tickets']['Update'] = {
+        const updatePayload: Database['public']['Tables']['kitchen_tickets']['Update'] & {
+          ct_reference_id?: string | null;
+          customer_user_id?: string | null;
+        } = {
           updated_at: new Date().toISOString()
         };
 
         // Only update these if they're currently null
         if (!existingTicket.ct_reference_id && referenceId && referenceId.startsWith('ct_')) {
-          (updatePayload as any).ct_reference_id = referenceId;
+          updatePayload.ct_reference_id = referenceId;
         }
         if (!existingTicket.customer_user_id && customerUserId) {
-          (updatePayload as any).customer_user_id = customerUserId;
+          updatePayload.customer_user_id = customerUserId;
         }
 
         // Only update if there are fields to update
@@ -871,7 +874,7 @@ export class SupabaseDataClient implements DataClient {
   /**
    * Updates kitchen ticket status for terminal order states (COMPLETED, CANCELED)
    */
-  async updateTicketForTerminalOrderState(order: any): Promise<void> {
+  async updateTicketForTerminalOrderState(order: Record<string, unknown>): Promise<void> {
     const startTime = Date.now();
     try {
       if (order.state !== 'COMPLETED' && order.state !== 'CANCELED') {
@@ -901,11 +904,11 @@ export class SupabaseDataClient implements DataClient {
       };
 
       if (order.state === 'COMPLETED') {
-        (updatePayload as any).status = 'completed';
-        (updatePayload as any).completed_at = now;
+        updatePayload.status = 'completed';
+        updatePayload.completed_at = now;
       } else if (order.state === 'CANCELED') {
-        (updatePayload as any).status = 'canceled';
-        (updatePayload as any).canceled_at = now;
+        updatePayload.status = 'canceled';
+        updatePayload.canceled_at = now;
       }
 
       const { error } = await this.client
@@ -977,7 +980,10 @@ export class SupabaseDataClient implements DataClient {
         
         // Handle nested square_orders (can be null or array)
         let order: SquareOrder | null = null;
-        const orderData = (row as any).square_orders;
+        const rowWithOrders = row as Database['public']['Tables']['kitchen_tickets']['Row'] & {
+          square_orders?: Database['public']['Tables']['square_orders']['Row'] | Database['public']['Tables']['square_orders']['Row'][];
+        };
+        const orderData = rowWithOrders.square_orders;
         if (orderData) {
           // Supabase returns nested data as array or single object depending on relationship
           const orderRow = Array.isArray(orderData) ? orderData[0] : orderData;
@@ -1044,21 +1050,25 @@ export class SupabaseDataClient implements DataClient {
 
       // Prepare update payload
       const now = new Date().toISOString();
-      const updatePayload: Database['public']['Tables']['kitchen_tickets']['Update'] = {
+      const updatePayload: Database['public']['Tables']['kitchen_tickets']['Update'] & {
+        ready_at?: string | null;
+        completed_at?: string | null;
+        last_updated_by_vendor_user_id?: string | null;
+      } = {
         status,
         updated_at: now
       };
 
       if (status === 'ready' && currentStatus !== 'ready') {
-        (updatePayload as any).ready_at = now;
+        updatePayload.ready_at = now;
       }
 
       if (status === 'completed') {
-        (updatePayload as any).completed_at = now;
+        updatePayload.completed_at = now;
       }
 
       if (vendorUserId) {
-        (updatePayload as any).last_updated_by_vendor_user_id = vendorUserId;
+        updatePayload.last_updated_by_vendor_user_id = vendorUserId;
       }
 
       // Update ticket

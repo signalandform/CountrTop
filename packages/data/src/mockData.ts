@@ -160,26 +160,33 @@ export class MockDataClient implements DataClient {
 
   // KDS: Square Orders Mirror + Kitchen Tickets (server-only methods)
   // Mock implementations are no-ops since these are server-side only
-  async upsertSquareOrderFromSquare(_order: any): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async upsertSquareOrderFromSquare(_order: Record<string, unknown>): Promise<void> {
     // No-op for mock client
   }
 
-  async ensureKitchenTicketForOpenOrder(_order: any): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async ensureKitchenTicketForOpenOrder(_order: Record<string, unknown>): Promise<void> {
     // No-op for mock client
   }
 
-  async updateTicketForTerminalOrderState(_order: any): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async updateTicketForTerminalOrderState(_order: Record<string, unknown>): Promise<void> {
     // No-op for mock client
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async listActiveKitchenTickets(_locationId: string): Promise<KitchenTicketWithOrder[]> {
     // Return empty array for mock client
     return [];
   }
 
   async updateKitchenTicketStatus(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     _ticketId: string,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     _status: 'ready' | 'completed',
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     _vendorUserId?: string
   ): Promise<KitchenTicket> {
     throw new Error('updateKitchenTicketStatus not implemented in mock client');
