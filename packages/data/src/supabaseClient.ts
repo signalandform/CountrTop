@@ -747,8 +747,14 @@ export class SupabaseDataClient implements DataClient {
   async upsertSquareOrderFromSquare(order: Record<string, unknown>): Promise<void> {
     const startTime = Date.now();
     try {
-      const referenceId = order.referenceId ?? null;
+      // Extract and validate order properties with type guards
+      const referenceId = typeof order.referenceId === 'string' ? order.referenceId : null;
       const source = this.deriveSource(referenceId);
+      const orderId = typeof order.id === 'string' ? order.id : '';
+      const locationId = typeof order.locationId === 'string' ? order.locationId : '';
+      const state = typeof order.state === 'string' ? order.state : '';
+      const createdAt = typeof order.createdAt === 'string' ? order.createdAt : new Date().toISOString();
+      const updatedAt = typeof order.updatedAt === 'string' ? order.updatedAt : (typeof order.createdAt === 'string' ? order.createdAt : new Date().toISOString());
 
       // Convert all jsonb fields to safe JSON (BigInt -> string)
       const safeMetadata = order.metadata ? safeJson(order.metadata) : null;
@@ -757,11 +763,11 @@ export class SupabaseDataClient implements DataClient {
       const safeRaw = safeJson(order);
 
       const payload: Database['public']['Tables']['square_orders']['Insert'] = {
-        square_order_id: order.id,
-        location_id: order.locationId,
-        state: order.state,
-        created_at: order.createdAt ?? new Date().toISOString(),
-        updated_at: order.updatedAt ?? order.createdAt ?? new Date().toISOString(),
+        square_order_id: orderId,
+        location_id: locationId,
+        state,
+        created_at: createdAt,
+        updated_at: updatedAt,
         reference_id: referenceId,
         metadata: safeMetadata as Record<string, unknown> | null,
         line_items: safeLineItems as unknown[] | null,
@@ -795,13 +801,14 @@ export class SupabaseDataClient implements DataClient {
         return;
       }
 
-      const referenceId = order.referenceId ?? null;
+      const referenceId = typeof order.referenceId === 'string' ? order.referenceId : null;
       const source = this.deriveSource(referenceId);
       
       // Extract customer_user_id from metadata if present
       let customerUserId: string | null = null;
-      if (order.metadata?.ct_user_id) {
-        const userId = order.metadata.ct_user_id;
+      const metadata = order.metadata;
+      if (metadata && typeof metadata === 'object' && 'ct_user_id' in metadata) {
+        const userId = metadata.ct_user_id;
         // Validate it looks like a UUID
         if (typeof userId === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId)) {
           customerUserId = userId;
@@ -809,13 +816,16 @@ export class SupabaseDataClient implements DataClient {
       }
 
       // Determine placed_at timestamp (use best available)
-      const placedAt = order.openedAt ?? order.createdAt ?? new Date().toISOString();
+      const openedAt = typeof order.openedAt === 'string' ? order.openedAt : null;
+      const orderCreatedAt = typeof order.createdAt === 'string' ? order.createdAt : null;
+      const placedAt = openedAt ?? orderCreatedAt ?? new Date().toISOString();
 
       // Check if ticket already exists
+      const orderId = typeof order.id === 'string' ? order.id : '';
       const { data: existingTicket } = await this.client
         .from('kitchen_tickets')
         .select('id, status, ct_reference_id, customer_user_id')
-        .eq('square_order_id', order.id)
+        .eq('square_order_id', orderId)
         .maybeSingle();
 
       if (existingTicket) {
@@ -840,15 +850,16 @@ export class SupabaseDataClient implements DataClient {
           const { error } = await this.client
             .from('kitchen_tickets')
             .update(updatePayload)
-            .eq('square_order_id', order.id);
+            .eq('square_order_id', orderId);
 
           if (error) throw error;
         }
       } else {
         // Create new ticket
+        const ticketLocationId = typeof order.locationId === 'string' ? order.locationId : '';
         const insertPayload: Database['public']['Tables']['kitchen_tickets']['Insert'] = {
-          square_order_id: order.id,
-          location_id: order.locationId,
+          square_order_id: orderId,
+          location_id: ticketLocationId,
           ct_reference_id: referenceId && referenceId.startsWith('ct_') ? referenceId : null,
           customer_user_id: customerUserId,
           source,
@@ -877,15 +888,17 @@ export class SupabaseDataClient implements DataClient {
   async updateTicketForTerminalOrderState(order: Record<string, unknown>): Promise<void> {
     const startTime = Date.now();
     try {
-      if (order.state !== 'COMPLETED' && order.state !== 'CANCELED') {
+      const orderState = typeof order.state === 'string' ? order.state : '';
+      if (orderState !== 'COMPLETED' && orderState !== 'CANCELED') {
         return;
       }
 
       // Find existing ticket
+      const orderId = typeof order.id === 'string' ? order.id : '';
       const { data: ticket } = await this.client
         .from('kitchen_tickets')
         .select('id, status')
-        .eq('square_order_id', order.id)
+        .eq('square_order_id', orderId)
         .maybeSingle();
 
       if (!ticket) {
@@ -903,10 +916,10 @@ export class SupabaseDataClient implements DataClient {
         updated_at: now
       };
 
-      if (order.state === 'COMPLETED') {
+      if (orderState === 'COMPLETED') {
         updatePayload.status = 'completed';
         updatePayload.completed_at = now;
-      } else if (order.state === 'CANCELED') {
+      } else if (orderState === 'CANCELED') {
         updatePayload.status = 'canceled';
         updatePayload.canceled_at = now;
       }
@@ -914,7 +927,7 @@ export class SupabaseDataClient implements DataClient {
       const { error } = await this.client
         .from('kitchen_tickets')
         .update(updatePayload)
-        .eq('square_order_id', order.id);
+        .eq('square_order_id', orderId);
 
       if (error) throw error;
       logQueryPerformance('updateTicketForTerminalOrderState', startTime, true);
