@@ -10,7 +10,7 @@ export default function AccessDeniedPage() {
       <main className="page">
         <div className="container">
           <h1 className="title">Access Denied</h1>
-          <p className="message">You don't have permission to access this resource.</p>
+          <p className="message">You don&apos;t have permission to access this resource.</p>
           <Link href="/login" className="button">
             Go to Login
           </Link>

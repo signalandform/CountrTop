@@ -3,4 +3,5 @@ packages:
   - "apps/customer-mobile"
   - "apps/vendor-ops-mobile"
   - "apps/vendor-admin-web"
+  - "apps/kds-web"
   - "packages/*"
