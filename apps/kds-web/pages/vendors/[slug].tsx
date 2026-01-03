@@ -1,37 +1,23 @@
 import Head from 'next/head';
 import type { GetServerSideProps } from 'next';
 import { useRouter } from 'next/router';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 import { getBrowserSupabaseClient } from '../../lib/supabaseBrowser';
 import { requireVendorAdmin } from '../../lib/auth';
+import {
+  isOnline,
+  saveTicketsToCache,
+  loadTicketsFromCache,
+  queueOfflineAction,
+  syncOfflineQueue,
+  applyOptimisticUpdateToCache,
+  getOfflineQueue,
+  type Ticket,
+  type OfflineAction
+} from '../../lib/offline';
 
-type Ticket = {
-  ticket: {
-    id: string;
-    squareOrderId: string;
-    locationId: string;
-    ctReferenceId?: string | null;
-    customerUserId?: string | null;
-    source: 'countrtop_online' | 'square_pos';
-    status: 'placed' | 'preparing' | 'ready';
-    placedAt: string;
-    readyAt?: string | null;
-    completedAt?: string | null;
-    updatedAt: string;
-  };
-  order: {
-    squareOrderId: string;
-    locationId: string;
-    state: string;
-    createdAt: string;
-    updatedAt: string;
-    referenceId?: string | null;
-    metadata?: Record<string, unknown> | null;
-    lineItems?: unknown[] | null;
-    source: 'countrtop_online' | 'square_pos';
-  };
-};
+// Ticket type is now imported from offline.ts
 
 type TicketsResponse = {
   ok: true;
@@ -124,29 +110,146 @@ export default function VendorQueuePage({ vendorSlug }: VendorPageProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [updatingTicketId, setUpdatingTicketId] = useState<string | null>(null);
+  const [isOffline, setIsOffline] = useState(!isOnline());
+  const [queuedActionsCount, setQueuedActionsCount] = useState(0);
+  const [syncing, setSyncing] = useState(false);
 
-  const fetchTickets = async () => {
+  const fetchTickets = async (useCache = false) => {
     try {
       setLoading(true);
       setError(null);
+
+      // Try to load from cache first if offline or if explicitly requested
+      if (useCache || !isOnline()) {
+        const cached = loadTicketsFromCache(vendorSlug);
+        if (cached && cached.length > 0) {
+          setTickets(cached);
+          setLoading(false);
+          // Still try to fetch in background if online
+          if (isOnline()) {
+            fetchTickets(false).catch(() => {
+              // Silent fail - we have cache
+            });
+          }
+          return;
+        }
+      }
+
+      // Fetch from server
       const response = await fetch(`/api/vendors/${vendorSlug}/tickets`);
       const data: TicketsResponse = await response.json();
       if (data.ok) {
         setTickets(data.tickets);
+        // Save to cache
+        saveTicketsToCache(vendorSlug, data.tickets);
       } else {
         setError(data.error);
+        // Fall back to cache if available
+        const cached = loadTicketsFromCache(vendorSlug);
+        if (cached) {
+          setTickets(cached);
+        }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load tickets');
+      // Fall back to cache if available
+      const cached = loadTicketsFromCache(vendorSlug);
+      if (cached) {
+        setTickets(cached);
+      }
     } finally {
       setLoading(false);
     }
   };
 
+  // Sync offline queue when coming back online
+  const syncQueue = useCallback(async () => {
+    if (!isOnline() || syncing) return;
+
+    const queue = getOfflineQueue(vendorSlug);
+    if (queue.length === 0) return;
+
+    setSyncing(true);
+    try {
+      await syncOfflineQueue(vendorSlug, async (action: OfflineAction) => {
+        try {
+          const response = await fetch(`/api/vendors/${vendorSlug}/tickets/${action.ticketId}/status`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ status: action.newStatus })
+          });
+
+          const data = await response.json();
+          return data.ok === true;
+        } catch (err) {
+          console.error(`Failed to sync action ${action.id}:`, err);
+          return false;
+        }
+      });
+
+      // Refresh tickets after sync
+      await fetchTickets();
+    } catch (err) {
+      console.error('Failed to sync queue:', err);
+    } finally {
+      setSyncing(false);
+      // Update queued actions count
+      setQueuedActionsCount(getOfflineQueue(vendorSlug).length);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vendorSlug, syncing]);
+
+  // Online/offline event listeners
   useEffect(() => {
+    const handleOnline = () => {
+      setIsOffline(false);
+      // Sync queue when coming back online
+      syncQueue();
+    };
+
+    const handleOffline = () => {
+      setIsOffline(true);
+    };
+
+    // Check initial state
+    setIsOffline(!isOnline());
+
+    // Listen for online/offline events
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [syncQueue]);
+
+  // Initial load and periodic refresh
+  useEffect(() => {
+    // Load from cache first for instant display
+    const cached = loadTicketsFromCache(vendorSlug);
+    if (cached && cached.length > 0) {
+      setTickets(cached);
+      setLoading(false);
+    }
+
+    // Then fetch from server
     fetchTickets();
-    // Refresh every 30 seconds
-    const interval = setInterval(fetchTickets, 30000);
+
+    // Update queued actions count
+    setQueuedActionsCount(getOfflineQueue(vendorSlug).length);
+
+    // Refresh every 30 seconds (only when online)
+    const interval = setInterval(() => {
+      if (isOnline()) {
+        fetchTickets();
+      }
+      // Update queued actions count
+      setQueuedActionsCount(getOfflineQueue(vendorSlug).length);
+    }, 30000);
+
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vendorSlug]);
@@ -155,6 +258,36 @@ export default function VendorQueuePage({ vendorSlug }: VendorPageProps) {
     const newStatus = currentStatus === 'placed' || currentStatus === 'preparing' ? 'ready' : 'completed';
     
     setUpdatingTicketId(ticketId);
+
+    // Apply optimistic update immediately
+    applyOptimisticUpdateToCache(vendorSlug, ticketId, newStatus);
+    if (newStatus === 'completed') {
+      setTickets(prev => prev.filter(t => t.ticket.id !== ticketId));
+    } else {
+      setTickets(prev => prev.map(t => {
+        if (t.ticket.id === ticketId) {
+          return {
+            ...t,
+            ticket: {
+              ...t.ticket,
+              status: 'ready' as const,
+              readyAt: new Date().toISOString()
+            }
+          };
+        }
+        return t;
+      }));
+    }
+
+    // If offline, queue the action
+    if (!isOnline()) {
+      queueOfflineAction(vendorSlug, ticketId, newStatus);
+      setQueuedActionsCount(getOfflineQueue(vendorSlug).length);
+      setUpdatingTicketId(null);
+      return;
+    }
+
+    // If online, try to sync immediately
     try {
       const response = await fetch(`/api/vendors/${vendorSlug}/tickets/${ticketId}/status`, {
         method: 'POST',
@@ -166,15 +299,19 @@ export default function VendorQueuePage({ vendorSlug }: VendorPageProps) {
 
       const data = await response.json();
       if (data.ok) {
-        // Optimistically update UI
-        setTickets(prev => prev.filter(t => t.ticket.id !== ticketId));
         // Refetch to ensure consistency
         await fetchTickets();
       } else {
-        setError(data.error || 'Failed to update ticket status');
+        // If server rejects, queue for retry
+        queueOfflineAction(vendorSlug, ticketId, newStatus);
+        setQueuedActionsCount(getOfflineQueue(vendorSlug).length);
+        setError(data.error || 'Failed to update ticket status. Queued for retry.');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update ticket status');
+      // Network error - queue for retry
+      queueOfflineAction(vendorSlug, ticketId, newStatus);
+      setQueuedActionsCount(getOfflineQueue(vendorSlug).length);
+      setError('Network error. Action queued for sync when online.');
     } finally {
       setUpdatingTicketId(null);
     }
@@ -199,10 +336,28 @@ export default function VendorQueuePage({ vendorSlug }: VendorPageProps) {
             <div>
               <h1 className="title">CountrTop KDS</h1>
               <p className="vendor-slug">Vendor: {vendorSlug}</p>
+              {isOffline && (
+                <div className="offline-indicator">
+                  <span className="offline-dot">●</span>
+                  <span>Offline Mode</span>
+                  {queuedActionsCount > 0 && (
+                    <span className="queue-badge">{queuedActionsCount} queued</span>
+                  )}
+                </div>
+              )}
+              {syncing && (
+                <div className="syncing-indicator">
+                  <span>Syncing...</span>
+                </div>
+              )}
             </div>
             <div className="header-actions">
-              <button onClick={fetchTickets} className="refresh-button" disabled={loading}>
-                {loading ? 'Loading...' : 'Refresh'}
+              <button 
+                onClick={() => fetchTickets()} 
+                className="refresh-button" 
+                disabled={loading || syncing}
+              >
+                {loading ? 'Loading...' : syncing ? 'Syncing...' : 'Refresh'}
               </button>
               <button onClick={handleSignOut} className="sign-out-button">
                 Sign Out
@@ -304,6 +459,50 @@ export default function VendorQueuePage({ vendorSlug }: VendorPageProps) {
             margin: 0;
             text-transform: uppercase;
             letter-spacing: 1px;
+          }
+
+          .offline-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 8px;
+            padding: 6px 12px;
+            background: rgba(255, 159, 10, 0.15);
+            border: 1px solid rgba(255, 159, 10, 0.3);
+            border-radius: 8px;
+            font-size: 14px;
+            color: #ff9f0a;
+            font-weight: 500;
+          }
+
+          .offline-dot {
+            font-size: 12px;
+            animation: pulse 2s infinite;
+          }
+
+          @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+          }
+
+          .queue-badge {
+            margin-left: 4px;
+            padding: 2px 8px;
+            background: rgba(255, 159, 10, 0.3);
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+          }
+
+          .syncing-indicator {
+            margin-top: 8px;
+            padding: 6px 12px;
+            background: rgba(52, 199, 89, 0.15);
+            border: 1px solid rgba(52, 199, 89, 0.3);
+            border-radius: 8px;
+            font-size: 14px;
+            color: #34c759;
+            font-weight: 500;
           }
 
           .sign-out-button {
