@@ -91,6 +91,40 @@ const logQueryPerformance = (operation: string, startTime: number, success: bool
   }
 };
 
+/**
+ * Recursively converts BigInt values to strings for JSON serialization
+ * Preserves null, undefined, and all other types
+ * Does NOT mutate the original object (creates a new structure)
+ */
+function safeJson(value: unknown): unknown {
+  // Handle null and undefined
+  if (value === null || value === undefined) {
+    return value;
+  }
+
+  // Handle BigInt
+  if (typeof value === 'bigint') {
+    return value.toString();
+  }
+
+  // Handle arrays
+  if (Array.isArray(value)) {
+    return value.map(item => safeJson(item));
+  }
+
+  // Handle objects
+  if (typeof value === 'object') {
+    const result: Record<string, unknown> = {};
+    for (const [key, val] of Object.entries(value)) {
+      result[key] = safeJson(val);
+    }
+    return result;
+  }
+
+  // Handle primitives (string, number, boolean, etc.)
+  return value;
+}
+
 export type Database = {
   public: {
     Tables: {
@@ -716,6 +750,12 @@ export class SupabaseDataClient implements DataClient {
       const referenceId = order.referenceId ?? null;
       const source = this.deriveSource(referenceId);
 
+      // Convert all jsonb fields to safe JSON (BigInt -> string)
+      const safeMetadata = order.metadata ? safeJson(order.metadata) : null;
+      const safeLineItems = order.lineItems ? safeJson(order.lineItems) : null;
+      const safeFulfillment = (order.fulfillments ?? order.fulfillment) ? safeJson(order.fulfillments ?? order.fulfillment) : null;
+      const safeRaw = safeJson(order);
+
       const payload: Database['public']['Tables']['square_orders']['Insert'] = {
         square_order_id: order.id,
         location_id: order.locationId,
@@ -723,11 +763,11 @@ export class SupabaseDataClient implements DataClient {
         created_at: order.createdAt ?? new Date().toISOString(),
         updated_at: order.updatedAt ?? order.createdAt ?? new Date().toISOString(),
         reference_id: referenceId,
-        metadata: order.metadata ?? null,
-        line_items: order.lineItems ?? null,
-        fulfillment: order.fulfillments ?? order.fulfillment ?? null,
+        metadata: safeMetadata as Record<string, unknown> | null,
+        line_items: safeLineItems as unknown[] | null,
+        fulfillment: safeFulfillment as Record<string, unknown> | null,
         source,
-        raw: order
+        raw: safeRaw as Record<string, unknown> | null
       };
 
       const { error } = await this.client
