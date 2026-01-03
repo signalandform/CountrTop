@@ -47,28 +47,41 @@ export default async function handler(
   }
 
   // Verify secret token (required for cron jobs)
-  const secret = req.headers['authorization']?.replace('Bearer ', '') || 
+  // Vercel Cron sends X-Vercel-Authorization header automatically when VERCEL_CRON_SECRET is set
+  // Also support Authorization header, query param, and body for manual testing
+  const vercelAuthHeader = req.headers['x-vercel-authorization'];
+  const authHeader = req.headers['authorization'];
+  const secret = vercelAuthHeader || 
+                 authHeader?.replace(/^Bearer\s+/i, '') || 
                  req.query.secret as string || 
                  req.body?.secret;
-  const expectedSecret = process.env.CRON_SECRET;
+  
+  // Check both VERCEL_CRON_SECRET (Vercel standard) and CRON_SECRET (custom)
+  const expectedSecret = process.env.VERCEL_CRON_SECRET || process.env.CRON_SECRET;
 
-  if (expectedSecret && secret !== expectedSecret) {
-    logger.warn('Unauthorized cron request', {
-      hasSecret: !!secret,
-      hasExpectedSecret: !!expectedSecret
-    });
-    return res.status(401).json({
-      ok: false,
-      summary: {
-        locationsProcessed: 0,
-        totalProcessed: 0,
-        totalCreatedTickets: 0,
-        totalUpdatedTickets: 0,
-        totalErrors: 0
-      },
-      locations: [],
-      error: 'Unauthorized'
-    });
+  // If secret is set, require it to match
+  // If not set, allow access (for development/testing - NOT recommended for production)
+  if (expectedSecret) {
+    if (!secret || secret !== expectedSecret) {
+      logger.warn('Unauthorized cron request', {
+        hasSecret: !!secret,
+        hasExpectedSecret: !!expectedSecret,
+        hasVercelHeader: !!vercelAuthHeader,
+        hasAuthHeader: !!authHeader
+      });
+      return res.status(401).json({
+        ok: false,
+        summary: {
+          locationsProcessed: 0,
+          totalProcessed: 0,
+          totalCreatedTickets: 0,
+          totalUpdatedTickets: 0,
+          totalErrors: 0
+        },
+        locations: [],
+        error: 'Unauthorized'
+      });
+    }
   }
 
   const minutesBack = parseInt(
