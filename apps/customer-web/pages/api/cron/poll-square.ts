@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { reconcileSquareOrdersForLocation } from '@countrtop/data';
+import { reconcileSquareOrdersForLocation } from '@countrtop/data/src/reconcile';
 import { createLogger } from '@countrtop/api-client';
 import { getServerDataClient } from '../../../lib/dataClient';
 
@@ -53,7 +53,7 @@ export default async function handler(
   const expectedSecret = process.env.CRON_SECRET;
 
   if (expectedSecret && secret !== expectedSecret) {
-    logger.warn('Unauthorized cron request', undefined, {
+    logger.warn('Unauthorized cron request', {
       hasSecret: !!secret,
       hasExpectedSecret: !!expectedSecret
     });
@@ -97,7 +97,7 @@ export default async function handler(
             vendorId: vendor.id
           });
         } else {
-          logger.warn(`Vendor not found for location ${locationId}`, undefined, { locationId });
+          logger.warn(`Vendor not found for location ${locationId}`, { locationId });
         }
       }
     } else {
@@ -136,7 +136,7 @@ export default async function handler(
     }
 
     if (locationIds.length === 0) {
-      logger.warn('No locations to poll', undefined, {});
+      logger.warn('No locations to poll');
       return res.status(200).json({
         ok: true,
         summary: {
@@ -150,7 +150,7 @@ export default async function handler(
       });
     }
 
-    logger.info('Starting cron reconciliation', undefined, {
+    logger.info('Starting cron reconciliation', {
       locationCount: locationIds.length,
       minutesBack
     });
@@ -166,7 +166,7 @@ export default async function handler(
       try {
         const vendor = await dataClient.getVendorById(vendorId);
         if (!vendor) {
-          logger.warn(`Vendor not found: ${vendorId}`, undefined, { vendorId, locationId });
+          logger.warn(`Vendor not found: ${vendorId}`, { vendorId, locationId });
           continue;
         }
 
@@ -214,7 +214,7 @@ export default async function handler(
       totalErrors
     };
 
-    logger.info('Cron reconciliation complete', undefined, summary);
+    logger.info('Cron reconciliation complete', summary);
 
     return res.status(200).json({
       ok: true,

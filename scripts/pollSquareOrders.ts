@@ -16,7 +16,7 @@
  *   pnpm tsx scripts/pollSquareOrders.ts sunset LOCATION_ID 15
  */
 
-import { reconcileSquareOrdersForLocation } from '@countrtop/data';
+import { reconcileSquareOrdersForLocation } from '../packages/data/src/reconcile';
 import { getServerDataClient } from '../apps/customer-web/lib/dataClient';
 
 async function pollSquareOrders() {

@@ -315,7 +315,7 @@ export async function getSquareLocation(
 export async function getSquareOrder(
   vendor: Vendor,
   orderId: string
-): Promise<any> {
+): Promise<Record<string, unknown>> {
   const square = squareClientForVendor(vendor);
   
   try {
@@ -330,7 +330,8 @@ export async function getSquareOrder(
       throw new Error(`Order ${orderId} not found`);
     }
     
-    return result.order;
+    // Cast to Record<string, unknown> since Square SDK types are complex
+    return result.order as unknown as Record<string, unknown>;
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     throw new Error(`Failed to fetch Square order ${orderId}: ${errorMessage}`);

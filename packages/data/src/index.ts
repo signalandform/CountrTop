@@ -15,7 +15,8 @@ export * from './supabaseClient';
 export * from './mockData';
 export * from './session';
 export * from './vendor';
-export * from './reconcile';
+// Note: reconcile.ts is NOT exported here to avoid pulling Square SDK into Edge runtime
+// Import directly: import { reconcileSquareOrdersForLocation } from '@countrtop/data/src/reconcile'
 
 export type DataClientFactoryOptions = {
   supabase?: SupabaseClient<Database>;
