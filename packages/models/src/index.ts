@@ -9,6 +9,13 @@ export type Vendor = {
   squareLocationId: string;
   squareCredentialRef?: string;
   status?: VendorStatus;
+  addressLine1?: string | null;
+  addressLine2?: string | null;
+  city?: string | null;
+  state?: string | null;
+  postalCode?: string | null;
+  phone?: string | null;
+  timezone?: string | null;
 };
 
 export type User = {

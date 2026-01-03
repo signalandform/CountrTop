@@ -214,6 +214,11 @@ export function createResilientSquareClient(
       retrieveOrder: wrapApiMethod(client.ordersApi.retrieveOrder.bind(client.ordersApi)),
       createOrder: wrapApiMethod(client.ordersApi.createOrder.bind(client.ordersApi))
     },
+    locationsApi: {
+      ...client.locationsApi,
+      retrieveLocation: wrapApiMethod(client.locationsApi.retrieveLocation.bind(client.locationsApi)),
+      listLocations: wrapApiMethod(client.locationsApi.listLocations.bind(client.locationsApi))
+    },
     // Expose circuit breaker state for monitoring
     getCircuitBreakerState: () => circuitBreaker.getState()
   };
@@ -239,5 +244,64 @@ export function squareClientForVendor(vendor: Vendor) {
       halfOpenMaxCalls: 3
     }
   );
+}
+
+/**
+ * Square location data structure returned from API
+ */
+export type SquareLocationData = {
+  name?: string;
+  addressLine1?: string;
+  addressLine2?: string;
+  city?: string;
+  state?: string;
+  postalCode?: string;
+  phone?: string;
+  timezone?: string;
+};
+
+/**
+ * Fetches Square location details by location ID
+ * @param vendor - Vendor object with Square credentials
+ * @param locationId - Square location ID to fetch
+ * @returns Location data including name, address, phone, and timezone
+ */
+export async function getSquareLocation(
+  vendor: Vendor,
+  locationId: string
+): Promise<SquareLocationData> {
+  const square = squareClientForVendor(vendor);
+  
+  try {
+    const { result } = await square.locationsApi.retrieveLocation(locationId);
+    
+    if (result.errors && result.errors.length > 0) {
+      const errorMessages = result.errors.map(e => e.detail || e.code).join(', ');
+      throw new Error(`Square API error: ${errorMessages}`);
+    }
+    
+    const location = result.location;
+    if (!location) {
+      throw new Error(`Location ${locationId} not found`);
+    }
+    
+    const address = location.address;
+    
+    return {
+      name: location.name || undefined,
+      addressLine1: address?.addressLine1 || undefined,
+      addressLine2: address?.addressLine2 || undefined,
+      city: address?.locality || undefined,
+      state: address?.administrativeDistrictLevel1 || undefined,
+      postalCode: address?.postalCode || undefined,
+      phone: location.phoneNumber || undefined,
+      timezone: location.timezone || undefined
+    };
+  } catch (error) {
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw new Error(`Failed to fetch Square location: ${String(error)}`);
+  }
 }
 

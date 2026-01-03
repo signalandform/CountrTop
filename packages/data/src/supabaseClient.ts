@@ -103,6 +103,13 @@ export type Database = {
           square_credential_ref: string | null;
           status: VendorStatus | null;
           admin_user_id: string | null;
+          address_line1: string | null;
+          address_line2: string | null;
+          city: string | null;
+          state: string | null;
+          postal_code: string | null;
+          phone: string | null;
+          timezone: string | null;
         };
         Insert: {
           id?: string;
@@ -112,6 +119,13 @@ export type Database = {
           square_credential_ref?: string | null;
           status?: VendorStatus | null;
           admin_user_id?: string | null;
+          address_line1?: string | null;
+          address_line2?: string | null;
+          city?: string | null;
+          state?: string | null;
+          postal_code?: string | null;
+          phone?: string | null;
+          timezone?: string | null;
         };
         Update: Partial<Database['public']['Tables']['vendors']['Insert']>;
         Relationships: [];
@@ -231,7 +245,7 @@ export class SupabaseDataClient implements DataClient {
       // Field limiting: only select needed columns
       const { data, error } = await this.client
         .from('vendors')
-        .select('id,slug,display_name,square_location_id,square_credential_ref,status')
+        .select('id,slug,display_name,square_location_id,square_credential_ref,status,address_line1,address_line2,city,state,postal_code,phone,timezone')
         .eq('slug', slug)
         .maybeSingle();
       if (error) throw error;
@@ -255,7 +269,7 @@ export class SupabaseDataClient implements DataClient {
       // Field limiting: only select needed columns
       const { data, error } = await this.client
         .from('vendors')
-        .select('id,slug,display_name,square_location_id,square_credential_ref,status')
+        .select('id,slug,display_name,square_location_id,square_credential_ref,status,address_line1,address_line2,city,state,postal_code,phone,timezone')
         .eq('id', vendorId)
         .maybeSingle();
       if (error) throw error;
@@ -279,7 +293,7 @@ export class SupabaseDataClient implements DataClient {
       // Field limiting: only select needed columns
       const { data, error } = await this.client
         .from('vendors')
-        .select('id,slug,display_name,square_location_id,square_credential_ref,status')
+        .select('id,slug,display_name,square_location_id,square_credential_ref,status,address_line1,address_line2,city,state,postal_code,phone,timezone')
         .eq('square_location_id', locationId)
         .maybeSingle();
       if (error) throw error;
@@ -620,7 +634,14 @@ const mapVendorFromRow = (row: Database['public']['Tables']['vendors']['Row']): 
   displayName: row.display_name,
   squareLocationId: row.square_location_id,
   squareCredentialRef: row.square_credential_ref ?? undefined,
-  status: row.status ?? undefined
+  status: row.status ?? undefined,
+  addressLine1: row.address_line1 ?? undefined,
+  addressLine2: row.address_line2 ?? undefined,
+  city: row.city ?? undefined,
+  state: row.state ?? undefined,
+  postalCode: row.postal_code ?? undefined,
+  phone: row.phone ?? undefined,
+  timezone: row.timezone ?? undefined
 });
 
 const mapOrderSnapshotFromRow = (
