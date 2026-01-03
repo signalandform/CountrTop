@@ -112,6 +112,39 @@ export type OpsOrder = {
   userId: string | null;
 };
 
+// KDS Types
+export type SquareOrder = {
+  squareOrderId: string;
+  locationId: string;
+  state: string;
+  createdAt: string;
+  updatedAt: string;
+  referenceId?: string | null;
+  metadata?: Record<string, unknown> | null;
+  lineItems?: unknown[] | null;
+  fulfillment?: Record<string, unknown> | null;
+  source: 'countrtop_online' | 'square_pos';
+  raw?: Record<string, unknown> | null;
+};
+
+export type KitchenTicketStatus = 'placed' | 'preparing' | 'ready' | 'completed' | 'canceled';
+
+export type KitchenTicket = {
+  id: string;
+  squareOrderId: string;
+  locationId: string;
+  ctReferenceId?: string | null;
+  customerUserId?: string | null;
+  source: 'countrtop_online' | 'square_pos';
+  status: KitchenTicketStatus;
+  placedAt: string;
+  readyAt?: string | null;
+  completedAt?: string | null;
+  canceledAt?: string | null;
+  lastUpdatedByVendorUserId?: string | null;
+  updatedAt: string;
+};
+
 // Environment validation exports
 export {
   validateEnv,

@@ -2,7 +2,7 @@ import { randomUUID } from 'crypto';
 import { SupabaseClient, User as SupabaseAuthUser } from '@supabase/supabase-js';
 
 import { DataClient, LoyaltyLedgerEntryInput, OrderSnapshotInput, PushDeviceInput } from './dataClient';
-import { LoyaltyLedgerEntry, OrderSnapshot, PushDevice, User, Vendor, VendorStatus } from './models';
+import { KitchenTicket, KitchenTicketStatus, LoyaltyLedgerEntry, OrderSnapshot, PushDevice, SquareOrder, User, Vendor, VendorStatus } from './models';
 
 // Query result cache with TTL
 type CacheEntry<T> = {
@@ -202,6 +202,70 @@ export type Database = {
           updated_at?: string | null;
         };
         Update: Partial<Database['public']['Tables']['push_devices']['Insert']>;
+        Relationships: [];
+      };
+      square_orders: {
+        Row: {
+          square_order_id: string;
+          location_id: string;
+          state: string;
+          created_at: string;
+          updated_at: string;
+          reference_id: string | null;
+          metadata: Record<string, unknown> | null;
+          line_items: unknown[] | null;
+          fulfillment: Record<string, unknown> | null;
+          source: 'countrtop_online' | 'square_pos';
+          raw: Record<string, unknown> | null;
+        };
+        Insert: {
+          square_order_id: string;
+          location_id: string;
+          state: string;
+          created_at?: string;
+          updated_at?: string;
+          reference_id?: string | null;
+          metadata?: Record<string, unknown> | null;
+          line_items?: unknown[] | null;
+          fulfillment?: Record<string, unknown> | null;
+          source: 'countrtop_online' | 'square_pos';
+          raw?: Record<string, unknown> | null;
+        };
+        Update: Partial<Database['public']['Tables']['square_orders']['Insert']>;
+        Relationships: [];
+      };
+      kitchen_tickets: {
+        Row: {
+          id: string;
+          square_order_id: string;
+          location_id: string;
+          ct_reference_id: string | null;
+          customer_user_id: string | null;
+          source: 'countrtop_online' | 'square_pos';
+          status: 'placed' | 'preparing' | 'ready' | 'completed' | 'canceled';
+          placed_at: string;
+          ready_at: string | null;
+          completed_at: string | null;
+          canceled_at: string | null;
+          last_updated_by_vendor_user_id: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          square_order_id: string;
+          location_id: string;
+          ct_reference_id?: string | null;
+          customer_user_id?: string | null;
+          source: 'countrtop_online' | 'square_pos';
+          status: 'placed' | 'preparing' | 'ready' | 'completed' | 'canceled';
+          placed_at?: string;
+          ready_at?: string | null;
+          completed_at?: string | null;
+          canceled_at?: string | null;
+          last_updated_by_vendor_user_id?: string | null;
+          updated_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['kitchen_tickets']['Insert']>;
         Relationships: [];
       };
     };
@@ -741,3 +805,72 @@ const mapAuthUserNullable = (user: SupabaseAuthUser | null): User | null => {
   if (!user) return null;
   return mapAuthUser(user);
 };
+
+// KDS Mapping Helpers
+export const mapSquareOrderFromRow = (
+  row: Database['public']['Tables']['square_orders']['Row']
+): SquareOrder => ({
+  squareOrderId: row.square_order_id,
+  locationId: row.location_id,
+  state: row.state,
+  createdAt: row.created_at,
+  updatedAt: row.updated_at,
+  referenceId: row.reference_id ?? undefined,
+  metadata: row.metadata ?? undefined,
+  lineItems: row.line_items ?? undefined,
+  fulfillment: row.fulfillment ?? undefined,
+  source: row.source,
+  raw: row.raw ?? undefined
+});
+
+export const toSquareOrderUpsert = (
+  order: Partial<SquareOrder> & { squareOrderId: string; locationId: string; state: string; source: 'countrtop_online' | 'square_pos' }
+): Database['public']['Tables']['square_orders']['Insert'] => ({
+  square_order_id: order.squareOrderId,
+  location_id: order.locationId,
+  state: order.state,
+  created_at: order.createdAt ?? new Date().toISOString(),
+  updated_at: order.updatedAt ?? new Date().toISOString(),
+  reference_id: order.referenceId ?? null,
+  metadata: order.metadata ?? null,
+  line_items: order.lineItems ?? null,
+  fulfillment: order.fulfillment ?? null,
+  source: order.source,
+  raw: order.raw ?? null
+});
+
+export const mapKitchenTicketFromRow = (
+  row: Database['public']['Tables']['kitchen_tickets']['Row']
+): KitchenTicket => ({
+  id: row.id,
+  squareOrderId: row.square_order_id,
+  locationId: row.location_id,
+  ctReferenceId: row.ct_reference_id ?? undefined,
+  customerUserId: row.customer_user_id ?? undefined,
+  source: row.source,
+  status: row.status,
+  placedAt: row.placed_at,
+  readyAt: row.ready_at ?? undefined,
+  completedAt: row.completed_at ?? undefined,
+  canceledAt: row.canceled_at ?? undefined,
+  lastUpdatedByVendorUserId: row.last_updated_by_vendor_user_id ?? undefined,
+  updatedAt: row.updated_at
+});
+
+export const toKitchenTicketInsert = (
+  ticket: Partial<KitchenTicket> & { squareOrderId: string; locationId: string; source: 'countrtop_online' | 'square_pos'; status: KitchenTicketStatus }
+): Database['public']['Tables']['kitchen_tickets']['Insert'] => ({
+  id: ticket.id,
+  square_order_id: ticket.squareOrderId,
+  location_id: ticket.locationId,
+  ct_reference_id: ticket.ctReferenceId ?? null,
+  customer_user_id: ticket.customerUserId ?? null,
+  source: ticket.source,
+  status: ticket.status,
+  placed_at: ticket.placedAt ?? new Date().toISOString(),
+  ready_at: ticket.readyAt ?? null,
+  completed_at: ticket.completedAt ?? null,
+  canceled_at: ticket.canceledAt ?? null,
+  last_updated_by_vendor_user_id: ticket.lastUpdatedByVendorUserId ?? null,
+  updated_at: ticket.updatedAt ?? new Date().toISOString()
+});
