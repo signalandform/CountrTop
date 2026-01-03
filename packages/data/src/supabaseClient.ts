@@ -692,6 +692,194 @@ export class SupabaseDataClient implements DataClient {
       queryCache.clear();
     }
   }
+
+  // ============================================================================
+  // KDS: Square Orders Mirror + Kitchen Tickets
+  // ============================================================================
+
+  /**
+   * Derives source attribution from Square order referenceId
+   */
+  private deriveSource(referenceId: string | null | undefined): 'countrtop_online' | 'square_pos' {
+    if (referenceId && referenceId.startsWith('ct_')) {
+      return 'countrtop_online';
+    }
+    return 'square_pos';
+  }
+
+  /**
+   * Upserts a Square order into the square_orders table
+   */
+  async upsertSquareOrderFromSquare(order: any): Promise<void> {
+    const startTime = Date.now();
+    try {
+      const referenceId = order.referenceId ?? null;
+      const source = this.deriveSource(referenceId);
+
+      const payload: Database['public']['Tables']['square_orders']['Insert'] = {
+        square_order_id: order.id,
+        location_id: order.locationId,
+        state: order.state,
+        created_at: order.createdAt ?? new Date().toISOString(),
+        updated_at: order.updatedAt ?? order.createdAt ?? new Date().toISOString(),
+        reference_id: referenceId,
+        metadata: order.metadata ?? null,
+        line_items: order.lineItems ?? null,
+        fulfillment: order.fulfillments ?? order.fulfillment ?? null,
+        source,
+        raw: order
+      };
+
+      const { error } = await this.client
+        .from('square_orders')
+        .upsert(payload, { onConflict: 'square_order_id' });
+
+      if (error) throw error;
+      logQueryPerformance('upsertSquareOrderFromSquare', startTime, true);
+    } catch (error) {
+      logQueryPerformance('upsertSquareOrderFromSquare', startTime, false, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Ensures a kitchen ticket exists for an OPEN order
+   * Only creates ticket if order.state === 'OPEN'
+   * Does NOT overwrite existing ticket status (CountrTop-owned)
+   */
+  async ensureKitchenTicketForOpenOrder(order: any): Promise<void> {
+    const startTime = Date.now();
+    try {
+      // Only process OPEN orders
+      if (order.state !== 'OPEN') {
+        return;
+      }
+
+      const referenceId = order.referenceId ?? null;
+      const source = this.deriveSource(referenceId);
+      
+      // Extract customer_user_id from metadata if present
+      let customerUserId: string | null = null;
+      if (order.metadata?.ct_user_id) {
+        const userId = order.metadata.ct_user_id;
+        // Validate it looks like a UUID
+        if (typeof userId === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId)) {
+          customerUserId = userId;
+        }
+      }
+
+      // Determine placed_at timestamp (use best available)
+      const placedAt = order.openedAt ?? order.createdAt ?? new Date().toISOString();
+
+      // Check if ticket already exists
+      const { data: existingTicket } = await this.client
+        .from('kitchen_tickets')
+        .select('id, status, ct_reference_id, customer_user_id')
+        .eq('square_order_id', order.id)
+        .maybeSingle();
+
+      if (existingTicket) {
+        // Ticket exists - only update safe fields, preserve status
+        const updatePayload: Database['public']['Tables']['kitchen_tickets']['Update'] = {
+          updated_at: new Date().toISOString()
+        };
+
+        // Only update these if they're currently null
+        if (!existingTicket.ct_reference_id && referenceId && referenceId.startsWith('ct_')) {
+          (updatePayload as any).ct_reference_id = referenceId;
+        }
+        if (!existingTicket.customer_user_id && customerUserId) {
+          (updatePayload as any).customer_user_id = customerUserId;
+        }
+
+        // Only update if there are fields to update
+        if (Object.keys(updatePayload).length > 1) {
+          const { error } = await this.client
+            .from('kitchen_tickets')
+            .update(updatePayload)
+            .eq('square_order_id', order.id);
+
+          if (error) throw error;
+        }
+      } else {
+        // Create new ticket
+        const insertPayload: Database['public']['Tables']['kitchen_tickets']['Insert'] = {
+          square_order_id: order.id,
+          location_id: order.locationId,
+          ct_reference_id: referenceId && referenceId.startsWith('ct_') ? referenceId : null,
+          customer_user_id: customerUserId,
+          source,
+          status: 'placed',
+          placed_at: placedAt,
+          updated_at: new Date().toISOString()
+        };
+
+        const { error } = await this.client
+          .from('kitchen_tickets')
+          .insert(insertPayload);
+
+        if (error) throw error;
+      }
+
+      logQueryPerformance('ensureKitchenTicketForOpenOrder', startTime, true);
+    } catch (error) {
+      logQueryPerformance('ensureKitchenTicketForOpenOrder', startTime, false, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Updates kitchen ticket status for terminal order states (COMPLETED, CANCELED)
+   */
+  async updateTicketForTerminalOrderState(order: any): Promise<void> {
+    const startTime = Date.now();
+    try {
+      if (order.state !== 'COMPLETED' && order.state !== 'CANCELED') {
+        return;
+      }
+
+      // Find existing ticket
+      const { data: ticket } = await this.client
+        .from('kitchen_tickets')
+        .select('id, status')
+        .eq('square_order_id', order.id)
+        .maybeSingle();
+
+      if (!ticket) {
+        // No ticket exists, nothing to update
+        return;
+      }
+
+      // Don't overwrite if already in terminal state
+      if (ticket.status === 'completed' || ticket.status === 'canceled') {
+        return;
+      }
+
+      const now = new Date().toISOString();
+      const updatePayload: Database['public']['Tables']['kitchen_tickets']['Update'] = {
+        updated_at: now
+      };
+
+      if (order.state === 'COMPLETED') {
+        (updatePayload as any).status = 'completed';
+        (updatePayload as any).completed_at = now;
+      } else if (order.state === 'CANCELED') {
+        (updatePayload as any).status = 'canceled';
+        (updatePayload as any).canceled_at = now;
+      }
+
+      const { error } = await this.client
+        .from('kitchen_tickets')
+        .update(updatePayload)
+        .eq('square_order_id', order.id);
+
+      if (error) throw error;
+      logQueryPerformance('updateTicketForTerminalOrderState', startTime, true);
+    } catch (error) {
+      logQueryPerformance('updateTicketForTerminalOrderState', startTime, false, error);
+      throw error;
+    }
+  }
 }
 
 const mapVendorFromRow = (row: Database['public']['Tables']['vendors']['Row']): Vendor => ({

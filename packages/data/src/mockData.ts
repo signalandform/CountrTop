@@ -158,6 +158,20 @@ export class MockDataClient implements DataClient {
     return this.pushDevices.filter((device) => device.userId === userId);
   }
 
+  // KDS: Square Orders Mirror + Kitchen Tickets (server-only methods)
+  // Mock implementations are no-ops since these are server-side only
+  async upsertSquareOrderFromSquare(_order: any): Promise<void> {
+    // No-op for mock client
+  }
+
+  async ensureKitchenTicketForOpenOrder(_order: any): Promise<void> {
+    // No-op for mock client
+  }
+
+  async updateTicketForTerminalOrderState(_order: any): Promise<void> {
+    // No-op for mock client
+  }
+
   private createId(prefix: string) {
     return `${prefix}_${Math.random().toString(16).slice(2)}`;
   }

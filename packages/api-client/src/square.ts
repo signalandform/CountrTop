@@ -305,3 +305,34 @@ export async function getSquareLocation(
   }
 }
 
+/**
+ * Fetches a full Square order by order ID
+ * @param vendor - Vendor object with Square credentials
+ * @param orderId - Square order ID to fetch
+ * @returns Raw Square order JSON
+ */
+export async function getSquareOrder(
+  vendor: Vendor,
+  orderId: string
+): Promise<any> {
+  const square = squareClientForVendor(vendor);
+  
+  try {
+    const { result } = await square.ordersApi.retrieveOrder(orderId);
+    
+    if (result.errors && result.errors.length > 0) {
+      const errorMessages = result.errors.map(e => e.detail || e.code).join(', ');
+      throw new Error(`Square API error for order ${orderId}: ${errorMessages}`);
+    }
+    
+    if (!result.order) {
+      throw new Error(`Order ${orderId} not found`);
+    }
+    
+    return result.order;
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    throw new Error(`Failed to fetch Square order ${orderId}: ${errorMessage}`);
+  }
+}
+

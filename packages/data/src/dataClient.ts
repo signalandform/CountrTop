@@ -49,4 +49,9 @@ export interface DataClient {
 
   upsertPushDevice(device: PushDeviceInput): Promise<PushDevice>;
   listPushDevicesForUser(userId: string): Promise<PushDevice[]>;
+
+  // KDS: Square Orders Mirror + Kitchen Tickets (server-only methods)
+  upsertSquareOrderFromSquare(order: any): Promise<void>;
+  ensureKitchenTicketForOpenOrder(order: any): Promise<void>;
+  updateTicketForTerminalOrderState(order: any): Promise<void>;
 }

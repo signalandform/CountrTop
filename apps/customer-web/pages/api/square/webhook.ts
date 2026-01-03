@@ -2,9 +2,8 @@ import crypto from 'crypto';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 
-import { createLogger } from '@countrtop/api-client';
+import { createLogger, getSquareOrder } from '@countrtop/api-client';
 import { getServerDataClient } from '../../../lib/dataClient';
-import { squareClientForVendor } from '../../../lib/square';
 
 const logger = createLogger({ requestId: 'webhook' });
 
@@ -177,17 +176,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
   }
 
   const eventType: string = event?.type ?? 'unknown';
-  if (!eventType.startsWith('payment.')) {
-    return res.status(200).json({ ok: true, status: 'ignored', reason: 'Not a payment event' });
+  
+  // Extract orderId and locationId from both order.updated and payment.updated events
+  let orderId: string | undefined;
+  let locationId: string | undefined;
+  let isPaymentEvent = false;
+  let payment: ReturnType<typeof normalizePayment> | null = null;
+
+  if (eventType === 'order.updated') {
+    const orderUpdated = event?.data?.object?.order_updated;
+    orderId = orderUpdated?.order_id ?? orderUpdated?.order?.id;
+    locationId = orderUpdated?.order?.location_id ?? orderUpdated?.location_id;
+  } else if (eventType === 'payment.updated') {
+    isPaymentEvent = true;
+    payment = normalizePayment(parsePayment(event));
+    orderId = payment.orderId ?? undefined;
+    locationId = payment.locationId ?? undefined;
+  } else {
+    return res.status(200).json({ ok: true, status: 'ignored', reason: 'Not an order or payment event' });
   }
 
-  const payment = normalizePayment(parsePayment(event));
-  if (!payment || payment.status !== 'COMPLETED') {
-    return res.status(200).json({ ok: true, status: 'ignored', reason: 'Payment not completed' });
-  }
-
-  const orderId: string | undefined = payment.orderId ?? undefined;
-  const locationId: string | undefined = payment.locationId ?? undefined;
   if (!orderId || !locationId) {
     return res.status(200).json({ ok: true, status: 'ignored', reason: 'Missing order metadata' });
   }
@@ -198,25 +206,73 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     return res.status(200).json({ ok: true, status: 'ignored', reason: 'Unknown vendor location' });
   }
 
-  const existing = await dataClient.getOrderSnapshotBySquareOrderId(vendor.id, orderId);
-  if (existing) {
-    return res.status(200).json({ ok: true, status: 'processed', reason: 'Snapshot already exists' });
+  // Fetch full order from Square (used for both ingestion and legacy flow)
+  let order: any;
+  try {
+    order = await getSquareOrder(vendor, orderId);
+  } catch (error) {
+    const message = formatSquareError(error);
+    logger.error(`Failed to fetch Square order ${orderId}`, error instanceof Error ? error : new Error(message), {
+      orderId,
+      eventType
+    });
+    // Return early if we can't fetch the order - we'll try again on next webhook
+    return res.status(200).json({
+      ok: true,
+      status: 'processed',
+      reason: `Order fetch failed, will retry: ${message}`,
+      signatureValid: signatureValid
+    });
+  }
+
+  // Process order ingestion for ALL events (order.updated and payment.updated)
+  // This ensures square_orders and kitchen_tickets are always in sync
+  // Wrap each step in try/catch to ensure idempotency and handle duplicates safely
+  try {
+    // Upsert square order (idempotent)
+    await dataClient.upsertSquareOrderFromSquare(order);
+  } catch (error) {
+    logger.error(`Failed to upsert square order ${orderId}`, error instanceof Error ? error : new Error(String(error)), {
+      orderId
+    });
+    // Continue processing even if upsert fails
   }
 
   try {
-    const square = squareClientForVendor(vendor);
-    let order;
-    try {
-      const { result } = await square.ordersApi.retrieveOrder(orderId);
-      order = result.order;
-    } catch (error) {
-      const message = formatSquareError(error);
-      return res.status(500).json({
-        ok: false,
-        status: 'invalid',
-        reason: `Order lookup failed: ${message}`
+    // Ensure kitchen ticket for OPEN orders (idempotent, preserves existing status)
+    await dataClient.ensureKitchenTicketForOpenOrder(order);
+  } catch (error) {
+    logger.error(`Failed to ensure kitchen ticket for order ${orderId}`, error instanceof Error ? error : new Error(String(error)), {
+      orderId,
+      orderState: order.state
+    });
+    // Continue processing even if ticket creation fails
+  }
+
+  try {
+    // Update ticket for terminal states (COMPLETED, CANCELED)
+    await dataClient.updateTicketForTerminalOrderState(order);
+  } catch (error) {
+    logger.error(`Failed to update ticket for terminal state ${orderId}`, error instanceof Error ? error : new Error(String(error)), {
+      orderId,
+      orderState: order.state
+    });
+    // Continue processing even if ticket update fails
+  }
+
+  // Legacy order_snapshots flow - only for payment.updated events with COMPLETED status
+  if (isPaymentEvent && payment && payment.status === 'COMPLETED') {
+    const existing = await dataClient.getOrderSnapshotBySquareOrderId(vendor.id, orderId);
+    if (existing) {
+      return res.status(200).json({
+        ok: true,
+        status: 'processed',
+        reason: 'Snapshot already exists',
+        signatureValid: signatureValid
       });
     }
+
+    try {
 
     const items =
       order?.lineItems?.map((item: any) => ({
@@ -292,20 +348,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       }
     }
 
-    // Return success even if signature was invalid (order was still processed)
-    return res.status(200).json({
-      ok: true,
-      status: 'processed',
-      signatureValid: signatureValid,
-      ...(signatureError && { reason: `Processed with signature warning: ${signatureError.message}` })
-    });
-  } catch (error) {
-    const message = formatSquareError(error);
-    return res.status(500).json({
-      ok: false,
-      status: 'invalid',
-      reason: message,
-      signatureValid: signatureValid
-    });
+      // Return success even if signature was invalid (order was still processed)
+      return res.status(200).json({
+        ok: true,
+        status: 'processed',
+        signatureValid: signatureValid,
+        ...(signatureError && { reason: `Processed with signature warning: ${signatureError.message}` })
+      });
+    } catch (error) {
+      const message = formatSquareError(error);
+      return res.status(500).json({
+        ok: false,
+        status: 'invalid',
+        reason: message,
+        signatureValid: signatureValid
+      });
+    }
   }
+
+  // For non-payment events or non-COMPLETED payments, return success after ingestion
+  return res.status(200).json({
+    ok: true,
+    status: 'processed',
+    signatureValid: signatureValid
+  });
 }
