@@ -1,7 +1,7 @@
 import Head from 'next/head';
 import type { GetServerSideProps } from 'next';
 
-import { VendorInsights } from '@countrtop/models';
+import { Vendor, VendorInsights } from '@countrtop/models';
 
 import { VendorInsightsDashboard } from '../../components/VendorInsightsDashboard';
 import { getServerDataClient } from '../../lib/dataClient';
@@ -11,6 +11,7 @@ import { requireVendorAdmin } from '../../lib/auth';
 type VendorAdminProps = {
   vendorSlug: string;
   vendorName: string;
+  vendor: Vendor | null;
   insights: VendorInsights;
   statusMessage?: string | null;
 };
@@ -29,6 +30,7 @@ export const getServerSideProps: GetServerSideProps<VendorAdminProps> = async (c
       props: {
         vendorSlug: slug ?? 'unknown',
         vendorName: 'Access Denied',
+        vendor: null,
         insights: {
           orders: 0,
           uniqueCustomers: 0,
@@ -51,6 +53,7 @@ export const getServerSideProps: GetServerSideProps<VendorAdminProps> = async (c
     props: {
       vendorSlug: slug ?? 'unknown',
       vendorName: vendor?.displayName ?? 'Unknown vendor',
+      vendor: vendor ?? null,
       insights,
       statusMessage
     }
@@ -60,6 +63,7 @@ export const getServerSideProps: GetServerSideProps<VendorAdminProps> = async (c
 export default function VendorAdminVendorPage({
   vendorSlug,
   vendorName,
+  vendor,
   insights,
   statusMessage
 }: VendorAdminProps) {
@@ -71,6 +75,7 @@ export default function VendorAdminVendorPage({
       <VendorInsightsDashboard
         vendorSlug={vendorSlug}
         vendorName={vendorName}
+        vendor={vendor}
         insights={insights}
         statusMessage={statusMessage}
       />

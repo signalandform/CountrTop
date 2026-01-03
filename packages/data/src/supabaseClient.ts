@@ -110,6 +110,7 @@ export type Database = {
           postal_code: string | null;
           phone: string | null;
           timezone: string | null;
+          pickup_instructions: string | null;
         };
         Insert: {
           id?: string;
@@ -126,6 +127,7 @@ export type Database = {
           postal_code?: string | null;
           phone?: string | null;
           timezone?: string | null;
+          pickup_instructions?: string | null;
         };
         Update: Partial<Database['public']['Tables']['vendors']['Insert']>;
         Relationships: [];
@@ -245,7 +247,7 @@ export class SupabaseDataClient implements DataClient {
       // Field limiting: only select needed columns
       const { data, error } = await this.client
         .from('vendors')
-        .select('id,slug,display_name,square_location_id,square_credential_ref,status,address_line1,address_line2,city,state,postal_code,phone,timezone')
+        .select('id,slug,display_name,square_location_id,square_credential_ref,status,address_line1,address_line2,city,state,postal_code,phone,timezone,pickup_instructions')
         .eq('slug', slug)
         .maybeSingle();
       if (error) throw error;
@@ -269,7 +271,7 @@ export class SupabaseDataClient implements DataClient {
       // Field limiting: only select needed columns
       const { data, error } = await this.client
         .from('vendors')
-        .select('id,slug,display_name,square_location_id,square_credential_ref,status,address_line1,address_line2,city,state,postal_code,phone,timezone')
+        .select('id,slug,display_name,square_location_id,square_credential_ref,status,address_line1,address_line2,city,state,postal_code,phone,timezone,pickup_instructions')
         .eq('id', vendorId)
         .maybeSingle();
       if (error) throw error;
@@ -293,7 +295,7 @@ export class SupabaseDataClient implements DataClient {
       // Field limiting: only select needed columns
       const { data, error } = await this.client
         .from('vendors')
-        .select('id,slug,display_name,square_location_id,square_credential_ref,status,address_line1,address_line2,city,state,postal_code,phone,timezone')
+        .select('id,slug,display_name,square_location_id,square_credential_ref,status,address_line1,address_line2,city,state,postal_code,phone,timezone,pickup_instructions')
         .eq('square_location_id', locationId)
         .maybeSingle();
       if (error) throw error;
@@ -641,7 +643,8 @@ const mapVendorFromRow = (row: Database['public']['Tables']['vendors']['Row']): 
   state: row.state ?? undefined,
   postalCode: row.postal_code ?? undefined,
   phone: row.phone ?? undefined,
-  timezone: row.timezone ?? undefined
+  timezone: row.timezone ?? undefined,
+  pickupInstructions: row.pickup_instructions ?? undefined
 });
 
 const mapOrderSnapshotFromRow = (

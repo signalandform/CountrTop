@@ -1,16 +1,18 @@
 import Link from 'next/link';
-import { VendorInsights } from '@countrtop/models';
+import { Vendor, VendorInsights } from '@countrtop/models';
+import { VendorSettings } from './VendorSettings';
 
 type Props = {
   vendorSlug: string | null;
   vendorName: string;
+  vendor: Vendor | null;
   insights: VendorInsights;
   statusMessage?: string | null;
 };
 
 const formatMetric = (value: number) => value.toLocaleString();
 
-export function VendorInsightsDashboard({ vendorSlug, vendorName, insights, statusMessage }: Props) {
+export function VendorInsightsDashboard({ vendorSlug, vendorName, vendor, insights, statusMessage }: Props) {
   return (
     <main className="page">
       {/* Header */}
@@ -28,6 +30,11 @@ export function VendorInsightsDashboard({ vendorSlug, vendorName, insights, stat
       </header>
 
       {statusMessage && <div className="error-banner">{statusMessage}</div>}
+
+      {/* Vendor Settings */}
+      {vendor && vendorSlug && (
+        <VendorSettings vendor={vendor} vendorSlug={vendorSlug} />
+      )}
 
       {/* Stats Grid */}
       <section className="section">

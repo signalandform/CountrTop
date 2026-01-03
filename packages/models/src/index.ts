@@ -16,6 +16,7 @@ export type Vendor = {
   postalCode?: string | null;
   phone?: string | null;
   timezone?: string | null;
+  pickupInstructions?: string | null;
 };
 
 export type User = {

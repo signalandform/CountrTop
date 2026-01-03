@@ -3,7 +3,7 @@ import Head from 'next/head';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { resolveVendorSlugFromHost } from '@countrtop/data';
-import { CartItem, MenuItem, OrderHistoryEntry } from '@countrtop/models';
+import { CartItem, MenuItem, OrderHistoryEntry, Vendor } from '@countrtop/models';
 import { useAuth } from '@countrtop/ui';
 import { getServerDataClient } from '../lib/dataClient';
 import { getBrowserSupabaseClient } from '../lib/supabaseBrowser';
@@ -15,6 +15,7 @@ import { getBrowserSupabaseClient } from '../lib/supabaseBrowser';
 type Props = {
   vendorSlug: string | null;
   vendorName: string;
+  vendor: Vendor | null;
 };
 
 type Notice = {
@@ -35,7 +36,8 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req }) => 
   return {
     props: {
       vendorSlug: vendorSlug ?? null,
-      vendorName: vendor?.displayName ?? 'CountrTop'
+      vendorName: vendor?.displayName ?? 'CountrTop',
+      vendor: vendor ?? null
     }
   };
 };
@@ -73,7 +75,7 @@ async function apiFetch<T>(url: string): Promise<{ ok: true; data: T } | { ok: f
 // COMPONENT
 // ============================================================================
 
-export default function CustomerHome({ vendorSlug, vendorName }: Props) {
+export default function CustomerHome({ vendorSlug, vendorName, vendor }: Props) {
   // ---------------------------------------------------------------------------
   // Core state
   // ---------------------------------------------------------------------------
@@ -372,6 +374,41 @@ export default function CustomerHome({ vendorSlug, vendorName }: Props) {
           </div>
         </section>
 
+        {/* Vendor Info */}
+        {vendor && (vendor.addressLine1 || vendor.city || vendor.pickupInstructions) && (
+          <section className="vendor-info">
+            {vendor.addressLine1 && (
+              <div className="vendor-address">
+                <div className="info-label">Location</div>
+                <div className="info-content">
+                  {vendor.addressLine1}
+                  {vendor.addressLine2 && <>{'\n'}{vendor.addressLine2}</>}
+                  {vendor.city && (
+                    <>
+                      {'\n'}
+                      {vendor.city}
+                      {vendor.state && `, ${vendor.state}`}
+                      {vendor.postalCode && ` ${vendor.postalCode}`}
+                    </>
+                  )}
+                  {vendor.phone && (
+                    <>
+                      {'\n'}
+                      <a href={`tel:${vendor.phone}`} className="phone-link">{vendor.phone}</a>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+            {vendor.pickupInstructions && (
+              <div className="vendor-pickup">
+                <div className="info-label">Pickup Instructions</div>
+                <div className="info-content">{vendor.pickupInstructions}</div>
+              </div>
+            )}
+          </section>
+        )}
+
         {/* Notice */}
         {notice && (
           <div className={`notice notice-${notice.type}`}>
@@ -654,6 +691,48 @@ export default function CustomerHome({ vendorSlug, vendorName }: Props) {
             padding: 6px 12px;
             border-radius: 20px;
             font-size: 12px;
+          }
+
+          .vendor-info {
+            margin: 0 24px 24px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+          }
+
+          .vendor-address,
+          .vendor-pickup {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+          }
+
+          .info-label {
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #a78bfa;
+          }
+
+          .info-content {
+            font-size: 14px;
+            line-height: 1.6;
+            color: #e8e8e8;
+            white-space: pre-line;
+          }
+
+          .phone-link {
+            color: #a78bfa;
+            text-decoration: none;
+          }
+
+          .phone-link:hover {
+            text-decoration: underline;
           }
 
           .notice {
