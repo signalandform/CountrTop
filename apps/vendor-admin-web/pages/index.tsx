@@ -72,11 +72,11 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
     };
   }
 
-  // Redirect to the vendor's orders page
+  // Redirect to the vendor's dashboard page
   const vendorSlug = vendors[0].slug;
   return {
     redirect: {
-      destination: `/vendors/${vendorSlug}/orders`,
+      destination: `/vendors/${vendorSlug}`,
       permanent: false
     }
   };

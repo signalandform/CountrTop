@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { useRouter } from 'next/router';
 import { Vendor, VendorInsights } from '@countrtop/models';
 import { VendorSettings } from './VendorSettings';
 
@@ -13,6 +14,23 @@ type Props = {
 const formatMetric = (value: number) => value.toLocaleString();
 
 export function VendorInsightsDashboard({ vendorSlug, vendorName, vendor, insights, statusMessage }: Props) {
+  const router = useRouter();
+
+  const handleAnchorClick = (e: React.MouseEvent<HTMLAnchorElement>, hash: string) => {
+    // If we're already on this page, handle smooth scroll manually
+    const currentPath = router.asPath.split('#')[0]; // Remove existing hash if any
+    if (currentPath === `/vendors/${vendorSlug}`) {
+      e.preventDefault();
+      const element = document.querySelector(hash);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        // Update URL without triggering navigation
+        window.history.pushState(null, '', hash);
+      }
+    }
+    // Otherwise, let Next.js Link handle the navigation
+  };
+
   return (
     <main className="page">
       {/* Header */}
@@ -20,7 +38,7 @@ export function VendorInsightsDashboard({ vendorSlug, vendorName, vendor, insigh
         <div className="header-content">
           <p className="eyebrow">CountrTop Admin</p>
           <h1 className="title">{vendorName}</h1>
-          <p className="subtitle">Vendor insights & analytics</p>
+          <p className="subtitle">Vendor dashboard</p>
         </div>
         {vendorSlug && (
           <Link href={`/vendors/${vendorSlug}/orders`} className="btn-secondary">
@@ -31,13 +49,43 @@ export function VendorInsightsDashboard({ vendorSlug, vendorName, vendor, insigh
 
       {statusMessage && <div className="error-banner">{statusMessage}</div>}
 
+      {/* Dashboard Navigation Cards */}
+      <section className="dashboard-cards">
+        <Link 
+          href={`/vendors/${vendorSlug}#insights`} 
+          className="dashboard-card"
+          onClick={(e) => handleAnchorClick(e, '#insights')}
+        >
+          <div className="card-icon">📊</div>
+          <h3 className="card-title">Insights</h3>
+          <p className="card-description">View performance and trends</p>
+        </Link>
+        <Link href={`/vendors/${vendorSlug}/orders`} className="dashboard-card">
+          <div className="card-icon">📦</div>
+          <h3 className="card-title">Orders</h3>
+          <p className="card-description">Manage active customer orders</p>
+        </Link>
+        <Link 
+          href={`/vendors/${vendorSlug}#settings`} 
+          className="dashboard-card"
+          onClick={(e) => handleAnchorClick(e, '#settings')}
+        >
+          <div className="card-icon">⚙️</div>
+          <h3 className="card-title">Settings</h3>
+          <p className="card-description">Edit pickup instructions & location</p>
+        </Link>
+      </section>
+
       {/* Vendor Settings */}
-      {vendor && vendorSlug && (
-        <VendorSettings vendor={vendor} vendorSlug={vendorSlug} />
-      )}
+      <div id="settings">
+        {vendor && vendorSlug && (
+          <VendorSettings vendor={vendor} vendorSlug={vendorSlug} />
+        )}
+      </div>
 
       {/* Stats Grid */}
-      <section className="section">
+      <div id="insights">
+        <section className="section">
         <div className="section-header">
           <h2>Performance Overview</h2>
           <span className="muted">Lifetime metrics</span>
@@ -86,6 +134,7 @@ export function VendorInsightsDashboard({ vendorSlug, vendorName, vendor, insigh
           </div>
         )}
       </section>
+      </div>
 
       <style jsx>{`
         .page {
@@ -155,6 +204,54 @@ export function VendorInsightsDashboard({ vendorSlug, vendorName, vendor, insigh
           padding: 12px 16px;
           border-radius: 12px;
           margin-bottom: 24px;
+        }
+
+        .dashboard-cards {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+          gap: 20px;
+          margin-bottom: 32px;
+        }
+
+        .dashboard-card {
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 16px;
+          padding: 24px;
+          text-decoration: none;
+          color: inherit;
+          transition: all 0.2s;
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+
+        .dashboard-card:hover {
+          background: rgba(255, 255, 255, 0.08);
+          border-color: rgba(102, 126, 234, 0.4);
+          transform: translateY(-2px);
+        }
+
+        .card-icon {
+          font-size: 32px;
+          margin-bottom: 4px;
+        }
+
+        .card-title {
+          font-size: 20px;
+          font-weight: 700;
+          margin: 0;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+        }
+
+        .card-description {
+          font-size: 14px;
+          color: #888;
+          margin: 0;
+          line-height: 1.5;
         }
 
         .section {
