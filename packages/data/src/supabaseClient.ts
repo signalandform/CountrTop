@@ -2,7 +2,7 @@ import { randomUUID } from 'crypto';
 import { SupabaseClient, User as SupabaseAuthUser } from '@supabase/supabase-js';
 
 import { DataClient, LoyaltyLedgerEntryInput, OrderSnapshotInput, PushDeviceInput } from './dataClient';
-import { KitchenTicket, KitchenTicketStatus, LoyaltyLedgerEntry, OrderSnapshot, PushDevice, SquareOrder, User, Vendor, VendorStatus } from './models';
+import { KitchenTicket, KitchenTicketStatus, KitchenTicketWithOrder, LoyaltyLedgerEntry, OrderSnapshot, PushDevice, SquareOrder, User, Vendor, VendorStatus } from './models';
 
 // Query result cache with TTL
 type CacheEntry<T> = {
@@ -877,6 +877,168 @@ export class SupabaseDataClient implements DataClient {
       logQueryPerformance('updateTicketForTerminalOrderState', startTime, true);
     } catch (error) {
       logQueryPerformance('updateTicketForTerminalOrderState', startTime, false, error);
+      throw error;
+    }
+  }
+
+  // ============================================================================
+  // KDS: Queue Management
+  // ============================================================================
+
+  /**
+   * Lists active kitchen tickets for a location with their associated Square orders
+   */
+  async listActiveKitchenTickets(locationId: string): Promise<KitchenTicketWithOrder[]> {
+    const startTime = Date.now();
+    try {
+      const { data, error } = await this.client
+        .from('kitchen_tickets')
+        .select(`
+          id,
+          square_order_id,
+          location_id,
+          ct_reference_id,
+          customer_user_id,
+          source,
+          status,
+          placed_at,
+          ready_at,
+          completed_at,
+          canceled_at,
+          last_updated_by_vendor_user_id,
+          updated_at,
+          square_orders (
+            square_order_id,
+            location_id,
+            state,
+            created_at,
+            updated_at,
+            reference_id,
+            metadata,
+            line_items,
+            fulfillment,
+            source
+          )
+        `)
+        .eq('location_id', locationId)
+        .in('status', ['placed', 'ready', 'preparing'])
+        .order('placed_at', { ascending: true });
+
+      if (error) throw error;
+
+      if (!data) {
+        return [];
+      }
+
+      // Map results to composite type
+      const results: KitchenTicketWithOrder[] = [];
+      for (const row of data) {
+        const ticket = mapKitchenTicketFromRow(row as Database['public']['Tables']['kitchen_tickets']['Row']);
+        
+        // Handle nested square_orders (can be null or array)
+        let order: SquareOrder | null = null;
+        const orderData = (row as any).square_orders;
+        if (orderData) {
+          // Supabase returns nested data as array or single object depending on relationship
+          const orderRow = Array.isArray(orderData) ? orderData[0] : orderData;
+          if (orderRow) {
+            order = mapSquareOrderFromRow(orderRow as Database['public']['Tables']['square_orders']['Row']);
+          }
+        }
+
+        // Only include if we have both ticket and order
+        if (order) {
+          results.push({ ticket, order });
+        } else {
+          // Log warning but don't fail - this should be rare
+          console.warn(`Kitchen ticket ${ticket.id} has no associated Square order`);
+        }
+      }
+
+      logQueryPerformance('listActiveKitchenTickets', startTime, true);
+      return results;
+    } catch (error) {
+      logQueryPerformance('listActiveKitchenTickets', startTime, false, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Updates kitchen ticket status with validation
+   */
+  async updateKitchenTicketStatus(
+    ticketId: string,
+    status: 'ready' | 'completed',
+    vendorUserId?: string
+  ): Promise<KitchenTicket> {
+    const startTime = Date.now();
+    try {
+      // First, fetch the current ticket to validate transition
+      const { data: currentTicket, error: fetchError } = await this.client
+        .from('kitchen_tickets')
+        .select('id, status')
+        .eq('id', ticketId)
+        .maybeSingle();
+
+      if (fetchError) throw fetchError;
+      if (!currentTicket) {
+        throw new Error(`Kitchen ticket ${ticketId} not found`);
+      }
+
+      // Validate status transition
+      const currentStatus = currentTicket.status;
+      const validTransitions: Record<string, string[]> = {
+        placed: ['ready'],
+        preparing: ['ready'],
+        ready: ['completed']
+      };
+
+      if (!validTransitions[currentStatus]?.includes(status)) {
+        throw new Error(
+          `Invalid status transition: ${currentStatus} -> ${status}. ` +
+          `Valid transitions: ${Object.entries(validTransitions)
+            .map(([from, to]) => `${from} -> ${to.join('/')}`)
+            .join(', ')}`
+        );
+      }
+
+      // Prepare update payload
+      const now = new Date().toISOString();
+      const updatePayload: Database['public']['Tables']['kitchen_tickets']['Update'] = {
+        status,
+        updated_at: now
+      };
+
+      if (status === 'ready' && currentStatus !== 'ready') {
+        (updatePayload as any).ready_at = now;
+      }
+
+      if (status === 'completed') {
+        (updatePayload as any).completed_at = now;
+      }
+
+      if (vendorUserId) {
+        (updatePayload as any).last_updated_by_vendor_user_id = vendorUserId;
+      }
+
+      // Update ticket
+      const { data: updatedTicket, error: updateError } = await this.client
+        .from('kitchen_tickets')
+        .update(updatePayload)
+        .eq('id', ticketId)
+        .select()
+        .single();
+
+      if (updateError) throw updateError;
+      if (!updatedTicket) {
+        throw new Error(`Failed to update kitchen ticket ${ticketId}`);
+      }
+
+      const result = mapKitchenTicketFromRow(updatedTicket as Database['public']['Tables']['kitchen_tickets']['Row']);
+      logQueryPerformance('updateKitchenTicketStatus', startTime, true);
+      return result;
+    } catch (error) {
+      logQueryPerformance('updateKitchenTicketStatus', startTime, false, error);
       throw error;
     }
   }

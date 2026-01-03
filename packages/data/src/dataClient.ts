@@ -1,5 +1,7 @@
 import {
   AuthProvider,
+  KitchenTicket,
+  KitchenTicketWithOrder,
   LoyaltyLedgerEntry,
   OrderSnapshot,
   PushDevice,
@@ -54,4 +56,12 @@ export interface DataClient {
   upsertSquareOrderFromSquare(order: any): Promise<void>;
   ensureKitchenTicketForOpenOrder(order: any): Promise<void>;
   updateTicketForTerminalOrderState(order: any): Promise<void>;
+
+  // KDS: Queue Management
+  listActiveKitchenTickets(locationId: string): Promise<KitchenTicketWithOrder[]>;
+  updateKitchenTicketStatus(
+    ticketId: string,
+    status: 'ready' | 'completed',
+    vendorUserId?: string
+  ): Promise<KitchenTicket>;
 }

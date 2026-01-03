@@ -145,6 +145,11 @@ export type KitchenTicket = {
   updatedAt: string;
 };
 
+export type KitchenTicketWithOrder = {
+  ticket: KitchenTicket;
+  order: SquareOrder;
+};
+
 // Environment validation exports
 export {
   validateEnv,

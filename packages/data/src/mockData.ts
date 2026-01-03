@@ -1,5 +1,5 @@
 import { DataClient, LoyaltyLedgerEntryInput, OrderSnapshotInput, PushDeviceInput } from './dataClient';
-import { LoyaltyLedgerEntry, OrderSnapshot, PushDevice, User, Vendor } from './models';
+import { KitchenTicket, KitchenTicketWithOrder, LoyaltyLedgerEntry, OrderSnapshot, PushDevice, User, Vendor } from './models';
 
 export type MockDataSeed = {
   vendors?: Vendor[];
@@ -170,6 +170,19 @@ export class MockDataClient implements DataClient {
 
   async updateTicketForTerminalOrderState(_order: any): Promise<void> {
     // No-op for mock client
+  }
+
+  async listActiveKitchenTickets(_locationId: string): Promise<KitchenTicketWithOrder[]> {
+    // Return empty array for mock client
+    return [];
+  }
+
+  async updateKitchenTicketStatus(
+    _ticketId: string,
+    _status: 'ready' | 'completed',
+    _vendorUserId?: string
+  ): Promise<KitchenTicket> {
+    throw new Error('updateKitchenTicketStatus not implemented in mock client');
   }
 
   private createId(prefix: string) {
