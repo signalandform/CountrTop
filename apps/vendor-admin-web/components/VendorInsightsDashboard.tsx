@@ -76,64 +76,64 @@ export function VendorInsightsDashboard({ vendorSlug, vendorName, vendor, insigh
         </Link>
       </section>
 
-      {/* Vendor Settings */}
-      <div id="settings">
-        {vendor && vendorSlug && (
-          <VendorSettings vendor={vendor} vendorSlug={vendorSlug} />
-        )}
-      </div>
-
       {/* Stats Grid */}
       <div id="insights">
         <section className="section">
-        <div className="section-header">
-          <h2>Performance Overview</h2>
-          <span className="muted">Lifetime metrics</span>
-        </div>
-        <div className="stats-grid">
-          <div className="stat-card">
-            <span className="stat-label">Total Orders</span>
-            <span className="stat-value">{formatMetric(insights.orders)}</span>
-            <span className="stat-helper">via CountrTop</span>
+          <div className="section-header">
+            <h2>Performance Overview</h2>
+            <span className="muted">Lifetime metrics</span>
           </div>
-          <div className="stat-card accent">
-            <span className="stat-label">Unique Customers</span>
-            <span className="stat-value">{formatMetric(insights.uniqueCustomers)}</span>
-            <span className="stat-helper">lifetime</span>
+          <div className="stats-grid">
+            <div className="stat-card">
+              <span className="stat-label">Total Orders</span>
+              <span className="stat-value">{formatMetric(insights.orders)}</span>
+              <span className="stat-helper">via CountrTop</span>
+            </div>
+            <div className="stat-card accent">
+              <span className="stat-label">Unique Customers</span>
+              <span className="stat-value">{formatMetric(insights.uniqueCustomers)}</span>
+              <span className="stat-helper">lifetime</span>
+            </div>
+            <div className="stat-card">
+              <span className="stat-label">Repeat Customers</span>
+              <span className="stat-value">{formatMetric(insights.repeatCustomers)}</span>
+              <span className="stat-helper">2+ orders</span>
+            </div>
+            <div className="stat-card">
+              <span className="stat-label">Points Issued</span>
+              <span className="stat-value">{formatMetric(insights.pointsIssued)}</span>
+              <span className="stat-helper">total rewards</span>
+            </div>
           </div>
-          <div className="stat-card">
-            <span className="stat-label">Repeat Customers</span>
-            <span className="stat-value">{formatMetric(insights.repeatCustomers)}</span>
-            <span className="stat-helper">2+ orders</span>
-          </div>
-          <div className="stat-card">
-            <span className="stat-label">Points Issued</span>
-            <span className="stat-value">{formatMetric(insights.pointsIssued)}</span>
-            <span className="stat-helper">total rewards</span>
-          </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Top Items */}
-      <section className="section">
-        <div className="section-header">
-          <h2>Top Reordered Items</h2>
-          <span className="muted">Most popular repeats</span>
-        </div>
-        {insights.topReorderedItems.length === 0 ? (
-          <p className="muted">No reorder data yet.</p>
-        ) : (
-          <div className="items-list">
-            {insights.topReorderedItems.map((item, index) => (
-              <div key={item.label} className="item-row">
-                <div className="item-rank">#{index + 1}</div>
-                <div className="item-name">{item.label}</div>
-                <div className="item-count">{item.count} reorders</div>
-              </div>
-            ))}
+        {/* Top Items */}
+        <section className="section">
+          <div className="section-header">
+            <h2>Top Reordered Items</h2>
+            <span className="muted">Most popular repeats</span>
           </div>
+          {insights.topReorderedItems.length === 0 ? (
+            <p className="muted">No reorder data yet.</p>
+          ) : (
+            <div className="items-list">
+              {insights.topReorderedItems.map((item, index) => (
+                <div key={item.label} className="item-row">
+                  <div className="item-rank">#{index + 1}</div>
+                  <div className="item-name">{item.label}</div>
+                  <div className="item-count">{item.count} reorders</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      </div>
+
+      {/* Vendor Settings */}
+      <div id="settings" style={{ marginTop: '32px' }}>
+        {vendor && vendorSlug && (
+          <VendorSettings vendor={vendor} vendorSlug={vendorSlug} />
         )}
-      </section>
       </div>
 
       <style jsx>{`
@@ -260,7 +260,7 @@ export function VendorInsightsDashboard({ vendorSlug, vendorName, vendor, insigh
           border: 1px solid rgba(255, 255, 255, 0.08);
           border-radius: 20px;
           padding: 24px;
-          margin-bottom: 24px;
+          margin-bottom: 16px;
         }
 
         .section-header {

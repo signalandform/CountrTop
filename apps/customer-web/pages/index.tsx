@@ -103,6 +103,11 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor }: Props) 
   // Track what user data we've loaded to prevent duplicate fetches
   const [loadedUserId, setLoadedUserId] = useState<string | null>(null);
 
+  // Order History state
+  const [historyExpanded, setHistoryExpanded] = useState(false);
+  const [historyPage, setHistoryPage] = useState(0);
+  const ORDERS_PER_PAGE = 5;
+
   // ---------------------------------------------------------------------------
   // Derived state
   // ---------------------------------------------------------------------------
@@ -374,40 +379,6 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor }: Props) 
           </div>
         </section>
 
-        {/* Vendor Info */}
-        {vendor && (vendor.addressLine1 || vendor.city || vendor.pickupInstructions) && (
-          <section className="vendor-info">
-            {vendor.addressLine1 && (
-              <div className="vendor-address">
-                <div className="info-label">Location</div>
-                <div className="info-content">
-                  {vendor.addressLine1}
-                  {vendor.addressLine2 && <>{'\n'}{vendor.addressLine2}</>}
-                  {vendor.city && (
-                    <>
-                      {'\n'}
-                      {vendor.city}
-                      {vendor.state && `, ${vendor.state}`}
-                      {vendor.postalCode && ` ${vendor.postalCode}`}
-                    </>
-                  )}
-                  {vendor.phone && (
-                    <>
-                      {'\n'}
-                      <a href={`tel:${vendor.phone}`} className="phone-link">{vendor.phone}</a>
-                    </>
-                  )}
-                </div>
-              </div>
-            )}
-            {vendor.pickupInstructions && (
-              <div className="vendor-pickup">
-                <div className="info-label">Pickup Instructions</div>
-                <div className="info-content">{vendor.pickupInstructions}</div>
-              </div>
-            )}
-          </section>
-        )}
 
         {/* Notice */}
         {notice && (
@@ -454,6 +425,41 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor }: Props) 
             {authError && <p className="error">{authError}</p>}
           </section>
 
+          {/* Vendor Info */}
+          {vendor && (vendor.addressLine1 || vendor.city || vendor.pickupInstructions) && (
+            <section className="card vendor-info">
+              {vendor.addressLine1 && (
+                <div className="vendor-address">
+                  <div className="info-label">Location</div>
+                  <div className="info-content">
+                    {vendor.addressLine1}
+                    {vendor.addressLine2 && <>{'\n'}{vendor.addressLine2}</>}
+                    {vendor.city && (
+                      <>
+                        {'\n'}
+                        {vendor.city}
+                        {vendor.state && `, ${vendor.state}`}
+                        {vendor.postalCode && ` ${vendor.postalCode}`}
+                      </>
+                    )}
+                    {vendor.phone && (
+                      <>
+                        {'\n'}
+                        <a href={`tel:${vendor.phone}`} className="phone-link">{vendor.phone}</a>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+              {vendor.pickupInstructions && (
+                <div className="vendor-pickup">
+                  <div className="info-label">Pickup Instructions</div>
+                  <div className="info-content">{vendor.pickupInstructions}</div>
+                </div>
+              )}
+            </section>
+          )}
+
           {/* Order Tracking */}
           <section className="card order-tracking">
             <div className="card-header">
@@ -471,7 +477,15 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor }: Props) 
             {user && !ordersLoading && recentOrder && recentOrderDetails && (
               <div className="order-tracking-info">
                 <div>
-                  <div className="label">Order {recentOrder.squareOrderId.slice(-6)}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                    <div className="label">Order {recentOrder.squareOrderId.slice(-6)}</div>
+                    {recentOrder.fulfillmentStatus && (() => {
+                      const status = recentOrder.fulfillmentStatus;
+                      const badgeClass = status === 'PLACED' ? 'ct-badge-placed' : status === 'READY' ? 'ct-badge-ready' : (status === 'COMPLETE' || status === 'COMPLETED') ? 'ct-badge-complete' : 'ct-badge-placed';
+                      const badgeLabel = status === 'PLACED' ? 'Placed' : status === 'READY' ? 'Ready' : (status === 'COMPLETE' || status === 'COMPLETED') ? 'Complete' : 'Placed';
+                      return <span className={`ct-badge ${badgeClass}`}>{badgeLabel}</span>;
+                    })()}
+                  </div>
                   <div className="muted">
                     {new Date(recentOrder.placedAt).toLocaleDateString()} · {recentOrderDetails.count} items · {formatCurrency(recentOrderDetails.total, recentOrderDetails.currency)}
                   </div>
@@ -555,89 +569,131 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor }: Props) 
               ))}
               {!menuLoading && menu.length === 0 && <p className="muted">No menu items yet.</p>}
             </div>
+          </section>
 
-            {/* Order History */}
-            <div className="card history">
-              <div className="card-header">
-                <h2>Order History</h2>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <span className="muted">{user ? `${orders.length} orders` : 'Sign in'}</span>
-                  {user && (
-                    <button
-                      onClick={() => {
-                        setLoadedUserId(null);
-                      }}
-                      className="btn-secondary"
-                      style={{ padding: '6px 12px', fontSize: '14px' }}
-                      disabled={ordersLoading}
-                    >
-                      {ordersLoading ? 'Loading...' : 'Refresh'}
-                    </button>
-                  )}
-                </div>
+          {/* Order History */}
+          <section className="card history">
+            <div 
+              className="card-header history-header" 
+              style={{ cursor: 'pointer' }}
+              onClick={() => setHistoryExpanded(!historyExpanded)}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <h2 style={{ margin: 0 }}>Order History</h2>
+                <span className="muted">{user ? `${orders.length} orders` : 'Sign in'}</span>
               </div>
-              {!user && authStatus === 'ready' && (
-                <p className="muted">Sign in to see past orders.</p>
-              )}
-              {user && ordersLoading && <p className="muted">Loading orders…</p>}
-              {user && ordersError && <p className="error">{ordersError}</p>}
-              {user && !ordersLoading && orders.length === 0 && (
-                <p className="muted">No orders yet.</p>
-              )}
-              {user &&
-                orders.map((order) => {
-                  const items = (order.snapshotJson?.items ?? []) as Array<{ quantity?: number }>;
-                  const count = items.reduce((s, i) => s + (i.quantity ?? 0), 0);
-                  const total = typeof order.snapshotJson?.total === 'number' ? order.snapshotJson.total : 0;
-                  const currency = typeof order.snapshotJson?.currency === 'string' ? order.snapshotJson.currency : 'USD';
-                  const status = order.fulfillmentStatus ?? 'PLACED';
-                  const statusLabels: Record<string, string> = {
-                    PLACED: 'Placed',
-                    READY: 'Ready',
-                    COMPLETE: 'Complete'
-                  };
-                  const statusColors: Record<string, string> = {
-                    PLACED: '#888',
-                    READY: '#fbbf24',
-                    COMPLETE: '#4ade80'
-                  };
-                  return (
-                    <div key={order.id} className="history-item">
-                      <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                          <div className="label">Order {order.squareOrderId.slice(-6)}</div>
-                          <span
-                            style={{
-                              padding: '2px 8px',
-                              borderRadius: '12px',
-                              fontSize: '11px',
-                              fontWeight: 600,
-                              textTransform: 'uppercase',
-                              backgroundColor: `${statusColors[status]}20`,
-                              color: statusColors[status],
-                              border: `1px solid ${statusColors[status]}40`
-                            }}
-                          >
-                            {statusLabels[status] || status}
-                          </span>
-                        </div>
-                        <div className="muted">
-                          {new Date(order.placedAt).toLocaleDateString()} · {count} items · {formatCurrency(total, currency)}
-                          {order.readyAt && (
-                            <> · Ready {new Date(order.readyAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</>
-                          )}
-                          {order.completedAt && (
-                            <> · Complete {new Date(order.completedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</>
-                          )}
-                        </div>
-                      </div>
-                      <button onClick={() => handleReorder(order)} className="btn-secondary">
-                        Reorder
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <span style={{ transform: historyExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>▼</span>
+              </div>
+            </div>
+            {historyExpanded && (
+              <>
+                {!user && authStatus === 'ready' && (
+                  <p className="muted">Sign in to see past orders.</p>
+                )}
+                {user && ordersLoading && <p className="muted">Loading orders…</p>}
+                {user && ordersError && <p className="error">{ordersError}</p>}
+                {user && !ordersLoading && orders.length === 0 && (
+                  <p className="muted">No orders yet.</p>
+                )}
+                {user && !ordersLoading && orders.length > 0 && (
+                  <>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '12px' }}>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setLoadedUserId(null);
+                        }}
+                        className="btn-secondary"
+                        style={{ padding: '6px 12px', fontSize: '14px' }}
+                        disabled={ordersLoading}
+                      >
+                        {ordersLoading ? 'Loading...' : 'Refresh'}
                       </button>
                     </div>
-                  );
-                })}
-            </div>
+                    {orders.slice(historyPage * ORDERS_PER_PAGE, (historyPage + 1) * ORDERS_PER_PAGE).map((order) => {
+                      const items = (order.snapshotJson?.items ?? []) as Array<{ quantity?: number }>;
+                      const count = items.reduce((s, i) => s + (i.quantity ?? 0), 0);
+                      const total = typeof order.snapshotJson?.total === 'number' ? order.snapshotJson.total : 0;
+                      const currency = typeof order.snapshotJson?.currency === 'string' ? order.snapshotJson.currency : 'USD';
+                      const status = order.fulfillmentStatus ?? 'PLACED';
+                      const statusLabels: Record<string, string> = {
+                        PLACED: 'Placed',
+                        READY: 'Ready',
+                        COMPLETE: 'Complete'
+                      };
+                      const statusColors: Record<string, string> = {
+                        PLACED: '#888',
+                        READY: '#fbbf24',
+                        COMPLETE: '#4ade80'
+                      };
+                      return (
+                        <div key={order.id} className="history-item">
+                          <div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                              <div className="label">Order {order.squareOrderId.slice(-6)}</div>
+                              <span
+                                style={{
+                                  padding: '2px 8px',
+                                  borderRadius: '12px',
+                                  fontSize: '11px',
+                                  fontWeight: 600,
+                                  textTransform: 'uppercase',
+                                  backgroundColor: `${statusColors[status]}20`,
+                                  color: statusColors[status],
+                                  border: `1px solid ${statusColors[status]}40`
+                                }}
+                              >
+                                {statusLabels[status] || status}
+                              </span>
+                            </div>
+                            <div className="muted">
+                              {new Date(order.placedAt).toLocaleDateString()} · {count} items · {formatCurrency(total, currency)}
+                              {order.readyAt && (
+                                <> · Ready {new Date(order.readyAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</>
+                              )}
+                              {order.completedAt && (
+                                <> · Complete {new Date(order.completedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</>
+                              )}
+                            </div>
+                          </div>
+                          <button onClick={() => handleReorder(order)} className="btn-secondary">
+                            Reorder
+                          </button>
+                        </div>
+                      );
+                    })}
+                    {orders.length > ORDERS_PER_PAGE && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px', paddingTop: '16px', borderTop: '1px solid rgba(255, 255, 255, 0.1)' }}>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setHistoryPage(Math.max(0, historyPage - 1));
+                          }}
+                          className="btn-secondary"
+                          disabled={historyPage === 0}
+                        >
+                          Previous
+                        </button>
+                        <span className="muted">
+                          Page {historyPage + 1} of {Math.ceil(orders.length / ORDERS_PER_PAGE)}
+                        </span>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setHistoryPage(Math.min(Math.ceil(orders.length / ORDERS_PER_PAGE) - 1, historyPage + 1));
+                          }}
+                          className="btn-secondary"
+                          disabled={historyPage >= Math.ceil(orders.length / ORDERS_PER_PAGE) - 1}
+                        >
+                          Next
+                        </button>
+                      </div>
+                    )}
+                  </>
+                )}
+              </>
+            )}
           </section>
         </div>
 
@@ -694,11 +750,6 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor }: Props) 
           }
 
           .vendor-info {
-            margin: 0 24px 24px;
-            padding: 20px;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 16px;
             display: flex;
             flex-direction: column;
             gap: 20px;
@@ -772,11 +823,14 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor }: Props) 
             grid-template-columns: 1fr 300px;
             grid-template-areas:
               'account cart'
+              'vendor-info cart'
               'order-tracking cart'
-              'menu cart';
+              'menu cart'
+              'history cart';
             gap: 20px;
             padding: 0 24px 48px;
             max-width: 1200px;
+            margin: 0 auto;
           }
 
           @media (max-width: 800px) {
@@ -784,14 +838,20 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor }: Props) 
               grid-template-columns: 1fr;
               grid-template-areas:
                 'account'
+                'vendor-info'
                 'order-tracking'
                 'cart'
-                'menu';
+                'menu'
+                'history';
             }
           }
 
           .account {
             grid-area: account;
+          }
+
+          .vendor-info {
+            grid-area: vendor-info;
           }
 
           .order-tracking {
@@ -813,6 +873,10 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor }: Props) 
 
           .menu-section {
             grid-area: menu;
+          }
+
+          .history {
+            grid-area: history;
           }
 
           .card {
@@ -1061,8 +1125,8 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor }: Props) 
             color: #a78bfa;
           }
 
-          .history {
-            margin-top: 24px;
+          .history-header {
+            user-select: none;
           }
 
           .history-item {

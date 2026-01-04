@@ -3,6 +3,7 @@ import Head from 'next/head';
 
 import { validateEnvProduction, customerWebEnvSchema } from '@countrtop/models';
 import { ErrorBoundary } from '@countrtop/ui';
+import '../styles/globals.css';
 
 // Validate environment variables on startup (fail fast in production, warn in development)
 if (typeof window === 'undefined') {
