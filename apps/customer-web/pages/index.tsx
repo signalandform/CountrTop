@@ -539,10 +539,26 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor }: Props) 
                 </div>
                 {trackingLoading && <p className="muted" style={{ marginTop: '12px' }}>Loading tracking...</p>}
                 {!trackingLoading && trackingState && (
-                  <div className="tracking-ladder" style={{ marginTop: '16px' }}>
+                  <div className={`tracking-ladder tracking-state-${trackingState.state}`} style={{ marginTop: '16px' }}>
+                    <div className="tracking-icon">
+                      {trackingState.state === 'queued_up' && '⏳'}
+                      {trackingState.state === 'working' && '👨‍🍳'}
+                      {trackingState.state === 'ready' && '✅'}
+                      {trackingState.state === 'enjoy' && '🎉'}
+                    </div>
                     <div className="tracking-message">{trackingState.message}</div>
                     {trackingState.state === 'ready' && trackingState.shortcode && (
-                      <div className="tracking-shortcode">{trackingState.shortcode}</div>
+                      <>
+                        <div className="tracking-shortcode-label">Your code</div>
+                        <div className="tracking-shortcode">{trackingState.shortcode}</div>
+                      </>
+                    )}
+                    {(trackingState.state === 'queued_up' || trackingState.state === 'working') && (
+                      <div className="tracking-progress">
+                        <div className={`progress-dot ${trackingState.state === 'queued_up' ? 'active' : ''}`}></div>
+                        <div className={`progress-dot ${trackingState.state === 'working' ? 'active' : ''}`}></div>
+                        <div className="progress-dot"></div>
+                      </div>
                     )}
                   </div>
                 )}
@@ -1002,23 +1018,48 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor }: Props) 
           .tracking-ladder {
             display: flex;
             flex-direction: column;
+            align-items: center;
             gap: 16px;
-            padding: 16px;
+            padding: 24px;
             background: rgba(255, 255, 255, 0.03);
-            border-radius: 12px;
+            border-radius: 16px;
             border: 1px solid rgba(255, 255, 255, 0.1);
             margin-top: 12px;
           }
 
+          .tracking-state-ready {
+            background: rgba(52, 199, 89, 0.1);
+            border-color: rgba(52, 199, 89, 0.3);
+          }
+
+          .tracking-state-enjoy {
+            background: rgba(255, 159, 10, 0.1);
+            border-color: rgba(255, 159, 10, 0.3);
+          }
+
+          .tracking-icon {
+            font-size: 48px;
+            line-height: 1;
+          }
+
           .tracking-message {
-            font-size: 16px;
-            font-weight: 500;
+            font-size: 18px;
+            font-weight: 600;
             color: #e8e8e8;
             text-align: center;
           }
 
+          .tracking-shortcode-label {
+            font-size: 14px;
+            font-weight: 500;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 8px;
+          }
+
           .tracking-shortcode {
-            font-size: 64px;
+            font-size: 72px;
             font-weight: 900;
             text-align: center;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -1026,7 +1067,28 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor }: Props) 
             -webkit-text-fill-color: transparent;
             background-clip: text;
             line-height: 1;
-            padding: 16px 0;
+            padding: 8px 0;
+            letter-spacing: 4px;
+          }
+
+          .tracking-progress {
+            display: flex;
+            gap: 12px;
+            margin-top: 8px;
+          }
+
+          .progress-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            transition: all 0.3s;
+          }
+
+          .progress-dot.active {
+            background: #667eea;
+            box-shadow: 0 0 8px rgba(102, 126, 234, 0.5);
+            transform: scale(1.2);
           }
 
           .points {
