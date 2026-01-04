@@ -386,7 +386,8 @@ export default function VendorQueuePage({ vendorSlug }: VendorPageProps) {
             <div className="tickets-list">
               {tickets.map(({ ticket, order }) => {
                 const pickupLabel = getPickupLabel(ticket, order);
-                const sourceBadge = ticket.source === 'countrtop_online' ? 'Online' : 'POS';
+                const sourceBadge = ticket.source === 'countrtop_online' ? 'Online' : 
+                                   ticket.source === 'delivery_service' ? 'Delivery' : 'POS';
                 const age = formatAge(ticket.placedAt);
                 const lineItemsSummary = getLineItemsSummary(order.lineItems);
                 const actionLabel = ticket.status === 'placed' || ticket.status === 'preparing' ? 'Mark Ready' : 'Complete';
@@ -394,6 +395,11 @@ export default function VendorQueuePage({ vendorSlug }: VendorPageProps) {
 
                 return (
                   <div key={ticket.id} className="ticket-card">
+                    {ticket.shortcode && (
+                      <div className="ticket-shortcode">
+                        {ticket.shortcode}
+                      </div>
+                    )}
                     <div className="ticket-left">
                       <div className="pickup-label">{pickupLabel}</div>
                       <div className="source-badge" data-source={ticket.source}>
@@ -609,6 +615,23 @@ export default function VendorQueuePage({ vendorSlug }: VendorPageProps) {
             border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 16px;
             transition: background 0.2s, border-color 0.2s;
+            position: relative;
+          }
+
+          .ticket-shortcode {
+            position: absolute;
+            top: -20px;
+            left: 24px;
+            font-size: 48px;
+            font-weight: 900;
+            color: #fff;
+            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+            line-height: 1;
+            z-index: 1;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
           }
 
           .ticket-card:hover {
@@ -649,6 +672,12 @@ export default function VendorQueuePage({ vendorSlug }: VendorPageProps) {
             background: rgba(255, 159, 10, 0.2);
             color: #ff9f0a;
             border: 1px solid rgba(255, 159, 10, 0.3);
+          }
+
+          .source-badge[data-source='delivery_service'] {
+            background: rgba(88, 86, 214, 0.2);
+            color: #5856d6;
+            border: 1px solid rgba(88, 86, 214, 0.3);
           }
 
           .ticket-middle {

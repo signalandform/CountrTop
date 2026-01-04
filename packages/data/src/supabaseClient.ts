@@ -3,6 +3,7 @@ import { SupabaseClient, User as SupabaseAuthUser } from '@supabase/supabase-js'
 
 import { DataClient, LoyaltyLedgerEntryInput, OrderSnapshotInput, PushDeviceInput } from './dataClient';
 import { KitchenTicket, KitchenTicketStatus, KitchenTicketWithOrder, LoyaltyLedgerEntry, OrderSnapshot, PushDevice, SquareOrder, User, Vendor, VendorStatus } from './models';
+import { assignShortcode } from './shortcodes';
 
 // Query result cache with TTL
 type CacheEntry<T> = {
@@ -145,6 +146,8 @@ export type Database = {
           phone: string | null;
           timezone: string | null;
           pickup_instructions: string | null;
+          kds_active_limit_total: number | null;
+          kds_active_limit_ct: number | null;
         };
         Insert: {
           id?: string;
@@ -162,6 +165,8 @@ export type Database = {
           phone?: string | null;
           timezone?: string | null;
           pickup_instructions?: string | null;
+          kds_active_limit_total?: number | null;
+          kds_active_limit_ct?: number | null;
         };
         Update: Partial<Database['public']['Tables']['vendors']['Insert']>;
         Relationships: [];
@@ -249,7 +254,7 @@ export type Database = {
           metadata: Record<string, unknown> | null;
           line_items: unknown[] | null;
           fulfillment: Record<string, unknown> | null;
-          source: 'countrtop_online' | 'square_pos';
+          source: 'countrtop_online' | 'square_pos' | 'delivery_service';
           raw: Record<string, unknown> | null;
         };
         Insert: {
@@ -262,7 +267,7 @@ export type Database = {
           metadata?: Record<string, unknown> | null;
           line_items?: unknown[] | null;
           fulfillment?: Record<string, unknown> | null;
-          source: 'countrtop_online' | 'square_pos';
+          source: 'countrtop_online' | 'square_pos' | 'delivery_service';
           raw?: Record<string, unknown> | null;
         };
         Update: Partial<Database['public']['Tables']['square_orders']['Insert']>;
@@ -275,8 +280,10 @@ export type Database = {
           location_id: string;
           ct_reference_id: string | null;
           customer_user_id: string | null;
-          source: 'countrtop_online' | 'square_pos';
+          source: 'countrtop_online' | 'square_pos' | 'delivery_service';
           status: 'placed' | 'preparing' | 'ready' | 'completed' | 'canceled';
+          shortcode: string | null;
+          promoted_at: string | null;
           placed_at: string;
           ready_at: string | null;
           completed_at: string | null;
@@ -290,8 +297,10 @@ export type Database = {
           location_id: string;
           ct_reference_id?: string | null;
           customer_user_id?: string | null;
-          source: 'countrtop_online' | 'square_pos';
+          source: 'countrtop_online' | 'square_pos' | 'delivery_service';
           status: 'placed' | 'preparing' | 'ready' | 'completed' | 'canceled';
+          shortcode?: string | null;
+          promoted_at?: string | null;
           placed_at?: string;
           ready_at?: string | null;
           completed_at?: string | null;
@@ -732,12 +741,31 @@ export class SupabaseDataClient implements DataClient {
   // ============================================================================
 
   /**
-   * Derives source attribution from Square order referenceId
+   * Derives source attribution from Square order referenceId and source.name
    */
-  private deriveSource(referenceId: string | null | undefined): 'countrtop_online' | 'square_pos' {
+  private deriveSource(order: Record<string, unknown>): 'countrtop_online' | 'square_pos' | 'delivery_service' {
+    const referenceId = typeof order.referenceId === 'string' ? order.referenceId : null;
+    
+    // CountrTop online orders have referenceId starting with "ct_"
     if (referenceId && referenceId.startsWith('ct_')) {
       return 'countrtop_online';
     }
+    
+    // Check order.source.name for delivery services
+    const source = order.source;
+    if (source && typeof source === 'object') {
+      const sourceName = (source as Record<string, unknown>).name;
+      if (typeof sourceName === 'string') {
+        if (sourceName === 'Doordash' || sourceName.toLowerCase().includes('doordash')) {
+          return 'delivery_service';
+        }
+        if (sourceName === 'SQUARE_POS' || sourceName === 'Square POS') {
+          return 'square_pos';
+        }
+      }
+    }
+    
+    // Default fallback to square_pos
     return 'square_pos';
   }
 
@@ -749,7 +777,7 @@ export class SupabaseDataClient implements DataClient {
     try {
       // Extract and validate order properties with type guards
       const referenceId = typeof order.referenceId === 'string' ? order.referenceId : null;
-      const source = this.deriveSource(referenceId);
+      const source = this.deriveSource(order);
       const orderId = typeof order.id === 'string' ? order.id : '';
       const locationId = typeof order.locationId === 'string' ? order.locationId : '';
       const state = typeof order.state === 'string' ? order.state : '';
@@ -802,7 +830,7 @@ export class SupabaseDataClient implements DataClient {
       }
 
       const referenceId = typeof order.referenceId === 'string' ? order.referenceId : null;
-      const source = this.deriveSource(referenceId);
+      const source = this.deriveSource(order);
       
       // Extract customer_user_id from metadata if present
       let customerUserId: string | null = null;
@@ -943,6 +971,7 @@ export class SupabaseDataClient implements DataClient {
 
   /**
    * Lists active kitchen tickets for a location with their associated Square orders
+   * Only returns tickets that have been promoted (promoted_at IS NOT NULL)
    */
   async listActiveKitchenTickets(locationId: string): Promise<KitchenTicketWithOrder[]> {
     const startTime = Date.now();
@@ -957,6 +986,8 @@ export class SupabaseDataClient implements DataClient {
           customer_user_id,
           source,
           status,
+          shortcode,
+          promoted_at,
           placed_at,
           ready_at,
           completed_at,
@@ -978,7 +1009,8 @@ export class SupabaseDataClient implements DataClient {
         `)
         .eq('location_id', locationId)
         .in('status', ['placed', 'ready', 'preparing'])
-        .order('placed_at', { ascending: true });
+        .not('promoted_at', 'is', null)
+        .order('promoted_at', { ascending: true });
 
       if (error) throw error;
 
@@ -1105,6 +1137,145 @@ export class SupabaseDataClient implements DataClient {
       throw error;
     }
   }
+
+  /**
+   * Lists queued tickets (placed but not yet promoted) for a location
+   */
+  async listQueuedTickets(locationId: string): Promise<KitchenTicket[]> {
+    const startTime = Date.now();
+    try {
+      const { data, error } = await this.client
+        .from('kitchen_tickets')
+        .select('*')
+        .eq('location_id', locationId)
+        .eq('status', 'placed')
+        .is('promoted_at', null)
+        .order('placed_at', { ascending: true });
+
+      if (error) throw error;
+
+      const results = (data || []).map(row => mapKitchenTicketFromRow(row as Database['public']['Tables']['kitchen_tickets']['Row']));
+      logQueryPerformance('listQueuedTickets', startTime, true);
+      return results;
+    } catch (error) {
+      logQueryPerformance('listQueuedTickets', startTime, false, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Promotes the oldest queued ticket to active if there's capacity
+   * Returns the promoted ticket or null if no promotion occurred
+   */
+  async promoteQueuedTicket(locationId: string, vendor: Vendor): Promise<KitchenTicket | null> {
+    const startTime = Date.now();
+    try {
+      // Get vendor limits (default to 10 if not set)
+      const limitTotal = vendor.kdsActiveLimitTotal ?? 10;
+      const limitCt = vendor.kdsActiveLimitCt ?? 10;
+
+      // Count active tickets (promoted and not completed/canceled)
+      const { count: activeCount, error: countError } = await this.client
+        .from('kitchen_tickets')
+        .select('*', { count: 'exact', head: true })
+        .eq('location_id', locationId)
+        .in('status', ['placed', 'preparing', 'ready'])
+        .not('promoted_at', 'is', null);
+
+      if (countError) throw countError;
+
+      // Check if we're at capacity
+      if (activeCount !== null && activeCount >= limitTotal) {
+        logQueryPerformance('promoteQueuedTicket', startTime, true);
+        return null; // At capacity, no promotion
+      }
+
+      // Get all active tickets to check CountrTop limit
+      const { data: activeTickets, error: activeError } = await this.client
+        .from('kitchen_tickets')
+        .select('source')
+        .eq('location_id', locationId)
+        .in('status', ['placed', 'preparing', 'ready'])
+        .not('promoted_at', 'is', null);
+
+      if (activeError) throw activeError;
+
+      const activeCtCount = (activeTickets || []).filter(t => t.source === 'countrtop_online').length;
+
+      // Find oldest queued ticket
+      const { data: queuedTickets, error: queueError } = await this.client
+        .from('kitchen_tickets')
+        .select('*')
+        .eq('location_id', locationId)
+        .eq('status', 'placed')
+        .is('promoted_at', null)
+        .order('placed_at', { ascending: true })
+        .limit(1);
+
+      if (queueError) throw queueError;
+
+      if (!queuedTickets || queuedTickets.length === 0) {
+        logQueryPerformance('promoteQueuedTicket', startTime, true);
+        return null; // No queued tickets
+      }
+
+      const ticketToPromote = queuedTickets[0] as Database['public']['Tables']['kitchen_tickets']['Row'];
+      const ticketSource = ticketToPromote.source as 'countrtop_online' | 'square_pos' | 'delivery_service';
+
+      // Check CountrTop limit if this is a CountrTop order
+      if (ticketSource === 'countrtop_online' && activeCtCount >= limitCt) {
+        logQueryPerformance('promoteQueuedTicket', startTime, true);
+        return null; // CountrTop limit reached
+      }
+
+      // Get all existing shortcodes for this location to assign a unique one
+      const { data: allTickets, error: allTicketsError } = await this.client
+        .from('kitchen_tickets')
+        .select('shortcode')
+        .eq('location_id', locationId)
+        .not('shortcode', 'is', null);
+
+      if (allTicketsError) throw allTicketsError;
+
+      const existingShortcodes = (allTickets || [])
+        .map(t => t.shortcode)
+        .filter((code): code is string => typeof code === 'string');
+
+      // Assign shortcode
+      const shortcode = assignShortcode(locationId, ticketSource, existingShortcodes);
+
+      // If shortcode assignment failed (e.g., DS already taken), don't promote
+      if (!shortcode) {
+        logQueryPerformance('promoteQueuedTicket', startTime, true);
+        return null;
+      }
+
+      // Promote the ticket
+      const now = new Date().toISOString();
+      const { data: promotedTicket, error: promoteError } = await this.client
+        .from('kitchen_tickets')
+        .update({
+          shortcode,
+          promoted_at: now,
+          updated_at: now
+        })
+        .eq('id', ticketToPromote.id)
+        .select()
+        .single();
+
+      if (promoteError) throw promoteError;
+      if (!promotedTicket) {
+        throw new Error(`Failed to promote ticket ${ticketToPromote.id}`);
+      }
+
+      const result = mapKitchenTicketFromRow(promotedTicket as Database['public']['Tables']['kitchen_tickets']['Row']);
+      logQueryPerformance('promoteQueuedTicket', startTime, true);
+      return result;
+    } catch (error) {
+      logQueryPerformance('promoteQueuedTicket', startTime, false, error);
+      throw error;
+    }
+  }
 }
 
 const mapVendorFromRow = (row: Database['public']['Tables']['vendors']['Row']): Vendor => ({
@@ -1121,7 +1292,9 @@ const mapVendorFromRow = (row: Database['public']['Tables']['vendors']['Row']): 
   postalCode: row.postal_code ?? undefined,
   phone: row.phone ?? undefined,
   timezone: row.timezone ?? undefined,
-  pickupInstructions: row.pickup_instructions ?? undefined
+  pickupInstructions: row.pickup_instructions ?? undefined,
+  kdsActiveLimitTotal: row.kds_active_limit_total ?? undefined,
+  kdsActiveLimitCt: row.kds_active_limit_ct ?? undefined
 });
 
 const mapOrderSnapshotFromRow = (
@@ -1262,6 +1435,8 @@ export const mapKitchenTicketFromRow = (
   customerUserId: row.customer_user_id ?? undefined,
   source: row.source,
   status: row.status,
+  shortcode: row.shortcode ?? undefined,
+  promotedAt: row.promoted_at ?? undefined,
   placedAt: row.placed_at,
   readyAt: row.ready_at ?? undefined,
   completedAt: row.completed_at ?? undefined,
@@ -1271,7 +1446,7 @@ export const mapKitchenTicketFromRow = (
 });
 
 export const toKitchenTicketInsert = (
-  ticket: Partial<KitchenTicket> & { squareOrderId: string; locationId: string; source: 'countrtop_online' | 'square_pos'; status: KitchenTicketStatus }
+  ticket: Partial<KitchenTicket> & { squareOrderId: string; locationId: string; source: 'countrtop_online' | 'square_pos' | 'delivery_service'; status: KitchenTicketStatus }
 ): Database['public']['Tables']['kitchen_tickets']['Insert'] => ({
   id: ticket.id,
   square_order_id: ticket.squareOrderId,
@@ -1280,6 +1455,8 @@ export const toKitchenTicketInsert = (
   customer_user_id: ticket.customerUserId ?? null,
   source: ticket.source,
   status: ticket.status,
+  shortcode: ticket.shortcode ?? null,
+  promoted_at: ticket.promotedAt ?? null,
   placed_at: ticket.placedAt ?? new Date().toISOString(),
   ready_at: ticket.readyAt ?? null,
   completed_at: ticket.completedAt ?? null,

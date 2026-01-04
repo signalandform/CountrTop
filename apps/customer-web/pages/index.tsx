@@ -98,6 +98,14 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor }: Props) 
   const [orders, setOrders] = useState<OrderHistoryEntry[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [ordersError, setOrdersError] = useState<string | null>(null);
+  
+  // Order tracking state
+  const [trackingState, setTrackingState] = useState<{
+    state: 'queued_up' | 'working' | 'ready' | 'enjoy';
+    shortcode: string | null;
+    message: string;
+  } | null>(null);
+  const [trackingLoading, setTrackingLoading] = useState(false);
   const [loyalty, setLoyalty] = useState<number | null>(null);
 
   // Track what user data we've loaded to prevent duplicate fetches
@@ -254,6 +262,44 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor }: Props) 
     // Force reload by clearing loaded user
     setLoadedUserId(null);
   }, [mounted, user?.id, vendorSlug]);
+
+  // Fetch tracking data for recent order
+  useEffect(() => {
+    if (!mounted || !vendorSlug || !recentOrder) {
+      setTrackingState(null);
+      return;
+    }
+
+    const fetchTracking = async () => {
+      setTrackingLoading(true);
+      try {
+        const result = await apiFetch<{
+          tracking: {
+            state: 'queued_up' | 'working' | 'ready' | 'enjoy';
+            shortcode: string | null;
+            status: string;
+            message: string;
+          };
+        }>(`/api/vendors/${vendorSlug}/orders/${recentOrder.squareOrderId}/tracking`);
+
+        if (result.ok) {
+          setTrackingState(result.data.tracking);
+        } else {
+          setTrackingState(null);
+        }
+      } catch (err) {
+        setTrackingState(null);
+      } finally {
+        setTrackingLoading(false);
+      }
+    };
+
+    fetchTracking();
+
+    // Poll every 10 seconds for updates
+    const interval = setInterval(fetchTracking, 10000);
+    return () => clearInterval(interval);
+  }, [mounted, vendorSlug, recentOrder?.squareOrderId]);
 
   // ---------------------------------------------------------------------------
   // Cart actions
@@ -491,6 +537,15 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor }: Props) 
                     {new Date(recentOrder.placedAt).toLocaleDateString()} · {recentOrderDetails.count} items · {formatCurrency(recentOrderDetails.total, recentOrderDetails.currency)}
                   </div>
                 </div>
+                {trackingLoading && <p className="muted" style={{ marginTop: '12px' }}>Loading tracking...</p>}
+                {!trackingLoading && trackingState && (
+                  <div className="tracking-ladder" style={{ marginTop: '16px' }}>
+                    <div className="tracking-message">{trackingState.message}</div>
+                    {trackingState.state === 'ready' && trackingState.shortcode && (
+                      <div className="tracking-shortcode">{trackingState.shortcode}</div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </section>
@@ -940,8 +995,38 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor }: Props) 
 
           .order-tracking-info {
             display: flex;
-            justify-content: space-between;
-            align-items: center;
+            flex-direction: column;
+            gap: 12px;
+          }
+
+          .tracking-ladder {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            padding: 16px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            margin-top: 12px;
+          }
+
+          .tracking-message {
+            font-size: 16px;
+            font-weight: 500;
+            color: #e8e8e8;
+            text-align: center;
+          }
+
+          .tracking-shortcode {
+            font-size: 64px;
+            font-weight: 900;
+            text-align: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1;
+            padding: 16px 0;
           }
 
           .points {

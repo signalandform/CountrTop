@@ -21,13 +21,16 @@ CountrTop v0.1 is a **Tenant Lite** ordering layer: multi-vendor capable, single
 ├── apps
 │   ├── customer-web        # Canonical customer experience (Next.js)
 │   ├── customer-mobile     # iOS WebView shell + push token capture (Expo)
-│   ├── vendor-admin-web    # Vendor Insights (read-only)
-│   └── vendor-ops-mobile   # Order queue + "Mark Ready" (tablet optimized)
+│   ├── vendor-admin-web    # Vendor Insights + Settings (Next.js)
+│   ├── vendor-ops-mobile   # Order queue + "Mark Ready" (tablet optimized)
+│   └── kds-web             # Kitchen Display System (KDS) - Universal Square queue (Next.js, PWA)
 ├── packages
-│   ├── api-client          # Minimal REST helpers
+│   ├── api-client          # Minimal REST helpers + Square API client
 │   ├── data                # Supabase + mock data client
 │   ├── models              # Shared v0.1 types
 │   └── ui                  # Shared UI primitives
+├── supabase
+│   └── migrations          # Database migrations
 ├── pnpm-workspace.yaml
 ├── package.json
 └── tsconfig.json
@@ -40,10 +43,11 @@ CountrTop v0.1 is a **Tenant Lite** ordering layer: multi-vendor capable, single
 1. Install dependencies: `pnpm install`
 2. Customer web (canonical): `pnpm dev:customer-web`
 3. Customer mobile shell (Expo): `pnpm dev:customer`
-4. Vendor admin (Insights): `pnpm dev:vendor-admin`
+4. Vendor admin (Insights + Settings): `pnpm dev:vendor-admin`
 5. Vendor ops (Expo): `pnpm dev:vendor-ops`
+6. KDS (Kitchen Display System): `pnpm dev:kds`
 
-Build commands are namespaced: `pnpm build:customer-web`, `pnpm build:customer`, `pnpm build:vendor-ops`, `pnpm build:vendor-admin`.
+Build commands are namespaced: `pnpm build:customer-web`, `pnpm build:customer`, `pnpm build:vendor-ops`, `pnpm build:vendor-admin`, `pnpm build:kds`.
 
 ---
 
@@ -129,6 +133,26 @@ The Square webhook handler (`apps/customer-web/pages/api/square/webhook.ts`) req
 - In development mode, missing signature configuration is allowed with a warning
 
 **Security:** In production, always configure both `SQUARE_WEBHOOK_SIGNATURE_KEY` and `SQUARE_WEBHOOK_URL`. While the handler continues processing on validation failure, this should be monitored and investigated.
+
+---
+
+## 🍳 KDS (Kitchen Display System)
+
+CountrTop KDS is a universal Square kitchen queue that ingests **all** Square OPEN orders (not just CountrTop online orders). This ensures CountrTop becomes the default kitchen surface, competing with Fresh KDS.
+
+**Status:** Phase 1 (Food Truck MVP) - Milestones 0-5 complete ✅
+
+**Deployment:**
+- Staging: `https://kds.staging.countrtop.com`
+- Production: TBD
+
+**Features:**
+- Universal Square order ingestion (webhook + polling)
+- Offline-capable bump queue (placed → ready → completed)
+- PWA installable on iPad
+- Row Level Security (RLS) for vendor-scoped access
+
+**Roadmap:** See [KDS Roadmap](./KDS_ROADMAP.md) for detailed milestones and future phases.
 
 ---
 

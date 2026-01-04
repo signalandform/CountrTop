@@ -53,7 +53,9 @@ export default async function handler(
     state,
     postalCode,
     phone,
-    pickupInstructions
+    pickupInstructions,
+    kdsActiveLimitTotal,
+    kdsActiveLimitCt
   } = req.body;
 
   try {
@@ -79,6 +81,8 @@ export default async function handler(
     if (postalCode !== undefined) updateData.postal_code = postalCode || null;
     if (phone !== undefined) updateData.phone = phone || null;
     if (pickupInstructions !== undefined) updateData.pickup_instructions = pickupInstructions || null;
+    if (kdsActiveLimitTotal !== undefined) updateData.kds_active_limit_total = kdsActiveLimitTotal || null;
+    if (kdsActiveLimitCt !== undefined) updateData.kds_active_limit_ct = kdsActiveLimitCt || null;
 
     // Do not allow updating square_location_id or admin_user_id through this endpoint
     // These are protected fields

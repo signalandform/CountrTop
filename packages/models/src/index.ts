@@ -17,6 +17,8 @@ export type Vendor = {
   phone?: string | null;
   timezone?: string | null;
   pickupInstructions?: string | null;
+  kdsActiveLimitTotal?: number | null;
+  kdsActiveLimitCt?: number | null;
 };
 
 export type User = {
@@ -123,11 +125,13 @@ export type SquareOrder = {
   metadata?: Record<string, unknown> | null;
   lineItems?: unknown[] | null;
   fulfillment?: Record<string, unknown> | null;
-  source: 'countrtop_online' | 'square_pos';
+  source: 'countrtop_online' | 'square_pos' | 'delivery_service';
   raw?: Record<string, unknown> | null;
 };
 
 export type KitchenTicketStatus = 'placed' | 'preparing' | 'ready' | 'completed' | 'canceled';
+
+export type CustomerTrackingState = 'queued_up' | 'working' | 'ready' | 'enjoy';
 
 export type KitchenTicket = {
   id: string;
@@ -135,8 +139,10 @@ export type KitchenTicket = {
   locationId: string;
   ctReferenceId?: string | null;
   customerUserId?: string | null;
-  source: 'countrtop_online' | 'square_pos';
+  source: 'countrtop_online' | 'square_pos' | 'delivery_service';
   status: KitchenTicketStatus;
+  shortcode?: string | null;
+  promotedAt?: string | null;
   placedAt: string;
   readyAt?: string | null;
   completedAt?: string | null;

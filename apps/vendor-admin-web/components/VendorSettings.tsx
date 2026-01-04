@@ -19,6 +19,8 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
   const [postalCode, setPostalCode] = useState(vendor.postalCode || '');
   const [phone, setPhone] = useState(vendor.phone || '');
   const [pickupInstructions, setPickupInstructions] = useState(vendor.pickupInstructions || '');
+  const [kdsActiveLimitTotal, setKdsActiveLimitTotal] = useState(vendor.kdsActiveLimitTotal?.toString() || '10');
+  const [kdsActiveLimitCt, setKdsActiveLimitCt] = useState(vendor.kdsActiveLimitCt?.toString() || '10');
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,7 +42,9 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
           state: state || null,
           postalCode: postalCode || null,
           phone: phone || null,
-          pickupInstructions: pickupInstructions || null
+          pickupInstructions: pickupInstructions || null,
+          kdsActiveLimitTotal: kdsActiveLimitTotal ? parseInt(kdsActiveLimitTotal, 10) : null,
+          kdsActiveLimitCt: kdsActiveLimitCt ? parseInt(kdsActiveLimitCt, 10) : null
         })
       });
 
@@ -155,6 +159,44 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
           />
         </div>
 
+        <div className="form-section-divider">
+          <h3>KDS Queue Settings</h3>
+        </div>
+
+        <div className="form-row">
+          <div className="form-group">
+            <label htmlFor="kdsActiveLimitTotal">Max Active Tickets (Total)</label>
+            <input
+              id="kdsActiveLimitTotal"
+              type="number"
+              min="1"
+              max="50"
+              value={kdsActiveLimitTotal}
+              onChange={(e) => setKdsActiveLimitTotal(e.target.value)}
+              className="input-field"
+              disabled={saving}
+              placeholder="10"
+            />
+            <span className="field-hint">Maximum number of active tickets shown in KDS queue (all sources)</span>
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="kdsActiveLimitCt">Max Active CountrTop Orders</label>
+            <input
+              id="kdsActiveLimitCt"
+              type="number"
+              min="1"
+              max="50"
+              value={kdsActiveLimitCt}
+              onChange={(e) => setKdsActiveLimitCt(e.target.value)}
+              className="input-field"
+              disabled={saving}
+              placeholder="10"
+            />
+            <span className="field-hint">Maximum number of active CountrTop orders in queue</span>
+          </div>
+        </div>
+
         <div className="form-actions">
           <button type="submit" className="btn-primary" disabled={saving}>
             {saving ? 'Saving...' : 'Save Settings'}
@@ -193,6 +235,26 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
           color: #a78bfa;
           text-transform: uppercase;
           letter-spacing: 0.5px;
+        }
+
+        .form-section-divider {
+          margin-top: 32px;
+          margin-bottom: 16px;
+          padding-top: 24px;
+          border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .form-section-divider h3 {
+          font-size: 18px;
+          font-weight: 600;
+          color: #e8e8e8;
+          margin: 0;
+        }
+
+        .field-hint {
+          font-size: 12px;
+          color: #888;
+          margin-top: 4px;
         }
 
         .input-field,

@@ -112,6 +112,17 @@ export async function reconcileSquareOrdersForLocation(
           if (!ticketExistedBefore) {
             createdCount++;
           }
+          
+          // Try to promote a queued ticket (best-effort, don't fail on error)
+          try {
+            await dataClient.promoteQueuedTicket(locationId, vendor);
+          } catch (error) {
+            // Log but don't fail - promotion is best-effort
+            logger.warn(`Failed to promote queued ticket during reconciliation`, {
+              locationId,
+              error: error instanceof Error ? error.message : String(error)
+            });
+          }
         }
 
         // Update ticket for terminal states
@@ -119,6 +130,17 @@ export async function reconcileSquareOrdersForLocation(
           await dataClient.updateTicketForTerminalOrderState(order);
           if (ticketExistedBefore) {
             updatedCount++;
+          }
+          
+          // When a ticket completes, try to promote the next queued ticket
+          try {
+            await dataClient.promoteQueuedTicket(locationId, vendor);
+          } catch (error) {
+            // Log but don't fail - promotion is best-effort
+            logger.warn(`Failed to promote queued ticket after completion`, {
+              locationId,
+              error: error instanceof Error ? error.message : String(error)
+            });
           }
         }
       } catch (error) {
