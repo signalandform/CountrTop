@@ -17,6 +17,7 @@ type TicketsResponse =
           customerUserId?: string | null;
           source: 'countrtop_online' | 'square_pos';
           status: 'placed' | 'preparing' | 'ready';
+          shortcode?: string | null;
           placedAt: string;
           readyAt?: string | null;
           completedAt?: string | null;
@@ -131,6 +132,7 @@ export default async function handler(
           customerUserId: ticket.customerUserId ?? null,
           source: ticket.source,
           status: ticket.status as 'placed' | 'preparing' | 'ready',
+          shortcode: ticket.shortcode ?? null,
           placedAt: ticket.placedAt,
           readyAt: ticket.readyAt ?? null,
           completedAt: ticket.completedAt ?? null,

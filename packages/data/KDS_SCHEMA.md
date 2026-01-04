@@ -34,6 +34,8 @@ CountrTop canonical kitchen ticket state machine. Independent from Square order 
 - `customer_user_id` (UUID, NULL) - Customer user ID if from CountrTop
 - `source` (TEXT, NOT NULL) - Source: 'countrtop_online' or 'square_pos'
 - `status` (TEXT, NOT NULL) - Status: 'placed', 'preparing', 'ready', 'completed', 'canceled'
+- `shortcode` (TEXT, NULL) - Auto-generated 4-character uppercase shortcode (unique per location)
+- `promoted_at` (TIMESTAMPTZ, NULL) - Timestamp when ticket was promoted from queued to active
 - `placed_at` (TIMESTAMPTZ, NOT NULL) - When order was placed
 - `ready_at` (TIMESTAMPTZ, NULL) - When order was marked ready
 - `completed_at` (TIMESTAMPTZ, NULL) - When order was completed
@@ -45,10 +47,16 @@ CountrTop canonical kitchen ticket state machine. Independent from Square order 
 - `kitchen_tickets_location_status_idx` - (location_id, status) for KDS queue queries
 - `kitchen_tickets_location_placed_idx` - (location_id, placed_at DESC) for sorting
 - `kitchen_tickets_updated_at_idx` - (updated_at DESC) for recent updates
+- `kitchen_tickets_location_shortcode_unique` - UNIQUE (location_id, shortcode) for shortcode uniqueness
+- `kitchen_tickets_shortcode_idx` - (shortcode) for fast shortcode lookups
 
 **Constraints:**
 - `square_order_id` is UNIQUE - enables UPSERT operations
 - Foreign key to `square_orders` with CASCADE DELETE - ticket deleted when order deleted
+- `(location_id, shortcode)` is UNIQUE - ensures shortcodes are unique per location
+
+**Triggers:**
+- `trg_kitchen_tickets_set_shortcode` - BEFORE INSERT trigger that auto-generates a unique 4-character uppercase shortcode if not provided
 
 ## TypeScript Models
 
@@ -79,6 +87,8 @@ type KitchenTicket = {
   customerUserId?: string | null;
   source: 'countrtop_online' | 'square_pos';
   status: 'placed' | 'preparing' | 'ready' | 'completed' | 'canceled';
+  shortcode?: string | null;
+  promotedAt?: string | null;
   placedAt: string;
   readyAt?: string | null;
   completedAt?: string | null;
