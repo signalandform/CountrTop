@@ -33,21 +33,17 @@ export function VendorInsightsDashboard({ vendorSlug, vendorName, vendor, insigh
 
   return (
     <main className="page">
-      {/* Header */}
-      <header className="header">
-        <div className="header-content">
-          <p className="eyebrow">CountrTop Admin</p>
-          <h1 className="title">{vendorName}</h1>
-          <p className="subtitle">Vendor dashboard</p>
-        </div>
-        {vendorSlug && (
-          <Link href={`/vendors/${vendorSlug}/orders`} className="btn-secondary">
-            View Orders →
-          </Link>
-        )}
-      </header>
+      <div className="page-content">
+        {/* Header */}
+        <header className="header">
+          <div className="header-content">
+            <p className="eyebrow">CountrTop Admin</p>
+            <h1 className="title">{vendorName}</h1>
+            <p className="subtitle">Vendor dashboard</p>
+          </div>
+        </header>
 
-      {statusMessage && <div className="error-banner">{statusMessage}</div>}
+        {statusMessage && <div className="error-banner">{statusMessage}</div>}
 
       {/* Dashboard Navigation Cards */}
       <section className="dashboard-cards">
@@ -129,11 +125,12 @@ export function VendorInsightsDashboard({ vendorSlug, vendorName, vendor, insigh
         </section>
       </div>
 
-      {/* Vendor Settings */}
-      <div id="settings" style={{ marginTop: '32px' }}>
-        {vendor && vendorSlug && (
-          <VendorSettings vendor={vendor} vendorSlug={vendorSlug} />
-        )}
+        {/* Vendor Settings */}
+        <div id="settings" style={{ marginTop: '32px' }}>
+          {vendor && vendorSlug && (
+            <VendorSettings vendor={vendor} vendorSlug={vendorSlug} />
+          )}
+        </div>
       </div>
 
       <style jsx>{`
@@ -145,8 +142,12 @@ export function VendorInsightsDashboard({ vendorSlug, vendorName, vendor, insigh
           padding: 0 24px 48px;
         }
 
+        .page-content {
+          width: 100%;
+        }
+
         @media (min-width: 1000px) {
-          .page {
+          .page-content {
             max-width: 80vw;
             margin: 0 auto;
           }
