@@ -2,7 +2,23 @@ import { randomUUID } from 'crypto';
 import { SupabaseClient, User as SupabaseAuthUser } from '@supabase/supabase-js';
 
 import { DataClient, LoyaltyLedgerEntryInput, OrderSnapshotInput, PushDeviceInput } from './dataClient';
-import { KitchenTicket, KitchenTicketStatus, KitchenTicketWithOrder, LoyaltyLedgerEntry, OrderSnapshot, PushDevice, SquareOrder, User, Vendor, VendorStatus } from './models';
+import {
+  KitchenTicket,
+  KitchenTicketStatus,
+  KitchenTicketWithOrder,
+  KdsSummary,
+  KdsThroughputPoint,
+  KdsPrepTimePoint,
+  KdsHeatmapCell,
+  KdsSourceMetrics,
+  LoyaltyLedgerEntry,
+  OrderSnapshot,
+  PushDevice,
+  SquareOrder,
+  User,
+  Vendor,
+  VendorStatus
+} from './models';
 import { assignShortcode } from './shortcodes';
 
 // Query result cache with TTL
@@ -1257,6 +1273,380 @@ export class SupabaseDataClient implements DataClient {
       return result;
     } catch (error) {
       logQueryPerformance('promoteQueuedTicket', startTime, false, error);
+      throw error;
+    }
+  }
+
+  // ============================================================================
+  // KDS: Analytics (Milestone 9)
+  // ============================================================================
+
+  /**
+   * Gets KDS summary metrics for a location and date range
+   */
+  async getKdsSummary(
+    locationId: string,
+    startDate: Date,
+    endDate: Date,
+    timezone: string
+  ): Promise<KdsSummary> {
+    const startTime = Date.now();
+    try {
+      // Fetch tickets in date range
+      const { data: tickets, error } = await this.client
+        .from('kitchen_tickets')
+        .select('status, placed_at, ready_at, completed_at, canceled_at')
+        .eq('location_id', locationId)
+        .gte('placed_at', startDate.toISOString())
+        .lte('placed_at', endDate.toISOString());
+
+      if (error) throw error;
+
+      const ticketsData = tickets || [];
+
+      // Calculate totals
+      const totals = {
+        ticketsPlaced: ticketsData.length,
+        ticketsReady: ticketsData.filter(t => t.ready_at).length,
+        ticketsCompleted: ticketsData.filter(t => t.completed_at).length,
+        ticketsCanceled: ticketsData.filter(t => t.canceled_at).length
+      };
+
+      // Calculate averages (null-safe)
+      const readyTickets = ticketsData.filter(t => t.ready_at && t.placed_at);
+      const prepTimeMinutes = readyTickets.length > 0
+        ? readyTickets.reduce((sum, t) => {
+            const placed = new Date(t.placed_at).getTime();
+            const ready = new Date(t.ready_at!).getTime();
+            return sum + (ready - placed) / (1000 * 60);
+          }, 0) / readyTickets.length
+        : null;
+
+      const completedTickets = ticketsData.filter(t => t.completed_at && t.placed_at);
+      const totalTimeMinutes = completedTickets.length > 0
+        ? completedTickets.reduce((sum, t) => {
+            const placed = new Date(t.placed_at).getTime();
+            const completed = new Date(t.completed_at!).getTime();
+            return sum + (completed - placed) / (1000 * 60);
+          }, 0) / completedTickets.length
+        : null;
+
+      // Calculate queue depth (average active tickets)
+      // This is a simplified calculation - for accurate queue depth, we'd need time-series data
+      const queueDepth = totals.ticketsPlaced > 0
+        ? (totals.ticketsPlaced - totals.ticketsCompleted - totals.ticketsCanceled) / 2
+        : 0;
+
+      // Calculate throughput
+      const hoursDiff = (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60);
+      const daysDiff = hoursDiff / 24;
+      const throughput = {
+        ticketsPerHour: hoursDiff > 0 ? totals.ticketsCompleted / hoursDiff : 0,
+        ticketsPerDay: daysDiff > 0 ? totals.ticketsCompleted / daysDiff : 0
+      };
+
+      const result: KdsSummary = {
+        period: {
+          start: startDate.toISOString(),
+          end: endDate.toISOString()
+        },
+        totals,
+        averages: {
+          prepTimeMinutes,
+          totalTimeMinutes,
+          queueDepth
+        },
+        throughput
+      };
+
+      logQueryPerformance('getKdsSummary', startTime, true);
+      return result;
+    } catch (error) {
+      logQueryPerformance('getKdsSummary', startTime, false, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Gets KDS throughput time series
+   */
+  async getKdsThroughput(
+    locationId: string,
+    startDate: Date,
+    endDate: Date,
+    granularity: 'hour' | 'day' | 'week',
+    timezone: string
+  ): Promise<KdsThroughputPoint[]> {
+    const startTime = Date.now();
+    try {
+      // For v1, we'll fetch all tickets and group in JavaScript
+      // TODO: Optimize with RPC function for large date ranges
+      const { data: tickets, error } = await this.client
+        .from('kitchen_tickets')
+        .select('placed_at, ready_at')
+        .eq('location_id', locationId)
+        .gte('placed_at', startDate.toISOString())
+        .lte('placed_at', endDate.toISOString())
+        .not('completed_at', 'is', null);
+
+      if (error) throw error;
+
+      const ticketsData = tickets || [];
+      const buckets = new Map<string, { count: number; prepTimes: number[] }>();
+
+      // Group tickets by time bucket
+      ticketsData.forEach(ticket => {
+        const placedDate = new Date(ticket.placed_at);
+        let bucketKey: string;
+        
+        if (granularity === 'hour') {
+          bucketKey = placedDate.toISOString().slice(0, 13) + ':00:00.000Z';
+        } else if (granularity === 'day') {
+          bucketKey = placedDate.toISOString().slice(0, 10) + 'T00:00:00.000Z';
+        } else { // week
+          const weekStart = new Date(placedDate);
+          weekStart.setDate(placedDate.getDate() - placedDate.getDay());
+          weekStart.setHours(0, 0, 0, 0);
+          bucketKey = weekStart.toISOString();
+        }
+
+        if (!buckets.has(bucketKey)) {
+          buckets.set(bucketKey, { count: 0, prepTimes: [] });
+        }
+        
+        const bucket = buckets.get(bucketKey)!;
+        bucket.count++;
+        
+        if (ticket.ready_at) {
+          const placed = new Date(ticket.placed_at).getTime();
+          const ready = new Date(ticket.ready_at).getTime();
+          const prepTime = (ready - placed) / (1000 * 60);
+          bucket.prepTimes.push(prepTime);
+        }
+      });
+
+      // Convert to result array
+      const result: KdsThroughputPoint[] = Array.from(buckets.entries())
+        .map(([timestamp, data]) => ({
+          timestamp,
+          count: data.count,
+          avgPrepTime: data.prepTimes.length > 0
+            ? data.prepTimes.reduce((sum, t) => sum + t, 0) / data.prepTimes.length
+            : null
+        }))
+        .sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+
+      logQueryPerformance('getKdsThroughput', startTime, true);
+      return result;
+    } catch (error) {
+      logQueryPerformance('getKdsThroughput', startTime, false, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Gets prep time time series
+   */
+  async getKdsPrepTimeSeries(
+    locationId: string,
+    startDate: Date,
+    endDate: Date,
+    granularity: 'hour' | 'day' | 'week',
+    timezone: string
+  ): Promise<KdsPrepTimePoint[]> {
+    const startTime = Date.now();
+    try {
+      // Fetch tickets with prep times
+      const { data: tickets, error } = await this.client
+        .from('kitchen_tickets')
+        .select('placed_at, ready_at')
+        .eq('location_id', locationId)
+        .gte('placed_at', startDate.toISOString())
+        .lte('placed_at', endDate.toISOString())
+        .not('ready_at', 'is', null);
+
+      if (error) throw error;
+
+      const ticketsData = tickets || [];
+      const buckets = new Map<string, number[]>();
+
+      // Group prep times by time bucket
+      ticketsData.forEach(ticket => {
+        const placedDate = new Date(ticket.placed_at);
+        let bucketKey: string;
+        
+        if (granularity === 'hour') {
+          bucketKey = placedDate.toISOString().slice(0, 13) + ':00:00.000Z';
+        } else if (granularity === 'day') {
+          bucketKey = placedDate.toISOString().slice(0, 10) + 'T00:00:00.000Z';
+        } else { // week
+          const weekStart = new Date(placedDate);
+          weekStart.setDate(placedDate.getDate() - placedDate.getDay());
+          weekStart.setHours(0, 0, 0, 0);
+          bucketKey = weekStart.toISOString();
+        }
+
+        if (!buckets.has(bucketKey)) {
+          buckets.set(bucketKey, []);
+        }
+        
+        const placed = new Date(ticket.placed_at).getTime();
+        const ready = new Date(ticket.ready_at!).getTime();
+        const prepTime = (ready - placed) / (1000 * 60);
+        buckets.get(bucketKey)!.push(prepTime);
+      });
+
+      // Convert to result array
+      const result: KdsPrepTimePoint[] = Array.from(buckets.entries())
+        .map(([timestamp, prepTimes]) => ({
+          timestamp,
+          avgPrepTimeMinutes: prepTimes.length > 0
+            ? prepTimes.reduce((sum, t) => sum + t, 0) / prepTimes.length
+            : null,
+          count: prepTimes.length
+        }))
+        .sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+
+      logQueryPerformance('getKdsPrepTimeSeries', startTime, true);
+      return result;
+    } catch (error) {
+      logQueryPerformance('getKdsPrepTimeSeries', startTime, false, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Gets KDS heatmap data (day of week x hour)
+   */
+  async getKdsHeatmap(
+    locationId: string,
+    startDate: Date,
+    endDate: Date,
+    timezone: string
+  ): Promise<KdsHeatmapCell[]> {
+    const startTime = Date.now();
+    try {
+      // Fetch tickets
+      const { data: tickets, error } = await this.client
+        .from('kitchen_tickets')
+        .select('placed_at, ready_at')
+        .eq('location_id', locationId)
+        .gte('placed_at', startDate.toISOString())
+        .lte('placed_at', endDate.toISOString());
+
+      if (error) throw error;
+
+      const ticketsData = tickets || [];
+      const cells = new Map<string, { count: number; prepTimes: number[] }>();
+
+      // Group by day of week and hour
+      ticketsData.forEach(ticket => {
+        const placedDate = new Date(ticket.placed_at);
+        const dayOfWeek = placedDate.getUTCDay(); // 0 = Sunday, 6 = Saturday
+        const hour = placedDate.getUTCHours();
+        const cellKey = `${dayOfWeek}-${hour}`;
+
+        if (!cells.has(cellKey)) {
+          cells.set(cellKey, { count: 0, prepTimes: [] });
+        }
+        
+        const cell = cells.get(cellKey)!;
+        cell.count++;
+        
+        if (ticket.ready_at) {
+          const placed = new Date(ticket.placed_at).getTime();
+          const ready = new Date(ticket.ready_at).getTime();
+          const prepTime = (ready - placed) / (1000 * 60);
+          cell.prepTimes.push(prepTime);
+        }
+      });
+
+      // Convert to result array
+      const result: KdsHeatmapCell[] = Array.from(cells.entries())
+        .map(([cellKey, data]) => {
+          const [dayOfWeek, hour] = cellKey.split('-').map(Number);
+          return {
+            dayOfWeek,
+            hour,
+            count: data.count,
+            avgPrepTimeMinutes: data.prepTimes.length > 0
+              ? data.prepTimes.reduce((sum, t) => sum + t, 0) / data.prepTimes.length
+              : null
+          };
+        });
+
+      logQueryPerformance('getKdsHeatmap', startTime, true);
+      return result;
+    } catch (error) {
+      logQueryPerformance('getKdsHeatmap', startTime, false, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Gets KDS metrics by source (online vs POS)
+   */
+  async getKdsBySource(
+    locationId: string,
+    startDate: Date,
+    endDate: Date
+  ): Promise<KdsSourceMetrics> {
+    const startTime = Date.now();
+    try {
+      // Fetch tickets grouped by source
+      const { data: tickets, error } = await this.client
+        .from('kitchen_tickets')
+        .select('source, placed_at, ready_at, completed_at')
+        .eq('location_id', locationId)
+        .gte('placed_at', startDate.toISOString())
+        .lte('placed_at', endDate.toISOString());
+
+      if (error) throw error;
+
+      const ticketsData = tickets || [];
+      
+      const countrtopTickets = ticketsData.filter(t => t.source === 'countrtop_online');
+      const squarePosTickets = ticketsData.filter(t => t.source === 'square_pos');
+
+      const calculateAvgPrepTime = (tickets: typeof ticketsData): number | null => {
+        const ready = tickets.filter(t => t.ready_at && t.placed_at);
+        if (ready.length === 0) return null;
+        const total = ready.reduce((sum, t) => {
+          const placed = new Date(t.placed_at).getTime();
+          const readyTime = new Date(t.ready_at!).getTime();
+          return sum + (readyTime - placed) / (1000 * 60);
+        }, 0);
+        return total / ready.length;
+      };
+
+      const calculateAvgTotalTime = (tickets: typeof ticketsData): number | null => {
+        const completed = tickets.filter(t => t.completed_at && t.placed_at);
+        if (completed.length === 0) return null;
+        const total = completed.reduce((sum, t) => {
+          const placed = new Date(t.placed_at).getTime();
+          const completedTime = new Date(t.completed_at!).getTime();
+          return sum + (completedTime - placed) / (1000 * 60);
+        }, 0);
+        return total / completed.length;
+      };
+
+      const result: KdsSourceMetrics = {
+        countrtop_online: {
+          count: countrtopTickets.length,
+          avgPrepTimeMinutes: calculateAvgPrepTime(countrtopTickets),
+          avgTotalTimeMinutes: calculateAvgTotalTime(countrtopTickets)
+        },
+        square_pos: {
+          count: squarePosTickets.length,
+          avgPrepTimeMinutes: calculateAvgPrepTime(squarePosTickets),
+          avgTotalTimeMinutes: calculateAvgTotalTime(squarePosTickets)
+        }
+      };
+
+      logQueryPerformance('getKdsBySource', startTime, true);
+      return result;
+    } catch (error) {
+      logQueryPerformance('getKdsBySource', startTime, false, error);
       throw error;
     }
   }

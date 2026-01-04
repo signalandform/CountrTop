@@ -64,4 +64,37 @@ export interface DataClient {
     status: 'ready' | 'completed',
     vendorUserId?: string
   ): Promise<KitchenTicket>;
+
+  // KDS: Analytics (Milestone 9)
+  getKdsSummary(
+    locationId: string,
+    startDate: Date,
+    endDate: Date,
+    timezone: string
+  ): Promise<import('@countrtop/models').KdsSummary>;
+  getKdsThroughput(
+    locationId: string,
+    startDate: Date,
+    endDate: Date,
+    granularity: 'hour' | 'day' | 'week',
+    timezone: string
+  ): Promise<import('@countrtop/models').KdsThroughputPoint[]>;
+  getKdsPrepTimeSeries(
+    locationId: string,
+    startDate: Date,
+    endDate: Date,
+    granularity: 'hour' | 'day' | 'week',
+    timezone: string
+  ): Promise<import('@countrtop/models').KdsPrepTimePoint[]>;
+  getKdsHeatmap(
+    locationId: string,
+    startDate: Date,
+    endDate: Date,
+    timezone: string
+  ): Promise<import('@countrtop/models').KdsHeatmapCell[]>;
+  getKdsBySource(
+    locationId: string,
+    startDate: Date,
+    endDate: Date
+  ): Promise<import('@countrtop/models').KdsSourceMetrics>;
 }

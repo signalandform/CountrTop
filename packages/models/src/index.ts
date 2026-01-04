@@ -86,6 +86,9 @@ export type CartItem = MenuItem & {
   quantity: number;
 };
 
+// Re-export analytics types
+export * from './analytics';
+
 // Order Types
 export type OrderItem = {
   name: string;
