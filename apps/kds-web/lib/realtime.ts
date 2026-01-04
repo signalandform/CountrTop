@@ -136,11 +136,7 @@ function handleRealtimeEvent(
  * Note: This is a utility function, not a React hook. 
  * Use it inside useEffect for proper lifecycle management.
  */
-export function useKitchenTicketsRealtime(
-  supabase: SupabaseClient<Database> | null,
-  locationId: string | null,
-  callbacks: SubscriptionCallbacks
-): SubscriptionState {
+export function useKitchenTicketsRealtime(): SubscriptionState {
   // This is a utility function, not a React hook
   // The actual hook will be implemented in the component
   throw new Error(

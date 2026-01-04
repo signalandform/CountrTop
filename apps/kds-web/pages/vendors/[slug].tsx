@@ -236,15 +236,15 @@ export default function VendorQueuePage({ vendorSlug }: VendorPageProps) {
 
   // Handle realtime events
   // Refetch all tickets to ensure we have full data (including order details)
-  const handleRealtimeInsert = useCallback(async (_event: TicketChangeEvent) => {
+  const handleRealtimeInsert = useCallback(async () => {
     // Refetch all tickets to get full data with order details
     await fetchTickets();
-  }, [fetchTickets]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleRealtimeUpdate = useCallback(async (_event: TicketChangeEvent) => {
+  const handleRealtimeUpdate = useCallback(async () => {
     // Refetch all tickets to get full data with order details
     await fetchTickets();
-  }, [fetchTickets]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleRealtimeDelete = useCallback(async (event: TicketChangeEvent) => {
     // Remove ticket from state immediately (optimistic update)
@@ -270,8 +270,8 @@ export default function VendorQueuePage({ vendorSlug }: VendorPageProps) {
         supabase,
         locationId,
         {
-          onInsert: handleRealtimeInsert,
-          onUpdate: handleRealtimeUpdate,
+          onInsert: () => handleRealtimeInsert(),
+          onUpdate: () => handleRealtimeUpdate(),
           onDelete: handleRealtimeDelete,
           onError: (err) => {
             console.error('Realtime subscription error:', err);
