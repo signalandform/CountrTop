@@ -18,6 +18,80 @@ Build comprehensive analytics and insights for vendors, focusing on KDS performa
 
 ---
 
+## Milestone 8.5: Data Hygiene & Analytics Readiness
+
+### Goal
+Ensure data is trustworthy and analytics-ready before building dashboards. Fix timezone inconsistencies and timestamp gaps that would break analytics charts.
+
+### Key Features
+
+#### 8.5.1: Vendor Timezone Population
+- **Ensure `vendors.timezone` is populated:**
+  - Default from Square location timezone if null
+  - Migration to backfill existing vendors from Square API
+  - Validation on vendor updates
+
+**Data Source:**
+- `vendors.timezone` column
+- Square Locations API (`GET /v2/locations/{location_id}`) for timezone
+
+#### 8.5.2: Ticket Timestamp Consistency
+- **Ensure `kitchen_tickets` timestamps are consistent:**
+  - `placed_at` always exists (already enforced ✅)
+  - `ready_at`, `completed_at`, `canceled_at` set correctly on status transitions
+  - Handle null values gracefully in analytics queries
+
+**Validation:**
+- Migration to verify timestamp integrity
+- Analytics queries must handle null timestamps (exclude from averages, not error)
+
+#### 8.5.3: Database Indexes for Analytics
+- **Add missing indexes for analytics queries:**
+  - `kitchen_tickets(location_id, placed_at)` - Time-range queries
+  - `kitchen_tickets(location_id, status, placed_at)` - Status-filtered time queries
+  - `square_orders(location_id, created_at)` - Revenue time queries
+  - Partial index: `order_snapshots(vendor_id, user_id, placed_at) WHERE user_id IS NOT NULL` - Customer analytics
+
+**Migration:**
+- Create indexes if not present (idempotent)
+- Verify query performance
+
+### Implementation Steps
+
+1. **Timezone Migration**
+   - Create migration to backfill `vendors.timezone` from Square API
+   - Update vendor prefill logic to always include timezone
+   - Add validation on vendor updates
+
+2. **Timestamp Validation**
+   - Create migration to verify timestamp integrity
+   - Update ticket status update logic to ensure timestamps are set
+   - Add analytics query helpers that handle null timestamps gracefully
+
+3. **Index Creation**
+   - Create migration for analytics indexes
+   - Verify indexes are used in query plans
+   - Monitor query performance
+
+### Acceptance Criteria
+
+✅ **Timezone:**
+- All vendors have `timezone` populated
+- Vendor updates preserve/update timezone
+- Analytics queries use vendor timezone for bucketing
+
+✅ **Timestamps:**
+- All tickets have `placed_at`
+- Status transitions set appropriate timestamps (`ready_at`, `completed_at`, `canceled_at`)
+- Analytics queries handle null values correctly (exclude, don't error)
+
+✅ **Indexes:**
+- All analytics indexes created and verified
+- Query plans show index usage
+- 30-day range queries complete in < 2 seconds
+
+---
+
 ## Milestone 9: KDS Performance Analytics + Operational Metrics
 
 ### Goal
@@ -97,11 +171,67 @@ Provide vendors with financial insights and customer behavior analytics to help 
 - **Revenue Forecasts:** Simple trend-based forecasts
 
 **Data Source:**
-- `square_orders.line_items` (contains pricing data)
+- `square_orders.line_items` (contains pricing data in JSONB)
 - `square_orders.metadata` (may contain additional revenue data)
-- Aggregate from `square_orders` joined with `kitchen_tickets` for status filtering
+- Parse JSON in SQL for v1 (optimize with facts tables later if needed)
+- Scope by `location_id` for vendor filtering
 
-#### 10.2: Customer Analytics
+#### 10A.2: Source Attribution
+- **Revenue breakdown by source:**
+  - Online (`countrtop_online`) vs POS (`square_pos`) revenue split
+  - Volume and revenue comparison by source
+  - Average order value by source
+
+**Data Source:**
+- `square_orders.source` field
+- Aggregate revenue from `line_items` by source
+
+#### 10A.3: Top Revenue Items (Optional)
+- **Simple item performance:**
+  - Top items by revenue (if easy to extract from JSON)
+  - Defer complex item analytics to Milestone 10B
+
+**Note:** If JSON parsing becomes slow (>2 seconds for 30 days), defer to facts tables or Milestone 10B.
+
+### Implementation Steps
+
+1. **Revenue Data Layer**
+   - Parse `square_orders.line_items` JSONB in SQL
+   - Extract pricing and calculate totals
+   - Aggregate by time period and source
+
+2. **API Endpoints**
+   - `GET /api/vendors/[slug]/analytics/revenue-series`
+   - `GET /api/vendors/[slug]/analytics/revenue-by-source`
+   - Support date range and granularity (day/week/month)
+
+3. **UI Components**
+   - Revenue line charts (daily/weekly/monthly trends)
+   - Source breakdown bar charts
+   - Average order value trends
+
+### Acceptance Criteria
+
+✅ **Revenue Analytics:**
+- Revenue trends visible for any date range (up to 90 days)
+- Revenue breakdown by source (online vs POS)
+- Average order value trends displayed
+- Queries complete in < 2 seconds for 30-day range
+
+✅ **Performance:**
+- If queries > 2 seconds, plan for facts tables
+- JSON parsing is acceptable for v1 (90 days max)
+
+---
+
+## Milestone 10B: Customer Analytics + Item Performance
+
+### Goal
+Provide deeper customer insights and item performance analytics, clearly scoped to CountrTop online orders only.
+
+### Key Features
+
+#### 10B.1: Customer Analytics (CountrTop Online Only)
 - **Customer Lifetime Value:** Total revenue per customer
 - **Repeat Customer Rate:** Percentage of customers with multiple orders
 - **Customer Acquisition:** New vs returning customers over time
@@ -120,30 +250,54 @@ Provide vendors with financial insights and customer behavior analytics to help 
 - **Item Pairing Analysis:** What items are commonly ordered together?
 
 **Data Source:**
-- `square_orders.line_items` (item names, quantities, prices)
+- `square_orders.line_items` (item names, quantities, prices in JSONB)
 - `kitchen_tickets` (prep time correlation)
+- Parse JSON in SQL for v1 (optimize with facts tables if slow)
 
 ### Implementation Steps
 
-1. **Revenue Data Layer**
-   - Extract pricing from `square_orders.line_items`
-   - Handle currency conversions if needed
-   - Aggregate revenue by time period
-
-2. **Customer Analytics Layer**
+1. **Customer Analytics Layer**
+   - Filter to CountrTop orders only (`user_id IS NOT NULL` OR `reference_id LIKE 'ct_%'`)
    - Join `order_snapshots` with revenue data
    - Calculate customer lifetime metrics
    - Segment customers by value
+   - **Label all UI/metrics as "CountrTop Online Only"**
+
+2. **Item Analytics Layer**
+   - Parse `square_orders.line_items` JSONB
+   - Aggregate item performance (quantity, revenue)
+   - Correlate with prep times from `kitchen_tickets`
+   - If JSON parsing is slow, plan for facts tables
 
 3. **API Endpoints**
-   - `GET /api/vendors/[slug]/analytics/revenue`
    - `GET /api/vendors/[slug]/analytics/customers`
    - `GET /api/vendors/[slug]/analytics/items`
+   - All endpoints clearly document "CountrTop Online Only" scope
 
 4. **UI Components**
-   - Revenue charts (line charts, bar charts)
-   - Customer cohort analysis tables
+   - Customer cohort analysis tables (with "CountrTop Online Only" label)
+   - Customer LTV charts (with disclaimer)
    - Item performance tables and charts
+   - Prep time vs menu item correlation
+
+### Acceptance Criteria
+
+✅ **Customer Analytics:**
+- Customer metrics clearly labeled "CountrTop Online Only"
+- Repeat customer rate displayed
+- Customer lifetime value calculated (online orders only)
+- Customer segmentation visible
+- Order frequency metrics shown
+
+✅ **Item Analytics:**
+- Item performance trends visible
+- Top items by quantity and revenue
+- Prep time vs menu item correlation (if feasible)
+- Queries complete in < 3 seconds for 90-day range
+
+✅ **Data Quality:**
+- UI clearly indicates POS orders are excluded from customer analytics
+- Vendors understand why customer totals may differ from order totals
 
 ---
 
@@ -202,17 +356,29 @@ async getCustomerLifetimeValue(
 
 ### API Layer
 
-**New Routes:**
-- `apps/vendor-admin-web/pages/api/vendors/[slug]/analytics/kds-performance.ts`
-- `apps/vendor-admin-web/pages/api/vendors/[slug]/analytics/revenue.ts`
+**Milestone 9 Routes:**
+- `apps/vendor-admin-web/pages/api/vendors/[slug]/analytics/kds-summary.ts`
+- `apps/vendor-admin-web/pages/api/vendors/[slug]/analytics/kds-throughput.ts`
+- `apps/vendor-admin-web/pages/api/vendors/[slug]/analytics/kds-heatmap.ts`
+
+**Milestone 10A Routes:**
+- `apps/vendor-admin-web/pages/api/vendors/[slug]/analytics/revenue-series.ts`
+- `apps/vendor-admin-web/pages/api/vendors/[slug]/analytics/revenue-by-source.ts`
+
+**Milestone 10B Routes:**
 - `apps/vendor-admin-web/pages/api/vendors/[slug]/analytics/customers.ts`
 - `apps/vendor-admin-web/pages/api/vendors/[slug]/analytics/items.ts`
 
 **Query Parameters:**
 - `startDate` (ISO 8601)
 - `endDate` (ISO 8601)
-- `timezone` (IANA timezone, optional)
+- `timezone` (IANA timezone, inferred from vendor if not provided)
 - `granularity` (hour/day/week/month)
+
+**Important:**
+- All endpoints scope by `location_id` (vendor's `square_location_id`)
+- All endpoints use vendor timezone for bucketing (not UTC)
+- Customer endpoints clearly document "CountrTop Online Only" scope
 
 ### UI Layer
 
@@ -274,18 +440,69 @@ type TicketThroughput = {
 };
 ```
 
-### Revenue Metrics
+### Revenue Metrics (Milestone 10A)
 
 ```typescript
-type RevenueMetrics = {
-  period: string; // ISO date or "2024-W01"
+type RevenuePoint = {
+  timestamp: string; // ISO 8601 in vendor timezone
   revenue: number;
   orderCount: number;
   averageOrderValue: number;
-  bySource: {
-    countrtop_online: number;
-    square_pos: number;
+};
+
+type RevenueBySource = {
+  countrtop_online: {
+    revenue: number;
+    orderCount: number;
+    averageOrderValue: number;
   };
+  square_pos: {
+    revenue: number;
+    orderCount: number;
+    averageOrderValue: number;
+  };
+  total: {
+    revenue: number;
+    orderCount: number;
+    averageOrderValue: number;
+  };
+};
+
+type AovPoint = {
+  timestamp: string;
+  averageOrderValue: number;
+  orderCount: number;
+};
+```
+
+### Customer Metrics (Milestone 10B - CountrTop Online Only)
+
+```typescript
+type CustomerSummary = {
+  // Label: "CountrTop Online Only"
+  totalCustomers: number;
+  repeatCustomers: number;
+  repeatCustomerRate: number; // 0-1
+  averageOrdersPerCustomer: number;
+  averageLifetimeValue: number;
+  newCustomers: number; // in period
+  returningCustomers: number; // in period
+};
+
+type CustomerLtvPoint = {
+  userId: string;
+  orderCount: number;
+  totalRevenue: number;
+  firstOrderDate: string;
+  lastOrderDate: string;
+  averageOrderValue: number;
+};
+
+type RepeatCustomerMetrics = {
+  repeatCustomerRate: number; // 0-1
+  totalCustomers: number;
+  repeatCustomers: number;
+  singleOrderCustomers: number;
 };
 
 type ItemPerformance = {
@@ -294,28 +511,7 @@ type ItemPerformance = {
   revenue: number;
   orderCount: number;
   avgPrice: number;
-};
-```
-
-### Customer Metrics
-
-```typescript
-type CustomerMetrics = {
-  totalCustomers: number;
-  repeatCustomers: number;
-  repeatCustomerRate: number;
-  averageOrdersPerCustomer: number;
-  averageLifetimeValue: number;
-  newCustomers: number; // in period
-  returningCustomers: number; // in period
-};
-
-type CustomerLTV = {
-  userId: string;
-  orderCount: number;
-  totalRevenue: number;
-  firstOrderDate: string;
-  lastOrderDate: string;
+  avgPrepTimeMinutes: number | null; // if correlated with tickets
 };
 ```
 
@@ -390,18 +586,35 @@ CREATE INDEX ON kds_daily_metrics(location_id, date);
 
 ## Implementation Phases
 
+### Phase 3.0: Milestone 8.5 — Data Hygiene & Analytics Readiness
+**Estimated Effort:** 3-5 days
+
+1. **Day 1-2:**
+   - Timezone migration (backfill from Square API)
+   - Timestamp validation migration
+   - Index creation migration
+
+2. **Day 3:**
+   - Verify timezone population
+   - Test timestamp integrity
+   - Validate index usage in query plans
+
+3. **Day 4-5:**
+   - Update vendor prefill logic to include timezone
+   - Update ticket status logic to ensure timestamps
+   - Documentation and testing
+
 ### Phase 3.1: Milestone 9 — KDS Performance Analytics
 **Estimated Effort:** 2-3 weeks
 
 1. **Week 1:**
-   - Database indexes
-   - Data layer methods (KDS performance queries)
-   - API endpoints
+   - Data layer methods (KDS performance queries with null-safe math)
+   - API endpoints (timezone-aware bucketing)
    - Basic UI structure
 
 2. **Week 2:**
-   - Chart components
-   - Date range picker
+   - Simple Recharts charts (throughput, prep time)
+   - Date range picker with presets
    - Metric cards
    - Integration with vendor admin dashboard
 
@@ -410,27 +623,56 @@ CREATE INDEX ON kds_daily_metrics(location_id, date);
    - Performance optimization
    - Documentation
 
-### Phase 3.2: Milestone 10 — Revenue & Customer Analytics
+### Phase 3.2: Milestone 10A — Revenue Trends + Source Attribution
+**Estimated Effort:** 1-2 weeks
+
+1. **Week 1:**
+   - Revenue data extraction (JSON parsing in SQL)
+   - API endpoints (revenue-series, revenue-by-source)
+   - Revenue charts (line charts, bar charts)
+
+2. **Week 2:**
+   - Testing and refinement
+   - Performance monitoring
+   - If slow, plan for facts tables (but don't build yet)
+
+### Phase 3.3: Milestone 10B — Customer Analytics + Item Performance
 **Estimated Effort:** 2-3 weeks
 
 1. **Week 1:**
-   - Revenue data extraction and aggregation
-   - Customer analytics queries
+   - Customer analytics queries (CountrTop online only)
+   - Item performance queries (JSON parsing)
    - API endpoints
 
 2. **Week 2:**
-   - Revenue charts and visualizations
-   - Customer insights UI
-   - Item performance tables
+   - Customer insights UI (with "CountrTop Online Only" labels)
+   - Item performance tables and charts
+   - Prep time correlation (if feasible)
 
 3. **Week 3:**
    - Testing and refinement
    - Performance optimization
-   - Documentation
+   - Documentation (clear scope labeling)
 
 ---
 
 ## Acceptance Criteria
+
+### Milestone 8.5
+✅ **Timezone:**
+- All vendors have `timezone` populated
+- Vendor updates preserve/update timezone
+- Analytics queries can use vendor timezone for bucketing
+
+✅ **Timestamps:**
+- All tickets have `placed_at`
+- Status transitions set appropriate timestamps
+- Analytics queries handle null values correctly (exclude, don't error)
+
+✅ **Indexes:**
+- All analytics indexes created and verified
+- Query plans show index usage
+- No missing indexes for analytics queries
 
 ### Milestone 9
 ✅ **KDS Performance Metrics:**
@@ -446,10 +688,22 @@ CREATE INDEX ON kds_daily_metrics(location_id, date);
 
 ✅ **UI/UX:**
 - All metrics load in < 2 seconds for 30-day range
-- Charts are responsive and mobile-friendly
+- Charts are responsive and mobile-friendly (simple Recharts)
 - Date range picker works with vendor timezone
+- Default presets (Today, Last 7 days, Last 30 days, Custom)
 
-### Milestone 10
+### Milestone 10A
+✅ **Revenue Analytics:**
+- Revenue trends visible for any date range (up to 90 days)
+- Revenue breakdown by source (online vs POS)
+- Average order value trends displayed
+- Queries complete in < 2 seconds for 30-day range
+
+✅ **Performance:**
+- JSON parsing is acceptable for v1 (90 days max)
+- If queries > 2 seconds, document need for facts tables (but don't build yet)
+
+### Milestone 10B
 ✅ **Revenue Analytics:**
 - Revenue trends visible for any date range
 - Revenue breakdown by source (online vs POS)
@@ -462,10 +716,23 @@ CREATE INDEX ON kds_daily_metrics(location_id, date);
 - Customer segmentation visible
 - Order frequency metrics shown
 
-✅ **Performance:**
-- All analytics queries complete in < 3 seconds
-- Charts render smoothly with 1000+ data points
-- Export functionality works (optional)
+✅ **Customer Analytics:**
+- All metrics clearly labeled "CountrTop Online Only"
+- Repeat customer rate displayed
+- Customer lifetime value calculated (online orders only)
+- Customer segmentation visible
+- Order frequency metrics shown
+- UI clearly explains why POS orders are excluded
+
+✅ **Item Analytics:**
+- Item performance trends visible
+- Top items by quantity and revenue
+- Prep time vs menu item correlation (if feasible)
+- Queries complete in < 3 seconds for 90-day range
+
+✅ **Data Quality:**
+- Vendors understand customer analytics scope
+- Labels prevent confusion about totals
 
 ---
 
