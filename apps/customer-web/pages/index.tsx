@@ -366,18 +366,19 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor }: Props) 
         <title>{`${vendorName} · CountrTop`}</title>
       </Head>
       <main className="page">
-        {/* Hero */}
-        <header className="hero-header">
-          <div className="hero-content">
-            <p className="eyebrow">CountrTop</p>
-            <h1 className="title">{vendorName}</h1>
-            <p className="subtitle">Order fast, earn points, get notified when ready.</p>
-            <div className="badges">
-              <span className="badge">Square checkout</span>
-              <span className="badge">Pickup only</span>
+        <div className="page-content">
+          {/* Hero */}
+          <header className="hero-header">
+            <div className="hero-content">
+              <p className="eyebrow">CountrTop</p>
+              <h1 className="title">{vendorName}</h1>
+              <p className="subtitle">Order fast, earn points, get notified when ready.</p>
+              <div className="badges">
+                <span className="badge">Square checkout</span>
+                <span className="badge">Pickup only</span>
+              </div>
             </div>
-          </div>
-        </header>
+          </header>
 
 
         {/* Notice */}
@@ -695,6 +696,7 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor }: Props) 
               </>
             )}
           </section>
+          </div>
         </div>
 
         <style jsx>{`
@@ -703,6 +705,17 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor }: Props) 
             background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 50%, #16213e 100%);
             color: #e8e8e8;
             font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+          }
+
+          .page-content {
+            width: 100%;
+          }
+
+          @media (min-width: 1000px) {
+            .page-content {
+              max-width: 80vw;
+              margin: 0 auto;
+            }
           }
 
           .hero-header {
