@@ -957,7 +957,6 @@ export class SupabaseDataClient implements DataClient {
 
   /**
    * Lists active kitchen tickets for a location with their associated Square orders
-   * Only returns tickets that have been promoted (promoted_at IS NOT NULL)
    */
   async listActiveKitchenTickets(locationId: string): Promise<KitchenTicketWithOrder[]> {
     const startTime = Date.now();
@@ -995,8 +994,7 @@ export class SupabaseDataClient implements DataClient {
         `)
         .eq('location_id', locationId)
         .in('status', ['placed', 'ready', 'preparing'])
-        .not('promoted_at', 'is', null)
-        .order('promoted_at', { ascending: true });
+        .order('placed_at', { ascending: true });
 
       if (error) throw error;
 
