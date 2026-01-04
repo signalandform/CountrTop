@@ -49,21 +49,21 @@ export function VendorInsightsDashboard({ vendorSlug, vendorName, vendor, insigh
       <section className="dashboard-cards">
         <Link 
           href={`/vendors/${vendorSlug}#insights`} 
-          className="dashboard-card"
+          className="dashboard-card ct-card"
           onClick={(e) => handleAnchorClick(e, '#insights')}
         >
           <div className="card-icon">📊</div>
           <h3 className="card-title">Insights</h3>
           <p className="card-description">View performance and trends</p>
         </Link>
-        <Link href={`/vendors/${vendorSlug}/orders`} className="dashboard-card">
+        <Link href={`/vendors/${vendorSlug}/orders`} className="dashboard-card ct-card">
           <div className="card-icon">📦</div>
           <h3 className="card-title">Orders</h3>
           <p className="card-description">Manage active customer orders</p>
         </Link>
         <Link 
           href={`/vendors/${vendorSlug}#settings`} 
-          className="dashboard-card"
+          className="dashboard-card ct-card"
           onClick={(e) => handleAnchorClick(e, '#settings')}
         >
           <div className="card-icon">⚙️</div>
@@ -226,10 +226,6 @@ export function VendorInsightsDashboard({ vendorSlug, vendorName, vendor, insigh
         }
 
         .dashboard-card {
-          background: rgba(255, 255, 255, 0.05);
-          backdrop-filter: blur(10px);
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          border-radius: 16px;
           padding: 24px;
           text-decoration: none !important;
           color: inherit;
@@ -240,8 +236,6 @@ export function VendorInsightsDashboard({ vendorSlug, vendorName, vendor, insigh
         }
 
         .dashboard-card:hover {
-          background: rgba(255, 255, 255, 0.08);
-          border-color: rgba(102, 126, 234, 0.4);
           transform: translateY(-2px);
           text-decoration: none !important;
         }
