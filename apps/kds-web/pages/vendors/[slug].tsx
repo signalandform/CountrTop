@@ -16,6 +16,7 @@ import {
   type Ticket,
   type OfflineAction
 } from '../../lib/offline';
+import { createTicketsSubscription, type TicketChangeEvent } from '../../lib/realtime';
 
 // Ticket type is now imported from offline.ts
 
@@ -113,6 +114,11 @@ export default function VendorQueuePage({ vendorSlug }: VendorPageProps) {
   const [isOffline, setIsOffline] = useState(!isOnline());
   const [queuedActionsCount, setQueuedActionsCount] = useState(0);
   const [syncing, setSyncing] = useState(false);
+  const [locationId, setLocationId] = useState<string | null>(null);
+  const [useRealtime, setUseRealtime] = useState(true);
+  const [realtimeStatus, setRealtimeStatus] = useState<'SUBSCRIBED' | 'CHANNEL_ERROR' | 'TIMED_OUT' | 'CLOSED' | 'UNKNOWN'>('UNKNOWN');
+  const [realtimeErrorCount, setRealtimeErrorCount] = useState(0);
+  const MAX_REALTIME_ERRORS = 3;
 
   const fetchTickets = async (useCache = false) => {
     try {
@@ -140,6 +146,8 @@ export default function VendorQueuePage({ vendorSlug }: VendorPageProps) {
       const data: TicketsResponse = await response.json();
       if (data.ok) {
         setTickets(data.tickets);
+        // Save locationId from response
+        setLocationId(data.locationId);
         // Save to cache
         saveTicketsToCache(vendorSlug, data.tickets);
       } else {
@@ -226,7 +234,83 @@ export default function VendorQueuePage({ vendorSlug }: VendorPageProps) {
     };
   }, [syncQueue]);
 
-  // Initial load and periodic refresh
+  // Handle realtime events
+  // Refetch all tickets to ensure we have full data (including order details)
+  const handleRealtimeInsert = useCallback(async (event: TicketChangeEvent) => {
+    // Refetch all tickets to get full data with order details
+    await fetchTickets();
+  }, [fetchTickets]);
+
+  const handleRealtimeUpdate = useCallback(async (event: TicketChangeEvent) => {
+    // Refetch all tickets to get full data with order details
+    await fetchTickets();
+  }, [fetchTickets]);
+
+  const handleRealtimeDelete = useCallback(async (event: TicketChangeEvent) => {
+    // Remove ticket from state immediately (optimistic update)
+    setTickets(prev => {
+      const filtered = prev.filter(t => t.ticket.id !== event.ticketId);
+      // Update cache
+      saveTicketsToCache(vendorSlug, filtered);
+      return filtered;
+    });
+  }, [vendorSlug]);
+
+  // Realtime subscription
+  useEffect(() => {
+    const supabase = getBrowserSupabaseClient();
+    if (!supabase || !locationId || !useRealtime || !isOnline()) {
+      return;
+    }
+
+    let unsubscribe: (() => void) | null = null;
+
+    const setupSubscription = () => {
+      unsubscribe = createTicketsSubscription(
+        supabase,
+        locationId,
+        {
+          onInsert: handleRealtimeInsert,
+          onUpdate: handleRealtimeUpdate,
+          onDelete: handleRealtimeDelete,
+          onError: (err) => {
+            console.error('Realtime subscription error:', err);
+            setRealtimeErrorCount(prev => {
+              const newCount = prev + 1;
+              if (newCount >= MAX_REALTIME_ERRORS) {
+                setUseRealtime(false);
+              }
+              return newCount;
+            });
+          },
+          onStatusChange: (status) => {
+            setRealtimeStatus(status);
+            if (status === 'SUBSCRIBED') {
+              setRealtimeErrorCount(0); // Reset error count on successful subscription
+            } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+              setRealtimeErrorCount(prev => {
+                const newCount = prev + 1;
+                if (newCount >= MAX_REALTIME_ERRORS) {
+                  setUseRealtime(false);
+                }
+                return newCount;
+              });
+            }
+          },
+        }
+      );
+    };
+
+    setupSubscription();
+
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
+  }, [locationId, useRealtime, isOffline, handleRealtimeInsert, handleRealtimeUpdate, handleRealtimeDelete]);
+
+  // Initial load and fallback polling
   useEffect(() => {
     // Load from cache first for instant display
     const cached = loadTicketsFromCache(vendorSlug);
@@ -241,18 +325,19 @@ export default function VendorQueuePage({ vendorSlug }: VendorPageProps) {
     // Update queued actions count
     setQueuedActionsCount(getOfflineQueue(vendorSlug).length);
 
-    // Refresh every 30 seconds (only when online)
+    // Fallback polling (only if realtime is disabled or offline)
+    // Use longer interval (60s) since realtime is primary
     const interval = setInterval(() => {
-      if (isOnline()) {
+      if ((!useRealtime || !isOnline()) && isOnline()) {
         fetchTickets();
       }
       // Update queued actions count
       setQueuedActionsCount(getOfflineQueue(vendorSlug).length);
-    }, 30000);
+    }, 60000); // 60 seconds (longer than original 30s since realtime is primary)
 
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [vendorSlug]);
+  }, [vendorSlug, useRealtime]);
 
   const handleBumpStatus = async (ticketId: string, currentStatus: string) => {
     const newStatus = currentStatus === 'placed' || currentStatus === 'preparing' ? 'ready' : 'completed';
@@ -343,6 +428,18 @@ export default function VendorQueuePage({ vendorSlug }: VendorPageProps) {
                   {queuedActionsCount > 0 && (
                     <span className="queue-badge">{queuedActionsCount} queued</span>
                   )}
+                </div>
+              )}
+              {!isOffline && useRealtime && realtimeStatus === 'SUBSCRIBED' && (
+                <div className="realtime-indicator">
+                  <span className="realtime-dot">●</span>
+                  <span>Realtime</span>
+                </div>
+              )}
+              {!isOffline && (!useRealtime || realtimeStatus !== 'SUBSCRIBED') && (
+                <div className="polling-indicator">
+                  <span className="polling-dot">●</span>
+                  <span>Polling</span>
                 </div>
               )}
               {syncing && (
@@ -508,6 +605,43 @@ export default function VendorQueuePage({ vendorSlug }: VendorPageProps) {
             font-size: 14px;
             color: #34c759;
             font-weight: 500;
+          }
+
+          .realtime-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 8px;
+            padding: 6px 12px;
+            background: rgba(52, 199, 89, 0.15);
+            border: 1px solid rgba(52, 199, 89, 0.3);
+            border-radius: 8px;
+            font-size: 14px;
+            color: #34c759;
+            font-weight: 500;
+          }
+
+          .realtime-dot {
+            font-size: 12px;
+            animation: pulse 2s infinite;
+          }
+
+          .polling-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 8px;
+            padding: 6px 12px;
+            background: rgba(102, 126, 234, 0.15);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 8px;
+            font-size: 14px;
+            color: #667eea;
+            font-weight: 500;
+          }
+
+          .polling-dot {
+            font-size: 12px;
           }
 
           .sign-out-button {
