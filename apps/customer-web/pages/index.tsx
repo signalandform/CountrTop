@@ -390,41 +390,6 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor }: Props) 
 
         {/* Main content */}
         <div className="content">
-          {/* Account */}
-          <section className="card account">
-            <div className="card-header">
-              <h2>Account</h2>
-              {user && <button onClick={signOut} className="btn-secondary">Sign out</button>}
-            </div>
-            {!mounted && <p className="muted">Loading…</p>}
-            {mounted && !supabase && (
-              <p className="muted">Sign-in not available (auth not configured)</p>
-            )}
-            {user ? (
-              <div className="account-info">
-                <div>
-                  <div className="label">Signed in</div>
-                  <div className="muted">{user.email ?? user.id}</div>
-                </div>
-                <div className="points">{loyalty !== null ? `${loyalty} pts` : '—'}</div>
-              </div>
-            ) : (
-              mounted && supabase && (
-                <div className="auth-buttons">
-                  {appleEnabled && (
-                    <button onClick={() => signIn('apple')} className="btn-auth">
-                      Sign in with Apple
-                    </button>
-                  )}
-                  <button onClick={() => signIn('google')} className="btn-auth">
-                    Sign in with Google
-                  </button>
-                </div>
-              )
-            )}
-            {authError && <p className="error">{authError}</p>}
-          </section>
-
           {/* Vendor Info */}
           {vendor && (vendor.addressLine1 || vendor.city || vendor.pickupInstructions) && (
             <section className="card vendor-info">
@@ -459,6 +424,41 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor }: Props) 
               )}
             </section>
           )}
+
+          {/* Account */}
+          <section className="card account">
+            <div className="card-header">
+              <h2>Account</h2>
+              {user && <button onClick={signOut} className="btn-secondary">Sign out</button>}
+            </div>
+            {!mounted && <p className="muted">Loading…</p>}
+            {mounted && !supabase && (
+              <p className="muted">Sign-in not available (auth not configured)</p>
+            )}
+            {user ? (
+              <div className="account-info">
+                <div>
+                  <div className="label">Signed in</div>
+                  <div className="muted">{user.email ?? user.id}</div>
+                </div>
+                <div className="points">{loyalty !== null ? `${loyalty} pts` : '—'}</div>
+              </div>
+            ) : (
+              mounted && supabase && (
+                <div className="auth-buttons">
+                  {appleEnabled && (
+                    <button onClick={() => signIn('apple')} className="btn-auth">
+                      Sign in with Apple
+                    </button>
+                  )}
+                  <button onClick={() => signIn('google')} className="btn-auth">
+                    Sign in with Google
+                  </button>
+                </div>
+              )
+            )}
+            {authError && <p className="error">{authError}</p>}
+          </section>
 
           {/* Order Tracking */}
           <section className="card order-tracking">
@@ -822,8 +822,8 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor }: Props) 
             display: grid;
             grid-template-columns: 1fr 300px;
             grid-template-areas:
-              'account cart'
               'vendor-info cart'
+              'account cart'
               'order-tracking cart'
               'menu cart'
               'history cart';
@@ -837,8 +837,8 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor }: Props) 
             .content {
               grid-template-columns: 1fr;
               grid-template-areas:
-                'account'
                 'vendor-info'
+                'account'
                 'order-tracking'
                 'cart'
                 'menu'
@@ -873,6 +873,8 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor }: Props) 
 
           .menu-section {
             grid-area: menu;
+            margin-top: 32px;
+            margin-bottom: 32px;
           }
 
           .history {
@@ -1078,10 +1080,11 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor }: Props) 
             background: rgba(255, 255, 255, 0.05);
             border: 1px solid rgba(255, 255, 255, 0.08);
             border-radius: 16px;
-            padding: 16px;
+            padding: 24px;
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: 16px;
+            min-height: 200px;
           }
 
           .menu-image {
@@ -1106,6 +1109,14 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor }: Props) 
 
           .menu-info {
             flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+          }
+
+          .menu-info .muted {
+            line-height: 1.6;
+            min-height: 3.2em;
           }
 
           .menu-row {

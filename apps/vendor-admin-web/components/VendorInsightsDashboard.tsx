@@ -145,6 +145,13 @@ export function VendorInsightsDashboard({ vendorSlug, vendorName, vendor, insigh
           padding: 0 24px 48px;
         }
 
+        @media (min-width: 1000px) {
+          .page {
+            max-width: 80vw;
+            margin: 0 auto;
+          }
+        }
+
         .header {
           display: flex;
           justify-content: space-between;
@@ -211,14 +218,19 @@ export function VendorInsightsDashboard({ vendorSlug, vendorName, vendor, insigh
           grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
           gap: 20px;
           margin-bottom: 32px;
+          justify-content: center;
+          max-width: 900px;
+          margin-left: auto;
+          margin-right: auto;
         }
 
         .dashboard-card {
           background: rgba(255, 255, 255, 0.05);
+          backdrop-filter: blur(10px);
           border: 1px solid rgba(255, 255, 255, 0.1);
           border-radius: 16px;
           padding: 24px;
-          text-decoration: none;
+          text-decoration: none !important;
           color: inherit;
           transition: all 0.2s;
           display: flex;
@@ -230,6 +242,15 @@ export function VendorInsightsDashboard({ vendorSlug, vendorName, vendor, insigh
           background: rgba(255, 255, 255, 0.08);
           border-color: rgba(102, 126, 234, 0.4);
           transform: translateY(-2px);
+          text-decoration: none !important;
+        }
+
+        .dashboard-card:visited {
+          text-decoration: none !important;
+        }
+
+        .dashboard-card:link {
+          text-decoration: none !important;
         }
 
         .card-icon {
