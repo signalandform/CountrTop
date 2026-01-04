@@ -367,8 +367,8 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor }: Props) 
       </Head>
       <main className="page">
         {/* Hero */}
-        <section className="hero">
-          <div className="hero-card">
+        <header className="hero-header">
+          <div className="hero-content">
             <p className="eyebrow">CountrTop</p>
             <h1 className="title">{vendorName}</h1>
             <p className="subtitle">Order fast, earn points, get notified when ready.</p>
@@ -377,7 +377,7 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor }: Props) 
               <span className="badge">Pickup only</span>
             </div>
           </div>
-        </section>
+        </header>
 
 
         {/* Notice */}
@@ -705,34 +705,35 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor }: Props) 
             font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
           }
 
-          .hero {
-            padding: 48px 24px 24px;
+          .hero-header {
+            padding: 48px 24px 32px;
           }
 
-          .hero-card {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 24px;
-            padding: 32px;
-            max-width: 600px;
+          .hero-content {
+            max-width: 500px;
           }
 
           .eyebrow {
             text-transform: uppercase;
             letter-spacing: 3px;
             font-size: 11px;
-            opacity: 0.8;
+            color: #a78bfa;
             margin: 0 0 8px;
           }
 
           .title {
             font-size: 36px;
             font-weight: 700;
-            margin: 0 0 12px;
+            margin: 0 0 8px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
           }
 
           .subtitle {
             font-size: 16px;
-            opacity: 0.9;
+            color: #888;
             margin: 0 0 16px;
           }
 
