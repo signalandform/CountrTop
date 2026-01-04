@@ -1,7 +1,7 @@
 import Head from 'next/head';
 import type { GetServerSideProps } from 'next';
 import { useRouter } from 'next/router';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
 import { getBrowserSupabaseClient } from '../../lib/supabaseBrowser';
 import { requireVendorAdmin } from '../../lib/auth';
@@ -117,7 +117,7 @@ export default function VendorQueuePage({ vendorSlug }: VendorPageProps) {
   const [locationId, setLocationId] = useState<string | null>(null);
   const [useRealtime, setUseRealtime] = useState(true);
   const [realtimeStatus, setRealtimeStatus] = useState<'SUBSCRIBED' | 'CHANNEL_ERROR' | 'TIMED_OUT' | 'CLOSED' | 'UNKNOWN'>('UNKNOWN');
-  const [realtimeErrorCount, setRealtimeErrorCount] = useState(0);
+  const realtimeErrorCountRef = useRef(0);
   const MAX_REALTIME_ERRORS = 3;
 
   const fetchTickets = async (useCache = false) => {
@@ -236,12 +236,12 @@ export default function VendorQueuePage({ vendorSlug }: VendorPageProps) {
 
   // Handle realtime events
   // Refetch all tickets to ensure we have full data (including order details)
-  const handleRealtimeInsert = useCallback(async (event: TicketChangeEvent) => {
+  const handleRealtimeInsert = useCallback(async (_event: TicketChangeEvent) => {
     // Refetch all tickets to get full data with order details
     await fetchTickets();
   }, [fetchTickets]);
 
-  const handleRealtimeUpdate = useCallback(async (event: TicketChangeEvent) => {
+  const handleRealtimeUpdate = useCallback(async (_event: TicketChangeEvent) => {
     // Refetch all tickets to get full data with order details
     await fetchTickets();
   }, [fetchTickets]);
@@ -275,26 +275,21 @@ export default function VendorQueuePage({ vendorSlug }: VendorPageProps) {
           onDelete: handleRealtimeDelete,
           onError: (err) => {
             console.error('Realtime subscription error:', err);
-            setRealtimeErrorCount(prev => {
-              const newCount = prev + 1;
-              if (newCount >= MAX_REALTIME_ERRORS) {
-                setUseRealtime(false);
-              }
-              return newCount;
-            });
+            realtimeErrorCountRef.current += 1;
+            if (realtimeErrorCountRef.current >= MAX_REALTIME_ERRORS) {
+              setUseRealtime(false);
+            }
+            setRealtimeStatus('CHANNEL_ERROR');
           },
           onStatusChange: (status) => {
             setRealtimeStatus(status);
             if (status === 'SUBSCRIBED') {
-              setRealtimeErrorCount(0); // Reset error count on successful subscription
+              realtimeErrorCountRef.current = 0; // Reset error count on successful subscription
             } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-              setRealtimeErrorCount(prev => {
-                const newCount = prev + 1;
-                if (newCount >= MAX_REALTIME_ERRORS) {
-                  setUseRealtime(false);
-                }
-                return newCount;
-              });
+              realtimeErrorCountRef.current += 1;
+              if (realtimeErrorCountRef.current >= MAX_REALTIME_ERRORS) {
+                setUseRealtime(false);
+              }
             }
           },
         }

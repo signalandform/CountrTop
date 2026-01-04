@@ -11,7 +11,6 @@
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@countrtop/data';
-import type { Ticket } from './offline';
 
 export type RealtimeEventType = 'INSERT' | 'UPDATE' | 'DELETE';
 
@@ -62,9 +61,7 @@ export function createTicketsSubscription(
         table: 'kitchen_tickets',
         filter: `location_id=eq.${locationId}`,
       },
-      (payload: RealtimePostgresChangesPayload<{
-        [key: string]: any;
-      }>) => {
+      (payload: RealtimePostgresChangesPayload<Record<string, unknown>>) => {
         handleRealtimeEvent(payload, callbacks);
       }
     )
@@ -91,9 +88,7 @@ export function createTicketsSubscription(
  * Handles a realtime postgres change event
  */
 function handleRealtimeEvent(
-  payload: RealtimePostgresChangesPayload<{
-    [key: string]: any;
-  }>,
+  payload: RealtimePostgresChangesPayload<Record<string, unknown>>,
   callbacks: SubscriptionCallbacks
 ): void {
   const { eventType, new: newRecord, old: oldRecord } = payload;
@@ -144,8 +139,7 @@ function handleRealtimeEvent(
 export function useKitchenTicketsRealtime(
   supabase: SupabaseClient<Database> | null,
   locationId: string | null,
-  callbacks: SubscriptionCallbacks,
-  enabled: boolean = true
+  callbacks: SubscriptionCallbacks
 ): SubscriptionState {
   // This is a utility function, not a React hook
   // The actual hook will be implemented in the component
