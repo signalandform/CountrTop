@@ -3,18 +3,17 @@ import type { KitchenTicket } from '@countrtop/models';
 /**
  * Shortcode assignment rules:
  * - POS: 1-20 (looping, find next available)
- * - Delivery: DS (single code, if already used return null or queue)
  * - CountrTop: M31-M39 (looping, find next available)
  */
 
-type Source = 'countrtop_online' | 'square_pos' | 'delivery_service';
+type Source = 'countrtop_online' | 'square_pos';
 
 /**
  * Generates the next available shortcode for a given source and location
  * @param locationId - Square location ID
  * @param source - Order source
  * @param existingShortcodes - Array of currently assigned shortcodes for this location
- * @returns Shortcode string or null if none available (for delivery_service when DS is taken)
+ * @returns Shortcode string or null if none available
  */
 export function assignShortcode(
   locationId: string,
@@ -34,15 +33,6 @@ export function assignShortcode(
       }
       // If all 1-20 are taken, loop back to 1
       return '1';
-    }
-
-    case 'delivery_service': {
-      // Delivery: DS (single code)
-      if (usedCodes.has('DS')) {
-        // DS is already in use - return null (ticket will remain queued)
-        return null;
-      }
-      return 'DS';
     }
 
     case 'countrtop_online': {

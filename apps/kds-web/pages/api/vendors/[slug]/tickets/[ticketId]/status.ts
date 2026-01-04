@@ -139,19 +139,6 @@ export default async function handler(
       user.id
     );
 
-    // If ticket was completed, try to promote the next queued ticket
-    if (status === 'completed' && vendor) {
-      try {
-        await dataClient.promoteQueuedTicket(vendor.squareLocationId, vendor);
-      } catch (error) {
-        // Log but don't fail - promotion is best-effort
-        console.warn('Failed to promote queued ticket after completion', {
-          locationId: vendor.squareLocationId,
-          error: error instanceof Error ? error.message : String(error)
-        });
-      }
-    }
-
     return res.status(200).json({
       ok: true,
       ticket: {

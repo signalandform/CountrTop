@@ -125,7 +125,7 @@ export type SquareOrder = {
   metadata?: Record<string, unknown> | null;
   lineItems?: unknown[] | null;
   fulfillment?: Record<string, unknown> | null;
-  source: 'countrtop_online' | 'square_pos' | 'delivery_service';
+  source: 'countrtop_online' | 'square_pos';
   raw?: Record<string, unknown> | null;
 };
 
@@ -139,7 +139,7 @@ export type KitchenTicket = {
   locationId: string;
   ctReferenceId?: string | null;
   customerUserId?: string | null;
-  source: 'countrtop_online' | 'square_pos' | 'delivery_service';
+  source: 'countrtop_online' | 'square_pos';
   status: KitchenTicketStatus;
   shortcode?: string | null;
   promotedAt?: string | null;

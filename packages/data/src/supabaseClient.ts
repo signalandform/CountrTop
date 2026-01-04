@@ -254,7 +254,7 @@ export type Database = {
           metadata: Record<string, unknown> | null;
           line_items: unknown[] | null;
           fulfillment: Record<string, unknown> | null;
-          source: 'countrtop_online' | 'square_pos' | 'delivery_service';
+          source: 'countrtop_online' | 'square_pos';
           raw: Record<string, unknown> | null;
         };
         Insert: {
@@ -267,7 +267,7 @@ export type Database = {
           metadata?: Record<string, unknown> | null;
           line_items?: unknown[] | null;
           fulfillment?: Record<string, unknown> | null;
-          source: 'countrtop_online' | 'square_pos' | 'delivery_service';
+          source: 'countrtop_online' | 'square_pos';
           raw?: Record<string, unknown> | null;
         };
         Update: Partial<Database['public']['Tables']['square_orders']['Insert']>;
@@ -280,7 +280,7 @@ export type Database = {
           location_id: string;
           ct_reference_id: string | null;
           customer_user_id: string | null;
-          source: 'countrtop_online' | 'square_pos' | 'delivery_service';
+          source: 'countrtop_online' | 'square_pos';
           status: 'placed' | 'preparing' | 'ready' | 'completed' | 'canceled';
           shortcode: string | null;
           promoted_at: string | null;
@@ -297,7 +297,7 @@ export type Database = {
           location_id: string;
           ct_reference_id?: string | null;
           customer_user_id?: string | null;
-          source: 'countrtop_online' | 'square_pos' | 'delivery_service';
+          source: 'countrtop_online' | 'square_pos';
           status: 'placed' | 'preparing' | 'ready' | 'completed' | 'canceled';
           shortcode?: string | null;
           promoted_at?: string | null;
@@ -743,7 +743,7 @@ export class SupabaseDataClient implements DataClient {
   /**
    * Derives source attribution from Square order referenceId and source.name
    */
-  private deriveSource(order: Record<string, unknown>): 'countrtop_online' | 'square_pos' | 'delivery_service' {
+  private deriveSource(order: Record<string, unknown>): 'countrtop_online' | 'square_pos' {
     const referenceId = typeof order.referenceId === 'string' ? order.referenceId : null;
     
     // CountrTop online orders have referenceId starting with "ct_"
@@ -751,21 +751,7 @@ export class SupabaseDataClient implements DataClient {
       return 'countrtop_online';
     }
     
-    // Check order.source.name for delivery services
-    const source = order.source;
-    if (source && typeof source === 'object') {
-      const sourceName = (source as Record<string, unknown>).name;
-      if (typeof sourceName === 'string') {
-        if (sourceName === 'Doordash' || sourceName.toLowerCase().includes('doordash')) {
-          return 'delivery_service';
-        }
-        if (sourceName === 'SQUARE_POS' || sourceName === 'Square POS') {
-          return 'square_pos';
-        }
-      }
-    }
-    
-    // Default fallback to square_pos
+    // Default fallback to square_pos (includes POS, delivery services, etc.)
     return 'square_pos';
   }
 
@@ -1220,7 +1206,7 @@ export class SupabaseDataClient implements DataClient {
       }
 
       const ticketToPromote = queuedTickets[0] as Database['public']['Tables']['kitchen_tickets']['Row'];
-      const ticketSource = ticketToPromote.source as 'countrtop_online' | 'square_pos' | 'delivery_service';
+      const ticketSource = ticketToPromote.source as 'countrtop_online' | 'square_pos';
 
       // Check CountrTop limit if this is a CountrTop order
       if (ticketSource === 'countrtop_online' && activeCtCount >= limitCt) {
@@ -1446,7 +1432,7 @@ export const mapKitchenTicketFromRow = (
 });
 
 export const toKitchenTicketInsert = (
-  ticket: Partial<KitchenTicket> & { squareOrderId: string; locationId: string; source: 'countrtop_online' | 'square_pos' | 'delivery_service'; status: KitchenTicketStatus }
+  ticket: Partial<KitchenTicket> & { squareOrderId: string; locationId: string; source: 'countrtop_online' | 'square_pos'; status: KitchenTicketStatus }
 ): Database['public']['Tables']['kitchen_tickets']['Insert'] => ({
   id: ticket.id,
   square_order_id: ticket.squareOrderId,

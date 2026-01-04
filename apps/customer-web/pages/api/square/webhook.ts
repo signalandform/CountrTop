@@ -241,19 +241,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
   try {
     // Ensure kitchen ticket for OPEN orders (idempotent, preserves existing status)
     await dataClient.ensureKitchenTicketForOpenOrder(order);
-    
-    // If order is OPEN, check if we should promote a queued ticket
-    if (order.state === 'OPEN') {
-      try {
-        await dataClient.promoteQueuedTicket(locationId, vendor);
-      } catch (error) {
-        // Log but don't fail - promotion is best-effort
-        logger.warn(`Failed to promote queued ticket for location ${locationId}`, {
-          locationId,
-          error: error instanceof Error ? error.message : String(error)
-        });
-      }
-    }
   } catch (error) {
     logger.error(`Failed to ensure kitchen ticket for order ${orderId}`, error instanceof Error ? error : new Error(String(error)), {
       orderId,

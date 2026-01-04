@@ -15,7 +15,7 @@ export type Ticket = {
     locationId: string;
     ctReferenceId?: string | null;
     customerUserId?: string | null;
-    source: 'countrtop_online' | 'square_pos' | 'delivery_service';
+    source: 'countrtop_online' | 'square_pos';
     status: 'placed' | 'preparing' | 'ready';
     shortcode?: string | null;
     promotedAt?: string | null;
@@ -33,7 +33,7 @@ export type Ticket = {
     referenceId?: string | null;
     metadata?: Record<string, unknown> | null;
     lineItems?: unknown[] | null;
-    source: 'countrtop_online' | 'square_pos' | 'delivery_service';
+    source: 'countrtop_online' | 'square_pos';
   };
 };
 

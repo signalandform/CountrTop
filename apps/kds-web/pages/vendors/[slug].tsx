@@ -386,8 +386,7 @@ export default function VendorQueuePage({ vendorSlug }: VendorPageProps) {
             <div className="tickets-list">
               {tickets.map(({ ticket, order }) => {
                 const pickupLabel = getPickupLabel(ticket, order);
-                const sourceBadge = ticket.source === 'countrtop_online' ? 'Online' : 
-                                   ticket.source === 'delivery_service' ? 'Delivery' : 'POS';
+                const sourceBadge = ticket.source === 'countrtop_online' ? 'Online' : 'POS';
                 const age = formatAge(ticket.placedAt);
                 const lineItemsSummary = getLineItemsSummary(order.lineItems);
                 const actionLabel = ticket.status === 'placed' || ticket.status === 'preparing' ? 'Mark Ready' : 'Complete';
@@ -674,11 +673,6 @@ export default function VendorQueuePage({ vendorSlug }: VendorPageProps) {
             border: 1px solid rgba(255, 159, 10, 0.3);
           }
 
-          .source-badge[data-source='delivery_service'] {
-            background: rgba(88, 86, 214, 0.2);
-            color: #5856d6;
-            border: 1px solid rgba(88, 86, 214, 0.3);
-          }
 
           .ticket-middle {
             flex: 1;
