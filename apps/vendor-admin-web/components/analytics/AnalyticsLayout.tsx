@@ -40,6 +40,9 @@ export function AnalyticsLayout({ vendorSlug, vendorName, children, currentTab }
       <div className="page-content">
         <div className="header">
           <div className="header-content">
+            <Link href={`/vendors/${vendorSlug}`} className="back-button">
+              ← Back to Dashboard
+            </Link>
             <div className="eyebrow">Vendor Analytics</div>
             <h1 className="title">{vendorName}</h1>
             <p className="subtitle">Performance insights and trends</p>
@@ -99,6 +102,28 @@ export function AnalyticsLayout({ vendorSlug, vendorName, children, currentTab }
 
         .header-content {
           max-width: 500px;
+        }
+
+        .back-button {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          padding: 8px 16px;
+          margin-bottom: 16px;
+          font-size: 14px;
+          font-weight: 500;
+          color: #888;
+          text-decoration: none;
+          border-radius: 8px;
+          transition: all 0.2s ease;
+          background: rgba(255, 255, 255, 0.03);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .back-button:hover {
+          color: #e8e8e8;
+          background: rgba(255, 255, 255, 0.05);
+          border-color: rgba(102, 126, 234, 0.3);
         }
 
         .eyebrow {
