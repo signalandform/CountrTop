@@ -274,20 +274,29 @@ export default function VendorQueuePage({ vendorSlug }: VendorPageProps) {
           onUpdate: () => handleRealtimeUpdate(),
           onDelete: handleRealtimeDelete,
           onError: (err) => {
-            console.error('Realtime subscription error:', err);
-            realtimeErrorCountRef.current += 1;
-            if (realtimeErrorCountRef.current >= MAX_REALTIME_ERRORS) {
-              setUseRealtime(false);
+            // Only log the first error to reduce console noise
+            if (realtimeErrorCountRef.current === 0) {
+              console.warn('Realtime subscription error (will fallback to polling):', err.message);
             }
-            setRealtimeStatus('CHANNEL_ERROR');
+            realtimeErrorCountRef.current += 1;
+            // Disable realtime after first error and fallback to polling
+            if (realtimeErrorCountRef.current >= 1) {
+              setUseRealtime(false);
+              setRealtimeStatus('CHANNEL_ERROR');
+            }
           },
           onStatusChange: (status) => {
             setRealtimeStatus(status);
             if (status === 'SUBSCRIBED') {
               realtimeErrorCountRef.current = 0; // Reset error count on successful subscription
             } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+              // Only log the first status change error
+              if (realtimeErrorCountRef.current === 0) {
+                console.warn(`Realtime subscription ${status} (falling back to polling)`);
+              }
               realtimeErrorCountRef.current += 1;
-              if (realtimeErrorCountRef.current >= MAX_REALTIME_ERRORS) {
+              // Disable realtime after first error and fallback to polling
+              if (realtimeErrorCountRef.current >= 1) {
                 setUseRealtime(false);
               }
             }

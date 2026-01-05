@@ -70,6 +70,8 @@ export function createTicketsSubscription(
         callbacks.onStatusChange(status);
       }
       
+      // Only trigger onError for CHANNEL_ERROR or TIMED_OUT if not already handled
+      // This prevents duplicate error logging
       if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
         const error = new Error(`Realtime subscription error: ${status}`);
         if (callbacks.onError) {
