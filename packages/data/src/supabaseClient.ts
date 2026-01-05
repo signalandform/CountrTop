@@ -1900,11 +1900,10 @@ export class SupabaseDataClient implements DataClient {
       const customerFirstOrder = new Map<string, string>();
       const customerLastOrder = new Map<string, string>();
 
-      // Helper to extract revenue from snapshot_json
+      // Use helper function for revenue extraction
+      const { extractRevenueFromSnapshot } = await import('./revenueAnalytics');
       const extractRevenue = (snapshot: Record<string, unknown> | null): number => {
-        if (!snapshot || typeof snapshot !== 'object') return 0;
-        const total = (snapshot as { total?: { amount?: number } }).total?.amount;
-        return typeof total === 'number' ? total / 100 : 0; // Convert cents to dollars
+        return extractRevenueFromSnapshot(snapshot);
       };
 
       orders.forEach((order) => {
@@ -1981,11 +1980,10 @@ export class SupabaseDataClient implements DataClient {
 
       const orders = (ordersData ?? []).filter((o) => o.user_id);
 
-      // Helper to extract revenue from snapshot_json
+      // Use helper function for revenue extraction
+      const { extractRevenueFromSnapshot } = await import('./revenueAnalytics');
       const extractRevenue = (snapshot: Record<string, unknown> | null): number => {
-        if (!snapshot || typeof snapshot !== 'object') return 0;
-        const total = (snapshot as { total?: { amount?: number } }).total?.amount;
-        return typeof total === 'number' ? total / 100 : 0; // Convert cents to dollars
+        return extractRevenueFromSnapshot(snapshot);
       };
 
       // Aggregate by user
