@@ -334,6 +334,26 @@ export type Database = {
         Update: Partial<Database['public']['Tables']['kitchen_tickets']['Insert']>;
         Relationships: [];
       };
+      vendor_feature_flags: {
+        Row: {
+          id: string;
+          vendor_id: string;
+          feature_key: string;
+          enabled: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          vendor_id: string;
+          feature_key: string;
+          enabled?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['vendor_feature_flags']['Insert']>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
