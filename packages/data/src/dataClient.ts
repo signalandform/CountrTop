@@ -145,4 +145,8 @@ export interface DataClient {
   getVendorFeatureFlag(vendorId: string, featureKey: string): Promise<boolean>;
   setVendorFeatureFlag(vendorId: string, featureKey: string, enabled: boolean): Promise<void>;
   getVendorFeatureFlags(vendorId: string): Promise<Record<string, boolean>>;
+
+  // Location PINs (KDS Authentication)
+  getLocationPins(vendorId: string): Promise<Record<string, boolean>>; // locationId -> hasPin
+  setLocationPin(vendorId: string, locationId: string, pin: string): Promise<void>; // pin is plain text, will be hashed
 }

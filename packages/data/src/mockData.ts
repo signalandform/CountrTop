@@ -430,6 +430,24 @@ export class MockDataClient implements DataClient {
     return {};
   }
 
+  async getLocationPins(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _vendorId: string
+  ): Promise<Record<string, boolean>> {
+    return {};
+  }
+
+  async setLocationPin(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _vendorId: string,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _locationId: string,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _pin: string
+  ): Promise<void> {
+    return;
+  }
+
   private createId(prefix: string) {
     return `${prefix}_${Math.random().toString(16).slice(2)}`;
   }

@@ -1,4 +1,4 @@
-import { randomUUID } from 'crypto';
+import { randomUUID, createHash } from 'crypto';
 import { SupabaseClient, User as SupabaseAuthUser } from '@supabase/supabase-js';
 
 import { DataClient, LoyaltyLedgerEntryInput, OrderSnapshotInput, PushDeviceInput } from './dataClient';
@@ -352,6 +352,26 @@ export type Database = {
           updated_at?: string;
         };
         Update: Partial<Database['public']['Tables']['vendor_feature_flags']['Insert']>;
+        Relationships: [];
+      };
+      vendor_location_pins: {
+        Row: {
+          id: string;
+          vendor_id: string;
+          location_id: string;
+          pin_hash: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          vendor_id: string;
+          location_id: string;
+          pin_hash: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['vendor_location_pins']['Insert']>;
         Relationships: [];
       };
     };
@@ -2266,6 +2286,67 @@ export class SupabaseDataClient implements DataClient {
       return flags;
     } catch (error) {
       logQueryPerformance('getVendorFeatureFlags', startTime, false, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Gets all location PINs for a vendor (returns locationId -> hasPin mapping)
+   */
+  async getLocationPins(vendorId: string): Promise<Record<string, boolean>> {
+    const startTime = Date.now();
+    try {
+      const { data, error } = await this.client
+        .from('vendor_location_pins')
+        .select('location_id')
+        .eq('vendor_id', vendorId);
+
+      if (error) throw error;
+
+      const pins: Record<string, boolean> = {};
+      (data || []).forEach(pin => {
+        pins[pin.location_id] = true;
+      });
+
+      logQueryPerformance('getLocationPins', startTime, true);
+      return pins;
+    } catch (error) {
+      logQueryPerformance('getLocationPins', startTime, false, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Sets or updates a location PIN for a vendor
+   * PIN is hashed using SHA-256 before storage
+   */
+  async setLocationPin(vendorId: string, locationId: string, pin: string): Promise<void> {
+    const startTime = Date.now();
+    try {
+      // Validate PIN format (4 digits)
+      if (!/^\d{4}$/.test(pin)) {
+        throw new Error('PIN must be exactly 4 digits');
+      }
+
+      // Hash PIN using SHA-256 (same as in KDS auth endpoint)
+      const pinHash = createHash('sha256').update(pin).digest('hex');
+
+      const { error } = await this.client
+        .from('vendor_location_pins')
+        .upsert({
+          vendor_id: vendorId,
+          location_id: locationId,
+          pin_hash: pinHash,
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'vendor_id,location_id'
+        });
+
+      if (error) throw error;
+      
+      logQueryPerformance('setLocationPin', startTime, true);
+    } catch (error) {
+      logQueryPerformance('setLocationPin', startTime, false, error);
       throw error;
     }
   }
