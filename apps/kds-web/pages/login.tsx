@@ -141,8 +141,14 @@ export default function LoginPage() {
         return;
       }
 
-      // Store session in localStorage
+      // Store session in localStorage (for client-side checks)
       localStorage.setItem('kds_session', JSON.stringify(data.data));
+
+      // Set session cookie (for server-side getServerSideProps)
+      // Cookie expires when session expires (24 hours)
+      const expiresAt = new Date(data.data.expiresAt);
+      const maxAge = Math.floor((expiresAt.getTime() - Date.now()) / 1000);
+      document.cookie = `kds_session=${JSON.stringify(data.data)}; path=/; max-age=${maxAge}; SameSite=Lax`;
 
       // Redirect to vendor page
       router.push(`/vendors/${selectedVendor.slug}?locationId=${selectedLocation.id}`);
