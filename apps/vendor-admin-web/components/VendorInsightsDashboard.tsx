@@ -1,7 +1,5 @@
 import Link from 'next/link';
-import { useRouter } from 'next/router';
 import { Vendor, VendorInsights } from '@countrtop/models';
-import { VendorSettings } from './VendorSettings';
 
 type Props = {
   vendorSlug: string | null;
@@ -14,22 +12,6 @@ type Props = {
 const formatMetric = (value: number) => value.toLocaleString();
 
 export function VendorInsightsDashboard({ vendorSlug, vendorName, vendor, insights, statusMessage }: Props) {
-  const router = useRouter();
-
-  const handleAnchorClick = (e: React.MouseEvent<HTMLAnchorElement>, hash: string) => {
-    // If we're already on this page, handle smooth scroll manually
-    const currentPath = router.asPath.split('#')[0]; // Remove existing hash if any
-    if (currentPath === `/vendors/${vendorSlug}`) {
-      e.preventDefault();
-      const element = document.querySelector(hash);
-      if (element) {
-        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        // Update URL without triggering navigation
-        window.history.pushState(null, '', hash);
-      }
-    }
-    // Otherwise, let Next.js Link handle the navigation
-  };
 
   return (
     <main className="page">
@@ -61,13 +43,20 @@ export function VendorInsightsDashboard({ vendorSlug, vendorName, vendor, insigh
           <p className="card-description">Manage active customer orders</p>
         </Link>
         <Link 
-          href={`/vendors/${vendorSlug}#settings`} 
+          href={`/vendors/${vendorSlug}/settings`} 
           className="dashboard-card ct-card"
-          onClick={(e) => handleAnchorClick(e, '#settings')}
         >
           <div className="card-icon">⚙️</div>
           <h3 className="card-title">Settings</h3>
           <p className="card-description">Edit pickup instructions & location</p>
+        </Link>
+        <Link 
+          href={`/vendors/${vendorSlug}/workspace`} 
+          className="dashboard-card ct-card"
+        >
+          <div className="card-icon">📋</div>
+          <h3 className="card-title">Workspace</h3>
+          <p className="card-description">Recipes, inventory, calendar</p>
         </Link>
       </section>
 
@@ -122,14 +111,6 @@ export function VendorInsightsDashboard({ vendorSlug, vendorName, vendor, insigh
             </div>
           )}
         </section>
-      </div>
-
-        {/* Vendor Settings */}
-        <div id="settings" style={{ marginTop: '32px' }}>
-          {vendor && vendorSlug && (
-            <VendorSettings vendor={vendor} vendorSlug={vendorSlug} />
-          )}
-        </div>
       </div>
 
       <style jsx>{`
