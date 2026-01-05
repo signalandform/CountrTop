@@ -53,7 +53,19 @@ export default async function handler(
     }
 
     // Get Square client for vendor
-    const square = squareClientForVendor(vendor);
+    let square;
+    try {
+      square = squareClientForVendor(vendor);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      if (errorMessage.includes('Square access token not configured')) {
+        return res.status(400).json({
+          success: false,
+          error: 'Square access token not configured for vendor.'
+        });
+      }
+      throw error;
+    }
 
     // List all locations
     const { result } = await square.locationsApi.listLocations();
