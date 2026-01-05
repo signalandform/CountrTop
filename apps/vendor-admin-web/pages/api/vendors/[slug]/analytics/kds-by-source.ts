@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { getServerDataClient } from '../../../../../../lib/dataClient';
-import { requireVendorAdminApi } from '../../../../../../lib/auth';
+import { getServerDataClient } from '../../../../../lib/dataClient';
+import { requireVendorAdminApi } from '../../../../../lib/auth';
 
 type KdsBySourceResponse =
   | { success: true; data: import('@countrtop/models').KdsSourceMetrics }
