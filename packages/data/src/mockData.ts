@@ -206,7 +206,8 @@ export class MockDataClient implements DataClient {
       totals: {
         ticketsPlaced: 0,
         ticketsReady: 0,
-        ticketsCompleted: 0
+        ticketsCompleted: 0,
+        ticketsCanceled: 0
       },
       averages: {
         prepTimeMinutes: null,
