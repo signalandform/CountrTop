@@ -112,6 +112,7 @@ export function VendorInsightsDashboard({ vendorSlug, vendorName, vendor, insigh
           )}
         </section>
       </div>
+      </div>
 
       <style jsx>{`
         .page {
