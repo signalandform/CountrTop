@@ -3,6 +3,7 @@ import { SupabaseClient, User as SupabaseAuthUser } from '@supabase/supabase-js'
 
 import { DataClient, LoyaltyLedgerEntryInput, OrderSnapshotInput, PushDeviceInput } from './dataClient';
 import {
+  AovPoint,
   KitchenTicket,
   KitchenTicketStatus,
   KitchenTicketWithOrder,
@@ -14,6 +15,8 @@ import {
   LoyaltyLedgerEntry,
   OrderSnapshot,
   PushDevice,
+  RevenueBySource,
+  RevenuePoint,
   SquareOrder,
   User,
   Vendor,

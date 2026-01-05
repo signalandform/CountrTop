@@ -290,6 +290,63 @@ export class MockDataClient implements DataClient {
     };
   }
 
+  async getRevenueSeries(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _locationId: string,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _startDate: Date,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _endDate: Date,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _granularity: 'hour' | 'day' | 'week' | 'month',
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _timezone: string
+  ): Promise<import('@countrtop/models').RevenuePoint[]> {
+    return [];
+  }
+
+  async getRevenueBySource(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _locationId: string,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _startDate: Date,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _endDate: Date
+  ): Promise<import('@countrtop/models').RevenueBySource> {
+    return {
+      countrtop_online: {
+        revenue: 0,
+        orderCount: 0,
+        averageOrderValue: 0
+      },
+      square_pos: {
+        revenue: 0,
+        orderCount: 0,
+        averageOrderValue: 0
+      },
+      total: {
+        revenue: 0,
+        orderCount: 0,
+        averageOrderValue: 0
+      }
+    };
+  }
+
+  async getAovSeries(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _locationId: string,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _startDate: Date,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _endDate: Date,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _granularity: 'hour' | 'day' | 'week' | 'month',
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _timezone: string
+  ): Promise<import('@countrtop/models').AovPoint[]> {
+    return [];
+  }
+
   private createId(prefix: string) {
     return `${prefix}_${Math.random().toString(16).slice(2)}`;
   }

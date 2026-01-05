@@ -97,4 +97,25 @@ export interface DataClient {
     startDate: Date,
     endDate: Date
   ): Promise<import('@countrtop/models').KdsSourceMetrics>;
+  
+  // Revenue Analytics (Milestone 10A)
+  getRevenueSeries(
+    locationId: string,
+    startDate: Date,
+    endDate: Date,
+    granularity: 'hour' | 'day' | 'week' | 'month',
+    timezone: string
+  ): Promise<import('@countrtop/models').RevenuePoint[]>;
+  getRevenueBySource(
+    locationId: string,
+    startDate: Date,
+    endDate: Date
+  ): Promise<import('@countrtop/models').RevenueBySource>;
+  getAovSeries(
+    locationId: string,
+    startDate: Date,
+    endDate: Date,
+    granularity: 'hour' | 'day' | 'week' | 'month',
+    timezone: string
+  ): Promise<import('@countrtop/models').AovPoint[]>;
 }

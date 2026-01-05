@@ -62,3 +62,38 @@ export type KdsSourceMetrics = {
   };
 };
 
+// ============================================================================
+// Revenue Analytics (Milestone 10A)
+// ============================================================================
+
+export type RevenuePoint = {
+  timestamp: string; // ISO 8601 in vendor timezone
+  revenue: number;
+  orderCount: number;
+  averageOrderValue: number;
+};
+
+export type RevenueBySource = {
+  countrtop_online: {
+    revenue: number;
+    orderCount: number;
+    averageOrderValue: number;
+  };
+  square_pos: {
+    revenue: number;
+    orderCount: number;
+    averageOrderValue: number;
+  };
+  total: {
+    revenue: number;
+    orderCount: number;
+    averageOrderValue: number;
+  };
+};
+
+export type AovPoint = {
+  timestamp: string; // ISO 8601 in vendor timezone
+  averageOrderValue: number;
+  orderCount: number;
+};
+
