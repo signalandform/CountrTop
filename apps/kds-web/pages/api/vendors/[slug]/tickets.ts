@@ -1,8 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { createDataClient, type Database } from '@countrtop/data';
-import { verifyVendorAdminAccess } from '../../../../lib/auth';
-import { createServerClient } from '@supabase/auth-helpers-nextjs';
+import { requireKDSSession } from '../../../../lib/auth';
+import type { GetServerSidePropsContext } from 'next';
 
 type TicketsResponse =
   | {
@@ -50,6 +50,8 @@ export default async function handler(
   }
 
   const slug = typeof req.query.slug === 'string' ? req.query.slug : null;
+  const locationIdParam = typeof req.query.locationId === 'string' ? req.query.locationId : null;
+
   if (!slug) {
     return res.status(400).json({
       ok: false,
@@ -58,45 +60,28 @@ export default async function handler(
   }
 
   try {
-    // Get user from session
-    const supabase = createServerClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL ?? '',
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? process.env.SUPABASE_ANON_KEY ?? '',
-      {
-        cookies: {
-          get(name: string) {
-            return req.cookies[name] ?? undefined;
-          },
-          set() {
-            // No-op for GET requests
-          },
-          remove() {
-            // No-op for GET requests
-          }
-        }
-      }
-    );
+    // Create a mock context for requireKDSSession
+    const mockContext = {
+      req: req,
+      res: res,
+      query: req.query,
+      params: { slug }
+    } as unknown as GetServerSidePropsContext;
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return res.status(401).json({
-        ok: false,
-        error: 'Unauthorized',
-        statusCode: 401
-      });
-    }
-
-    // Verify vendor admin access
-    const authResult = await verifyVendorAdminAccess(slug, user.id);
+    // Verify KDS session
+    const authResult = await requireKDSSession(mockContext, slug, locationIdParam);
     if (!authResult.authorized) {
-      return res.status(authResult.statusCode || 403).json({
+      return res.status(authResult.statusCode || 401).json({
         ok: false,
-        error: authResult.error || 'Forbidden',
-        statusCode: authResult.statusCode || 403
+        error: authResult.error || 'Unauthorized',
+        statusCode: authResult.statusCode || 401
       });
     }
 
-    // Get vendor to find square_location_id
+    // Use locationId from session or query param
+    const locationId = locationIdParam || authResult.session.locationId;
+
+    // Get data client
     const supabaseUrl = process.env.SUPABASE_URL;
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_ANON_KEY;
     if (!supabaseUrl || !supabaseKey) {
@@ -109,20 +94,13 @@ export default async function handler(
       auth: { persistSession: false }
     });
     const dataClient = createDataClient({ supabase: supabaseAdmin });
-    const vendor = await dataClient.getVendorBySlug(slug);
-    if (!vendor || !vendor.squareLocationId) {
-      return res.status(404).json({
-        ok: false,
-        error: 'Vendor not found or missing Square location ID'
-      });
-    }
 
-    // Fetch active tickets
-    const tickets = await dataClient.listActiveKitchenTickets(vendor.squareLocationId);
+    // Fetch active tickets filtered by locationId
+    const tickets = await dataClient.listActiveKitchenTickets(locationId);
 
     return res.status(200).json({
       ok: true,
-      locationId: vendor.squareLocationId,
+      locationId,
       tickets: tickets.map(({ ticket, order }) => ({
         ticket: {
           id: ticket.id,

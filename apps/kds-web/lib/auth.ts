@@ -8,6 +8,17 @@ export type AuthResult =
   | { authorized: true; userId: string; vendorId: string }
   | { authorized: false; redirect?: { destination: string; permanent: boolean }; statusCode?: number; error?: string };
 
+export type KDSSession = {
+  vendorSlug: string;
+  locationId: string;
+  vendorId: string;
+  expiresAt: string;
+};
+
+export type KDSAuthResult =
+  | { authorized: true; session: KDSSession }
+  | { authorized: false; redirect?: { destination: string; permanent: boolean }; statusCode?: number; error?: string };
+
 /**
  * Verify vendor admin access for a given vendor slug
  * Returns auth result with redirect/error if unauthorized
@@ -120,5 +131,90 @@ export const requireVendorAdmin = async (
   }
 
   return verifyVendorAdminAccess(vendorSlug, user.id);
+};
+
+/**
+ * Parse KDS session token from request
+ * Checks both cookies and query params for session token
+ */
+function parseKDSSession(context: GetServerSidePropsContext): KDSSession | null {
+  // Check query params first (for initial redirect)
+  const sessionTokenParam = context.query.sessionToken as string | undefined;
+  if (sessionTokenParam) {
+    try {
+      const sessionData = JSON.parse(Buffer.from(sessionTokenParam, 'base64').toString());
+      if (sessionData.expiresAt && new Date(sessionData.expiresAt) > new Date()) {
+        return sessionData as KDSSession;
+      }
+    } catch {
+      // Invalid token
+    }
+  }
+
+  // Check cookies (for subsequent requests)
+  const sessionCookie = context.req.cookies.kds_session;
+  if (sessionCookie) {
+    try {
+      const sessionData = JSON.parse(sessionCookie);
+      if (sessionData.expiresAt && new Date(sessionData.expiresAt) > new Date()) {
+        return sessionData as KDSSession;
+      }
+    } catch {
+      // Invalid session
+    }
+  }
+
+  return null;
+}
+
+/**
+ * KDS session auth guard
+ * Verifies KDS session token and returns session data
+ */
+export const requireKDSSession = async (
+  context: GetServerSidePropsContext,
+  vendorSlug: string | null,
+  locationId?: string | null
+): Promise<KDSAuthResult> => {
+  const session = parseKDSSession(context);
+
+  if (!session) {
+    return {
+      authorized: false,
+      redirect: {
+        destination: '/login',
+        permanent: false
+      }
+    };
+  }
+
+  // Verify vendor slug matches (if provided)
+  if (vendorSlug && session.vendorSlug !== vendorSlug) {
+    return {
+      authorized: false,
+      redirect: {
+        destination: '/login',
+        permanent: false
+      },
+      error: 'Vendor mismatch'
+    };
+  }
+
+  // Verify location ID matches (if provided)
+  if (locationId && session.locationId !== locationId) {
+    return {
+      authorized: false,
+      redirect: {
+        destination: '/login',
+        permanent: false
+      },
+      error: 'Location mismatch'
+    };
+  }
+
+  return {
+    authorized: true,
+    session
+  };
 };
 
