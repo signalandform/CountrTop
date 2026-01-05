@@ -155,7 +155,15 @@ function parseKDSSession(context: GetServerSidePropsContext): KDSSession | null 
   const sessionCookie = context.req.cookies.kds_session;
   if (sessionCookie) {
     try {
-      const sessionData = JSON.parse(sessionCookie);
+      // Try to parse as base64 first (new format), then fall back to JSON (old format)
+      let sessionData: KDSSession;
+      try {
+        // Try base64 decode first
+        sessionData = JSON.parse(Buffer.from(sessionCookie, 'base64').toString());
+      } catch {
+        // Fall back to direct JSON parse (for backwards compatibility)
+        sessionData = JSON.parse(sessionCookie);
+      }
       if (sessionData.expiresAt && new Date(sessionData.expiresAt) > new Date()) {
         return sessionData as KDSSession;
       }

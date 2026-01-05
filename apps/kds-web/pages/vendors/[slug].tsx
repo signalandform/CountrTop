@@ -386,7 +386,9 @@ export default function VendorQueuePage({ vendorSlug, locationId: initialLocatio
     setLoadingCompletedTickets(true);
     try {
       const url = `/api/vendors/${vendorSlug}/tickets/completed${locationId ? `?locationId=${locationId}` : ''}`;
-      const response = await fetch(url);
+      const response = await fetch(url, {
+        credentials: 'include'
+      });
       const data = await response.json();
       if (data.ok) {
         setCompletedTickets(data.tickets);
@@ -405,7 +407,8 @@ export default function VendorQueuePage({ vendorSlug, locationId: initialLocatio
     try {
       const url = `/api/vendors/${vendorSlug}/tickets/${ticketId}/recall${locationId ? `?locationId=${locationId}` : ''}`;
       const response = await fetch(url, {
-        method: 'POST'
+        method: 'POST',
+        credentials: 'include'
       });
       const data = await response.json();
       if (data.ok) {

@@ -146,9 +146,11 @@ export default function LoginPage() {
 
       // Set session cookie (for server-side getServerSideProps)
       // Cookie expires when session expires (24 hours)
+      // Base64 encode the session data to avoid cookie parsing issues
       const expiresAt = new Date(data.data.expiresAt);
       const maxAge = Math.floor((expiresAt.getTime() - Date.now()) / 1000);
-      document.cookie = `kds_session=${JSON.stringify(data.data)}; path=/; max-age=${maxAge}; SameSite=Lax`;
+      const sessionDataBase64 = btoa(JSON.stringify(data.data));
+      document.cookie = `kds_session=${sessionDataBase64}; path=/; max-age=${maxAge}; SameSite=Lax`;
 
       // Redirect to vendor page
       router.push(`/vendors/${selectedVendor.slug}?locationId=${selectedLocation.id}`);
