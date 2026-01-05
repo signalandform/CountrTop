@@ -52,6 +52,14 @@ async function handleGet(
     try {
       const square = squareClientForVendor(vendor);
       const { result } = await square.locationsApi.listLocations();
+      
+      if (result.errors && result.errors.length > 0) {
+        const errorMessages = result.errors.map(e => e.detail || e.code).join(', ');
+        console.error('Square API errors:', result.errors);
+        // Return empty list if Square API has errors
+        return res.status(200).json({ success: true, data: [] });
+      }
+      
       if (result.locations) {
         locations = result.locations
           .filter(loc => loc.id)
@@ -61,12 +69,16 @@ async function handleGet(
           }));
       }
     } catch (error) {
-      // If Square token is not configured, return empty list with a note
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      // If Square token is not configured, return empty list
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('Error fetching Square locations:', error);
+      
       if (errorMessage.includes('Square access token not configured')) {
         return res.status(200).json({ success: true, data: [] });
       }
-      throw error;
+      
+      // For other errors, still return empty list but log the error
+      return res.status(200).json({ success: true, data: [] });
     }
 
     // Get PIN status for all locations
@@ -80,7 +92,7 @@ async function handleGet(
 
     return res.status(200).json({ success: true, data: locationPinInfo });
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorMessage = error instanceof Error ? error.message : String(error);
     console.error('Error fetching location PINs:', error);
     return res.status(500).json({
       success: false,
