@@ -2170,6 +2170,85 @@ export class SupabaseDataClient implements DataClient {
       throw error;
     }
   }
+
+  // ============================================================================
+  // Feature Flags (Milestone H)
+  // ============================================================================
+
+  /**
+   * Gets a single feature flag for a vendor
+   */
+  async getVendorFeatureFlag(vendorId: string, featureKey: string): Promise<boolean> {
+    const startTime = Date.now();
+    try {
+      const { data, error } = await this.client
+        .from('vendor_feature_flags')
+        .select('enabled')
+        .eq('vendor_id', vendorId)
+        .eq('feature_key', featureKey)
+        .maybeSingle();
+
+      if (error) throw error;
+      
+      logQueryPerformance('getVendorFeatureFlag', startTime, true);
+      return data?.enabled ?? false; // Default to false
+    } catch (error) {
+      logQueryPerformance('getVendorFeatureFlag', startTime, false, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Sets a feature flag for a vendor
+   */
+  async setVendorFeatureFlag(vendorId: string, featureKey: string, enabled: boolean): Promise<void> {
+    const startTime = Date.now();
+    try {
+      const { error } = await this.client
+        .from('vendor_feature_flags')
+        .upsert({
+          vendor_id: vendorId,
+          feature_key: featureKey,
+          enabled,
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'vendor_id,feature_key'
+        });
+
+      if (error) throw error;
+      
+      logQueryPerformance('setVendorFeatureFlag', startTime, true);
+    } catch (error) {
+      logQueryPerformance('setVendorFeatureFlag', startTime, false, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Gets all feature flags for a vendor
+   */
+  async getVendorFeatureFlags(vendorId: string): Promise<Record<string, boolean>> {
+    const startTime = Date.now();
+    try {
+      const { data, error } = await this.client
+        .from('vendor_feature_flags')
+        .select('feature_key, enabled')
+        .eq('vendor_id', vendorId);
+
+      if (error) throw error;
+
+      const flags: Record<string, boolean> = {};
+      (data || []).forEach(flag => {
+        flags[flag.feature_key] = flag.enabled;
+      });
+
+      logQueryPerformance('getVendorFeatureFlags', startTime, true);
+      return flags;
+    } catch (error) {
+      logQueryPerformance('getVendorFeatureFlags', startTime, false, error);
+      throw error;
+    }
+  }
 }
 
 const mapVendorFromRow = (row: Database['public']['Tables']['vendors']['Row']): Vendor => ({

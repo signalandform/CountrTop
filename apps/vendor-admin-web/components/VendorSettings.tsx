@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Vendor } from '@countrtop/models';
 
 type Props = {
@@ -21,6 +21,55 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
   const [pickupInstructions, setPickupInstructions] = useState(vendor.pickupInstructions || '');
   const [kdsActiveLimitTotal, setKdsActiveLimitTotal] = useState(vendor.kdsActiveLimitTotal?.toString() || '10');
   const [kdsActiveLimitCt, setKdsActiveLimitCt] = useState(vendor.kdsActiveLimitCt?.toString() || '10');
+
+  // Feature flags state
+  const [featureFlags, setFeatureFlags] = useState<Record<string, boolean>>({});
+  const [flagsLoading, setFlagsLoading] = useState(true);
+  const [flagsSaving, setFlagsSaving] = useState(false);
+
+  // Fetch feature flags on mount
+  useEffect(() => {
+    const fetchFlags = async () => {
+      try {
+        const response = await fetch(`/api/vendors/${vendorSlug}/feature-flags`);
+        const data = await response.json();
+        if (data.success) {
+          setFeatureFlags(data.data);
+        }
+      } catch (err) {
+        console.error('Failed to fetch feature flags:', err);
+      } finally {
+        setFlagsLoading(false);
+      }
+    };
+    fetchFlags();
+  }, [vendorSlug]);
+
+  const handleFeatureFlagChange = async (featureKey: string, enabled: boolean) => {
+    setFlagsSaving(true);
+    try {
+      const response = await fetch(`/api/vendors/${vendorSlug}/feature-flags`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify({ featureKey, enabled })
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setFeatureFlags(prev => ({ ...prev, [featureKey]: enabled }));
+      } else {
+        throw new Error(data.error || 'Failed to update feature flag');
+      }
+    } catch (err) {
+      console.error('Failed to update feature flag:', err);
+      alert('Failed to update feature flag. Please try again.');
+    } finally {
+      setFlagsSaving(false);
+    }
+  };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -160,6 +209,69 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
         </div>
 
         <div className="form-section-divider">
+          <h3>Feature Flags</h3>
+          <p className="section-description">Enable or disable features for this vendor</p>
+        </div>
+
+        {flagsLoading ? (
+          <p className="muted">Loading feature flags...</p>
+        ) : (
+          <div className="feature-flags-list">
+            <label className="checkbox-group">
+              <input
+                type="checkbox"
+                checked={featureFlags['analytics_enabled'] ?? false}
+                onChange={(e) => handleFeatureFlagChange('analytics_enabled', e.target.checked)}
+                disabled={flagsSaving}
+              />
+              <div>
+                <span className="checkbox-label">Analytics Dashboard</span>
+                <span className="field-hint">Enable analytics dashboard access</span>
+              </div>
+            </label>
+
+            <label className="checkbox-group">
+              <input
+                type="checkbox"
+                checked={featureFlags['kds_realtime_enabled'] ?? false}
+                onChange={(e) => handleFeatureFlagChange('kds_realtime_enabled', e.target.checked)}
+                disabled={flagsSaving}
+              />
+              <div>
+                <span className="checkbox-label">KDS Realtime Updates</span>
+                <span className="field-hint">Enable real-time queue updates in KDS</span>
+              </div>
+            </label>
+
+            <label className="checkbox-group">
+              <input
+                type="checkbox"
+                checked={featureFlags['kds_pin_auth_enabled'] ?? false}
+                onChange={(e) => handleFeatureFlagChange('kds_pin_auth_enabled', e.target.checked)}
+                disabled={flagsSaving}
+              />
+              <div>
+                <span className="checkbox-label">KDS PIN Authentication</span>
+                <span className="field-hint">Enable PIN-based authentication for KDS</span>
+              </div>
+            </label>
+
+            <label className="checkbox-group">
+              <input
+                type="checkbox"
+                checked={featureFlags['customer_loyalty_enabled'] ?? false}
+                onChange={(e) => handleFeatureFlagChange('customer_loyalty_enabled', e.target.checked)}
+                disabled={flagsSaving}
+              />
+              <div>
+                <span className="checkbox-label">Customer Loyalty Program</span>
+                <span className="field-hint">Enable customer loyalty points system</span>
+              </div>
+            </label>
+          </div>
+        )}
+
+        <div className="form-section-divider">
           <h3>KDS Queue Settings</h3>
         </div>
 
@@ -255,6 +367,54 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
           font-size: 12px;
           color: #888;
           margin-top: 4px;
+        }
+
+        .section-description {
+          font-size: 13px;
+          color: #888;
+          margin: 8px 0 0 0;
+        }
+
+        .feature-flags-list {
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+        }
+
+        .checkbox-group {
+          display: flex;
+          gap: 12px;
+          align-items: flex-start;
+          cursor: pointer;
+          padding: 12px;
+          border-radius: 8px;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          background: rgba(255, 255, 255, 0.03);
+          transition: background 0.2s;
+        }
+
+        .checkbox-group:hover {
+          background: rgba(255, 255, 255, 0.05);
+        }
+
+        .checkbox-group input[type="checkbox"] {
+          margin-top: 2px;
+          cursor: pointer;
+          width: 18px;
+          height: 18px;
+        }
+
+        .checkbox-group .checkbox-label {
+          font-size: 14px;
+          font-weight: 600;
+          color: #e8e8e8;
+          display: block;
+          margin-bottom: 4px;
+        }
+
+        .muted {
+          color: #888;
+          font-size: 14px;
         }
 
         .input-field,
