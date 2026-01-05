@@ -203,6 +203,10 @@ export class MockDataClient implements DataClient {
     _timezone: string
   ): Promise<import('@countrtop/models').KdsSummary> {
     return {
+      period: {
+        start: _startDate.toISOString(),
+        end: _endDate.toISOString()
+      },
       totals: {
         ticketsPlaced: 0,
         ticketsReady: 0,
@@ -211,7 +215,8 @@ export class MockDataClient implements DataClient {
       },
       averages: {
         prepTimeMinutes: null,
-        totalTimeMinutes: null
+        totalTimeMinutes: null,
+        queueDepth: 0
       },
       throughput: {
         ticketsPerDay: 0,
