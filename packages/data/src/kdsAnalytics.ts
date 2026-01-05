@@ -18,13 +18,12 @@ export function toTimezoneTimestamp(date: Date, _timezone: string): string {
 /**
  * Builds a timezone-aware date filter for SQL queries
  * Converts UTC timestamps to vendor timezone for comparison
- * @param _timezone - Timezone (kept for API compatibility, but not used in this implementation)
  */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function buildTimezoneFilter(
   column: string,
   startDate: Date,
   endDate: Date,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   _timezone: string
 ): string {
   // PostgreSQL handles timezone conversion with AT TIME ZONE

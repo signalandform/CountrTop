@@ -76,7 +76,7 @@ export function CustomerLtvChart({ data, loading, limit = 20 }: CustomerLtvChart
               borderRadius: '8px',
               color: '#e8e8e8'
             }}
-            formatter={(value: number | undefined, name: string) => {
+            formatter={(value: number | undefined, name: string | undefined) => {
               if (value === undefined || value === null) return 'N/A';
               if (name === 'totalRevenue' || name === 'averageOrderValue') {
                 return formatCurrency(value);
