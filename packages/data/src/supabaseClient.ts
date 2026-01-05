@@ -4,6 +4,10 @@ import { SupabaseClient, User as SupabaseAuthUser } from '@supabase/supabase-js'
 import { DataClient, LoyaltyLedgerEntryInput, OrderSnapshotInput, PushDeviceInput } from './dataClient';
 import {
   AovPoint,
+  CustomerSummary,
+  CustomerLtvPoint,
+  RepeatCustomerMetrics,
+  ItemPerformance,
   KitchenTicket,
   KitchenTicketStatus,
   KitchenTicketWithOrder,
@@ -1855,6 +1859,310 @@ export class SupabaseDataClient implements DataClient {
       return result;
     } catch (error) {
       logQueryPerformance('getAovSeries', startTime, false, error);
+      throw error;
+    }
+  }
+
+  // ============================================================================
+  // Customer Analytics (Milestone 10B - CountrTop Online Only)
+  // ============================================================================
+
+  /**
+   * Gets customer summary metrics (CountrTop online orders only)
+   */
+  async getCustomerSummary(
+    vendorId: string,
+    startDate: Date,
+    endDate: Date
+  ): Promise<CustomerSummary> {
+    const startTime = Date.now();
+    try {
+      // Fetch all order snapshots with user_id (CountrTop online orders only)
+      const { data: ordersData, error } = await this.client
+        .from('order_snapshots')
+        .select('id,user_id,placed_at,snapshot_json')
+        .eq('vendor_id', vendorId)
+        .not('user_id', 'is', null)
+        .gte('placed_at', startDate.toISOString())
+        .lte('placed_at', endDate.toISOString());
+
+      if (error) throw error;
+
+      const orders = (ordersData ?? []).filter((o) => o.user_id);
+
+      // Calculate customer metrics
+      const customerOrderCounts = new Map<string, number>();
+      const customerRevenue = new Map<string, number>();
+      const customerFirstOrder = new Map<string, string>();
+      const customerLastOrder = new Map<string, string>();
+
+      // Helper to extract revenue from snapshot_json
+      const extractRevenue = (snapshot: Record<string, unknown> | null): number => {
+        if (!snapshot || typeof snapshot !== 'object') return 0;
+        const total = (snapshot as { total?: { amount?: number } }).total?.amount;
+        return typeof total === 'number' ? total / 100 : 0; // Convert cents to dollars
+      };
+
+      orders.forEach((order) => {
+        const userId = order.user_id;
+        if (!userId) return;
+
+        customerOrderCounts.set(userId, (customerOrderCounts.get(userId) ?? 0) + 1);
+        
+        const revenue = extractRevenue(order.snapshot_json as Record<string, unknown> | null);
+        customerRevenue.set(userId, (customerRevenue.get(userId) ?? 0) + revenue);
+
+        const placedAt = order.placed_at;
+        if (!customerFirstOrder.has(userId) || placedAt < customerFirstOrder.get(userId)!) {
+          customerFirstOrder.set(userId, placedAt);
+        }
+        if (!customerLastOrder.has(userId) || placedAt > customerLastOrder.get(userId)!) {
+          customerLastOrder.set(userId, placedAt);
+        }
+      });
+
+      const totalCustomers = customerOrderCounts.size;
+      const repeatCustomers = [...customerOrderCounts.values()].filter((count) => count > 1).length;
+      const totalOrders = orders.length;
+      const totalRevenue = [...customerRevenue.values()].reduce((sum, rev) => sum + rev, 0);
+
+      // Calculate new vs returning customers in period
+      const firstOrderDates = new Map<string, string>();
+      orders.forEach((order) => {
+        const userId = order.user_id;
+        if (!userId) return;
+        const placedAt = order.placed_at;
+        if (!firstOrderDates.has(userId) || placedAt < firstOrderDates.get(userId)!) {
+          firstOrderDates.set(userId, placedAt);
+        }
+      });
+
+      const newCustomers = [...firstOrderDates.values()].filter(
+        (firstOrderDate) => new Date(firstOrderDate) >= startDate && new Date(firstOrderDate) <= endDate
+      ).length;
+      const returningCustomers = totalCustomers - newCustomers;
+
+      const result: CustomerSummary = {
+        totalCustomers,
+        repeatCustomers,
+        repeatCustomerRate: totalCustomers > 0 ? repeatCustomers / totalCustomers : 0,
+        averageOrdersPerCustomer: totalCustomers > 0 ? totalOrders / totalCustomers : 0,
+        averageLifetimeValue: totalCustomers > 0 ? totalRevenue / totalCustomers : 0,
+        newCustomers,
+        returningCustomers
+      };
+
+      logQueryPerformance('getCustomerSummary', startTime, true);
+      return result;
+    } catch (error) {
+      logQueryPerformance('getCustomerSummary', startTime, false, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Gets customer lifetime value data (all time, CountrTop online orders only)
+   */
+  async getCustomerLtv(vendorId: string): Promise<CustomerLtvPoint[]> {
+    const startTime = Date.now();
+    try {
+      // Fetch all order snapshots with user_id (CountrTop online orders only)
+      const { data: ordersData, error } = await this.client
+        .from('order_snapshots')
+        .select('id,user_id,placed_at,snapshot_json')
+        .eq('vendor_id', vendorId)
+        .not('user_id', 'is', null);
+
+      if (error) throw error;
+
+      const orders = (ordersData ?? []).filter((o) => o.user_id);
+
+      // Helper to extract revenue from snapshot_json
+      const extractRevenue = (snapshot: Record<string, unknown> | null): number => {
+        if (!snapshot || typeof snapshot !== 'object') return 0;
+        const total = (snapshot as { total?: { amount?: number } }).total?.amount;
+        return typeof total === 'number' ? total / 100 : 0; // Convert cents to dollars
+      };
+
+      // Aggregate by user
+      const userData = new Map<string, {
+        orderCount: number;
+        totalRevenue: number;
+        firstOrderDate: string;
+        lastOrderDate: string;
+      }>();
+
+      orders.forEach((order) => {
+        const userId = order.user_id;
+        if (!userId) return;
+
+        const existing = userData.get(userId) || {
+          orderCount: 0,
+          totalRevenue: 0,
+          firstOrderDate: order.placed_at,
+          lastOrderDate: order.placed_at
+        };
+
+        existing.orderCount += 1;
+        existing.totalRevenue += extractRevenue(order.snapshot_json as Record<string, unknown> | null);
+
+        if (order.placed_at < existing.firstOrderDate) {
+          existing.firstOrderDate = order.placed_at;
+        }
+        if (order.placed_at > existing.lastOrderDate) {
+          existing.lastOrderDate = order.placed_at;
+        }
+
+        userData.set(userId, existing);
+      });
+
+      // Transform to CustomerLtvPoint[]
+      const result: CustomerLtvPoint[] = [...userData.entries()].map(([userId, data]) => ({
+        userId,
+        orderCount: data.orderCount,
+        totalRevenue: data.totalRevenue,
+        firstOrderDate: data.firstOrderDate,
+        lastOrderDate: data.lastOrderDate,
+        averageOrderValue: data.orderCount > 0 ? data.totalRevenue / data.orderCount : 0
+      })).sort((a, b) => b.totalRevenue - a.totalRevenue); // Sort by revenue descending
+
+      logQueryPerformance('getCustomerLtv', startTime, true);
+      return result;
+    } catch (error) {
+      logQueryPerformance('getCustomerLtv', startTime, false, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Gets repeat customer metrics (CountrTop online orders only)
+   */
+  async getRepeatCustomerMetrics(
+    vendorId: string,
+    startDate: Date,
+    endDate: Date
+  ): Promise<RepeatCustomerMetrics> {
+    const startTime = Date.now();
+    try {
+      // Fetch all order snapshots with user_id (CountrTop online orders only)
+      const { data: ordersData, error } = await this.client
+        .from('order_snapshots')
+        .select('id,user_id')
+        .eq('vendor_id', vendorId)
+        .not('user_id', 'is', null)
+        .gte('placed_at', startDate.toISOString())
+        .lte('placed_at', endDate.toISOString());
+
+      if (error) throw error;
+
+      const orders = (ordersData ?? []).filter((o) => o.user_id);
+
+      // Count orders per customer
+      const customerOrderCounts = new Map<string, number>();
+      orders.forEach((order) => {
+        const userId = order.user_id;
+        if (!userId) return;
+        customerOrderCounts.set(userId, (customerOrderCounts.get(userId) ?? 0) + 1);
+      });
+
+      const totalCustomers = customerOrderCounts.size;
+      const repeatCustomers = [...customerOrderCounts.values()].filter((count) => count > 1).length;
+      const singleOrderCustomers = totalCustomers - repeatCustomers;
+
+      const result: RepeatCustomerMetrics = {
+        repeatCustomerRate: totalCustomers > 0 ? repeatCustomers / totalCustomers : 0,
+        totalCustomers,
+        repeatCustomers,
+        singleOrderCustomers
+      };
+
+      logQueryPerformance('getRepeatCustomerMetrics', startTime, true);
+      return result;
+    } catch (error) {
+      logQueryPerformance('getRepeatCustomerMetrics', startTime, false, error);
+      throw error;
+    }
+  }
+
+  // ============================================================================
+  // Item Performance (Milestone 10B)
+  // ============================================================================
+
+  /**
+   * Gets item performance metrics (CountrTop online orders only)
+   */
+  async getItemPerformance(
+    vendorId: string,
+    startDate: Date,
+    endDate: Date
+  ): Promise<ItemPerformance[]> {
+    const startTime = Date.now();
+    try {
+      // Fetch all order snapshots with user_id (CountrTop online orders only)
+      const { data: ordersData, error } = await this.client
+        .from('order_snapshots')
+        .select('id,user_id,placed_at,snapshot_json')
+        .eq('vendor_id', vendorId)
+        .not('user_id', 'is', null)
+        .gte('placed_at', startDate.toISOString())
+        .lte('placed_at', endDate.toISOString());
+
+      if (error) throw error;
+
+      const orders = (ordersData ?? []).filter((o) => o.user_id);
+
+      // Aggregate item data
+      const itemData = new Map<string, {
+        quantity: number;
+        revenue: number;
+        orderCount: Set<string>; // Track unique orders containing this item
+      }>();
+
+      type SnapshotItem = {
+        name?: unknown;
+        quantity?: unknown;
+        price?: unknown;
+        amount?: unknown;
+      };
+
+      orders.forEach((order) => {
+        const snapshot = order.snapshot_json as { items?: unknown[] } | null;
+        const items = Array.isArray(snapshot?.items) ? snapshot.items : [];
+
+        items.forEach((item) => {
+          const raw = item as SnapshotItem;
+          const itemName = typeof raw.name === 'string' ? raw.name : 'Unknown Item';
+          const quantity = typeof raw.quantity === 'number' ? raw.quantity : 1;
+          const price = typeof raw.price === 'number' ? raw.price : (typeof raw.amount === 'number' ? raw.amount / 100 : 0);
+
+          const existing = itemData.get(itemName) || {
+            quantity: 0,
+            revenue: 0,
+            orderCount: new Set<string>()
+          };
+
+          existing.quantity += quantity;
+          existing.revenue += price * quantity;
+          existing.orderCount.add(order.id);
+
+          itemData.set(itemName, existing);
+        });
+      });
+
+      // Transform to ItemPerformance[] (avgPrepTimeMinutes will be null for now)
+      const result: ItemPerformance[] = [...itemData.entries()].map(([itemName, data]) => ({
+        itemName,
+        quantity: data.quantity,
+        revenue: data.revenue,
+        orderCount: data.orderCount.size,
+        avgPrice: data.quantity > 0 ? data.revenue / data.quantity : 0,
+        avgPrepTimeMinutes: null // TODO: Correlate with kitchen_tickets if needed
+      })).sort((a, b) => b.revenue - a.revenue); // Sort by revenue descending
+
+      logQueryPerformance('getItemPerformance', startTime, true);
+      return result;
+    } catch (error) {
+      logQueryPerformance('getItemPerformance', startTime, false, error);
       throw error;
     }
   }

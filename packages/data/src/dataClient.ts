@@ -118,4 +118,26 @@ export interface DataClient {
     granularity: 'hour' | 'day' | 'week' | 'month',
     timezone: string
   ): Promise<import('@countrtop/models').AovPoint[]>;
+  
+  // Customer Analytics (Milestone 10B - CountrTop Online Only)
+  getCustomerSummary(
+    vendorId: string,
+    startDate: Date,
+    endDate: Date
+  ): Promise<import('@countrtop/models').CustomerSummary>;
+  getCustomerLtv(
+    vendorId: string
+  ): Promise<import('@countrtop/models').CustomerLtvPoint[]>;
+  getRepeatCustomerMetrics(
+    vendorId: string,
+    startDate: Date,
+    endDate: Date
+  ): Promise<import('@countrtop/models').RepeatCustomerMetrics>;
+  
+  // Item Performance (Milestone 10B)
+  getItemPerformance(
+    vendorId: string,
+    startDate: Date,
+    endDate: Date
+  ): Promise<import('@countrtop/models').ItemPerformance[]>;
 }

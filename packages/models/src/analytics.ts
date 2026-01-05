@@ -97,3 +97,47 @@ export type AovPoint = {
   orderCount: number;
 };
 
+// ============================================================================
+// Customer Analytics (Milestone 10B - CountrTop Online Only)
+// ============================================================================
+
+export type CustomerSummary = {
+  // Label: "CountrTop Online Only"
+  totalCustomers: number;
+  repeatCustomers: number;
+  repeatCustomerRate: number; // 0-1
+  averageOrdersPerCustomer: number;
+  averageLifetimeValue: number;
+  newCustomers: number; // in period
+  returningCustomers: number; // in period
+};
+
+export type CustomerLtvPoint = {
+  userId: string;
+  orderCount: number;
+  totalRevenue: number;
+  firstOrderDate: string;
+  lastOrderDate: string;
+  averageOrderValue: number;
+};
+
+export type RepeatCustomerMetrics = {
+  repeatCustomerRate: number; // 0-1
+  totalCustomers: number;
+  repeatCustomers: number;
+  singleOrderCustomers: number;
+};
+
+// ============================================================================
+// Item Performance (Milestone 10B)
+// ============================================================================
+
+export type ItemPerformance = {
+  itemName: string;
+  quantity: number;
+  revenue: number;
+  orderCount: number;
+  avgPrice: number;
+  avgPrepTimeMinutes: number | null; // if correlated with tickets
+};
+
