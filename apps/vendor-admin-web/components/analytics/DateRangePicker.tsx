@@ -16,7 +16,7 @@ type DateRangePickerProps = {
 /**
  * Date range picker with preset options
  */
-export function DateRangePicker({ value, onChange, timezone }: DateRangePickerProps) {
+export function DateRangePicker({ value, onChange }: DateRangePickerProps) {
   const [preset, setPreset] = useState<DateRangePreset>('last30days');
   const [customStart, setCustomStart] = useState<string>('');
   const [customEnd, setCustomEnd] = useState<string>('');
@@ -26,7 +26,7 @@ export function DateRangePicker({ value, onChange, timezone }: DateRangePickerPr
 
     const now = new Date();
     let start: Date;
-    let end: Date = new Date(now);
+    const end: Date = new Date(now);
 
     switch (newPreset) {
       case 'today':
