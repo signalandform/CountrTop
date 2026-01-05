@@ -54,7 +54,6 @@ async function handleGet(
       const { result } = await square.locationsApi.listLocations();
       
       if (result.errors && result.errors.length > 0) {
-        const errorMessages = result.errors.map(e => e.detail || e.code).join(', ');
         console.error('Square API errors:', result.errors);
         // Return empty list if Square API has errors
         return res.status(200).json({ success: true, data: [] });
