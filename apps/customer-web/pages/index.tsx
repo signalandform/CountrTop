@@ -93,6 +93,7 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor }: Props) 
   const [cart, setCart] = useState<CartItem[]>([]);
   const [checkingOut, setCheckingOut] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [pickupConfirmed, setPickupConfirmed] = useState(false);
 
   // User data state (orders + loyalty)
   const [orders, setOrders] = useState<OrderHistoryEntry[]>([]);
@@ -109,11 +110,35 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor }: Props) 
   const [loyalty, setLoyalty] = useState<number | null>(null);
 
   // Track what user data we've loaded to prevent duplicate fetches
+  // Pickup confirmation persistence
+  useEffect(() => {
+    if (!vendorSlug) return;
+    const key = `ct_pickup_confirmed_${vendorSlug}`;
+    const stored = localStorage.getItem(key);
+    if (stored) {
+      try {
+        const data = JSON.parse(stored);
+        if (data.expiresAt && new Date(data.expiresAt) > new Date()) {
+          setPickupConfirmed(true);
+        } else {
+          localStorage.removeItem(key);
+        }
+      } catch {
+        localStorage.removeItem(key);
+      }
+    }
+  }, [vendorSlug]);
+
+  // Reset confirmation when vendor changes
+  useEffect(() => {
+    setPickupConfirmed(false);
+  }, [vendorSlug]);
   const [loadedUserId, setLoadedUserId] = useState<string | null>(null);
 
   // Order History state
   const [historyExpanded, setHistoryExpanded] = useState(false);
   const [historyPage, setHistoryPage] = useState(0);
+  const [expandedOrderItems, setExpandedOrderItems] = useState<Record<string, boolean>>({});
   const ORDERS_PER_PAGE = 5;
 
   // ---------------------------------------------------------------------------
@@ -321,7 +346,7 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor }: Props) 
   };
 
   const handleCheckout = async () => {
-    if (!vendorSlug || cart.length === 0 || checkingOut) return;
+    if (!vendorSlug || cart.length === 0 || checkingOut || !pickupConfirmed) return;
     setCheckoutError(null);
     setCheckingOut(true);
 
@@ -343,6 +368,14 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor }: Props) 
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error ?? 'Checkout failed');
+
+      // Persist pickup confirmation (24h TTL)
+      if (vendorSlug) {
+        const key = `ct_pickup_confirmed_${vendorSlug}`;
+        const expiresAt = new Date();
+        expiresAt.setHours(expiresAt.getHours() + 24);
+        localStorage.setItem(key, JSON.stringify({ expiresAt: expiresAt.toISOString() }));
+      }
 
       sessionStorage.setItem(
         `ct_order_${data.orderId}`,
@@ -443,24 +476,43 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor }: Props) 
               {vendor.addressLine1 && (
                 <div className="vendor-address">
                   <div className="info-label">Location</div>
-                  <div className="info-content">
-                    {vendor.addressLine1}
-                    {vendor.addressLine2 && <>{'\n'}{vendor.addressLine2}</>}
-                    {vendor.city && (
-                      <>
-                        {'\n'}
-                        {vendor.city}
-                        {vendor.state && `, ${vendor.state}`}
-                        {vendor.postalCode && ` ${vendor.postalCode}`}
-                      </>
-                    )}
-                    {vendor.phone && (
-                      <>
-                        {'\n'}
-                        <a href={`tel:${vendor.phone}`} className="phone-link">{vendor.phone}</a>
-                      </>
-                    )}
-                  </div>
+                  {(() => {
+                    const fullAddress = [
+                      vendor.addressLine1,
+                      vendor.addressLine2,
+                      vendor.city,
+                      vendor.state,
+                      vendor.postalCode
+                    ].filter(Boolean).join(', ');
+                    const isIOS = typeof window !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent);
+                    const mapsUrl = isIOS
+                      ? `https://maps.apple.com/?q=${encodeURIComponent(fullAddress)}`
+                      : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fullAddress)}`;
+                    return (
+                      <a
+                        href={mapsUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="info-content vendor-address-link"
+                      >
+                        {vendor.addressLine1}
+                        {vendor.addressLine2 && <>{'\n'}{vendor.addressLine2}</>}
+                        {vendor.city && (
+                          <>
+                            {'\n'}
+                            {vendor.city}
+                            {vendor.state && `, ${vendor.state}`}
+                            {vendor.postalCode && ` ${vendor.postalCode}`}
+                          </>
+                        )}
+                      </a>
+                    );
+                  })()}
+                  {vendor.phone && (
+                    <div className="info-content" style={{ marginTop: '8px' }}>
+                      <a href={`tel:${vendor.phone}`} className="phone-link">{vendor.phone}</a>
+                    </div>
+                  )}
                 </div>
               )}
               {vendor.pickupInstructions && (
@@ -507,6 +559,137 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor }: Props) 
             {authError && <p className="error">{authError}</p>}
           </section>
 
+          {/* Order History */}
+          <section className="card history">
+            <div 
+              className="card-header history-header" 
+              style={{ cursor: 'pointer' }}
+              onClick={() => setHistoryExpanded(!historyExpanded)}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <h2 style={{ margin: 0 }}>Order History</h2>
+                <span className="muted">{user ? `${orders.length} orders` : 'Sign in'}</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <span style={{ transform: historyExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>▼</span>
+              </div>
+            </div>
+            {historyExpanded && (
+              <>
+                {!user && authStatus === 'ready' && (
+                  <p className="muted">Sign in to see past orders.</p>
+                )}
+                {user && ordersLoading && <p className="muted">Loading orders…</p>}
+                {user && ordersError && <p className="error">{ordersError}</p>}
+                {user && !ordersLoading && orders.length === 0 && (
+                  <p className="muted">No orders yet.</p>
+                )}
+                {user && !ordersLoading && orders.length > 0 && (
+                  <>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '12px' }}>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setLoadedUserId(null);
+                        }}
+                        className="btn-secondary"
+                        style={{ padding: '6px 12px', fontSize: '14px' }}
+                        disabled={ordersLoading}
+                      >
+                        {ordersLoading ? 'Loading...' : 'Refresh'}
+                      </button>
+                    </div>
+                    {orders.slice(historyPage * ORDERS_PER_PAGE, (historyPage + 1) * ORDERS_PER_PAGE).map((order) => {
+                      const items = (order.snapshotJson?.items ?? []) as Array<{ quantity?: number }>;
+                      const count = items.reduce((s, i) => s + (i.quantity ?? 0), 0);
+                      const total = typeof order.snapshotJson?.total === 'number' ? order.snapshotJson.total : 0;
+                      const currency = typeof order.snapshotJson?.currency === 'string' ? order.snapshotJson.currency : 'USD';
+                      const dateTime = new Date(order.placedAt);
+                      const formattedDateTime = dateTime.toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        hour: 'numeric',
+                        minute: '2-digit'
+                      });
+                      const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
+                      const isExpanded = expandedItems[order.id] || false;
+                      const parseItems = (snapshot: Record<string, unknown> | null): Array<{ name: string; quantity: number }> => {
+                        if (!snapshot || typeof snapshot !== 'object') return [];
+                        const items = (snapshot.items as unknown[]) || (snapshot.line_items as unknown[]) || [];
+                        return items.map((item: unknown) => {
+                          const itemObj = item as Record<string, unknown> | null;
+                          return {
+                            name: (itemObj?.name as string) || 'Item',
+                            quantity: (itemObj?.quantity as number) || 1
+                          };
+                        });
+                      };
+                      const orderItems = parseItems(order.snapshotJson);
+
+                      return (
+                        <div key={order.id} className="history-item">
+                          <div style={{ flex: 1 }}>
+                            <div style={{ marginBottom: '4px' }}>
+                              <div className="label">Order {order.squareOrderId.slice(-6)}</div>
+                            </div>
+                            <div className="muted">
+                              {formattedDateTime} · {count} items · {formatCurrency(total, currency)}
+                            </div>
+                            {isExpanded && orderItems.length > 0 && (
+                              <div className="order-items-list" style={{ marginTop: '8px' }}>
+                                {orderItems.map((item, idx) => (
+                                  <div key={idx} className="order-item">
+                                    <span className="item-quantity">{item.quantity}×</span>
+                                    <span className="item-name">{item.name}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                            <button
+                              onClick={() => setExpandedItems(prev => ({ ...prev, [order.id]: !isExpanded }))}
+                              className="btn-secondary"
+                              style={{ padding: '6px 12px', fontSize: '14px' }}
+                            >
+                              {isExpanded ? 'Hide' : 'Items'}
+                            </button>
+                            <button onClick={() => handleReorder(order)} className="btn-secondary">
+                              Reorder
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {orders.length > ORDERS_PER_PAGE && (
+                      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '16px', marginTop: '16px' }}>
+                        <button
+                          onClick={() => setHistoryPage(Math.max(0, historyPage - 1))}
+                          className="btn-secondary"
+                          style={{ padding: '6px 12px', fontSize: '14px' }}
+                          disabled={historyPage === 0}
+                        >
+                          Previous
+                        </button>
+                        <span className="muted" style={{ fontSize: '14px' }}>
+                          Page {historyPage + 1} of {Math.ceil(orders.length / ORDERS_PER_PAGE)}
+                        </span>
+                        <button
+                          onClick={() => setHistoryPage(Math.min(Math.ceil(orders.length / ORDERS_PER_PAGE) - 1, historyPage + 1))}
+                          className="btn-secondary"
+                          style={{ padding: '6px 12px', fontSize: '14px' }}
+                          disabled={historyPage >= Math.ceil(orders.length / ORDERS_PER_PAGE) - 1}
+                        >
+                          Next
+                        </button>
+                      </div>
+                    )}
+                  </>
+                )}
+              </>
+            )}
+          </section>
+
           {/* Order Tracking */}
           <section className="card order-tracking">
             <div className="card-header">
@@ -521,22 +704,62 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor }: Props) 
             {user && !ordersLoading && !recentOrder && (
               <p className="muted">No orders yet.</p>
             )}
-            {user && !ordersLoading && recentOrder && recentOrderDetails && (
-              <div className="order-tracking-info">
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                    <div className="label">Order {recentOrder.squareOrderId.slice(-6)}</div>
-                    {recentOrder.fulfillmentStatus && (() => {
-                      const status = recentOrder.fulfillmentStatus;
-                      const badgeClass = status === 'PLACED' ? 'ct-badge-placed' : status === 'READY' ? 'ct-badge-ready' : (status === 'COMPLETE' || status === 'COMPLETED') ? 'ct-badge-complete' : 'ct-badge-placed';
-                      const badgeLabel = status === 'PLACED' ? 'Placed' : status === 'READY' ? 'Ready' : (status === 'COMPLETE' || status === 'COMPLETED') ? 'Complete' : 'Placed';
-                      return <span className={`ct-badge ${badgeClass}`}>{badgeLabel}</span>;
-                    })()}
+            {user && !ordersLoading && recentOrder && recentOrderDetails && (() => {
+              // Auto-hide if completed >30 minutes ago
+              const shouldShow = !recentOrder.completedAt || (() => {
+                const completed = new Date(recentOrder.completedAt);
+                const now = new Date();
+                const minutesSince = (now.getTime() - completed.getTime()) / 60000;
+                return minutesSince <= 30;
+              })();
+              
+              if (!shouldShow) return null;
+
+              // Parse items from snapshot
+              const parseItems = (snapshot: Record<string, unknown> | null): Array<{ name: string; quantity: number }> => {
+                if (!snapshot || typeof snapshot !== 'object') return [];
+                const items = (snapshot.items as unknown[]) || (snapshot.line_items as unknown[]) || [];
+                return items.map((item: unknown) => {
+                  const itemObj = item as Record<string, unknown> | null;
+                  return {
+                    name: (itemObj?.name as string) || 'Item',
+                    quantity: (itemObj?.quantity as number) || 1
+                  };
+                });
+              };
+
+              const items = parseItems(recentOrder.snapshotJson);
+              const dateTime = new Date(recentOrder.placedAt);
+              const formattedDateTime = dateTime.toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit'
+              });
+
+              return (
+                <div className="order-tracking-info">
+                  <div>
+                    <div style={{ marginBottom: '4px' }}>
+                      <div className="label">Order {recentOrder.squareOrderId.slice(-6)}</div>
+                    </div>
+                    <div className="muted">
+                      {formattedDateTime} · {recentOrderDetails.count} items · {formatCurrency(recentOrderDetails.total, recentOrderDetails.currency)}
+                    </div>
+                    {items.length > 0 && (
+                      <div className="order-items-list" style={{ marginTop: '12px' }}>
+                        {items.slice(0, 6).map((item, idx) => (
+                          <div key={idx} className="order-item">
+                            <span className="item-quantity">{item.quantity}×</span>
+                            <span className="item-name">{item.name}</span>
+                          </div>
+                        ))}
+                        {items.length > 6 && (
+                          <div className="order-item-more">+{items.length - 6} more</div>
+                        )}
+                      </div>
+                    )}
                   </div>
-                  <div className="muted">
-                    {new Date(recentOrder.placedAt).toLocaleDateString()} · {recentOrderDetails.count} items · {formatCurrency(recentOrderDetails.total, recentOrderDetails.currency)}
-                  </div>
-                </div>
                 {trackingLoading && <p className="muted" style={{ marginTop: '12px' }}>Loading tracking...</p>}
                 {!trackingLoading && trackingState && (
                   <div className={`tracking-ladder tracking-state-${trackingState.state}`} style={{ marginTop: '16px' }}>
@@ -597,9 +820,27 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor }: Props) 
                 <span>Total</span>
                 <strong>{formatCurrency(cartTotal, cartCurrency)}</strong>
               </div>
+              {vendor && vendor.addressLine1 && (
+                <label className="pickup-confirmation">
+                  <input
+                    type="checkbox"
+                    checked={pickupConfirmed}
+                    onChange={(e) => setPickupConfirmed(e.target.checked)}
+                  />
+                  <span>
+                    I confirm I'm picking up at: {vendor.displayName} - {[
+                      vendor.addressLine1,
+                      vendor.city,
+                      vendor.state,
+                      vendor.postalCode
+                    ].filter(Boolean).join(', ')}
+                  </span>
+                </label>
+              )}
+              <p className="no-account-label">No account needed — Square Checkout</p>
               <button
                 onClick={handleCheckout}
-                disabled={cart.length === 0 || checkingOut}
+                disabled={cart.length === 0 || checkingOut || !pickupConfirmed}
                 className="btn-checkout"
               >
                 {checkingOut ? 'Processing…' : 'Checkout with Square'}
@@ -699,39 +940,60 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor }: Props) 
                         READY: '#fbbf24',
                         COMPLETE: '#4ade80'
                       };
+                      const dateTime = new Date(order.placedAt);
+                      const formattedDateTime = dateTime.toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        hour: 'numeric',
+                        minute: '2-digit'
+                      });
+                      const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
+                      const isExpanded = expandedItems[order.id] || false;
+                      const parseItems = (snapshot: Record<string, unknown> | null): Array<{ name: string; quantity: number }> => {
+                        if (!snapshot || typeof snapshot !== 'object') return [];
+                        const items = (snapshot.items as unknown[]) || (snapshot.line_items as unknown[]) || [];
+                        return items.map((item: unknown) => {
+                          const itemObj = item as Record<string, unknown> | null;
+                          return {
+                            name: (itemObj?.name as string) || 'Item',
+                            quantity: (itemObj?.quantity as number) || 1
+                          };
+                        });
+                      };
+                      const orderItems = parseItems(order.snapshotJson);
+
                       return (
                         <div key={order.id} className="history-item">
-                          <div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ marginBottom: '4px' }}>
                               <div className="label">Order {order.squareOrderId.slice(-6)}</div>
-                              <span
-                                style={{
-                                  padding: '2px 8px',
-                                  borderRadius: '12px',
-                                  fontSize: '11px',
-                                  fontWeight: 600,
-                                  textTransform: 'uppercase',
-                                  backgroundColor: `${statusColors[status]}20`,
-                                  color: statusColors[status],
-                                  border: `1px solid ${statusColors[status]}40`
-                                }}
-                              >
-                                {statusLabels[status] || status}
-                              </span>
                             </div>
                             <div className="muted">
-                              {new Date(order.placedAt).toLocaleDateString()} · {count} items · {formatCurrency(total, currency)}
-                              {order.readyAt && (
-                                <> · Ready {new Date(order.readyAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</>
-                              )}
-                              {order.completedAt && (
-                                <> · Complete {new Date(order.completedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</>
-                              )}
+                              {formattedDateTime} · {count} items · {formatCurrency(total, currency)}
                             </div>
+                            {isExpanded && orderItems.length > 0 && (
+                              <div className="order-items-list" style={{ marginTop: '8px' }}>
+                                {orderItems.map((item, idx) => (
+                                  <div key={idx} className="order-item">
+                                    <span className="item-quantity">{item.quantity}×</span>
+                                    <span className="item-name">{item.name}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
                           </div>
-                          <button onClick={() => handleReorder(order)} className="btn-secondary">
-                            Reorder
-                          </button>
+                          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                            <button
+                              onClick={() => setExpandedItems(prev => ({ ...prev, [order.id]: !isExpanded }))}
+                              className="btn-secondary"
+                              style={{ padding: '6px 12px', fontSize: '14px' }}
+                            >
+                              {isExpanded ? 'Hide' : 'Items'}
+                            </button>
+                            <button onClick={() => handleReorder(order)} className="btn-secondary">
+                              Reorder
+                            </button>
+                          </div>
                         </div>
                       );
                     })}
@@ -862,6 +1124,17 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor }: Props) 
             white-space: pre-line;
           }
 
+          .vendor-address-link {
+            text-decoration: none;
+            color: #a78bfa;
+            transition: color 0.2s;
+          }
+
+          .vendor-address-link:hover {
+            color: #8b5cf6;
+            text-decoration: underline;
+          }
+
           .phone-link {
             color: #a78bfa;
             text-decoration: none;
@@ -964,6 +1237,57 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor }: Props) 
 
           .history {
             grid-area: history;
+          }
+
+          .order-items-list {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+          }
+
+          .order-item {
+            display: flex;
+            gap: 8px;
+            font-size: 13px;
+            color: #e8e8e8;
+          }
+
+          .order-item .item-quantity {
+            font-weight: 600;
+            color: #a78bfa;
+            min-width: 24px;
+          }
+
+          .order-item .item-name {
+            color: #e8e8e8;
+          }
+
+          .order-item-more {
+            font-size: 12px;
+            color: #888;
+            margin-top: 4px;
+          }
+
+          .pickup-confirmation {
+            display: flex;
+            gap: 8px;
+            align-items: flex-start;
+            font-size: 13px;
+            color: #e8e8e8;
+            margin: 12px 0;
+            cursor: pointer;
+          }
+
+          .pickup-confirmation input[type="checkbox"] {
+            margin-top: 2px;
+            cursor: pointer;
+          }
+
+          .no-account-label {
+            font-size: 12px;
+            color: #888;
+            margin: 8px 0;
+            text-align: center;
           }
 
           .card {
