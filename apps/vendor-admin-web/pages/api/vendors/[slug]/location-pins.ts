@@ -50,6 +50,15 @@ async function handleGet(
     // Get Square locations
     let locations: Array<{ id: string; name: string }> = [];
     try {
+      // Debug: Check if token is available (don't log the actual token)
+      const hasToken = !!process.env.SQUARE_ACCESS_TOKEN || 
+        (vendor.squareCredentialRef && !!process.env[`SQUARE_ACCESS_TOKEN_${vendor.squareCredentialRef.toUpperCase().replace(/[^A-Z0-9_]/g, '_')}`]);
+      console.log('Square token check:', { 
+        hasToken, 
+        hasSquareCredentialRef: !!vendor.squareCredentialRef,
+        squareEnvironment: process.env.SQUARE_ENVIRONMENT || 'sandbox'
+      });
+
       const square = squareClientForVendor(vendor);
       const { result } = await square.locationsApi.listLocations();
       
@@ -70,7 +79,13 @@ async function handleGet(
     } catch (error) {
       // If Square token is not configured, return empty list
       const errorMessage = error instanceof Error ? error.message : String(error);
-      console.error('Error fetching Square locations:', error);
+      console.error('Error fetching Square locations:', {
+        error: errorMessage,
+        errorType: error instanceof Error ? error.constructor.name : typeof error,
+        vendorId: vendor.id,
+        vendorSlug: vendor.slug,
+        squareCredentialRef: vendor.squareCredentialRef
+      });
       
       if (errorMessage.includes('Square access token not configured')) {
         return res.status(200).json({ success: true, data: [] });
