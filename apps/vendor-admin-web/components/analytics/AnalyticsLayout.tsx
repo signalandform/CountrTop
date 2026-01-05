@@ -40,13 +40,13 @@ export function AnalyticsLayout({ vendorSlug, vendorName, children, currentTab }
       <div className="page-content">
         <div className="header">
           <div className="header-content">
-            <Link href={`/vendors/${vendorSlug}`} className="back-button">
-              ← Back to Dashboard
-            </Link>
             <div className="eyebrow">Vendor Analytics</div>
             <h1 className="title">{vendorName}</h1>
             <p className="subtitle">Performance insights and trends</p>
           </div>
+          <Link href={`/vendors/${vendorSlug}`} className="back-button">
+            ← Back to Dashboard
+          </Link>
         </div>
 
         {/* Navigation Tabs */}
@@ -98,6 +98,7 @@ export function AnalyticsLayout({ vendorSlug, vendorName, children, currentTab }
           padding: 48px 0 32px;
           flex-wrap: wrap;
           gap: 20px;
+          position: relative;
         }
 
         .header-content {
@@ -109,7 +110,6 @@ export function AnalyticsLayout({ vendorSlug, vendorName, children, currentTab }
           align-items: center;
           gap: 8px;
           padding: 8px 16px;
-          margin-bottom: 16px;
           font-size: 14px;
           font-weight: 500;
           color: #888;
@@ -118,6 +118,7 @@ export function AnalyticsLayout({ vendorSlug, vendorName, children, currentTab }
           transition: all 0.2s ease;
           background: rgba(255, 255, 255, 0.03);
           border: 1px solid rgba(255, 255, 255, 0.1);
+          align-self: flex-start;
         }
 
         .back-button:hover {
