@@ -785,7 +785,8 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor }: Props) 
                   </div>
                 )}
               </div>
-            )}
+              );
+            })()}
           </section>
 
           {/* Cart */}
@@ -827,7 +828,7 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor }: Props) 
                     onChange={(e) => setPickupConfirmed(e.target.checked)}
                   />
                   <span>
-                    I confirm I'm picking up at: {vendor.displayName} - {[
+                    I confirm I&apos;m picking up at: {vendor.displayName} - {[
                       vendor.addressLine1,
                       vendor.city,
                       vendor.state,
@@ -882,6 +883,7 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor }: Props) 
               {!menuLoading && menu.length === 0 && <p className="muted">No menu items yet.</p>}
             </div>
           </section>
+        </div>
 
         <style jsx>{`
           .page {
@@ -1486,6 +1488,7 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor }: Props) 
             margin-top: 12px;
           }
         `}</style>
+        </div>
       </main>
     </>
   );
