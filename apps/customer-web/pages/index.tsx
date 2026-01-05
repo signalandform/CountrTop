@@ -611,8 +611,7 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor }: Props) 
                         hour: 'numeric',
                         minute: '2-digit'
                       });
-                      const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
-                      const isExpanded = expandedItems[order.id] || false;
+                      const isExpanded = expandedOrderItems[order.id] || false;
                       const parseItems = (snapshot: Record<string, unknown> | null): Array<{ name: string; quantity: number }> => {
                         if (!snapshot || typeof snapshot !== 'object') return [];
                         const items = (snapshot.items as unknown[]) || (snapshot.line_items as unknown[]) || [];
@@ -648,7 +647,7 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor }: Props) 
                           </div>
                           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                             <button
-                              onClick={() => setExpandedItems(prev => ({ ...prev, [order.id]: !isExpanded }))}
+                              onClick={() => setExpandedOrderItems(prev => ({ ...prev, [order.id]: !isExpanded }))}
                               className="btn-secondary"
                               style={{ padding: '6px 12px', fontSize: '14px' }}
                             >

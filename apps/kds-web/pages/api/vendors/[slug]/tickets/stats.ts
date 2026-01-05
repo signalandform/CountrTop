@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
-import { createDataClient, type Database } from '@countrtop/data';
+import type { Database } from '@countrtop/data';
 import { requireKDSSession } from '../../../../../lib/auth';
 import type { GetServerSidePropsContext } from 'next';
 
@@ -69,7 +69,7 @@ export default async function handler(
 
     const locationId = locationIdParam || authResult.session.locationId;
 
-    // Get data client
+    // Get Supabase client
     const supabaseUrl = process.env.SUPABASE_URL;
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_ANON_KEY;
     if (!supabaseUrl || !supabaseKey) {
@@ -81,7 +81,6 @@ export default async function handler(
     const supabase = createClient<Database>(supabaseUrl, supabaseKey, {
       auth: { persistSession: false }
     });
-    const dataClient = createDataClient({ supabase });
 
     // Get today's date range (start of day to now, in UTC)
     const now = new Date();

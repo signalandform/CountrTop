@@ -11,7 +11,7 @@ type Props = {
 
 const formatMetric = (value: number) => value.toLocaleString();
 
-export function VendorInsightsDashboard({ vendorSlug, vendorName, vendor, insights, statusMessage }: Props) {
+export function VendorInsightsDashboard({ vendorSlug, vendorName, insights, statusMessage }: Props) {
 
   return (
     <main className="page">

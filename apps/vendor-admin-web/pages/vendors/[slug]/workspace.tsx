@@ -40,7 +40,7 @@ export const getServerSideProps: GetServerSideProps<WorkspacePageProps> = async 
   };
 };
 
-export default function WorkspacePage({ vendorSlug, vendorName }: WorkspacePageProps) {
+export default function WorkspacePage({ vendorName }: WorkspacePageProps) {
   return (
     <main className="page">
       <div className="container">

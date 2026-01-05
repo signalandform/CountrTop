@@ -1,6 +1,5 @@
 import Head from 'next/head';
 import type { GetServerSideProps } from 'next';
-import { useRouter } from 'next/router';
 import { useState, useEffect, useCallback, useRef } from 'react';
 
 import { getBrowserSupabaseClient } from '../../lib/supabaseBrowser';
@@ -122,7 +121,6 @@ const getPickupLabel = (ticket: Ticket['ticket'], order: Ticket['order']): strin
 };
 
 export default function VendorQueuePage({ vendorSlug, locationId: initialLocationId }: VendorPageProps) {
-  const router = useRouter();
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
