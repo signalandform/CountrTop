@@ -163,22 +163,42 @@ export function AnalyticsLayout({ vendorSlug, vendorName, children, currentTab }
           padding: 12px 24px;
           font-size: 14px;
           font-weight: 500;
-          color: #888;
+          color: #e8e8e8;
           text-decoration: none !important;
           transition: all 0.2s ease;
           cursor: pointer;
           border: 1px solid rgba(255, 255, 255, 0.1);
+          background: rgba(255, 255, 255, 0.05);
+          border-radius: 8px;
+          font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        .analytics-nav-item:link,
+        .analytics-nav-item:visited,
+        .analytics-nav-item:active {
+          color: #e8e8e8;
+          text-decoration: none !important;
         }
 
         .analytics-nav-item:hover {
           color: #e8e8e8;
-          border-color: rgba(102, 126, 234, 0.3);
+          background: rgba(255, 255, 255, 0.08);
+          border-color: rgba(255, 255, 255, 0.2);
+          text-decoration: none !important;
         }
 
         .analytics-nav-item.active {
           color: #a78bfa;
-          border-color: #a78bfa;
-          background: rgba(167, 139, 250, 0.1);
+          border-color: #667eea;
+          background: rgba(102, 126, 234, 0.2);
+          text-decoration: none !important;
+        }
+
+        .analytics-nav-item.active:link,
+        .analytics-nav-item.active:visited,
+        .analytics-nav-item.active:active {
+          color: #a78bfa;
+          text-decoration: none !important;
         }
 
         .analytics-content {
