@@ -885,7 +885,7 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor }: Props) 
           </section>
         </div>
 
-        <style jsx>{`
+        <style jsx global>{`
           .page {
             min-height: 100vh;
             background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 50%, #16213e 100%);
