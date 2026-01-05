@@ -62,11 +62,9 @@ export function RevenueSeriesChart({ data, loading }: RevenueSeriesChartProps) {
               borderRadius: '8px',
               color: '#e8e8e8'
             }}
-            formatter={(value: number) => {
-              if (typeof value === 'number') {
-                return `$${value.toFixed(2)}`;
-              }
-              return value;
+            formatter={(value: number | undefined) => {
+              if (value === undefined || value === null) return 'N/A';
+              return `$${value.toFixed(2)}`;
             }}
           />
           <Line
