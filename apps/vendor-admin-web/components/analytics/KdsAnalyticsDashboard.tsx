@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import type { KdsSummary, KdsThroughputPoint, KdsPrepTimePoint, KdsHeatmapCell, KdsSourceMetrics } from '@countrtop/models';
+import type { KdsSummary, KdsThroughputPoint, KdsPrepTimePoint, KdsSourceMetrics } from '@countrtop/models';
 import { DateRangePicker, type DateRange } from './DateRangePicker';
 import { KdsSummaryCards } from './KdsSummaryCards';
 import { KdsThroughputChart } from './KdsThroughputChart';
