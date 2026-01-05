@@ -185,11 +185,103 @@ export class MockDataClient implements DataClient {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     _ticketId: string,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    _status: 'ready' | 'completed',
+    _status: KitchenTicket['status'],
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    _vendorUserId?: string
+    _userId: string
   ): Promise<KitchenTicket> {
     throw new Error('updateKitchenTicketStatus not implemented in mock client');
+  }
+
+  async getKdsSummary(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _locationId: string,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _startDate: Date,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _endDate: Date,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _timezone: string
+  ): Promise<import('@countrtop/models').KdsSummary> {
+    return {
+      totals: {
+        ticketsPlaced: 0,
+        ticketsReady: 0,
+        ticketsCompleted: 0
+      },
+      averages: {
+        prepTimeMinutes: null,
+        totalTimeMinutes: null
+      },
+      throughput: {
+        ticketsPerDay: 0,
+        ticketsPerHour: 0
+      }
+    };
+  }
+
+  async getKdsThroughput(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _locationId: string,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _startDate: Date,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _endDate: Date,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _granularity: 'hour' | 'day' | 'week',
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _timezone: string
+  ): Promise<import('@countrtop/models').KdsThroughputPoint[]> {
+    return [];
+  }
+
+  async getKdsPrepTimeSeries(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _locationId: string,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _startDate: Date,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _endDate: Date,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _granularity: 'hour' | 'day' | 'week',
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _timezone: string
+  ): Promise<import('@countrtop/models').KdsPrepTimePoint[]> {
+    return [];
+  }
+
+  async getKdsHeatmap(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _locationId: string,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _startDate: Date,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _endDate: Date,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _timezone: string
+  ): Promise<import('@countrtop/models').KdsHeatmapCell[]> {
+    return [];
+  }
+
+  async getKdsBySource(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _locationId: string,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _startDate: Date,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _endDate: Date
+  ): Promise<import('@countrtop/models').KdsSourceMetrics> {
+    return {
+      countrtop_online: {
+        count: 0,
+        avgPrepTimeMinutes: null,
+        avgTotalTimeMinutes: null
+      },
+      square_pos: {
+        count: 0,
+        avgPrepTimeMinutes: null,
+        avgTotalTimeMinutes: null
+      }
+    };
   }
 
   private createId(prefix: string) {
