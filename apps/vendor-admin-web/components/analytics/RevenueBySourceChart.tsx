@@ -104,7 +104,10 @@ export function RevenueBySourceChart({ data, loading }: RevenueBySourceChartProp
               borderRadius: '8px',
               color: '#e8e8e8'
             }}
-            formatter={(value: number) => formatCurrency(value)}
+            formatter={(value: number | undefined) => {
+              if (value === undefined || value === null) return 'N/A';
+              return formatCurrency(value);
+            }}
           />
           <Legend />
           <Bar dataKey="revenue" fill="#667eea" name="Revenue ($)" />
