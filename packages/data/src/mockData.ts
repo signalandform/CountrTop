@@ -347,6 +347,61 @@ export class MockDataClient implements DataClient {
     return [];
   }
 
+  // Customer Analytics (Milestone 10B - CountrTop Online Only)
+  async getCustomerSummary(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _vendorId: string,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _startDate: Date,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _endDate: Date
+  ): Promise<import('@countrtop/models').CustomerSummary> {
+    return {
+      totalCustomers: 0,
+      repeatCustomers: 0,
+      repeatCustomerRate: 0,
+      averageOrdersPerCustomer: 0,
+      averageLifetimeValue: 0,
+      newCustomers: 0,
+      returningCustomers: 0
+    };
+  }
+
+  async getCustomerLtv(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _vendorId: string
+  ): Promise<import('@countrtop/models').CustomerLtvPoint[]> {
+    return [];
+  }
+
+  async getRepeatCustomerMetrics(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _vendorId: string,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _startDate: Date,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _endDate: Date
+  ): Promise<import('@countrtop/models').RepeatCustomerMetrics> {
+    return {
+      repeatCustomerRate: 0,
+      totalCustomers: 0,
+      repeatCustomers: 0,
+      singleOrderCustomers: 0
+    };
+  }
+
+  // Item Performance (Milestone 10B)
+  async getItemPerformance(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _vendorId: string,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _startDate: Date,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _endDate: Date
+  ): Promise<import('@countrtop/models').ItemPerformance[]> {
+    return [];
+  }
+
   private createId(prefix: string) {
     return `${prefix}_${Math.random().toString(16).slice(2)}`;
   }
