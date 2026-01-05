@@ -1653,6 +1653,211 @@ export class SupabaseDataClient implements DataClient {
       throw error;
     }
   }
+
+  /**
+   * Gets revenue time series data
+   * Extracts revenue from square_orders.raw JSONB field
+   */
+  async getRevenueSeries(
+    locationId: string,
+    startDate: Date,
+    endDate: Date,
+    granularity: 'hour' | 'day' | 'week' | 'month',
+    timezone: string
+  ): Promise<RevenuePoint[]> {
+    const startTime = Date.now();
+    try {
+      // Fetch orders with raw data
+      const { data: orders, error } = await this.client
+        .from('square_orders')
+        .select('created_at, source, raw')
+        .eq('location_id', locationId)
+        .gte('created_at', startDate.toISOString())
+        .lte('created_at', endDate.toISOString());
+
+      if (error) throw error;
+
+      const ordersData = orders || [];
+      const buckets = new Map<string, { revenue: number; orderCount: number }>();
+
+      // Extract revenue from raw JSONB and group by time bucket
+      ordersData.forEach(order => {
+        const createdDate = new Date(order.created_at);
+        
+        // Convert to vendor timezone
+        const tzDate = new Date(createdDate.toLocaleString('en-US', { timeZone: timezone }));
+        
+        let bucketKey: string;
+        if (granularity === 'hour') {
+          bucketKey = new Date(tzDate.setMinutes(0, 0, 0)).toISOString();
+        } else if (granularity === 'day') {
+          bucketKey = new Date(tzDate.setHours(0, 0, 0, 0)).toISOString();
+        } else if (granularity === 'week') {
+          const weekStart = new Date(tzDate);
+          weekStart.setDate(tzDate.getDate() - tzDate.getDay());
+          weekStart.setHours(0, 0, 0, 0);
+          bucketKey = weekStart.toISOString();
+        } else { // month
+          const monthStart = new Date(tzDate.getFullYear(), tzDate.getMonth(), 1);
+          bucketKey = monthStart.toISOString();
+        }
+
+        if (!buckets.has(bucketKey)) {
+          buckets.set(bucketKey, { revenue: 0, orderCount: 0 });
+        }
+
+        const bucket = buckets.get(bucketKey)!;
+        bucket.orderCount++;
+
+        // Extract revenue from raw JSONB
+        // Square API structure: raw.net_amounts.total_money.amount (cents)
+        const raw = order.raw as Record<string, unknown> | null;
+        if (raw && typeof raw === 'object') {
+          const netAmounts = raw.net_amounts as Record<string, unknown> | undefined;
+          if (netAmounts && typeof netAmounts === 'object') {
+            const totalMoney = netAmounts.total_money as Record<string, unknown> | undefined;
+            if (totalMoney && typeof totalMoney === 'object') {
+              const amount = totalMoney.amount;
+              if (typeof amount === 'number') {
+                bucket.revenue += amount / 100.0; // Convert cents to dollars
+              } else if (typeof amount === 'string') {
+                bucket.revenue += parseFloat(amount) / 100.0;
+              }
+            }
+          }
+        }
+      });
+
+      // Convert to result array
+      const result: RevenuePoint[] = Array.from(buckets.entries())
+        .map(([timestamp, data]) => ({
+          timestamp,
+          revenue: data.revenue,
+          orderCount: data.orderCount,
+          averageOrderValue: data.orderCount > 0 ? data.revenue / data.orderCount : 0
+        }))
+        .sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+
+      logQueryPerformance('getRevenueSeries', startTime, true);
+      return result;
+    } catch (error) {
+      logQueryPerformance('getRevenueSeries', startTime, false, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Gets revenue breakdown by source (online vs POS)
+   */
+  async getRevenueBySource(
+    locationId: string,
+    startDate: Date,
+    endDate: Date
+  ): Promise<RevenueBySource> {
+    const startTime = Date.now();
+    try {
+      // Fetch orders with raw data
+      const { data: orders, error } = await this.client
+        .from('square_orders')
+        .select('source, raw')
+        .eq('location_id', locationId)
+        .gte('created_at', startDate.toISOString())
+        .lte('created_at', endDate.toISOString());
+
+      if (error) throw error;
+
+      const ordersData = orders || [];
+      const countrtopOrders: typeof ordersData = [];
+      const squarePosOrders: typeof ordersData = [];
+
+      ordersData.forEach(order => {
+        if (order.source === 'countrtop_online') {
+          countrtopOrders.push(order);
+        } else {
+          squarePosOrders.push(order);
+        }
+      });
+
+      const extractRevenue = (orders: typeof ordersData): number => {
+        return orders.reduce((sum, order) => {
+          const raw = order.raw as Record<string, unknown> | null;
+          if (raw && typeof raw === 'object') {
+            const netAmounts = raw.net_amounts as Record<string, unknown> | undefined;
+            if (netAmounts && typeof netAmounts === 'object') {
+              const totalMoney = netAmounts.total_money as Record<string, unknown> | undefined;
+              if (totalMoney && typeof totalMoney === 'object') {
+                const amount = totalMoney.amount;
+                if (typeof amount === 'number') {
+                  return sum + amount / 100.0;
+                } else if (typeof amount === 'string') {
+                  return sum + parseFloat(amount) / 100.0;
+                }
+              }
+            }
+          }
+          return sum;
+        }, 0);
+      };
+
+      const countrtopRevenue = extractRevenue(countrtopOrders);
+      const squarePosRevenue = extractRevenue(squarePosOrders);
+      const totalRevenue = countrtopRevenue + squarePosRevenue;
+      const totalOrderCount = ordersData.length;
+
+      const result: RevenueBySource = {
+        countrtop_online: {
+          revenue: countrtopRevenue,
+          orderCount: countrtopOrders.length,
+          averageOrderValue: countrtopOrders.length > 0 ? countrtopRevenue / countrtopOrders.length : 0
+        },
+        square_pos: {
+          revenue: squarePosRevenue,
+          orderCount: squarePosOrders.length,
+          averageOrderValue: squarePosOrders.length > 0 ? squarePosRevenue / squarePosOrders.length : 0
+        },
+        total: {
+          revenue: totalRevenue,
+          orderCount: totalOrderCount,
+          averageOrderValue: totalOrderCount > 0 ? totalRevenue / totalOrderCount : 0
+        }
+      };
+
+      logQueryPerformance('getRevenueBySource', startTime, true);
+      return result;
+    } catch (error) {
+      logQueryPerformance('getRevenueBySource', startTime, false, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Gets Average Order Value (AOV) time series
+   */
+  async getAovSeries(
+    locationId: string,
+    startDate: Date,
+    endDate: Date,
+    granularity: 'hour' | 'day' | 'week' | 'month',
+    timezone: string
+  ): Promise<AovPoint[]> {
+    const startTime = Date.now();
+    try {
+      // Use getRevenueSeries and transform to AOV points
+      const revenuePoints = await this.getRevenueSeries(locationId, startDate, endDate, granularity, timezone);
+      
+      const result: AovPoint[] = revenuePoints.map(point => ({
+        timestamp: point.timestamp,
+        averageOrderValue: point.averageOrderValue,
+        orderCount: point.orderCount
+      }));
+
+      logQueryPerformance('getAovSeries', startTime, true);
+      return result;
+    } catch (error) {
+      logQueryPerformance('getAovSeries', startTime, false, error);
+      throw error;
+    }
+  }
 }
 
 const mapVendorFromRow = (row: Database['public']['Tables']['vendors']['Row']): Vendor => ({
