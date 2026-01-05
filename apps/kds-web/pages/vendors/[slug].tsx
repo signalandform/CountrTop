@@ -118,7 +118,6 @@ export default function VendorQueuePage({ vendorSlug }: VendorPageProps) {
   const [useRealtime, setUseRealtime] = useState(true);
   const [realtimeStatus, setRealtimeStatus] = useState<'SUBSCRIBED' | 'CHANNEL_ERROR' | 'TIMED_OUT' | 'CLOSED' | 'UNKNOWN'>('UNKNOWN');
   const realtimeErrorCountRef = useRef(0);
-  const MAX_REALTIME_ERRORS = 3;
 
   const fetchTickets = async (useCache = false) => {
     try {
