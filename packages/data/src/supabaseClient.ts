@@ -1295,7 +1295,7 @@ export class SupabaseDataClient implements DataClient {
     locationId: string,
     startDate: Date,
     endDate: Date,
-    timezone: string
+    _timezone: string
   ): Promise<KdsSummary> {
     const startTime = Date.now();
     try {
@@ -1382,7 +1382,7 @@ export class SupabaseDataClient implements DataClient {
     startDate: Date,
     endDate: Date,
     granularity: 'hour' | 'day' | 'week',
-    timezone: string
+    _timezone: string
   ): Promise<KdsThroughputPoint[]> {
     const startTime = Date.now();
     try {
@@ -1459,7 +1459,7 @@ export class SupabaseDataClient implements DataClient {
     startDate: Date,
     endDate: Date,
     granularity: 'hour' | 'day' | 'week',
-    timezone: string
+    _timezone: string
   ): Promise<KdsPrepTimePoint[]> {
     const startTime = Date.now();
     try {
@@ -1529,7 +1529,7 @@ export class SupabaseDataClient implements DataClient {
     locationId: string,
     startDate: Date,
     endDate: Date,
-    timezone: string
+    _timezone: string
   ): Promise<KdsHeatmapCell[]> {
     const startTime = Date.now();
     try {

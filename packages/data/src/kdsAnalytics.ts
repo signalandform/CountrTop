@@ -5,12 +5,12 @@
  * These functions build SQL queries that handle timezone conversion and null-safe math.
  */
 
-import type { Database } from './supabaseClient';
-
 /**
  * Converts a date to a SQL timestamp in the specified timezone
+ * @param _timezone - Timezone (kept for API compatibility, but not used in this implementation)
  */
-export function toTimezoneTimestamp(date: Date, timezone: string): string {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function toTimezoneTimestamp(date: Date, _timezone: string): string {
   // Format date as ISO 8601, PostgreSQL will handle timezone conversion
   return date.toISOString();
 }
@@ -18,12 +18,14 @@ export function toTimezoneTimestamp(date: Date, timezone: string): string {
 /**
  * Builds a timezone-aware date filter for SQL queries
  * Converts UTC timestamps to vendor timezone for comparison
+ * @param _timezone - Timezone (kept for API compatibility, but not used in this implementation)
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function buildTimezoneFilter(
   column: string,
   startDate: Date,
   endDate: Date,
-  timezone: string
+  _timezone: string
 ): string {
   // PostgreSQL handles timezone conversion with AT TIME ZONE
   // We convert the column to the vendor timezone, then compare
