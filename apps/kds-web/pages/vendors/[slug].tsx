@@ -219,11 +219,12 @@ export default function VendorQueuePage({ vendorSlug, locationId: initialLocatio
     try {
       await syncOfflineQueue(vendorSlug, async (action: OfflineAction) => {
         try {
-          const response = await fetch(`/api/vendors/${vendorSlug}/tickets/${action.ticketId}/status`, {
+          const response = await fetch(`/api/vendors/${vendorSlug}/tickets/${action.ticketId}/status${locationId ? `?locationId=${locationId}` : ''}`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json'
             },
+            credentials: 'include',
             body: JSON.stringify({ status: action.newStatus })
           });
 
@@ -461,11 +462,12 @@ export default function VendorQueuePage({ vendorSlug, locationId: initialLocatio
 
     // If online, try to sync immediately
     try {
-      const response = await fetch(`/api/vendors/${vendorSlug}/tickets/${ticketId}/status`, {
+      const response = await fetch(`/api/vendors/${vendorSlug}/tickets/${ticketId}/status${locationId ? `?locationId=${locationId}` : ''}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
+        credentials: 'include',
         body: JSON.stringify({ status: newStatus })
       });
 

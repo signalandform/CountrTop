@@ -1,8 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { createDataClient, type Database } from '@countrtop/data';
-import { verifyVendorAdminAccess } from '../../../../../../lib/auth';
-import { createServerClient } from '@supabase/auth-helpers-nextjs';
+import { requireKDSSession } from '../../../../../../lib/auth';
+import type { GetServerSidePropsContext } from 'next';
 
 type StatusResponse =
   | {
@@ -33,6 +33,7 @@ export default async function handler(
 
   const slug = typeof req.query.slug === 'string' ? req.query.slug : null;
   const ticketId = typeof req.query.ticketId === 'string' ? req.query.ticketId : null;
+  const locationIdParam = typeof req.query.locationId === 'string' ? req.query.locationId : null;
 
   if (!slug || !ticketId) {
     return res.status(400).json({
@@ -50,43 +51,25 @@ export default async function handler(
   }
 
   try {
-    // Get user from session
-    const supabase = createServerClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL ?? '',
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? process.env.SUPABASE_ANON_KEY ?? '',
-      {
-        cookies: {
-          get(name: string) {
-            return req.cookies[name] ?? undefined;
-          },
-          set() {
-            // No-op for POST requests
-          },
-          remove() {
-            // No-op for POST requests
-          }
-        }
-      }
-    );
+    // Create a mock context for requireKDSSession
+    const mockContext = {
+      req: req,
+      res: res,
+      query: req.query,
+      params: { slug }
+    } as unknown as GetServerSidePropsContext;
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return res.status(401).json({
-        ok: false,
-        error: 'Unauthorized',
-        statusCode: 401
-      });
-    }
-
-    // Verify vendor admin access
-    const authResult = await verifyVendorAdminAccess(slug, user.id);
+    // Verify KDS session
+    const authResult = await requireKDSSession(mockContext, slug, locationIdParam ?? null);
     if (!authResult.authorized) {
-      return res.status(authResult.statusCode || 403).json({
+      return res.status(authResult.statusCode || 401).json({
         ok: false,
-        error: authResult.error || 'Forbidden',
-        statusCode: authResult.statusCode || 403
+        error: authResult.error || 'Unauthorized',
+        statusCode: authResult.statusCode || 401
       });
     }
+
+    const locationId = locationIdParam || authResult.session.locationId;
 
     // Get vendor to verify location scoping
     const supabaseUrl = process.env.SUPABASE_URL;
@@ -101,16 +84,8 @@ export default async function handler(
       auth: { persistSession: false }
     });
     const dataClient = createDataClient({ supabase: supabaseAdmin });
-    const vendor = await dataClient.getVendorBySlug(slug);
-    if (!vendor || !vendor.squareLocationId) {
-      return res.status(404).json({
-        ok: false,
-        error: 'Vendor not found or missing Square location ID'
-      });
-    }
 
-    // Verify ticket belongs to vendor's location (scoping enforcement)
-
+    // Verify ticket exists and belongs to this location
     const { data: ticket, error: ticketError } = await supabaseAdmin
       .from('kitchen_tickets')
       .select('id, location_id')
@@ -124,19 +99,18 @@ export default async function handler(
       });
     }
 
-    if (ticket.location_id !== vendor.squareLocationId) {
+    if (ticket.location_id !== locationId) {
       return res.status(403).json({
         ok: false,
-        error: 'Ticket does not belong to this vendor location',
+        error: 'Ticket does not belong to this location',
         statusCode: 403
       });
     }
 
-    // Update ticket status
+    // Update ticket status (no user ID needed for KDS)
     const updatedTicket = await dataClient.updateKitchenTicketStatus(
       ticketId,
-      status,
-      user.id
+      status
     );
 
     return res.status(200).json({
