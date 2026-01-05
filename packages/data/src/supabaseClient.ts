@@ -2137,7 +2137,9 @@ export class SupabaseDataClient implements DataClient {
           const raw = item as SnapshotItem;
           const itemName = typeof raw.name === 'string' ? raw.name : 'Unknown Item';
           const quantity = typeof raw.quantity === 'number' ? raw.quantity : 1;
-          const price = typeof raw.price === 'number' ? raw.price : (typeof raw.amount === 'number' ? raw.amount / 100 : 0);
+          // Price/amount is stored in cents, convert to dollars
+          const priceInCents = typeof raw.price === 'number' ? raw.price : (typeof raw.amount === 'number' ? raw.amount : 0);
+          const price = priceInCents / 100;
 
           const existing = itemData.get(itemName) || {
             quantity: 0,

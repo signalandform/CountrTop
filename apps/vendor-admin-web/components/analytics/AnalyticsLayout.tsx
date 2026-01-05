@@ -54,7 +54,7 @@ export function AnalyticsLayout({ vendorSlug, vendorName, children, currentTab }
               <Link
                 key={tab.id}
                 href={tab.href}
-                className={`nav-tab ${isActive ? 'active' : ''}`}
+                className={`analytics-nav-item ct-card ${isActive ? 'active' : ''}`}
               >
                 {tab.label}
               </Link>
@@ -128,30 +128,31 @@ export function AnalyticsLayout({ vendorSlug, vendorName, children, currentTab }
 
         .analytics-nav {
           display: flex;
-          gap: 8px;
+          gap: 16px;
           margin-bottom: 32px;
-          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-          padding-bottom: 0;
+          flex-wrap: wrap;
         }
 
-        .nav-tab {
+        .analytics-nav-item {
           padding: 12px 24px;
           font-size: 14px;
           font-weight: 500;
           color: #888;
-          text-decoration: none;
-          border-bottom: 2px solid transparent;
-          margin-bottom: -1px;
+          text-decoration: none !important;
           transition: all 0.2s ease;
+          cursor: pointer;
+          border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
-        .nav-tab:hover {
+        .analytics-nav-item:hover {
           color: #e8e8e8;
+          border-color: rgba(102, 126, 234, 0.3);
         }
 
-        .nav-tab.active {
+        .analytics-nav-item.active {
           color: #a78bfa;
-          border-bottom-color: #a78bfa;
+          border-color: #a78bfa;
+          background: rgba(167, 139, 250, 0.1);
         }
 
         .analytics-content {
