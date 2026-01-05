@@ -48,12 +48,11 @@ export function VendorInsightsDashboard({ vendorSlug, vendorName, vendor, insigh
       {/* Dashboard Navigation Cards */}
       <section className="dashboard-cards">
         <Link 
-          href={`/vendors/${vendorSlug}#insights`} 
+          href={`/vendors/${vendorSlug}/analytics`} 
           className="dashboard-card ct-card"
-          onClick={(e) => handleAnchorClick(e, '#insights')}
         >
           <div className="card-icon">📊</div>
-          <h3 className="card-title">Insights</h3>
+          <h3 className="card-title">Analytics</h3>
           <p className="card-description">View performance and trends</p>
         </Link>
         <Link href={`/vendors/${vendorSlug}/orders`} className="dashboard-card ct-card">

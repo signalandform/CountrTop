@@ -1,6 +1,7 @@
 import type { GetServerSideProps } from 'next';
 import { requireVendorAdmin } from '../../../../lib/auth';
 import { getServerDataClient } from '../../../../lib/dataClient';
+import { AnalyticsLayout } from '../../../../components/analytics/AnalyticsLayout';
 import { ItemPerformanceDashboard } from '../../../../components/analytics/ItemPerformanceDashboard';
 import type { Vendor } from '@countrtop/models';
 
@@ -43,78 +44,9 @@ export const getServerSideProps: GetServerSideProps<ItemAnalyticsProps> = async 
 
 export default function ItemAnalyticsPage({ vendorSlug, vendorName }: ItemAnalyticsProps) {
   return (
-    <div className="page">
-      <div className="page-content">
-        <div className="header">
-          <div className="header-content">
-            <div className="eyebrow">Item Performance</div>
-            <h1 className="title">{vendorName}</h1>
-            <p className="subtitle">Item sales and revenue metrics (CountrTop online orders only)</p>
-          </div>
-        </div>
-
-        <ItemPerformanceDashboard vendorSlug={vendorSlug} />
-      </div>
-
-      <style jsx>{`
-        .page {
-          min-height: 100vh;
-          background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 50%, #16213e 100%);
-          color: #e8e8e8;
-          font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
-          padding: 0 24px 48px;
-        }
-
-        .page-content {
-          width: 100%;
-        }
-
-        @media (min-width: 1000px) {
-          .page-content {
-            max-width: 80vw;
-            margin: 0 auto;
-          }
-        }
-
-        .header {
-          display: flex;
-          justify-content: space-between;
-          align-items: flex-start;
-          padding: 48px 0 32px;
-          flex-wrap: wrap;
-          gap: 20px;
-        }
-
-        .header-content {
-          max-width: 500px;
-        }
-
-        .eyebrow {
-          text-transform: uppercase;
-          letter-spacing: 3px;
-          font-size: 11px;
-          color: #a78bfa;
-          margin: 0 0 8px;
-        }
-
-        .title {
-          font-size: 32px;
-          font-weight: 800;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          background-clip: text;
-          margin: 0 0 8px;
-          line-height: 1.2;
-        }
-
-        .subtitle {
-          font-size: 16px;
-          color: #888;
-          margin: 0;
-        }
-      `}</style>
-    </div>
+    <AnalyticsLayout vendorSlug={vendorSlug} vendorName={vendorName} currentTab="items">
+      <ItemPerformanceDashboard vendorSlug={vendorSlug} />
+    </AnalyticsLayout>
   );
 }
 
