@@ -59,7 +59,10 @@ export function KdsPrepTimeChart({ data, loading }: KdsPrepTimeChartProps) {
               borderRadius: '8px',
               color: '#e8e8e8'
             }}
-            formatter={(value: number) => [`${value.toFixed(1)} min`, 'Avg Prep Time']}
+            formatter={(value: number | undefined) => {
+              if (value === undefined || value === null) return ['N/A', 'Avg Prep Time'];
+              return [`${value.toFixed(1)} min`, 'Avg Prep Time'];
+            }}
           />
           <Line
             type="monotone"
