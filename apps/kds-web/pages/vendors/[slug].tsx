@@ -1,10 +1,9 @@
 import Head from 'next/head';
 import type { GetServerSideProps } from 'next';
-import { useRouter } from 'next/router';
 import { useState, useEffect, useCallback, useRef } from 'react';
 
 import { getBrowserSupabaseClient } from '../../lib/supabaseBrowser';
-import { requireVendorAdmin } from '../../lib/auth';
+import { requireKDSSession } from '../../lib/auth';
 import {
   isOnline,
   saveTicketsToCache,
@@ -31,14 +30,16 @@ type TicketsResponse = {
 
 type VendorPageProps = {
   vendorSlug: string;
+  locationId: string;
 };
 
 export const getServerSideProps: GetServerSideProps<VendorPageProps> = async (context) => {
   const slugParam = context.params?.slug;
   const slug = Array.isArray(slugParam) ? slugParam[0] : slugParam;
+  const locationIdParam = context.query.locationId as string | undefined;
 
-  // Check vendor admin access
-  const authResult = await requireVendorAdmin(context, slug ?? null);
+  // Check KDS session
+  const authResult = await requireKDSSession(context, slug ?? null, locationIdParam ?? null);
   if (!authResult.authorized) {
     if (authResult.redirect) {
       return { redirect: authResult.redirect };
@@ -51,9 +52,13 @@ export const getServerSideProps: GetServerSideProps<VendorPageProps> = async (co
     };
   }
 
+  // Use locationId from session or query param
+  const locationId = locationIdParam || authResult.session.locationId;
+
   return {
     props: {
-      vendorSlug: slug ?? 'unknown'
+      vendorSlug: slug ?? 'unknown',
+      locationId
     }
   };
 };
@@ -69,22 +74,32 @@ const formatAge = (placedAt: string): string => {
   return `${hours}h`;
 };
 
-const getLineItemsSummary = (lineItems: unknown[] | null | undefined): string => {
+const getAgeColor = (placedAt: string): 'green' | 'yellow' | 'red' => {
+  const ageMins = Math.floor((Date.now() - new Date(placedAt).getTime()) / 60000);
+  if (ageMins < 8) return 'green';
+  if (ageMins < 12) return 'yellow';
+  return 'red';
+};
+
+const renderLineItems = (lineItems: unknown[] | null | undefined) => {
   if (!Array.isArray(lineItems) || lineItems.length === 0) {
-    return 'No items';
+    return <div className="line-items-empty">No items</div>;
   }
-  const top3 = lineItems.slice(0, 3);
-  const items = top3.map((item: unknown) => {
-    const itemObj = item as Record<string, unknown> | null;
-    const name = (itemObj?.name as string) || 'Item';
-    const qty = (itemObj?.quantity as number) || 1;
-    return qty > 1 ? `${name} (×${qty})` : name;
-  });
-  const summary = items.join(', ');
-  if (lineItems.length > 3) {
-    return `${summary} + ${lineItems.length - 3} more`;
-  }
-  return summary;
+  return (
+    <div className="line-items-list">
+      {lineItems.map((item, idx) => {
+        const itemObj = item as Record<string, unknown> | null;
+        const name = (itemObj?.name as string) || 'Item';
+        const qty = (itemObj?.quantity as number) || 1;
+        return (
+          <div key={idx} className="line-item">
+            <span className="quantity">{qty}×</span>
+            <span className="name">{name}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
 };
 
 const getPickupLabel = (ticket: Ticket['ticket'], order: Ticket['order']): string => {
@@ -105,8 +120,7 @@ const getPickupLabel = (ticket: Ticket['ticket'], order: Ticket['order']): strin
   return `Order ${order.squareOrderId.slice(-6).toUpperCase()}`;
 };
 
-export default function VendorQueuePage({ vendorSlug }: VendorPageProps) {
-  const router = useRouter();
+export default function VendorQueuePage({ vendorSlug, locationId: initialLocationId }: VendorPageProps) {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -114,10 +128,36 @@ export default function VendorQueuePage({ vendorSlug }: VendorPageProps) {
   const [isOffline, setIsOffline] = useState(!isOnline());
   const [queuedActionsCount, setQueuedActionsCount] = useState(0);
   const [syncing, setSyncing] = useState(false);
-  const [locationId, setLocationId] = useState<string | null>(null);
+  const [locationId] = useState<string>(initialLocationId);
   const [useRealtime, setUseRealtime] = useState(true);
   const [realtimeStatus, setRealtimeStatus] = useState<'SUBSCRIBED' | 'CHANNEL_ERROR' | 'TIMED_OUT' | 'CLOSED' | 'UNKNOWN'>('UNKNOWN');
   const realtimeErrorCountRef = useRef(0);
+  const [dailyAvgPrepTime, setDailyAvgPrepTime] = useState<number | null>(null);
+  const [showRecallModal, setShowRecallModal] = useState(false);
+  const [completedTickets, setCompletedTickets] = useState<Ticket[]>([]);
+  const [loadingCompletedTickets, setLoadingCompletedTickets] = useState(false);
+  const [recallingTicketId, setRecallingTicketId] = useState<string | null>(null);
+
+  // Fetch daily average prep time
+  useEffect(() => {
+    const fetchDailyAvg = async () => {
+      if (!locationId) return;
+      try {
+        const response = await fetch(`/api/vendors/${vendorSlug}/tickets/stats?locationId=${locationId}`);
+        const data = await response.json();
+        if (data.ok && data.data) {
+          setDailyAvgPrepTime(data.data.avgPrepTimeMinutes);
+        }
+      } catch (err) {
+        // Silent fail - not critical
+        console.error('Failed to fetch daily average:', err);
+      }
+    };
+    fetchDailyAvg();
+    // Refresh every 5 minutes
+    const interval = setInterval(fetchDailyAvg, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [vendorSlug, locationId]);
 
   const fetchTickets = async (useCache = false) => {
     try {
@@ -141,12 +181,11 @@ export default function VendorQueuePage({ vendorSlug }: VendorPageProps) {
       }
 
       // Fetch from server
-      const response = await fetch(`/api/vendors/${vendorSlug}/tickets`);
+      const url = `/api/vendors/${vendorSlug}/tickets${locationId ? `?locationId=${locationId}` : ''}`;
+      const response = await fetch(url);
       const data: TicketsResponse = await response.json();
       if (data.ok) {
         setTickets(data.tickets);
-        // Save locationId from response
-        setLocationId(data.locationId);
         // Save to cache
         saveTicketsToCache(vendorSlug, data.tickets);
       } else {
@@ -180,11 +219,12 @@ export default function VendorQueuePage({ vendorSlug }: VendorPageProps) {
     try {
       await syncOfflineQueue(vendorSlug, async (action: OfflineAction) => {
         try {
-          const response = await fetch(`/api/vendors/${vendorSlug}/tickets/${action.ticketId}/status`, {
+          const response = await fetch(`/api/vendors/${vendorSlug}/tickets/${action.ticketId}/status${locationId ? `?locationId=${locationId}` : ''}`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json'
             },
+            credentials: 'include',
             body: JSON.stringify({ status: action.newStatus })
           });
 
@@ -342,6 +382,51 @@ export default function VendorQueuePage({ vendorSlug }: VendorPageProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vendorSlug, useRealtime]);
 
+  const handleRecallClick = async () => {
+    setShowRecallModal(true);
+    setLoadingCompletedTickets(true);
+    try {
+      const url = `/api/vendors/${vendorSlug}/tickets/completed${locationId ? `?locationId=${locationId}` : ''}`;
+      const response = await fetch(url, {
+        credentials: 'include'
+      });
+      const data = await response.json();
+      if (data.ok) {
+        setCompletedTickets(data.tickets);
+      } else {
+        setError(data.error || 'Failed to load completed tickets');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load completed tickets');
+    } finally {
+      setLoadingCompletedTickets(false);
+    }
+  };
+
+  const handleRecallTicket = async (ticketId: string) => {
+    setRecallingTicketId(ticketId);
+    try {
+      const url = `/api/vendors/${vendorSlug}/tickets/${ticketId}/recall${locationId ? `?locationId=${locationId}` : ''}`;
+      const response = await fetch(url, {
+        method: 'POST',
+        credentials: 'include'
+      });
+      const data = await response.json();
+      if (data.ok) {
+        // Close modal and refresh tickets
+        setShowRecallModal(false);
+        setCompletedTickets([]);
+        await fetchTickets();
+      } else {
+        setError(data.error || 'Failed to recall ticket');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to recall ticket');
+    } finally {
+      setRecallingTicketId(null);
+    }
+  };
+
   const handleBumpStatus = async (ticketId: string, currentStatus: string) => {
     const newStatus = currentStatus === 'placed' || currentStatus === 'preparing' ? 'ready' : 'completed';
     
@@ -377,11 +462,12 @@ export default function VendorQueuePage({ vendorSlug }: VendorPageProps) {
 
     // If online, try to sync immediately
     try {
-      const response = await fetch(`/api/vendors/${vendorSlug}/tickets/${ticketId}/status`, {
+      const response = await fetch(`/api/vendors/${vendorSlug}/tickets/${ticketId}/status${locationId ? `?locationId=${locationId}` : ''}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
+        credentials: 'include',
         body: JSON.stringify({ status: newStatus })
       });
 
@@ -405,12 +491,14 @@ export default function VendorQueuePage({ vendorSlug }: VendorPageProps) {
     }
   };
 
-  const handleSignOut = async () => {
-    const supabase = getBrowserSupabaseClient();
-    if (supabase) {
-      await supabase.auth.signOut();
-      router.push('/login');
-    }
+  const handleSettings = () => {
+    // Placeholder: Open settings modal or navigate to settings page
+    alert('Settings - Coming soon');
+  };
+
+  const handleTimeClock = () => {
+    // Placeholder: Open time clock modal or navigate to time clock page
+    alert('Time Clock - Coming soon');
   };
 
   return (
@@ -424,6 +512,11 @@ export default function VendorQueuePage({ vendorSlug }: VendorPageProps) {
             <div>
               <h1 className="title">CountrTop KDS</h1>
               <p className="vendor-slug">Vendor: {vendorSlug}</p>
+              {dailyAvgPrepTime !== null && (
+                <p className="daily-avg">
+                  Daily Avg: {dailyAvgPrepTime.toFixed(1)} min
+                </p>
+              )}
               {isOffline && (
                 <div className="offline-indicator">
                   <span className="offline-dot">●</span>
@@ -452,15 +545,14 @@ export default function VendorQueuePage({ vendorSlug }: VendorPageProps) {
               )}
             </div>
             <div className="header-actions">
-              <button 
-                onClick={() => fetchTickets()} 
-                className="refresh-button" 
-                disabled={loading || syncing}
-              >
-                {loading ? 'Loading...' : syncing ? 'Syncing...' : 'Refresh'}
+              <button onClick={handleRecallClick} className="recall-button-header">
+                Recall
               </button>
-              <button onClick={handleSignOut} className="sign-out-button">
-                Sign Out
+              <button onClick={handleSettings} className="settings-button">
+                Settings
+              </button>
+              <button onClick={handleTimeClock} className="time-clock-button">
+                Time Clock
               </button>
             </div>
           </header>
@@ -488,7 +580,7 @@ export default function VendorQueuePage({ vendorSlug }: VendorPageProps) {
                 const pickupLabel = getPickupLabel(ticket, order);
                 const sourceBadge = ticket.source === 'countrtop_online' ? 'Online' : 'POS';
                 const age = formatAge(ticket.placedAt);
-                const lineItemsSummary = getLineItemsSummary(order.lineItems);
+                const ageColor = getAgeColor(ticket.placedAt);
                 const actionLabel = ticket.status === 'placed' || ticket.status === 'preparing' ? 'Mark Ready' : 'Complete';
                 const isUpdating = updatingTicketId === ticket.id;
 
@@ -506,17 +598,19 @@ export default function VendorQueuePage({ vendorSlug }: VendorPageProps) {
                       </div>
                     </div>
                     <div className="ticket-middle">
-                      <div className="line-items">{lineItemsSummary}</div>
+                      {renderLineItems(order.lineItems)}
                     </div>
                     <div className="ticket-right">
-                      <div className="age-timer">{age}</div>
-                      <button
-                        className={`action-button ${ticket.status === 'ready' ? 'complete-button' : 'ready-button'}`}
-                        onClick={() => handleBumpStatus(ticket.id, ticket.status)}
-                        disabled={isUpdating}
-                      >
-                        {isUpdating ? '...' : actionLabel}
-                      </button>
+                      <div className={`age-timer age-timer-${ageColor}`}>{age}</div>
+                      <div className="ticket-actions">
+                        <button
+                          className={`action-button ${ticket.status === 'ready' ? 'complete-button' : 'ready-button'}`}
+                          onClick={() => handleBumpStatus(ticket.id, ticket.status)}
+                          disabled={isUpdating}
+                        >
+                          {isUpdating ? '...' : actionLabel}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 );
@@ -524,6 +618,73 @@ export default function VendorQueuePage({ vendorSlug }: VendorPageProps) {
             </div>
           )}
         </div>
+
+        {/* Recall Modal */}
+        {showRecallModal && (
+          <div className="modal-overlay" onClick={() => setShowRecallModal(false)}>
+            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <h2>Recall Completed Ticket</h2>
+                <button className="modal-close" onClick={() => setShowRecallModal(false)}>
+                  ×
+                </button>
+              </div>
+              <div className="modal-body">
+                {loadingCompletedTickets ? (
+                  <div className="loading-state">
+                    <div className="spinner">⏳</div>
+                    <p>Loading completed tickets...</p>
+                  </div>
+                ) : completedTickets.length === 0 ? (
+                  <div className="empty-state">
+                    <div className="empty-icon">📋</div>
+                    <h3>No Completed Tickets</h3>
+                    <p>No completed tickets found in the last 24 hours.</p>
+                  </div>
+                ) : (
+                  <div className="completed-tickets-list">
+                    {completedTickets.map(({ ticket, order }) => {
+                      const pickupLabel = getPickupLabel(ticket, order);
+                      const sourceBadge = ticket.source === 'countrtop_online' ? 'Online' : 'POS';
+                      const completedTime = ticket.completedAt 
+                        ? new Date(ticket.completedAt).toLocaleTimeString()
+                        : 'Unknown';
+                      
+                      return (
+                        <div key={ticket.id} className="completed-ticket-item">
+                          <div className="completed-ticket-info">
+                            <div className="completed-ticket-header">
+                              <span className="completed-ticket-label">{pickupLabel}</span>
+                              <span className="completed-ticket-source" data-source={ticket.source}>
+                                {sourceBadge}
+                              </span>
+                              {ticket.shortcode && (
+                                <span className="completed-ticket-shortcode">{ticket.shortcode}</span>
+                              )}
+                            </div>
+                            <div className="completed-ticket-details">
+                              {renderLineItems(order.lineItems)}
+                            </div>
+                            <div className="completed-ticket-time">
+                              Completed: {completedTime}
+                            </div>
+                          </div>
+                          <button
+                            className="recall-ticket-button"
+                            onClick={() => handleRecallTicket(ticket.id)}
+                            disabled={recallingTicketId === ticket.id}
+                          >
+                            {recallingTicketId === ticket.id ? 'Recalling...' : 'Recall'}
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         <style jsx>{`
           .page {
@@ -647,30 +808,14 @@ export default function VendorQueuePage({ vendorSlug }: VendorPageProps) {
             font-size: 12px;
           }
 
-          .sign-out-button {
-            padding: 12px 20px;
-            border-radius: 12px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            background: rgba(255, 255, 255, 0.05);
-            color: #e8e8e8;
-            font-weight: 600;
-            font-size: 14px;
-            cursor: pointer;
-            transition: background 0.2s;
-            font-family: inherit;
-          }
-
-          .sign-out-button:hover {
-            background: rgba(255, 255, 255, 0.1);
-          }
-
           .header-actions {
             display: flex;
             gap: 12px;
             align-items: center;
           }
 
-          .refresh-button {
+          .settings-button,
+          .time-clock-button {
             padding: 12px 20px;
             border-radius: 12px;
             border: 1px solid rgba(255, 255, 255, 0.2);
@@ -683,13 +828,17 @@ export default function VendorQueuePage({ vendorSlug }: VendorPageProps) {
             font-family: inherit;
           }
 
-          .refresh-button:hover:not(:disabled) {
+          .settings-button:hover,
+          .time-clock-button:hover {
             background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.3);
           }
 
-          .refresh-button:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
+          .daily-avg {
+            font-size: 14px;
+            color: #a78bfa;
+            margin: 4px 0 0 0;
+            font-weight: 500;
           }
 
           .error-message {
@@ -816,10 +965,32 @@ export default function VendorQueuePage({ vendorSlug }: VendorPageProps) {
             min-width: 0;
           }
 
-          .line-items {
-            font-size: 16px;
-            color: #ccc;
-            line-height: 1.5;
+          .line-items-list {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+          }
+
+          .line-item {
+            display: flex;
+            gap: 8px;
+            font-size: 14px;
+            color: #e8e8e8;
+          }
+
+          .line-item .quantity {
+            font-weight: 600;
+            color: #a78bfa;
+            min-width: 32px;
+          }
+
+          .line-item .name {
+            color: #e8e8e8;
+          }
+
+          .line-items-empty {
+            font-size: 14px;
+            color: #888;
           }
 
           .ticket-right {
@@ -830,10 +1001,227 @@ export default function VendorQueuePage({ vendorSlug }: VendorPageProps) {
             gap: 12px;
           }
 
-          .age-timer {
+          .ticket-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+          }
+
+          .recall-button-header {
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: 1px solid rgba(167, 139, 250, 0.3);
+            background: rgba(167, 139, 250, 0.1);
+            color: #a78bfa;
+            font-weight: 600;
             font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+          }
+
+          .recall-button-header:hover {
+            background: rgba(167, 139, 250, 0.2);
+            border-color: rgba(167, 139, 250, 0.5);
+          }
+
+          .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 24px;
+          }
+
+          .modal-content {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            max-width: 800px;
+            width: 100%;
+            max-height: 90vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+          }
+
+          .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 24px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+          }
+
+          .modal-header h2 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 700;
+            color: #e8e8e8;
+          }
+
+          .modal-close {
+            background: none;
+            border: none;
             color: #888;
-            font-weight: 500;
+            font-size: 32px;
+            cursor: pointer;
+            padding: 0;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            transition: all 0.2s;
+          }
+
+          .modal-close:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #e8e8e8;
+          }
+
+          .modal-body {
+            padding: 24px;
+            overflow-y: auto;
+            flex: 1;
+          }
+
+          .completed-tickets-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+          }
+
+          .completed-ticket-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.03);
+            transition: all 0.2s;
+          }
+
+          .completed-ticket-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.15);
+          }
+
+          .completed-ticket-info {
+            flex: 1;
+            min-width: 0;
+          }
+
+          .completed-ticket-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 8px;
+          }
+
+          .completed-ticket-label {
+            font-size: 16px;
+            font-weight: 600;
+            color: #e8e8e8;
+          }
+
+          .completed-ticket-source {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          }
+
+          .completed-ticket-source[data-source='countrtop_online'] {
+            background: rgba(52, 199, 89, 0.2);
+            color: #34c759;
+            border: 1px solid rgba(52, 199, 89, 0.3);
+          }
+
+          .completed-ticket-source[data-source='square_pos'] {
+            background: rgba(255, 159, 10, 0.2);
+            color: #ff9f0a;
+            border: 1px solid rgba(255, 159, 10, 0.3);
+          }
+
+          .completed-ticket-shortcode {
+            font-size: 14px;
+            font-weight: 700;
+            color: #a78bfa;
+            background: rgba(167, 139, 250, 0.1);
+            padding: 4px 8px;
+            border-radius: 4px;
+          }
+
+          .completed-ticket-details {
+            margin-bottom: 8px;
+          }
+
+          .completed-ticket-time {
+            font-size: 12px;
+            color: #888;
+          }
+
+          .recall-ticket-button {
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: 1px solid rgba(167, 139, 250, 0.3);
+            background: rgba(167, 139, 250, 0.1);
+            color: #a78bfa;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+            white-space: nowrap;
+          }
+
+          .recall-ticket-button:hover:not(:disabled) {
+            background: rgba(167, 139, 250, 0.2);
+            border-color: rgba(167, 139, 250, 0.5);
+          }
+
+          .recall-ticket-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+          }
+            border-color: #a78bfa;
+            transform: translateY(-1px);
+          }
+
+          .age-timer {
+            font-size: 18px;
+            font-weight: 700;
+            padding: 8px 12px;
+            border-radius: 8px;
+            text-align: center;
+            min-width: 60px;
+          }
+
+          .age-timer-green {
+            color: #34c759;
+            background: rgba(52, 199, 89, 0.1);
+          }
+
+          .age-timer-yellow {
+            color: #ff9f0a;
+            background: rgba(255, 159, 10, 0.1);
+          }
+
+          .age-timer-red {
+            color: #ff3b30;
+            background: rgba(255, 59, 48, 0.1);
           }
 
           .action-button {

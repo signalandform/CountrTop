@@ -70,3 +70,27 @@ export function buildDateTrunc(
   return `date_trunc('${period}', ${column} AT TIME ZONE 'UTC' AT TIME ZONE '${timezone}') AT TIME ZONE '${timezone}'`;
 }
 
+/**
+ * Extracts revenue from order snapshot JSON
+ * Handles missing fields, null values, and invalid types
+ */
+export function extractRevenueFromSnapshot(snapshot: unknown): number {
+  if (!snapshot || typeof snapshot !== 'object') return 0;
+  
+  const total = (snapshot as Record<string, unknown>).total;
+  if (!total || typeof total !== 'object') return 0;
+  
+  const amount = (total as Record<string, unknown>).amount;
+  if (amount === null || amount === undefined) return 0;
+  
+  if (typeof amount === 'number') {
+    return amount / 100.0; // Convert cents to dollars
+  }
+  if (typeof amount === 'string') {
+    const parsed = parseFloat(amount);
+    return isNaN(parsed) ? 0 : parsed / 100.0;
+  }
+  
+  return 0;
+}
+

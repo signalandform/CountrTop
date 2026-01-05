@@ -1,17 +1,17 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
-import { createDataClient, type Database } from '@countrtop/data';
+import type { Database } from '@countrtop/data';
 import { requireKDSSession } from '../../../../../../lib/auth';
 import type { GetServerSidePropsContext } from 'next';
 
-type StatusResponse =
+type RecallResponse =
   | {
       ok: true;
       ticket: {
         id: string;
         squareOrderId: string;
         locationId: string;
-        status: 'placed' | 'preparing' | 'ready' | 'completed';
+        status: 'ready';
         placedAt: string;
         readyAt?: string | null;
         completedAt?: string | null;
@@ -22,7 +22,7 @@ type StatusResponse =
 
 export default async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<StatusResponse>
+  res: NextApiResponse<RecallResponse>
 ) {
   if (req.method !== 'POST') {
     return res.status(405).json({
@@ -39,14 +39,6 @@ export default async function handler(
     return res.status(400).json({
       ok: false,
       error: 'Vendor slug and ticket ID required'
-    });
-  }
-
-  const { status } = req.body;
-  if (status !== 'ready' && status !== 'completed') {
-    return res.status(400).json({
-      ok: false,
-      error: 'Invalid status. Must be "ready" or "completed"'
     });
   }
 
@@ -71,7 +63,7 @@ export default async function handler(
 
     const locationId = locationIdParam || authResult.session.locationId;
 
-    // Get vendor to verify location scoping
+    // Get data client
     const supabaseUrl = process.env.SUPABASE_URL;
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_ANON_KEY;
     if (!supabaseUrl || !supabaseKey) {
@@ -83,12 +75,11 @@ export default async function handler(
     const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseKey, {
       auth: { persistSession: false }
     });
-    const dataClient = createDataClient({ supabase: supabaseAdmin });
 
     // Verify ticket exists and belongs to this location
     const { data: ticket, error: ticketError } = await supabaseAdmin
       .from('kitchen_tickets')
-      .select('id, location_id')
+      .select('id, location_id, status')
       .eq('id', ticketId)
       .single();
 
@@ -102,34 +93,54 @@ export default async function handler(
     if (ticket.location_id !== locationId) {
       return res.status(403).json({
         ok: false,
-        error: 'Ticket does not belong to this location',
-        statusCode: 403
+        error: 'Ticket does not belong to this location'
       });
     }
 
-    // Update ticket status (no user ID needed for KDS)
-    const updatedTicket = await dataClient.updateKitchenTicketStatus(
-      ticketId,
-      status
-    );
+    if (ticket.status !== 'completed') {
+      return res.status(400).json({
+        ok: false,
+        error: 'Ticket is not completed. Only completed tickets can be recalled.'
+      });
+    }
+
+    // Update ticket status from completed to ready
+    // Clear completed_at and set ready_at to now
+    const now = new Date().toISOString();
+    const { data: updatedTicket, error: updateError } = await supabaseAdmin
+      .from('kitchen_tickets')
+      .update({
+        status: 'ready',
+        completed_at: null,
+        ready_at: now,
+        updated_at: now
+      })
+      .eq('id', ticketId)
+      .select()
+      .single();
+
+    if (updateError || !updatedTicket) {
+      throw updateError || new Error('Failed to update ticket');
+    }
+
+    const ticketRow = updatedTicket as Database['public']['Tables']['kitchen_tickets']['Row'];
 
     return res.status(200).json({
       ok: true,
       ticket: {
-        id: updatedTicket.id,
-        squareOrderId: updatedTicket.squareOrderId,
-        locationId: updatedTicket.locationId,
-        status: updatedTicket.status as 'placed' | 'preparing' | 'ready' | 'completed',
-        placedAt: updatedTicket.placedAt,
-        readyAt: updatedTicket.readyAt ?? null,
-        completedAt: updatedTicket.completedAt ?? null,
-        updatedAt: updatedTicket.updatedAt
+        id: ticketRow.id,
+        squareOrderId: ticketRow.square_order_id,
+        locationId: ticketRow.location_id,
+        status: 'ready' as const,
+        placedAt: ticketRow.placed_at,
+        readyAt: ticketRow.ready_at ?? null,
+        completedAt: ticketRow.completed_at ?? null,
+        updatedAt: ticketRow.updated_at
       }
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Internal server error';
-    const statusCode = error instanceof Error && error.message.includes('Invalid status transition') ? 400 : 500;
-    return res.status(statusCode).json({
+    return res.status(500).json({
       ok: false,
       error: errorMessage
     });

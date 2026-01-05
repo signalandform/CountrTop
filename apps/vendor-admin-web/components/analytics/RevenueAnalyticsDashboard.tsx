@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { RevenuePoint, RevenueBySource, AovPoint } from '@countrtop/models';
 import { DateRangePicker, type DateRange } from './DateRangePicker';
+import { RevenueSummaryCards } from './RevenueSummaryCards';
 import { RevenueSeriesChart } from './RevenueSeriesChart';
 import { RevenueBySourceChart } from './RevenueBySourceChart';
 import { AovSeriesChart } from './AovSeriesChart';
@@ -89,6 +90,16 @@ export function RevenueAnalyticsDashboard({ vendorSlug, timezone }: RevenueAnaly
         </div>
       )}
 
+      {revenueBySource && (
+        <div className="section">
+          <RevenueSummaryCards
+            revenueBySource={revenueBySource}
+            revenueSeries={revenueSeries}
+            loading={loading}
+          />
+        </div>
+      )}
+
       <div className="charts-grid">
         <div className="chart-section">
           <h3>Revenue Trends</h3>
@@ -162,6 +173,10 @@ export function RevenueAnalyticsDashboard({ vendorSlug, timezone }: RevenueAnaly
           display: grid;
           grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
           gap: 24px;
+          margin-bottom: 32px;
+        }
+
+        .section {
           margin-bottom: 32px;
         }
 

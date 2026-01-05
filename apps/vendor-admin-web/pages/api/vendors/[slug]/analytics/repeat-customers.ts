@@ -69,6 +69,15 @@ export default async function handler(
       return res.status(400).json({ success: false, error: 'Invalid endDate format' });
     }
 
+    // Validate date range (max 90 days)
+    const daysDiff = (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24);
+    if (daysDiff > 90) {
+      return res.status(400).json({
+        success: false,
+        error: 'Date range cannot exceed 90 days. Please select a smaller range.'
+      });
+    }
+
     // Get repeat customer metrics (CountrTop online orders only)
     const repeatCustomerMetrics = await dataClient.getRepeatCustomerMetrics(
       vendor.id,
