@@ -27,20 +27,20 @@ export function RevenueSummaryCards({ revenueBySource, revenueSeries, loading }:
   // Calculate totals from revenue series if provided
   const totalRevenue = revenueSeries
     ? revenueSeries.reduce((sum, point) => sum + point.revenue, 0)
-    : revenueBySource.countrtopRevenue + revenueBySource.squarePosRevenue;
+    : revenueBySource.countrtop_online.revenue + revenueBySource.square_pos.revenue;
 
   const totalOrders = revenueSeries
     ? revenueSeries.reduce((sum, point) => sum + point.orderCount, 0)
-    : revenueBySource.countrtopOrders + revenueBySource.squarePosOrders;
+    : revenueBySource.countrtop_online.orderCount + revenueBySource.square_pos.orderCount;
 
   const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
 
   const onlinePercent = totalRevenue > 0
-    ? (revenueBySource.countrtopRevenue / totalRevenue) * 100
+    ? (revenueBySource.countrtop_online.revenue / totalRevenue) * 100
     : 0;
 
   const posPercent = totalRevenue > 0
-    ? (revenueBySource.squarePosRevenue / totalRevenue) * 100
+    ? (revenueBySource.square_pos.revenue / totalRevenue) * 100
     : 0;
 
   return (
@@ -67,7 +67,7 @@ export function RevenueSummaryCards({ revenueBySource, revenueSeries, loading }:
 
         <div className="summary-card">
           <div className="card-label">Online Revenue</div>
-          <div className="card-value">{formatCurrency(revenueBySource.countrtopRevenue)}</div>
+          <div className="card-value">{formatCurrency(revenueBySource.countrtop_online.revenue)}</div>
           <div className="card-meta">
             {formatPercent(onlinePercent)} of total
           </div>
@@ -75,7 +75,7 @@ export function RevenueSummaryCards({ revenueBySource, revenueSeries, loading }:
 
         <div className="summary-card">
           <div className="card-label">POS Revenue</div>
-          <div className="card-value">{formatCurrency(revenueBySource.squarePosRevenue)}</div>
+          <div className="card-value">{formatCurrency(revenueBySource.square_pos.revenue)}</div>
           <div className="card-meta">
             {formatPercent(posPercent)} of total
           </div>

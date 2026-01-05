@@ -1,6 +1,6 @@
 import type { GetServerSideProps } from 'next';
-import { requireVendorAdmin } from '../../../../lib/auth';
-import { getServerDataClient } from '../../../../lib/dataClient';
+import { requireVendorAdmin } from '../../../lib/auth';
+import { getServerDataClient } from '../../../lib/dataClient';
 import type { Vendor } from '@countrtop/models';
 
 type WorkspacePageProps = {

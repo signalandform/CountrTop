@@ -1,7 +1,7 @@
 import type { GetServerSideProps } from 'next';
-import { requireVendorAdmin } from '../../../../lib/auth';
-import { getServerDataClient } from '../../../../lib/dataClient';
-import { VendorSettings } from '../../../../components/VendorSettings';
+import { requireVendorAdmin } from '../../../lib/auth';
+import { getServerDataClient } from '../../../lib/dataClient';
+import { VendorSettings } from '../../../components/VendorSettings';
 import type { Vendor } from '@countrtop/models';
 
 type VendorSettingsPageProps = {
