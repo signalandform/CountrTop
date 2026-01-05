@@ -133,6 +133,10 @@ export default function VendorQueuePage({ vendorSlug, locationId: initialLocatio
   const [realtimeStatus, setRealtimeStatus] = useState<'SUBSCRIBED' | 'CHANNEL_ERROR' | 'TIMED_OUT' | 'CLOSED' | 'UNKNOWN'>('UNKNOWN');
   const realtimeErrorCountRef = useRef(0);
   const [dailyAvgPrepTime, setDailyAvgPrepTime] = useState<number | null>(null);
+  const [showRecallModal, setShowRecallModal] = useState(false);
+  const [completedTickets, setCompletedTickets] = useState<Ticket[]>([]);
+  const [loadingCompletedTickets, setLoadingCompletedTickets] = useState(false);
+  const [recallingTicketId, setRecallingTicketId] = useState<string | null>(null);
 
   // Fetch daily average prep time
   useEffect(() => {
@@ -377,14 +381,46 @@ export default function VendorQueuePage({ vendorSlug, locationId: initialLocatio
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vendorSlug, useRealtime]);
 
-  const handleRecall = (ticketId: string) => {
-    // Move ticket to top of queue
-    setTickets(prev => {
-      const ticket = prev.find(t => t.ticket.id === ticketId);
-      if (!ticket) return prev;
-      const others = prev.filter(t => t.ticket.id !== ticketId);
-      return [ticket, ...others];
-    });
+  const handleRecallClick = async () => {
+    setShowRecallModal(true);
+    setLoadingCompletedTickets(true);
+    try {
+      const url = `/api/vendors/${vendorSlug}/tickets/completed${locationId ? `?locationId=${locationId}` : ''}`;
+      const response = await fetch(url);
+      const data = await response.json();
+      if (data.ok) {
+        setCompletedTickets(data.tickets);
+      } else {
+        setError(data.error || 'Failed to load completed tickets');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load completed tickets');
+    } finally {
+      setLoadingCompletedTickets(false);
+    }
+  };
+
+  const handleRecallTicket = async (ticketId: string) => {
+    setRecallingTicketId(ticketId);
+    try {
+      const url = `/api/vendors/${vendorSlug}/tickets/${ticketId}/recall${locationId ? `?locationId=${locationId}` : ''}`;
+      const response = await fetch(url, {
+        method: 'POST'
+      });
+      const data = await response.json();
+      if (data.ok) {
+        // Close modal and refresh tickets
+        setShowRecallModal(false);
+        setCompletedTickets([]);
+        await fetchTickets();
+      } else {
+        setError(data.error || 'Failed to recall ticket');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to recall ticket');
+    } finally {
+      setRecallingTicketId(null);
+    }
   };
 
   const handleBumpStatus = async (ticketId: string, currentStatus: string) => {
@@ -504,6 +540,9 @@ export default function VendorQueuePage({ vendorSlug, locationId: initialLocatio
               )}
             </div>
             <div className="header-actions">
+              <button onClick={handleRecallClick} className="recall-button-header">
+                Recall
+              </button>
               <button onClick={handleSettings} className="settings-button">
                 Settings
               </button>
@@ -560,13 +599,6 @@ export default function VendorQueuePage({ vendorSlug, locationId: initialLocatio
                       <div className={`age-timer age-timer-${ageColor}`}>{age}</div>
                       <div className="ticket-actions">
                         <button
-                          className="recall-button"
-                          onClick={() => handleRecall(ticket.id)}
-                          title="Move to top of queue"
-                        >
-                          Recall
-                        </button>
-                        <button
                           className={`action-button ${ticket.status === 'ready' ? 'complete-button' : 'ready-button'}`}
                           onClick={() => handleBumpStatus(ticket.id, ticket.status)}
                           disabled={isUpdating}
@@ -581,6 +613,73 @@ export default function VendorQueuePage({ vendorSlug, locationId: initialLocatio
             </div>
           )}
         </div>
+
+        {/* Recall Modal */}
+        {showRecallModal && (
+          <div className="modal-overlay" onClick={() => setShowRecallModal(false)}>
+            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <h2>Recall Completed Ticket</h2>
+                <button className="modal-close" onClick={() => setShowRecallModal(false)}>
+                  ×
+                </button>
+              </div>
+              <div className="modal-body">
+                {loadingCompletedTickets ? (
+                  <div className="loading-state">
+                    <div className="spinner">⏳</div>
+                    <p>Loading completed tickets...</p>
+                  </div>
+                ) : completedTickets.length === 0 ? (
+                  <div className="empty-state">
+                    <div className="empty-icon">📋</div>
+                    <h3>No Completed Tickets</h3>
+                    <p>No completed tickets found in the last 24 hours.</p>
+                  </div>
+                ) : (
+                  <div className="completed-tickets-list">
+                    {completedTickets.map(({ ticket, order }) => {
+                      const pickupLabel = getPickupLabel(ticket, order);
+                      const sourceBadge = ticket.source === 'countrtop_online' ? 'Online' : 'POS';
+                      const completedTime = ticket.completedAt 
+                        ? new Date(ticket.completedAt).toLocaleTimeString()
+                        : 'Unknown';
+                      
+                      return (
+                        <div key={ticket.id} className="completed-ticket-item">
+                          <div className="completed-ticket-info">
+                            <div className="completed-ticket-header">
+                              <span className="completed-ticket-label">{pickupLabel}</span>
+                              <span className="completed-ticket-source" data-source={ticket.source}>
+                                {sourceBadge}
+                              </span>
+                              {ticket.shortcode && (
+                                <span className="completed-ticket-shortcode">{ticket.shortcode}</span>
+                              )}
+                            </div>
+                            <div className="completed-ticket-details">
+                              {renderLineItems(order.lineItems)}
+                            </div>
+                            <div className="completed-ticket-time">
+                              Completed: {completedTime}
+                            </div>
+                          </div>
+                          <button
+                            className="recall-ticket-button"
+                            onClick={() => handleRecallTicket(ticket.id)}
+                            disabled={recallingTicketId === ticket.id}
+                          >
+                            {recallingTicketId === ticket.id ? 'Recalling...' : 'Recall'}
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         <style jsx>{`
           .page {
@@ -903,11 +1002,11 @@ export default function VendorQueuePage({ vendorSlug, locationId: initialLocatio
             align-items: center;
           }
 
-          .recall-button {
-            padding: 8px 16px;
+          .recall-button-header {
+            padding: 10px 20px;
             border-radius: 8px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(167, 139, 250, 0.3);
+            background: rgba(167, 139, 250, 0.1);
             color: #a78bfa;
             font-weight: 600;
             font-size: 14px;
@@ -916,8 +1015,182 @@ export default function VendorQueuePage({ vendorSlug, locationId: initialLocatio
             font-family: inherit;
           }
 
-          .recall-button:hover {
+          .recall-button-header:hover {
             background: rgba(167, 139, 250, 0.2);
+            border-color: rgba(167, 139, 250, 0.5);
+          }
+
+          .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 24px;
+          }
+
+          .modal-content {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            max-width: 800px;
+            width: 100%;
+            max-height: 90vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+          }
+
+          .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 24px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+          }
+
+          .modal-header h2 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 700;
+            color: #e8e8e8;
+          }
+
+          .modal-close {
+            background: none;
+            border: none;
+            color: #888;
+            font-size: 32px;
+            cursor: pointer;
+            padding: 0;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            transition: all 0.2s;
+          }
+
+          .modal-close:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #e8e8e8;
+          }
+
+          .modal-body {
+            padding: 24px;
+            overflow-y: auto;
+            flex: 1;
+          }
+
+          .completed-tickets-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+          }
+
+          .completed-ticket-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.03);
+            transition: all 0.2s;
+          }
+
+          .completed-ticket-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.15);
+          }
+
+          .completed-ticket-info {
+            flex: 1;
+            min-width: 0;
+          }
+
+          .completed-ticket-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 8px;
+          }
+
+          .completed-ticket-label {
+            font-size: 16px;
+            font-weight: 600;
+            color: #e8e8e8;
+          }
+
+          .completed-ticket-source {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          }
+
+          .completed-ticket-source[data-source='countrtop_online'] {
+            background: rgba(52, 199, 89, 0.2);
+            color: #34c759;
+            border: 1px solid rgba(52, 199, 89, 0.3);
+          }
+
+          .completed-ticket-source[data-source='square_pos'] {
+            background: rgba(255, 159, 10, 0.2);
+            color: #ff9f0a;
+            border: 1px solid rgba(255, 159, 10, 0.3);
+          }
+
+          .completed-ticket-shortcode {
+            font-size: 14px;
+            font-weight: 700;
+            color: #a78bfa;
+            background: rgba(167, 139, 250, 0.1);
+            padding: 4px 8px;
+            border-radius: 4px;
+          }
+
+          .completed-ticket-details {
+            margin-bottom: 8px;
+          }
+
+          .completed-ticket-time {
+            font-size: 12px;
+            color: #888;
+          }
+
+          .recall-ticket-button {
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: 1px solid rgba(167, 139, 250, 0.3);
+            background: rgba(167, 139, 250, 0.1);
+            color: #a78bfa;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+            white-space: nowrap;
+          }
+
+          .recall-ticket-button:hover:not(:disabled) {
+            background: rgba(167, 139, 250, 0.2);
+            border-color: rgba(167, 139, 250, 0.5);
+          }
+
+          .recall-ticket-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+          }
             border-color: #a78bfa;
             transform: translateY(-1px);
           }
