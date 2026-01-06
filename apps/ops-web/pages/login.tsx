@@ -19,10 +19,31 @@ export default function LoginPage() {
 
     if (client) {
       // Check if user is already logged in
-      client.auth.getSession().then(({ data: { session } }) => {
+      client.auth.getSession().then(async ({ data: { session } }) => {
         if (session?.user) {
-          // Already logged in, redirect to dashboard
-          router.replace('/');
+          // Already logged in - set session cookies on server, then redirect
+          try {
+            const setSessionResponse = await fetch('/api/auth/set-session', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              credentials: 'include',
+              body: JSON.stringify({
+                access_token: session.access_token,
+                refresh_token: session.refresh_token
+              })
+            });
+
+            if (setSessionResponse.ok) {
+              await new Promise(resolve => setTimeout(resolve, 300));
+              router.replace('/');
+            } else {
+              setLoading(false);
+            }
+          } catch {
+            setLoading(false);
+          }
         } else {
           setLoading(false);
         }
@@ -50,9 +71,37 @@ export default function LoginPage() {
         setError(signInError.message);
         setSigningIn(false);
       } else if (data.session?.user) {
-        // Success - redirect to dashboard
-        // The dashboard's getServerSideProps will verify email allowlist
-        router.replace('/');
+        // Success - set session cookies on server, then redirect
+        try {
+          const setSessionResponse = await fetch('/api/auth/set-session', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            credentials: 'include',
+            body: JSON.stringify({
+              access_token: data.session.access_token,
+              refresh_token: data.session.refresh_token
+            })
+          });
+
+          if (!setSessionResponse.ok) {
+            const errorData = await setSessionResponse.json().catch(() => ({ error: 'Unknown error' }));
+            setError(`Failed to set session: ${errorData.error || `HTTP ${setSessionResponse.status}`}. Please try again.`);
+            setSigningIn(false);
+            return;
+          }
+
+          // Wait a moment for cookies to be set
+          await new Promise(resolve => setTimeout(resolve, 300));
+          
+          // Redirect to dashboard
+          // The dashboard's getServerSideProps will verify email allowlist
+          router.replace('/');
+        } catch (err) {
+          setError(err instanceof Error ? err.message : 'Failed to set session');
+          setSigningIn(false);
+        }
       } else {
         setError('Sign in succeeded but no session was returned');
         setSigningIn(false);
