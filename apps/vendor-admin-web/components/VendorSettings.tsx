@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import Head from 'next/head';
 import { Vendor } from '@countrtop/models';
 
 type Props = {
@@ -27,6 +28,15 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
   const [primaryColor, setPrimaryColor] = useState(vendor.primaryColor || '#667eea');
   const [accentColor, setAccentColor] = useState(vendor.accentColor || '#764ba2');
   const [fontFamily, setFontFamily] = useState(vendor.fontFamily || 'SF Pro Display');
+
+  // Google Font URL for preview (memoized to avoid re-renders)
+  const googleFontUrl = useMemo(() => {
+    // System fonts don't need loading
+    if (!fontFamily || fontFamily === 'SF Pro Display' || fontFamily === 'system-ui') {
+      return null;
+    }
+    return `https://fonts.googleapis.com/css2?family=${encodeURIComponent(fontFamily)}:wght@400;500;600;700&display=swap`;
+  }, [fontFamily]);
 
   // Feature flags state
   const [featureFlags, setFeatureFlags] = useState<Record<string, boolean>>({});
@@ -201,6 +211,13 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
 
   return (
     <section className="section">
+      {/* Load Google Font for preview */}
+      {googleFontUrl && (
+        <Head>
+          <link href={googleFontUrl} rel="stylesheet" />
+        </Head>
+      )}
+      
       <div className="section-header">
         <h2>Vendor Settings</h2>
         <span className="muted">Address & pickup information</span>
@@ -575,14 +592,24 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
         </div>
 
         <div className="form-actions">
-          <button type="submit" className="btn-primary" disabled={saving}>
-            {saving ? 'Saving...' : 'Save Settings'}
+          <button 
+            type="submit" 
+            className={`btn-save ${saving ? 'saving' : ''} ${saveStatus === 'success' ? 'saved' : ''}`}
+            disabled={saving}
+          >
+            {saving ? (
+              <>
+                <span className="spinner"></span>
+                Saving...
+              </>
+            ) : saveStatus === 'success' ? (
+              <>✓ Saved!</>
+            ) : (
+              'Save All Settings'
+            )}
           </button>
-          {saveStatus === 'success' && (
-            <span className="save-status success">✓ Saved</span>
-          )}
           {saveStatus === 'error' && (
-            <span className="save-status error">{errorMessage || 'Error saving'}</span>
+            <div className="save-error">{errorMessage || 'Error saving settings'}</div>
           )}
         </div>
       </form>
@@ -738,6 +765,66 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
         .btn-primary:disabled {
           opacity: 0.6;
           cursor: not-allowed;
+        }
+
+        .btn-save {
+          padding: 14px 32px;
+          border-radius: 10px;
+          border: none;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          color: white;
+          font-weight: 600;
+          font-size: 15px;
+          cursor: pointer;
+          transition: all 0.3s;
+          font-family: inherit;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          min-width: 180px;
+        }
+
+        .btn-save:hover:not(:disabled) {
+          transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-save:disabled {
+          opacity: 0.7;
+          cursor: not-allowed;
+          transform: none;
+        }
+
+        .btn-save.saving {
+          background: #555;
+        }
+
+        .btn-save.saved {
+          background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+        }
+
+        .spinner {
+          width: 16px;
+          height: 16px;
+          border: 2px solid rgba(255, 255, 255, 0.3);
+          border-top-color: white;
+          border-radius: 50%;
+          animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+
+        .save-error {
+          margin-top: 12px;
+          padding: 12px 16px;
+          background: rgba(239, 68, 68, 0.1);
+          border: 1px solid rgba(239, 68, 68, 0.3);
+          border-radius: 8px;
+          color: #fca5a5;
+          font-size: 14px;
         }
 
         .save-status {
