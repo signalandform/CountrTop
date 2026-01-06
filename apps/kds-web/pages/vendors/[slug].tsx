@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 
 import { getBrowserSupabaseClient } from '../../lib/supabaseBrowser';
 import { requireKDSSession } from '../../lib/auth';
-import { getServerDataClient } from '../../lib/dataClient';
 import {
   isOnline,
   saveTicketsToCache,
@@ -32,7 +31,6 @@ type TicketsResponse = {
 type VendorPageProps = {
   vendorSlug: string;
   locationId: string;
-  themePreference?: 'light' | 'dark' | null;
 };
 
 export const getServerSideProps: GetServerSideProps<VendorPageProps> = async (context) => {
@@ -57,15 +55,10 @@ export const getServerSideProps: GetServerSideProps<VendorPageProps> = async (co
   // Use locationId from session or query param
   const locationId = locationIdParam || authResult.session.locationId;
 
-  // Fetch vendor to get theme preference
-  const dataClient = getServerDataClient();
-  const vendor = slug ? await dataClient.getVendorBySlug(slug) : null;
-
   return {
     props: {
       vendorSlug: slug ?? 'unknown',
-      locationId,
-      themePreference: vendor?.themePreference || 'dark'
+      locationId
     }
   };
 };
@@ -127,13 +120,7 @@ const getPickupLabel = (ticket: Ticket['ticket'], order: Ticket['order']): strin
   return `Order ${order.squareOrderId.slice(-6).toUpperCase()}`;
 };
 
-export default function VendorQueuePage({ vendorSlug, locationId: initialLocationId, themePreference = 'dark' }: VendorPageProps) {
-  // Apply theme to document
-  useEffect(() => {
-    const theme = themePreference || 'dark';
-    document.documentElement.setAttribute('data-theme', theme);
-  }, [themePreference]);
-
+export default function VendorQueuePage({ vendorSlug, locationId: initialLocationId }: VendorPageProps) {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -700,26 +687,10 @@ export default function VendorQueuePage({ vendorSlug, locationId: initialLocatio
         )}
 
         <style jsx>{`
-          :root {
-            --bg-primary: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 50%, #16213e 100%);
-            --text-primary: #e8e8e8;
-            --text-muted: #888;
-            --glass-bg: rgba(255, 255, 255, 0.05);
-            --glass-border: rgba(255, 255, 255, 0.1);
-          }
-
-          [data-theme="light"] {
-            --bg-primary: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 50%, #cbd5e1 100%);
-            --text-primary: #1e293b;
-            --text-muted: #64748b;
-            --glass-bg: rgba(255, 255, 255, 0.8);
-            --glass-border: rgba(0, 0, 0, 0.1);
-          }
-
           .page {
             min-height: 100vh;
-            background: var(--bg-primary);
-            color: var(--text-primary);
+            background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 50%, #16213e 100%);
+            color: #e8e8e8;
             font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
             padding: 24px;
           }
@@ -750,7 +721,7 @@ export default function VendorQueuePage({ vendorSlug, locationId: initialLocatio
 
           .vendor-slug {
             font-size: 16px;
-            color: var(--text-muted);
+            color: #888;
             margin: 0;
             text-transform: uppercase;
             letter-spacing: 1px;
@@ -910,7 +881,7 @@ export default function VendorQueuePage({ vendorSlug, locationId: initialLocatio
           .loading-state p,
           .empty-state p {
             font-size: 16px;
-            color: var(--text-muted);
+            color: #888;
             margin: 0;
           }
 
@@ -1019,7 +990,7 @@ export default function VendorQueuePage({ vendorSlug, locationId: initialLocatio
 
           .line-items-empty {
             font-size: 14px;
-            color: var(--text-muted);
+            color: #888;
           }
 
           .ticket-right {
@@ -1098,7 +1069,7 @@ export default function VendorQueuePage({ vendorSlug, locationId: initialLocatio
           .modal-close {
             background: none;
             border: none;
-            color: var(--text-muted);
+            color: #888;
             font-size: 32px;
             cursor: pointer;
             padding: 0;
@@ -1199,7 +1170,7 @@ export default function VendorQueuePage({ vendorSlug, locationId: initialLocatio
 
           .completed-ticket-time {
             font-size: 12px;
-            color: var(--text-muted);
+            color: #888;
           }
 
           .recall-ticket-button {

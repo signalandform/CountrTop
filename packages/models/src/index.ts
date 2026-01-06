@@ -19,7 +19,6 @@ export type Vendor = {
   pickupInstructions?: string | null;
   kdsActiveLimitTotal?: number | null;
   kdsActiveLimitCt?: number | null;
-  themePreference?: 'light' | 'dark' | null;
 };
 
 export type User = {

@@ -171,7 +171,6 @@ export type Database = {
           pickup_instructions: string | null;
           kds_active_limit_total: number | null;
           kds_active_limit_ct: number | null;
-          theme_preference: string | null;
         };
         Insert: {
           id?: string;
@@ -191,7 +190,6 @@ export type Database = {
           pickup_instructions?: string | null;
           kds_active_limit_total?: number | null;
           kds_active_limit_ct?: number | null;
-          theme_preference?: string | null;
         };
         Update: Partial<Database['public']['Tables']['vendors']['Insert']>;
         Relationships: [];
@@ -2370,8 +2368,7 @@ const mapVendorFromRow = (row: Database['public']['Tables']['vendors']['Row']): 
   timezone: row.timezone ?? undefined,
   pickupInstructions: row.pickup_instructions ?? undefined,
   kdsActiveLimitTotal: row.kds_active_limit_total ?? undefined,
-  kdsActiveLimitCt: row.kds_active_limit_ct ?? undefined,
-  themePreference: (row.theme_preference === 'light' || row.theme_preference === 'dark') ? row.theme_preference : undefined
+  kdsActiveLimitCt: row.kds_active_limit_ct ?? undefined
 });
 
 const mapOrderSnapshotFromRow = (
