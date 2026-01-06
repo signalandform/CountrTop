@@ -55,7 +55,8 @@ export default async function handler(
     phone,
     pickupInstructions,
     kdsActiveLimitTotal,
-    kdsActiveLimitCt
+    kdsActiveLimitCt,
+    themePreference
   } = req.body;
 
   try {
@@ -83,6 +84,14 @@ export default async function handler(
     if (pickupInstructions !== undefined) updateData.pickup_instructions = pickupInstructions || null;
     if (kdsActiveLimitTotal !== undefined) updateData.kds_active_limit_total = kdsActiveLimitTotal || null;
     if (kdsActiveLimitCt !== undefined) updateData.kds_active_limit_ct = kdsActiveLimitCt || null;
+    if (themePreference !== undefined) {
+      // Validate theme preference
+      if (themePreference === 'light' || themePreference === 'dark') {
+        updateData.theme_preference = themePreference;
+      } else {
+        updateData.theme_preference = null;
+      }
+    }
 
     // Do not allow updating square_location_id or admin_user_id through this endpoint
     // These are protected fields

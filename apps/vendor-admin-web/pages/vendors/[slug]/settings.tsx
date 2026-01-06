@@ -1,4 +1,5 @@
 import type { GetServerSideProps } from 'next';
+import { useEffect } from 'react';
 import { requireVendorAdmin } from '../../../lib/auth';
 import { getServerDataClient } from '../../../lib/dataClient';
 import { VendorSettings } from '../../../components/VendorSettings';
@@ -42,6 +43,13 @@ export const getServerSideProps: GetServerSideProps<VendorSettingsPageProps> = a
 };
 
 export default function VendorSettingsPage({ vendorSlug, vendorName, vendor }: VendorSettingsPageProps) {
+  const theme = vendor?.themePreference || 'dark';
+  
+  // Apply theme to document
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [theme]);
+
   if (!vendor) {
     return (
       <main className="page">
@@ -63,10 +71,22 @@ export default function VendorSettingsPage({ vendorSlug, vendorName, vendor }: V
       </div>
 
       <style jsx>{`
+        :root {
+          --bg-primary: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 50%, #16213e 100%);
+          --text-primary: #e8e8e8;
+          --text-muted: #888;
+        }
+
+        [data-theme="light"] {
+          --bg-primary: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 50%, #cbd5e1 100%);
+          --text-primary: #1e293b;
+          --text-muted: #64748b;
+        }
+
         .page {
           min-height: 100vh;
-          background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 50%, #16213e 100%);
-          color: #e8e8e8;
+          background: var(--bg-primary);
+          color: var(--text-primary);
           font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
           padding: 32px;
         }
@@ -84,12 +104,12 @@ export default function VendorSettingsPage({ vendorSlug, vendorName, vendor }: V
           font-size: 32px;
           font-weight: 700;
           margin: 0 0 8px 0;
-          color: #e8e8e8;
+          color: var(--text-primary);
         }
 
         .page-header p {
           font-size: 16px;
-          color: #888;
+          color: var(--text-muted);
           margin: 0;
         }
       `}</style>

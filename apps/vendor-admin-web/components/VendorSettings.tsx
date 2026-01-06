@@ -21,6 +21,7 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
   const [pickupInstructions, setPickupInstructions] = useState(vendor.pickupInstructions || '');
   const [kdsActiveLimitTotal, setKdsActiveLimitTotal] = useState(vendor.kdsActiveLimitTotal?.toString() || '10');
   const [kdsActiveLimitCt, setKdsActiveLimitCt] = useState(vendor.kdsActiveLimitCt?.toString() || '10');
+  const [themePreference, setThemePreference] = useState<'light' | 'dark'>(vendor.themePreference || 'dark');
 
   // Feature flags state
   const [featureFlags, setFeatureFlags] = useState<Record<string, boolean>>({});
@@ -168,7 +169,8 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
           phone: phone || null,
           pickupInstructions: pickupInstructions || null,
           kdsActiveLimitTotal: kdsActiveLimitTotal ? parseInt(kdsActiveLimitTotal, 10) : null,
-          kdsActiveLimitCt: kdsActiveLimitCt ? parseInt(kdsActiveLimitCt, 10) : null
+          kdsActiveLimitCt: kdsActiveLimitCt ? parseInt(kdsActiveLimitCt, 10) : null,
+          themePreference: themePreference || null
         })
       });
 
@@ -401,6 +403,26 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
             ))}
           </div>
         )}
+
+        <div className="form-section-divider">
+          <h3>UI Theme</h3>
+          <p className="section-description">Choose light or dark mode for customer web, vendor admin, and KDS</p>
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="themePreference">Theme Preference</label>
+          <select
+            id="themePreference"
+            value={themePreference}
+            onChange={(e) => setThemePreference(e.target.value as 'light' | 'dark')}
+            className="input-field"
+            disabled={saving}
+          >
+            <option value="dark">Dark Mode</option>
+            <option value="light">Light Mode</option>
+          </select>
+          <span className="field-hint">This will apply to customer web, vendor admin dashboard, and KDS</span>
+        </div>
 
         <div className="form-section-divider">
           <h3>KDS Queue Settings</h3>
