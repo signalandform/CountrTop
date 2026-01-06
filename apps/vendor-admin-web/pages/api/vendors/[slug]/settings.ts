@@ -55,7 +55,12 @@ export default async function handler(
     phone,
     pickupInstructions,
     kdsActiveLimitTotal,
-    kdsActiveLimitCt
+    kdsActiveLimitCt,
+    // Theming fields
+    logoUrl,
+    primaryColor,
+    accentColor,
+    fontFamily
   } = req.body;
 
   try {
@@ -83,6 +88,11 @@ export default async function handler(
     if (pickupInstructions !== undefined) updateData.pickup_instructions = pickupInstructions || null;
     if (kdsActiveLimitTotal !== undefined) updateData.kds_active_limit_total = kdsActiveLimitTotal || null;
     if (kdsActiveLimitCt !== undefined) updateData.kds_active_limit_ct = kdsActiveLimitCt || null;
+    // Theming fields
+    if (logoUrl !== undefined) (updateData as Record<string, unknown>).logo_url = logoUrl || null;
+    if (primaryColor !== undefined) (updateData as Record<string, unknown>).primary_color = primaryColor || null;
+    if (accentColor !== undefined) (updateData as Record<string, unknown>).accent_color = accentColor || null;
+    if (fontFamily !== undefined) (updateData as Record<string, unknown>).font_family = fontFamily || null;
 
     // Do not allow updating square_location_id or admin_user_id through this endpoint
     // These are protected fields

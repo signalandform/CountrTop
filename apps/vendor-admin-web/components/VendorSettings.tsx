@@ -22,6 +22,12 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
   const [kdsActiveLimitTotal, setKdsActiveLimitTotal] = useState(vendor.kdsActiveLimitTotal?.toString() || '10');
   const [kdsActiveLimitCt, setKdsActiveLimitCt] = useState(vendor.kdsActiveLimitCt?.toString() || '10');
 
+  // Theming state
+  const [logoUrl, setLogoUrl] = useState(vendor.logoUrl || '');
+  const [primaryColor, setPrimaryColor] = useState(vendor.primaryColor || '#667eea');
+  const [accentColor, setAccentColor] = useState(vendor.accentColor || '#764ba2');
+  const [fontFamily, setFontFamily] = useState(vendor.fontFamily || 'SF Pro Display');
+
   // Feature flags state
   const [featureFlags, setFeatureFlags] = useState<Record<string, boolean>>({});
   const [flagsLoading, setFlagsLoading] = useState(true);
@@ -168,7 +174,12 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
           phone: phone || null,
           pickupInstructions: pickupInstructions || null,
           kdsActiveLimitTotal: kdsActiveLimitTotal ? parseInt(kdsActiveLimitTotal, 10) : null,
-          kdsActiveLimitCt: kdsActiveLimitCt ? parseInt(kdsActiveLimitCt, 10) : null
+          kdsActiveLimitCt: kdsActiveLimitCt ? parseInt(kdsActiveLimitCt, 10) : null,
+          // Theming fields
+          logoUrl: logoUrl || null,
+          primaryColor: primaryColor || null,
+          accentColor: accentColor || null,
+          fontFamily: fontFamily || null
         })
       });
 
@@ -281,6 +292,129 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
             disabled={saving}
             placeholder="Enter pickup instructions for customers..."
           />
+        </div>
+
+        <div className="form-section-divider">
+          <h3>Branding & Theming</h3>
+          <p className="section-description">Customize the appearance of your customer-facing pages</p>
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="logoUrl">Logo URL</label>
+          <input
+            id="logoUrl"
+            type="url"
+            value={logoUrl}
+            onChange={(e) => setLogoUrl(e.target.value)}
+            className="input-field"
+            disabled={saving}
+            placeholder="https://example.com/logo.png"
+          />
+          <span className="field-hint">URL to your logo image (recommended: square, 200x200px or larger)</span>
+        </div>
+
+        <div className="form-row">
+          <div className="form-group">
+            <label htmlFor="primaryColor">Primary Color</label>
+            <div className="color-input-group">
+              <input
+                id="primaryColor"
+                type="color"
+                value={primaryColor}
+                onChange={(e) => setPrimaryColor(e.target.value)}
+                className="color-picker"
+                disabled={saving}
+              />
+              <input
+                type="text"
+                value={primaryColor}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (/^#[0-9A-Fa-f]{0,6}$/.test(val)) {
+                    setPrimaryColor(val);
+                  }
+                }}
+                className="input-field color-text"
+                disabled={saving}
+                placeholder="#667eea"
+              />
+            </div>
+            <span className="field-hint">Main brand color for buttons and accents</span>
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="accentColor">Accent Color</label>
+            <div className="color-input-group">
+              <input
+                id="accentColor"
+                type="color"
+                value={accentColor}
+                onChange={(e) => setAccentColor(e.target.value)}
+                className="color-picker"
+                disabled={saving}
+              />
+              <input
+                type="text"
+                value={accentColor}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (/^#[0-9A-Fa-f]{0,6}$/.test(val)) {
+                    setAccentColor(val);
+                  }
+                }}
+                className="input-field color-text"
+                disabled={saving}
+                placeholder="#764ba2"
+              />
+            </div>
+            <span className="field-hint">Secondary color for gradients and highlights</span>
+          </div>
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="fontFamily">Font Family</label>
+          <select
+            id="fontFamily"
+            value={fontFamily}
+            onChange={(e) => setFontFamily(e.target.value)}
+            className="input-field"
+            disabled={saving}
+          >
+            <option value="SF Pro Display">SF Pro Display (Default)</option>
+            <option value="Inter">Inter</option>
+            <option value="Poppins">Poppins</option>
+            <option value="Roboto">Roboto</option>
+            <option value="Open Sans">Open Sans</option>
+            <option value="Montserrat">Montserrat</option>
+            <option value="Lato">Lato</option>
+            <option value="Playfair Display">Playfair Display</option>
+          </select>
+          <span className="field-hint">Font used for customer-facing text</span>
+        </div>
+
+        {/* Theme Preview */}
+        <div className="theme-preview">
+          <div className="preview-label">Preview</div>
+          <div 
+            className="preview-box"
+            style={{
+              background: `linear-gradient(135deg, ${primaryColor} 0%, ${accentColor} 100%)`,
+              fontFamily: `'${fontFamily}', -apple-system, BlinkMacSystemFont, sans-serif`
+            }}
+          >
+            <div className="preview-title">{vendor.displayName}</div>
+            <div className="preview-subtitle">Order fast, earn points</div>
+            <button 
+              type="button"
+              className="preview-button"
+              style={{ 
+                background: primaryColor,
+                fontFamily: `'${fontFamily}', -apple-system, BlinkMacSystemFont, sans-serif`
+              }}
+            >
+              Sample Button
+            </button>
+          </div>
         </div>
 
         <div className="form-section-divider">
@@ -730,6 +864,85 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
           color: #fca5a5;
         }
 
+        /* Theming styles */
+        .color-input-group {
+          display: flex;
+          gap: 8px;
+          align-items: center;
+        }
+
+        .color-picker {
+          width: 48px;
+          height: 48px;
+          padding: 0;
+          border: 2px solid rgba(255, 255, 255, 0.2);
+          border-radius: 8px;
+          cursor: pointer;
+          background: transparent;
+        }
+
+        .color-picker::-webkit-color-swatch-wrapper {
+          padding: 4px;
+        }
+
+        .color-picker::-webkit-color-swatch {
+          border-radius: 4px;
+          border: none;
+        }
+
+        .color-text {
+          width: 100px;
+          font-family: monospace;
+          text-transform: uppercase;
+        }
+
+        .theme-preview {
+          margin-top: 16px;
+          padding: 16px;
+          border-radius: 12px;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          background: rgba(255, 255, 255, 0.03);
+        }
+
+        .preview-label {
+          font-size: 12px;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          color: #888;
+          margin-bottom: 12px;
+        }
+
+        .preview-box {
+          padding: 24px;
+          border-radius: 12px;
+          text-align: center;
+          color: white;
+        }
+
+        .preview-title {
+          font-size: 24px;
+          font-weight: 700;
+          margin-bottom: 8px;
+        }
+
+        .preview-subtitle {
+          font-size: 14px;
+          opacity: 0.9;
+          margin-bottom: 16px;
+        }
+
+        .preview-button {
+          padding: 10px 20px;
+          border-radius: 8px;
+          border: none;
+          color: white;
+          font-weight: 600;
+          font-size: 14px;
+          cursor: default;
+          opacity: 0.95;
+        }
+
         @media (max-width: 768px) {
           .form-row {
             grid-template-columns: 1fr;
@@ -745,6 +958,10 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
 
           .btn-set-pin {
             width: 100%;
+          }
+
+          .color-input-group {
+            flex-direction: row;
           }
         }
       `}</style>

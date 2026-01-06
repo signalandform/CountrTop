@@ -19,6 +19,11 @@ export type Vendor = {
   pickupInstructions?: string | null;
   kdsActiveLimitTotal?: number | null;
   kdsActiveLimitCt?: number | null;
+  // Theming fields
+  logoUrl?: string | null;
+  primaryColor?: string | null;
+  accentColor?: string | null;
+  fontFamily?: string | null;
 };
 
 export type Employee = {

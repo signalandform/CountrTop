@@ -31,13 +31,39 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req }) => 
   const fallback = process.env.DEFAULT_VENDOR_SLUG;
   const vendorSlug = resolveVendorSlugFromHost(req.headers.host, fallback);
   const dataClient = getServerDataClient();
-  const vendor = vendorSlug ? await dataClient.getVendorBySlug(vendorSlug) : null;
+  const rawVendor = vendorSlug ? await dataClient.getVendorBySlug(vendorSlug) : null;
+  
+  // Sanitize vendor object: JSON.parse(JSON.stringify()) removes undefined values
+  // Then we explicitly ensure optional fields are null instead of missing
+  const vendor: Vendor | null = rawVendor ? JSON.parse(JSON.stringify({
+    id: rawVendor.id,
+    slug: rawVendor.slug,
+    displayName: rawVendor.displayName,
+    squareLocationId: rawVendor.squareLocationId,
+    squareCredentialRef: rawVendor.squareCredentialRef ?? null,
+    status: rawVendor.status ?? null,
+    addressLine1: rawVendor.addressLine1 ?? null,
+    addressLine2: rawVendor.addressLine2 ?? null,
+    city: rawVendor.city ?? null,
+    state: rawVendor.state ?? null,
+    postalCode: rawVendor.postalCode ?? null,
+    phone: rawVendor.phone ?? null,
+    timezone: rawVendor.timezone ?? null,
+    pickupInstructions: rawVendor.pickupInstructions ?? null,
+    kdsActiveLimitTotal: rawVendor.kdsActiveLimitTotal ?? null,
+    kdsActiveLimitCt: rawVendor.kdsActiveLimitCt ?? null,
+    // Theming fields
+    logoUrl: rawVendor.logoUrl ?? null,
+    primaryColor: rawVendor.primaryColor ?? null,
+    accentColor: rawVendor.accentColor ?? null,
+    fontFamily: rawVendor.fontFamily ?? null,
+  })) : null;
 
   return {
     props: {
       vendorSlug: vendorSlug ?? null,
       vendorName: vendor?.displayName ?? 'CountrTop',
-      vendor: vendor ?? null
+      vendor
     }
   };
 };
@@ -437,18 +463,44 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor }: Props) 
   };
 
   // ---------------------------------------------------------------------------
+  // Theme Configuration
+  // ---------------------------------------------------------------------------
+  const primaryColor = vendor?.primaryColor || '#667eea';
+  const accentColor = vendor?.accentColor || '#764ba2';
+  const fontFamily = vendor?.fontFamily || 'SF Pro Display';
+  const logoUrl = vendor?.logoUrl;
+
+  // Build dynamic theme style variables
+  const themeStyles: React.CSSProperties & Record<string, string> = {
+    '--theme-primary': primaryColor,
+    '--theme-accent': accentColor,
+    '--theme-gradient': `linear-gradient(135deg, ${primaryColor} 0%, ${accentColor} 100%)`,
+    '--theme-font': `'${fontFamily}', -apple-system, BlinkMacSystemFont, sans-serif`,
+  };
+
+  // ---------------------------------------------------------------------------
   // Render
   // ---------------------------------------------------------------------------
   return (
     <>
       <Head>
         <title>{`${vendorName} · CountrTop`}</title>
+        {/* Load Google Fonts if using a non-system font */}
+        {fontFamily && !['SF Pro Display', 'system-ui'].includes(fontFamily) && (
+          <link
+            href={`https://fonts.googleapis.com/css2?family=${encodeURIComponent(fontFamily)}:wght@400;500;600;700&display=swap`}
+            rel="stylesheet"
+          />
+        )}
       </Head>
-      <main className="page">
+      <main className="page" style={themeStyles}>
         <div className="page-content">
           {/* Hero */}
           <header className="hero-header">
             <div className="hero-content">
+              {logoUrl && (
+                <img src={logoUrl} alt={vendorName} className="vendor-logo" />
+              )}
               <p className="eyebrow">CountrTop</p>
               <h1 className="title">{vendorName}</h1>
               <p className="subtitle">Order fast, earn points, get notified when ready.</p>
@@ -890,7 +942,7 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor }: Props) 
             min-height: 100vh;
             background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 50%, #16213e 100%);
             color: #e8e8e8;
-            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-family: var(--theme-font, 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif);
           }
 
           .page-content {
@@ -912,11 +964,20 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor }: Props) 
             max-width: 500px;
           }
 
+          .vendor-logo {
+            width: 80px;
+            height: 80px;
+            border-radius: 16px;
+            object-fit: cover;
+            margin-bottom: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+          }
+
           .eyebrow {
             text-transform: uppercase;
             letter-spacing: 3px;
             font-size: 11px;
-            color: #a78bfa;
+            color: var(--theme-primary, #a78bfa);
             margin: 0 0 8px;
           }
 
@@ -924,7 +985,7 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor }: Props) 
             font-size: 36px;
             font-weight: 700;
             margin: 0 0 8px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--theme-gradient, linear-gradient(135deg, #667eea 0%, #764ba2 100%));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
@@ -967,7 +1028,7 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor }: Props) 
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            color: #a78bfa;
+            color: var(--theme-primary, #a78bfa);
           }
 
           .info-content {
@@ -979,17 +1040,17 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor }: Props) 
 
           .vendor-address-link {
             text-decoration: none;
-            color: #a78bfa;
+            color: var(--theme-primary, #a78bfa);
             transition: color 0.2s;
           }
 
           .vendor-address-link:hover {
-            color: #8b5cf6;
+            color: var(--theme-accent, #8b5cf6);
             text-decoration: underline;
           }
 
           .phone-link {
-            color: #a78bfa;
+            color: var(--theme-primary, #a78bfa);
             text-decoration: none;
           }
 
@@ -1107,7 +1168,7 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor }: Props) 
 
           .order-item .item-quantity {
             font-weight: 600;
-            color: #a78bfa;
+            color: var(--theme-primary, #a78bfa);
             min-width: 24px;
           }
 
@@ -1239,7 +1300,7 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor }: Props) 
             font-size: 72px;
             font-weight: 900;
             text-align: center;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--theme-gradient, linear-gradient(135deg, #667eea 0%, #764ba2 100%));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
@@ -1263,13 +1324,13 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor }: Props) 
           }
 
           .progress-dot.active {
-            background: #667eea;
+            background: var(--theme-primary, #667eea);
             box-shadow: 0 0 8px rgba(102, 126, 234, 0.5);
             transform: scale(1.2);
           }
 
           .points {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--theme-gradient, linear-gradient(135deg, #667eea 0%, #764ba2 100%));
             padding: 8px 16px;
             border-radius: 20px;
             font-weight: 700;
@@ -1302,7 +1363,7 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor }: Props) 
             padding: 12px;
             border-radius: 12px;
             border: none;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--theme-gradient, linear-gradient(135deg, #667eea 0%, #764ba2 100%));
             color: #fff;
             font-weight: 600;
             cursor: pointer;
@@ -1471,7 +1532,7 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor }: Props) 
 
           .price {
             font-weight: 700;
-            color: #a78bfa;
+            color: var(--theme-primary, #a78bfa);
           }
 
           .history-header {

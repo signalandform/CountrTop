@@ -2748,7 +2748,12 @@ const mapVendorFromRow = (row: Database['public']['Tables']['vendors']['Row']): 
   timezone: row.timezone ?? undefined,
   pickupInstructions: row.pickup_instructions ?? undefined,
   kdsActiveLimitTotal: row.kds_active_limit_total ?? undefined,
-  kdsActiveLimitCt: row.kds_active_limit_ct ?? undefined
+  kdsActiveLimitCt: row.kds_active_limit_ct ?? undefined,
+  // Theming fields
+  logoUrl: (row as Record<string, unknown>).logo_url as string | null ?? undefined,
+  primaryColor: (row as Record<string, unknown>).primary_color as string | null ?? undefined,
+  accentColor: (row as Record<string, unknown>).accent_color as string | null ?? undefined,
+  fontFamily: (row as Record<string, unknown>).font_family as string | null ?? undefined
 });
 
 const mapOrderSnapshotFromRow = (
