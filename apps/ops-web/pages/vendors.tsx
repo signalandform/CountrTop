@@ -108,6 +108,9 @@ export default function VendorsPage({ userEmail: _userEmail }: Props) {
           <div className="header-content">
             <h1>Vendor Management</h1>
             <div className="header-actions">
+              <Link href="/vendors/new" className="btn-new-vendor">
+                + New Vendor
+              </Link>
               <input
                 type="text"
                 placeholder="Search vendors..."
@@ -261,6 +264,23 @@ export default function VendorsPage({ userEmail: _userEmail }: Props) {
             display: flex;
             gap: 12px;
             align-items: center;
+          }
+
+          .btn-new-vendor {
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: none;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 14px;
+            transition: opacity 0.2s;
+            display: inline-block;
+          }
+
+          .btn-new-vendor:hover {
+            opacity: 0.9;
           }
 
           .search-input {
