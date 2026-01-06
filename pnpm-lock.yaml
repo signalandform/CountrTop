@@ -181,6 +181,46 @@ importers:
         specifier: ^5.3.3
         version: 5.9.3
 
+  apps/ops-web:
+    dependencies:
+      '@countrtop/data':
+        specifier: workspace:*
+        version: link:../../packages/data
+      '@countrtop/models':
+        specifier: workspace:*
+        version: link:../../packages/models
+      '@countrtop/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
+      '@supabase/auth-helpers-nextjs':
+        specifier: ^0.15.0
+        version: 0.15.0(@supabase/supabase-js@2.88.0)
+      '@supabase/supabase-js':
+        specifier: ^2.45.6
+        version: 2.88.0
+      next:
+        specifier: 14.2.6
+        version: 14.2.6(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      react:
+        specifier: 18.3.1
+        version: 18.3.1
+      react-dom:
+        specifier: 18.3.1
+        version: 18.3.1(react@18.3.1)
+    devDependencies:
+      '@types/node':
+        specifier: ^20.14.9
+        version: 20.19.27
+      '@types/react':
+        specifier: ^18.3.5
+        version: 18.3.27
+      '@types/react-dom':
+        specifier: ^18.3.0
+        version: 18.3.7(@types/react@18.3.27)
+      typescript:
+        specifier: ^5.3.3
+        version: 5.9.3
+
   apps/vendor-admin-web:
     dependencies:
       '@countrtop/data':

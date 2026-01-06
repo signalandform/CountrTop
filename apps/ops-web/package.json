@@ -1,0 +1,28 @@
+{
+  "name": "@countrtop/ops-web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@countrtop/data": "workspace:*",
+    "@countrtop/models": "workspace:*",
+    "@countrtop/ui": "workspace:*",
+    "@supabase/auth-helpers-nextjs": "^0.15.0",
+    "@supabase/supabase-js": "^2.45.6",
+    "next": "14.2.6",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.9",
+    "@types/react": "^18.3.5",
+    "@types/react-dom": "^18.3.0",
+    "typescript": "^5.3.3"
+  }
+}
+

@@ -4,4 +4,5 @@ packages:
   - "apps/vendor-ops-mobile"
   - "apps/vendor-admin-web"
   - "apps/kds-web"
+  - "apps/ops-web"
   - "packages/*"
