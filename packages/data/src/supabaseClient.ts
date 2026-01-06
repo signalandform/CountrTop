@@ -374,6 +374,54 @@ export type Database = {
         Update: Partial<Database['public']['Tables']['vendor_location_pins']['Insert']>;
         Relationships: [];
       };
+      employees: {
+        Row: {
+          id: string;
+          vendor_id: string;
+          name: string;
+          pin: string;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          vendor_id: string;
+          name: string;
+          pin: string;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['employees']['Insert']>;
+        Relationships: [];
+      };
+      time_entries: {
+        Row: {
+          id: string;
+          vendor_id: string;
+          employee_id: string;
+          clock_in_at: string;
+          clock_out_at: string | null;
+          location_id: string | null;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          vendor_id: string;
+          employee_id: string;
+          clock_in_at?: string;
+          clock_out_at?: string | null;
+          location_id?: string | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['time_entries']['Insert']>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
@@ -2347,6 +2395,338 @@ export class SupabaseDataClient implements DataClient {
       logQueryPerformance('setLocationPin', startTime, true);
     } catch (error) {
       logQueryPerformance('setLocationPin', startTime, false, error);
+      throw error;
+    }
+  }
+
+  // ============================================================================
+  // Employees & Time Tracking
+  // ============================================================================
+
+  async listEmployees(vendorId: string): Promise<import('@countrtop/models').Employee[]> {
+    const startTime = Date.now();
+    try {
+      const { data, error } = await this.client
+        .from('employees')
+        .select('*')
+        .eq('vendor_id', vendorId)
+        .order('name', { ascending: true });
+
+      if (error) throw error;
+
+      const employees = ((data || []) as Database['public']['Tables']['employees']['Row'][]).map((row) => ({
+        id: row.id,
+        vendorId: row.vendor_id,
+        name: row.name,
+        pin: row.pin,
+        isActive: row.is_active,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at
+      }));
+
+      logQueryPerformance('listEmployees', startTime, true);
+      return employees;
+    } catch (error) {
+      logQueryPerformance('listEmployees', startTime, false, error);
+      throw error;
+    }
+  }
+
+  async createEmployee(vendorId: string, name: string, pin: string): Promise<import('@countrtop/models').Employee> {
+    const startTime = Date.now();
+    try {
+      // Validate PIN format (3 digits)
+      if (!/^\d{3}$/.test(pin)) {
+        throw new Error('PIN must be exactly 3 digits');
+      }
+
+      const { data, error } = await this.client
+        .from('employees')
+        .insert({
+          vendor_id: vendorId,
+          name,
+          pin,
+          is_active: true
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      const employeeRow = data as Database['public']['Tables']['employees']['Row'];
+      const employee = {
+        id: employeeRow.id,
+        vendorId: employeeRow.vendor_id,
+        name: employeeRow.name,
+        pin: employeeRow.pin,
+        isActive: employeeRow.is_active,
+        createdAt: employeeRow.created_at,
+        updatedAt: employeeRow.updated_at
+      };
+
+      logQueryPerformance('createEmployee', startTime, true);
+      return employee;
+    } catch (error) {
+      logQueryPerformance('createEmployee', startTime, false, error);
+      throw error;
+    }
+  }
+
+  async updateEmployee(employeeId: string, updates: { name?: string; pin?: string; isActive?: boolean }): Promise<import('@countrtop/models').Employee> {
+    const startTime = Date.now();
+    try {
+      if (updates.pin && !/^\d{3}$/.test(updates.pin)) {
+        throw new Error('PIN must be exactly 3 digits');
+      }
+
+      const updateData: Partial<Database['public']['Tables']['employees']['Update']> = {};
+      if (updates.name !== undefined) updateData.name = updates.name;
+      if (updates.pin !== undefined) updateData.pin = updates.pin;
+      if (updates.isActive !== undefined) updateData.is_active = updates.isActive;
+      updateData.updated_at = new Date().toISOString();
+
+      const { data, error } = await this.client
+        .from('employees')
+        .update(updateData)
+        .eq('id', employeeId)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      const employeeRow = data as Database['public']['Tables']['employees']['Row'];
+      const employee = {
+        id: employeeRow.id,
+        vendorId: employeeRow.vendor_id,
+        name: employeeRow.name,
+        pin: employeeRow.pin,
+        isActive: employeeRow.is_active,
+        createdAt: employeeRow.created_at,
+        updatedAt: employeeRow.updated_at
+      };
+
+      logQueryPerformance('updateEmployee', startTime, true);
+      return employee;
+    } catch (error) {
+      logQueryPerformance('updateEmployee', startTime, false, error);
+      throw error;
+    }
+  }
+
+  async deleteEmployee(employeeId: string): Promise<void> {
+    const startTime = Date.now();
+    try {
+      const { error } = await this.client
+        .from('employees')
+        .delete()
+        .eq('id', employeeId);
+
+      if (error) throw error;
+      logQueryPerformance('deleteEmployee', startTime, true);
+    } catch (error) {
+      logQueryPerformance('deleteEmployee', startTime, false, error);
+      throw error;
+    }
+  }
+
+  async getEmployeeByPin(vendorId: string, pin: string): Promise<import('@countrtop/models').Employee | null> {
+    const startTime = Date.now();
+    try {
+      const { data, error } = await this.client
+        .from('employees')
+        .select('*')
+        .eq('vendor_id', vendorId)
+        .eq('pin', pin)
+        .eq('is_active', true)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      if (!data) {
+        logQueryPerformance('getEmployeeByPin', startTime, true);
+        return null;
+      }
+
+      const employeeRow = data as Database['public']['Tables']['employees']['Row'];
+      const employee = {
+        id: employeeRow.id,
+        vendorId: employeeRow.vendor_id,
+        name: employeeRow.name,
+        pin: employeeRow.pin,
+        isActive: employeeRow.is_active,
+        createdAt: employeeRow.created_at,
+        updatedAt: employeeRow.updated_at
+      };
+
+      logQueryPerformance('getEmployeeByPin', startTime, true);
+      return employee;
+    } catch (error) {
+      logQueryPerformance('getEmployeeByPin', startTime, false, error);
+      throw error;
+    }
+  }
+
+  async clockIn(vendorId: string, employeeId: string, locationId: string | null): Promise<import('@countrtop/models').TimeEntry> {
+    const startTime = Date.now();
+    try {
+      // Check if employee already has an active time entry
+      const activeEntry = await this.getActiveTimeEntry(vendorId, employeeId);
+      if (activeEntry) {
+        throw new Error('Employee already has an active time entry. Please clock out first.');
+      }
+
+      const { data, error } = await this.client
+        .from('time_entries')
+        .insert({
+          vendor_id: vendorId,
+          employee_id: employeeId,
+          clock_in_at: new Date().toISOString(),
+          location_id: locationId
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      const timeEntryRow = data as Database['public']['Tables']['time_entries']['Row'];
+      const timeEntry = {
+        id: timeEntryRow.id,
+        vendorId: timeEntryRow.vendor_id,
+        employeeId: timeEntryRow.employee_id,
+        clockInAt: timeEntryRow.clock_in_at,
+        clockOutAt: timeEntryRow.clock_out_at,
+        locationId: timeEntryRow.location_id,
+        notes: timeEntryRow.notes,
+        createdAt: timeEntryRow.created_at,
+        updatedAt: timeEntryRow.updated_at
+      };
+
+      logQueryPerformance('clockIn', startTime, true);
+      return timeEntry;
+    } catch (error) {
+      logQueryPerformance('clockIn', startTime, false, error);
+      throw error;
+    }
+  }
+
+  async clockOut(vendorId: string, employeeId: string): Promise<import('@countrtop/models').TimeEntry> {
+    const startTime = Date.now();
+    try {
+      // Find active time entry
+      const activeEntry = await this.getActiveTimeEntry(vendorId, employeeId);
+      if (!activeEntry) {
+        throw new Error('No active time entry found. Please clock in first.');
+      }
+
+      const { data, error } = await this.client
+        .from('time_entries')
+        .update({
+          clock_out_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', activeEntry.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      const timeEntryRow = data as Database['public']['Tables']['time_entries']['Row'];
+      const timeEntry = {
+        id: timeEntryRow.id,
+        vendorId: timeEntryRow.vendor_id,
+        employeeId: timeEntryRow.employee_id,
+        clockInAt: timeEntryRow.clock_in_at,
+        clockOutAt: timeEntryRow.clock_out_at,
+        locationId: timeEntryRow.location_id,
+        notes: timeEntryRow.notes,
+        createdAt: timeEntryRow.created_at,
+        updatedAt: timeEntryRow.updated_at
+      };
+
+      logQueryPerformance('clockOut', startTime, true);
+      return timeEntry;
+    } catch (error) {
+      logQueryPerformance('clockOut', startTime, false, error);
+      throw error;
+    }
+  }
+
+  async getActiveTimeEntry(vendorId: string, employeeId: string): Promise<import('@countrtop/models').TimeEntry | null> {
+    const startTime = Date.now();
+    try {
+      const { data, error } = await this.client
+        .from('time_entries')
+        .select('*')
+        .eq('vendor_id', vendorId)
+        .eq('employee_id', employeeId)
+        .is('clock_out_at', null)
+        .order('clock_in_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      if (!data) {
+        logQueryPerformance('getActiveTimeEntry', startTime, true);
+        return null;
+      }
+
+      const timeEntryRow = data as Database['public']['Tables']['time_entries']['Row'];
+      const timeEntry = {
+        id: timeEntryRow.id,
+        vendorId: timeEntryRow.vendor_id,
+        employeeId: timeEntryRow.employee_id,
+        clockInAt: timeEntryRow.clock_in_at,
+        clockOutAt: timeEntryRow.clock_out_at,
+        locationId: timeEntryRow.location_id,
+        notes: timeEntryRow.notes,
+        createdAt: timeEntryRow.created_at,
+        updatedAt: timeEntryRow.updated_at
+      };
+
+      logQueryPerformance('getActiveTimeEntry', startTime, true);
+      return timeEntry;
+    } catch (error) {
+      logQueryPerformance('getActiveTimeEntry', startTime, false, error);
+      throw error;
+    }
+  }
+
+  async listTimeEntries(vendorId: string, employeeId: string | null, startDate: Date, endDate: Date): Promise<import('@countrtop/models').TimeEntry[]> {
+    const startTime = Date.now();
+    try {
+      let query = this.client
+        .from('time_entries')
+        .select('*')
+        .eq('vendor_id', vendorId)
+        .gte('clock_in_at', startDate.toISOString())
+        .lte('clock_in_at', endDate.toISOString())
+        .order('clock_in_at', { ascending: false });
+
+      if (employeeId) {
+        query = query.eq('employee_id', employeeId);
+      }
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+
+      const timeEntries = ((data || []) as Database['public']['Tables']['time_entries']['Row'][]).map((row) => ({
+        id: row.id,
+        vendorId: row.vendor_id,
+        employeeId: row.employee_id,
+        clockInAt: row.clock_in_at,
+        clockOutAt: row.clock_out_at,
+        locationId: row.location_id,
+        notes: row.notes,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at
+      }));
+
+      logQueryPerformance('listTimeEntries', startTime, true);
+      return timeEntries;
+    } catch (error) {
+      logQueryPerformance('listTimeEntries', startTime, false, error);
       throw error;
     }
   }

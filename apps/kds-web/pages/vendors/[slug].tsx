@@ -139,6 +139,11 @@ export default function VendorQueuePage({ vendorSlug, locationId: initialLocatio
   const [loadingCompletedTickets, setLoadingCompletedTickets] = useState(false);
   const [recallingTicketId, setRecallingTicketId] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(Date.now());
+  const [showTimeClock, setShowTimeClock] = useState(false);
+  const [timeClockPin, setTimeClockPin] = useState('');
+  const [timeClockLoading, setTimeClockLoading] = useState(false);
+  const [timeClockError, setTimeClockError] = useState<string | null>(null);
+  const [timeClockSuccess, setTimeClockSuccess] = useState<string | null>(null);
 
   // Update current time every second for live timer
   useEffect(() => {
@@ -507,8 +512,61 @@ export default function VendorQueuePage({ vendorSlug, locationId: initialLocatio
   };
 
   const handleTimeClock = () => {
-    // Placeholder: Open time clock modal or navigate to time clock page
-    alert('Time Clock - Coming soon');
+    setShowTimeClock(true);
+    setTimeClockPin('');
+    setTimeClockError(null);
+    setTimeClockSuccess(null);
+  };
+
+  const handleTimeClockSubmit = async (action: 'clock-in' | 'clock-out') => {
+    if (!timeClockPin || !/^\d{3}$/.test(timeClockPin)) {
+      setTimeClockError('Please enter a valid 3-digit PIN');
+      return;
+    }
+
+    setTimeClockLoading(true);
+    setTimeClockError(null);
+    setTimeClockSuccess(null);
+
+    try {
+      const response = await fetch(`/api/vendors/${vendorSlug}/time-clock`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          pin: timeClockPin,
+          action
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.ok) {
+        throw new Error(data.error || 'Failed to process time clock');
+      }
+
+      setTimeClockSuccess(`${data.data.employeeName} ${action === 'clock-in' ? 'clocked in' : 'clocked out'} successfully`);
+      setTimeClockPin('');
+      
+      // Auto-close after 2 seconds
+      setTimeout(() => {
+        setShowTimeClock(false);
+        setTimeClockSuccess(null);
+      }, 2000);
+    } catch (err) {
+      setTimeClockError(err instanceof Error ? err.message : 'Failed to process time clock');
+    } finally {
+      setTimeClockLoading(false);
+    }
+  };
+
+  const handleTimeClockPinInput = (value: string) => {
+    // Only allow digits, max 3 characters
+    const digitsOnly = value.replace(/\D/g, '').slice(0, 3);
+    setTimeClockPin(digitsOnly);
+    setTimeClockError(null);
   };
 
   return (
@@ -691,6 +749,67 @@ export default function VendorQueuePage({ vendorSlug, locationId: initialLocatio
                     })}
                   </div>
                 )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Time Clock Modal */}
+        {showTimeClock && (
+          <div className="modal-overlay" onClick={() => setShowTimeClock(false)}>
+            <div className="modal-content time-clock-modal" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <h2>Time Clock</h2>
+                <button className="modal-close" onClick={() => setShowTimeClock(false)}>
+                  ×
+                </button>
+              </div>
+              <div className="modal-body">
+                <div className="time-clock-pin-input">
+                  <label htmlFor="time-clock-pin">Enter 3-Digit PIN</label>
+                  <input
+                    id="time-clock-pin"
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]{3}"
+                    maxLength={3}
+                    value={timeClockPin}
+                    onChange={(e) => handleTimeClockPinInput(e.target.value)}
+                    placeholder="000"
+                    className="pin-input-large"
+                    autoFocus
+                    disabled={timeClockLoading}
+                  />
+                </div>
+
+                {timeClockError && (
+                  <div className="time-clock-error">
+                    {timeClockError}
+                  </div>
+                )}
+
+                {timeClockSuccess && (
+                  <div className="time-clock-success">
+                    {timeClockSuccess}
+                  </div>
+                )}
+
+                <div className="time-clock-actions">
+                  <button
+                    className="time-clock-button clock-in-button"
+                    onClick={() => handleTimeClockSubmit('clock-in')}
+                    disabled={timeClockLoading || timeClockPin.length !== 3}
+                  >
+                    {timeClockLoading ? 'Processing...' : 'Clock In'}
+                  </button>
+                  <button
+                    className="time-clock-button clock-out-button"
+                    onClick={() => handleTimeClockSubmit('clock-out')}
+                    disabled={timeClockLoading || timeClockPin.length !== 3}
+                  >
+                    {timeClockLoading ? 'Processing...' : 'Clock Out'}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -1234,6 +1353,111 @@ export default function VendorQueuePage({ vendorSlug, locationId: initialLocatio
           .age-timer-red {
             color: #ff3b30;
             background: rgba(255, 59, 48, 0.1);
+          }
+
+          .time-clock-modal {
+            max-width: 500px;
+          }
+
+          .time-clock-pin-input {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            margin-bottom: 24px;
+          }
+
+          .time-clock-pin-input label {
+            font-size: 16px;
+            font-weight: 600;
+            color: #e8e8e8;
+          }
+
+          .pin-input-large {
+            width: 100%;
+            padding: 20px;
+            font-size: 48px;
+            font-weight: 700;
+            text-align: center;
+            letter-spacing: 12px;
+            border-radius: 12px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.05);
+            color: #e8e8e8;
+            font-family: monospace;
+            transition: border-color 0.2s;
+          }
+
+          .pin-input-large:focus {
+            outline: none;
+            border-color: #667eea;
+          }
+
+          .pin-input-large:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+          }
+
+          .time-clock-error {
+            padding: 12px 16px;
+            background: rgba(255, 59, 48, 0.1);
+            border: 1px solid rgba(255, 59, 48, 0.3);
+            border-radius: 8px;
+            color: #ff3b30;
+            font-size: 14px;
+            margin-bottom: 16px;
+          }
+
+          .time-clock-success {
+            padding: 12px 16px;
+            background: rgba(52, 199, 89, 0.1);
+            border: 1px solid rgba(52, 199, 89, 0.3);
+            border-radius: 8px;
+            color: #34c759;
+            font-size: 14px;
+            margin-bottom: 16px;
+          }
+
+          .time-clock-actions {
+            display: flex;
+            gap: 12px;
+          }
+
+          .time-clock-button {
+            flex: 1;
+            padding: 16px 24px;
+            border-radius: 12px;
+            border: none;
+            font-weight: 700;
+            font-size: 18px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+          }
+
+          .clock-in-button {
+            background: linear-gradient(135deg, #34c759 0%, #28a745 100%);
+            color: white;
+          }
+
+          .clock-in-button:hover:not(:disabled) {
+            opacity: 0.9;
+            transform: translateY(-1px);
+          }
+
+          .clock-out-button {
+            background: linear-gradient(135deg, #ff3b30 0%, #dc3545 100%);
+            color: white;
+          }
+
+          .clock-out-button:hover:not(:disabled) {
+            opacity: 0.9;
+            transform: translateY(-1px);
+          }
+
+          .time-clock-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
           }
 
           .action-button {

@@ -21,6 +21,28 @@ export type Vendor = {
   kdsActiveLimitCt?: number | null;
 };
 
+export type Employee = {
+  id: string;
+  vendorId: string;
+  name: string;
+  pin: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type TimeEntry = {
+  id: string;
+  vendorId: string;
+  employeeId: string;
+  clockInAt: string;
+  clockOutAt: string | null;
+  locationId: string | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type User = {
   id: string;
   provider: AuthProvider;

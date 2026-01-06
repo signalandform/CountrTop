@@ -149,4 +149,16 @@ export interface DataClient {
   // Location PINs (KDS Authentication)
   getLocationPins(vendorId: string): Promise<Record<string, boolean>>; // locationId -> hasPin
   setLocationPin(vendorId: string, locationId: string, pin: string): Promise<void>; // pin is plain text, will be hashed
+
+  // Employees & Time Tracking
+  listEmployees(vendorId: string): Promise<import('@countrtop/models').Employee[]>;
+  createEmployee(vendorId: string, name: string, pin: string): Promise<import('@countrtop/models').Employee>;
+  updateEmployee(employeeId: string, updates: { name?: string; pin?: string; isActive?: boolean }): Promise<import('@countrtop/models').Employee>;
+  deleteEmployee(employeeId: string): Promise<void>;
+  getEmployeeByPin(vendorId: string, pin: string): Promise<import('@countrtop/models').Employee | null>;
+  
+  clockIn(vendorId: string, employeeId: string, locationId: string | null): Promise<import('@countrtop/models').TimeEntry>;
+  clockOut(vendorId: string, employeeId: string): Promise<import('@countrtop/models').TimeEntry>;
+  getActiveTimeEntry(vendorId: string, employeeId: string): Promise<import('@countrtop/models').TimeEntry | null>;
+  listTimeEntries(vendorId: string, employeeId: string | null, startDate: Date, endDate: Date): Promise<import('@countrtop/models').TimeEntry[]>;
 }

@@ -448,6 +448,92 @@ export class MockDataClient implements DataClient {
     return;
   }
 
+  // Employees & Time Tracking
+  async listEmployees(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _vendorId: string
+  ): Promise<import('@countrtop/models').Employee[]> {
+    return [];
+  }
+
+  async createEmployee(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _vendorId: string,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _name: string,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _pin: string
+  ): Promise<import('@countrtop/models').Employee> {
+    throw new Error('Not implemented in mock data');
+  }
+
+  async updateEmployee(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _employeeId: string,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _updates: { name?: string; pin?: string; isActive?: boolean }
+  ): Promise<import('@countrtop/models').Employee> {
+    throw new Error('Not implemented in mock data');
+  }
+
+  async deleteEmployee(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _employeeId: string
+  ): Promise<void> {
+    return;
+  }
+
+  async getEmployeeByPin(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _vendorId: string,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _pin: string
+  ): Promise<import('@countrtop/models').Employee | null> {
+    return null;
+  }
+
+  async clockIn(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _vendorId: string,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _employeeId: string,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _locationId: string | null
+  ): Promise<import('@countrtop/models').TimeEntry> {
+    throw new Error('Not implemented in mock data');
+  }
+
+  async clockOut(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _vendorId: string,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _employeeId: string
+  ): Promise<import('@countrtop/models').TimeEntry> {
+    throw new Error('Not implemented in mock data');
+  }
+
+  async getActiveTimeEntry(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _vendorId: string,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _employeeId: string
+  ): Promise<import('@countrtop/models').TimeEntry | null> {
+    return null;
+  }
+
+  async listTimeEntries(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _vendorId: string,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _employeeId: string | null,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _startDate: Date,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _endDate: Date
+  ): Promise<import('@countrtop/models').TimeEntry[]> {
+    return [];
+  }
+
   private createId(prefix: string) {
     return `${prefix}_${Math.random().toString(16).slice(2)}`;
   }
