@@ -63,15 +63,16 @@ export const getServerSideProps: GetServerSideProps<VendorPageProps> = async (co
   };
 };
 
-const formatAge = (placedAt: string): string => {
-  const now = new Date();
-  const placed = new Date(placedAt);
-  const diffMs = now.getTime() - placed.getTime();
-  const diffMins = Math.floor(diffMs / 60000);
-  if (diffMins < 1) return 'Just now';
-  if (diffMins < 60) return `${diffMins}m`;
-  const hours = Math.floor(diffMins / 60);
-  return `${hours}h`;
+const formatAge = (placedAt: string, currentTime: number = Date.now()): string => {
+  const placed = new Date(placedAt).getTime();
+  const diffMs = currentTime - placed;
+  
+  // Always show MM:SS format
+  const totalSeconds = Math.floor(diffMs / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  
+  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
 };
 
 const getAgeColor = (placedAt: string): 'green' | 'yellow' | 'red' => {
@@ -137,6 +138,15 @@ export default function VendorQueuePage({ vendorSlug, locationId: initialLocatio
   const [completedTickets, setCompletedTickets] = useState<Ticket[]>([]);
   const [loadingCompletedTickets, setLoadingCompletedTickets] = useState(false);
   const [recallingTicketId, setRecallingTicketId] = useState<string | null>(null);
+  const [currentTime, setCurrentTime] = useState(Date.now());
+
+  // Update current time every second for live timer
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(Date.now());
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Fetch daily average prep time
   useEffect(() => {
@@ -579,7 +589,7 @@ export default function VendorQueuePage({ vendorSlug, locationId: initialLocatio
               {tickets.map(({ ticket, order }) => {
                 const pickupLabel = getPickupLabel(ticket, order);
                 const sourceBadge = ticket.source === 'countrtop_online' ? 'Online' : 'POS';
-                const age = formatAge(ticket.placedAt);
+                const age = formatAge(ticket.placedAt, currentTime);
                 const ageColor = getAgeColor(ticket.placedAt);
                 const actionLabel = ticket.status === 'placed' || ticket.status === 'preparing' ? 'Mark Ready' : 'Complete';
                 const isUpdating = updatingTicketId === ticket.id;
