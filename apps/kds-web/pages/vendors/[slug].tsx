@@ -973,15 +973,15 @@ export default function VendorQueuePage({ vendorSlug, locationId: initialLocatio
 
           .line-item {
             display: flex;
-            gap: 8px;
-            font-size: 14px;
+            gap: 16px;
+            font-size: 18px;
             color: #e8e8e8;
           }
 
           .line-item .quantity {
             font-weight: 600;
             color: #a78bfa;
-            min-width: 32px;
+            min-width: 42px;
           }
 
           .line-item .name {
