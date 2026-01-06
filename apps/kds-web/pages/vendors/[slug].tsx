@@ -130,7 +130,8 @@ const getPickupLabel = (ticket: Ticket['ticket'], order: Ticket['order']): strin
 export default function VendorQueuePage({ vendorSlug, locationId: initialLocationId, themePreference = 'dark' }: VendorPageProps) {
   // Apply theme to document
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', themePreference);
+    const theme = themePreference || 'dark';
+    document.documentElement.setAttribute('data-theme', theme);
   }, [themePreference]);
 
   const [tickets, setTickets] = useState<Ticket[]>([]);
