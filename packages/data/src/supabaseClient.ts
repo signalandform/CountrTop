@@ -171,6 +171,11 @@ export type Database = {
           pickup_instructions: string | null;
           kds_active_limit_total: number | null;
           kds_active_limit_ct: number | null;
+          // Theming columns
+          logo_url: string | null;
+          primary_color: string | null;
+          accent_color: string | null;
+          font_family: string | null;
         };
         Insert: {
           id?: string;
@@ -190,6 +195,11 @@ export type Database = {
           pickup_instructions?: string | null;
           kds_active_limit_total?: number | null;
           kds_active_limit_ct?: number | null;
+          // Theming columns
+          logo_url?: string | null;
+          primary_color?: string | null;
+          accent_color?: string | null;
+          font_family?: string | null;
         };
         Update: Partial<Database['public']['Tables']['vendors']['Insert']>;
         Relationships: [];
@@ -2750,10 +2760,10 @@ const mapVendorFromRow = (row: Database['public']['Tables']['vendors']['Row']): 
   kdsActiveLimitTotal: row.kds_active_limit_total ?? undefined,
   kdsActiveLimitCt: row.kds_active_limit_ct ?? undefined,
   // Theming fields
-  logoUrl: (row as Record<string, unknown>).logo_url as string | null ?? undefined,
-  primaryColor: (row as Record<string, unknown>).primary_color as string | null ?? undefined,
-  accentColor: (row as Record<string, unknown>).accent_color as string | null ?? undefined,
-  fontFamily: (row as Record<string, unknown>).font_family as string | null ?? undefined
+  logoUrl: row.logo_url ?? undefined,
+  primaryColor: row.primary_color ?? undefined,
+  accentColor: row.accent_color ?? undefined,
+  fontFamily: row.font_family ?? undefined,
 });
 
 const mapOrderSnapshotFromRow = (
