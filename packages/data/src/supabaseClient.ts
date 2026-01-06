@@ -462,10 +462,10 @@ export class SupabaseDataClient implements DataClient {
 
     const startTime = Date.now();
     try {
-      // Field limiting: only select needed columns
+      // Field limiting: only select needed columns (including theming fields)
       const { data, error } = await this.client
         .from('vendors')
-        .select('id,slug,display_name,square_location_id,square_credential_ref,status,address_line1,address_line2,city,state,postal_code,phone,timezone,pickup_instructions')
+        .select('id,slug,display_name,square_location_id,square_credential_ref,status,address_line1,address_line2,city,state,postal_code,phone,timezone,pickup_instructions,kds_active_limit_total,kds_active_limit_ct,logo_url,primary_color,accent_color,font_family')
         .eq('slug', slug)
         .maybeSingle();
       if (error) throw error;
@@ -486,10 +486,10 @@ export class SupabaseDataClient implements DataClient {
 
     const startTime = Date.now();
     try {
-      // Field limiting: only select needed columns
+      // Field limiting: only select needed columns (including theming fields)
       const { data, error } = await this.client
         .from('vendors')
-        .select('id,slug,display_name,square_location_id,square_credential_ref,status,address_line1,address_line2,city,state,postal_code,phone,timezone,pickup_instructions')
+        .select('id,slug,display_name,square_location_id,square_credential_ref,status,address_line1,address_line2,city,state,postal_code,phone,timezone,pickup_instructions,kds_active_limit_total,kds_active_limit_ct,logo_url,primary_color,accent_color,font_family')
         .eq('id', vendorId)
         .maybeSingle();
       if (error) throw error;
@@ -510,10 +510,10 @@ export class SupabaseDataClient implements DataClient {
 
     const startTime = Date.now();
     try {
-      // Field limiting: only select needed columns
+      // Field limiting: only select needed columns (including theming fields)
       const { data, error } = await this.client
         .from('vendors')
-        .select('id,slug,display_name,square_location_id,square_credential_ref,status,address_line1,address_line2,city,state,postal_code,phone,timezone,pickup_instructions')
+        .select('id,slug,display_name,square_location_id,square_credential_ref,status,address_line1,address_line2,city,state,postal_code,phone,timezone,pickup_instructions,kds_active_limit_total,kds_active_limit_ct,logo_url,primary_color,accent_color,font_family')
         .eq('square_location_id', locationId)
         .maybeSingle();
       if (error) throw error;
