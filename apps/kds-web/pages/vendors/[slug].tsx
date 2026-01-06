@@ -973,7 +973,7 @@ export default function VendorQueuePage({ vendorSlug, locationId: initialLocatio
           .ticket-middle {
             flex: 1;
             min-width: 0;
-            font-size: 50px;
+            font-size: 25px;
           }
 
           .line-items-list {
@@ -1010,6 +1010,7 @@ export default function VendorQueuePage({ vendorSlug, locationId: initialLocatio
             flex-direction: column;
             align-items: flex-end;
             gap: 12px;
+            font-size: 25px;
           }
 
           .ticket-actions {
