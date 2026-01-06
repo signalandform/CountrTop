@@ -62,6 +62,9 @@ export default function VendorDetailPage({ userEmail: _userEmail, vendorSlug }: 
   const [vendor, setVendor] = useState<Vendor | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [featureFlags, setFeatureFlags] = useState<Record<string, boolean>>({});
+  const [flagsLoading, setFlagsLoading] = useState(false);
+  const [togglingFlag, setTogglingFlag] = useState<string | null>(null);
 
   const fetchVendor = async () => {
     try {
@@ -89,9 +92,70 @@ export default function VendorDetailPage({ userEmail: _userEmail, vendorSlug }: 
     }
   };
 
+  const fetchFeatureFlags = async () => {
+    if (!vendorSlug) return;
+    try {
+      setFlagsLoading(true);
+      const response = await fetch(`/api/vendors/${vendorSlug}/feature-flags`, {
+        credentials: 'include'
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('Failed to fetch feature flags:', data.error);
+        return;
+      }
+
+      const data = await response.json();
+      if (data.success) {
+        setFeatureFlags(data.flags || {});
+      }
+    } catch (err) {
+      console.error('Error fetching feature flags:', err);
+    } finally {
+      setFlagsLoading(false);
+    }
+  };
+
+  const toggleFeatureFlag = async (featureKey: string, enabled: boolean) => {
+    if (!vendorSlug) return;
+    try {
+      setTogglingFlag(featureKey);
+      const response = await fetch(`/api/vendors/${vendorSlug}/feature-flags`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          featureKey,
+          enabled
+        })
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(data.error || `HTTP ${response.status}`);
+      }
+
+      // Update local state
+      setFeatureFlags(prev => ({
+        ...prev,
+        [featureKey]: enabled
+      }));
+    } catch (err) {
+      alert(`Failed to update feature flag: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      // Revert by refetching
+      fetchFeatureFlags();
+    } finally {
+      setTogglingFlag(null);
+    }
+  };
+
   useEffect(() => {
     if (vendorSlug) {
       fetchVendor();
+      fetchFeatureFlags();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vendorSlug]);
@@ -241,6 +305,50 @@ export default function VendorDetailPage({ userEmail: _userEmail, vendorSlug }: 
                       <div className="detail-value">{vendor.kds_active_limit_ct}</div>
                     </div>
                   )}
+                </div>
+              </div>
+
+              <div className="detail-section">
+                <h2>Feature Flags</h2>
+                {flagsLoading ? (
+                  <div className="flags-loading">
+                    <p>Loading feature flags...</p>
+                  </div>
+                ) : Object.keys(featureFlags).length === 0 ? (
+                  <div className="flags-empty">
+                    <p>No feature flags configured for this vendor.</p>
+                  </div>
+                ) : (
+                  <div className="flags-list">
+                    {Object.entries(featureFlags).map(([key, enabled]) => (
+                      <div key={key} className="flag-item">
+                        <div className="flag-info">
+                          <label className="flag-key">{key}</label>
+                          <span className={`flag-status ${enabled ? 'enabled' : 'disabled'}`}>
+                            {enabled ? 'Enabled' : 'Disabled'}
+                          </span>
+                        </div>
+                        <label className="toggle-switch">
+                          <input
+                            type="checkbox"
+                            checked={enabled}
+                            onChange={(e) => toggleFeatureFlag(key, e.target.checked)}
+                            disabled={togglingFlag === key}
+                          />
+                          <span className="toggle-slider"></span>
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div className="flags-actions">
+                  <button
+                    onClick={fetchFeatureFlags}
+                    className="btn-refresh-flags"
+                    disabled={flagsLoading}
+                  >
+                    {flagsLoading ? 'Refreshing...' : 'Refresh Flags'}
+                  </button>
                 </div>
               </div>
 
@@ -454,6 +562,147 @@ export default function VendorDetailPage({ userEmail: _userEmail, vendorSlug }: 
           .status-badge.inactive {
             background: rgba(239, 68, 68, 0.2);
             color: #fca5a5;
+          }
+
+          .flags-loading,
+          .flags-empty {
+            text-align: center;
+            padding: 32px;
+            color: #888;
+          }
+
+          .flags-loading p,
+          .flags-empty p {
+            margin: 0;
+            font-size: 14px;
+          }
+
+          .flags-list {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+          }
+
+          .flag-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            transition: background 0.2s;
+          }
+
+          .flag-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+          }
+
+          .flag-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            flex: 1;
+          }
+
+          .flag-key {
+            font-size: 14px;
+            font-weight: 600;
+            color: #e8e8e8;
+            font-family: 'Monaco', 'Menlo', monospace;
+          }
+
+          .flag-status {
+            font-size: 12px;
+            font-weight: 500;
+          }
+
+          .flag-status.enabled {
+            color: #86efac;
+          }
+
+          .flag-status.disabled {
+            color: #888;
+          }
+
+          .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 48px;
+            height: 24px;
+            margin: 0;
+            cursor: pointer;
+          }
+
+          .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+          }
+
+          .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(255, 255, 255, 0.2);
+            transition: 0.3s;
+            border-radius: 24px;
+          }
+
+          .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: 0.3s;
+            border-radius: 50%;
+          }
+
+          .toggle-switch input:checked + .toggle-slider {
+            background-color: #667eea;
+          }
+
+          .toggle-switch input:checked + .toggle-slider:before {
+            transform: translateX(24px);
+          }
+
+          .toggle-switch input:disabled + .toggle-slider {
+            opacity: 0.5;
+            cursor: not-allowed;
+          }
+
+          .flags-actions {
+            margin-top: 24px;
+            padding-top: 24px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+          }
+
+          .btn-refresh-flags {
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.05);
+            color: #e8e8e8;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background 0.2s;
+            font-family: inherit;
+          }
+
+          .btn-refresh-flags:hover:not(:disabled) {
+            background: rgba(255, 255, 255, 0.1);
+          }
+
+          .btn-refresh-flags:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
           }
 
           .action-section {

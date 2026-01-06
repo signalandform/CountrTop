@@ -69,15 +69,7 @@ export default function OpsDashboard({ userEmail }: Props) {
               <div className="card-icon">🏢</div>
               <h2 className="card-title">Vendor Management</h2>
               <p className="card-description">
-                Manage vendors, onboarding, and vendor settings
-              </p>
-            </Link>
-
-            <Link href="/flags" className="dashboard-card">
-              <div className="card-icon">🚩</div>
-              <h2 className="card-title">Feature Flags</h2>
-              <p className="card-description">
-                Manage feature flags across all vendors
+                Manage vendors, onboarding, settings, and feature flags
               </p>
             </Link>
 
