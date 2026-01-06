@@ -984,7 +984,7 @@ export default function VendorQueuePage({ vendorSlug, locationId: initialLocatio
           .line-item {
             display: flex;
             gap: 16px;
-            font-size: 18px;
+            font-size: 25px;
             color: #e8e8e8;
           }
 
@@ -1211,7 +1211,7 @@ export default function VendorQueuePage({ vendorSlug, locationId: initialLocatio
           }
 
           .age-timer {
-            font-size: 18px;
+            font-size: 25px;
             font-weight: 700;
             padding: 8px 12px;
             border-radius: 8px;
