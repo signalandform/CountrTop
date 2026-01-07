@@ -1,6 +1,7 @@
 import Head from 'next/head';
 import type { GetServerSideProps } from 'next';
 import { useState, useEffect, useCallback, useRef } from 'react';
+import Link from 'next/link';
 import { createClient } from '@supabase/supabase-js';
 import { createDataClient, type Database } from '@countrtop/data';
 
@@ -838,6 +839,9 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
               <button onClick={handleRecallClick} className="recall-button-header">
                 Recall
               </button>
+              <Link href={`/vendors/${vendorSlug}/analytics?locationId=${locationId}`} className="analytics-button">
+                📊 Analytics
+              </Link>
               <button onClick={handleSettings} className="settings-button">
                 Settings
               </button>
@@ -1339,6 +1343,28 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
           .time-clock-button:hover {
             background: rgba(255, 255, 255, 0.1);
             border-color: rgba(255, 255, 255, 0.3);
+          }
+
+          .analytics-button {
+            padding: 12px 20px;
+            border-radius: 12px;
+            border: 1px solid rgba(102, 126, 234, 0.4);
+            background: rgba(102, 126, 234, 0.15);
+            color: #a5b4fc;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background 0.2s;
+            font-family: inherit;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+          }
+
+          .analytics-button:hover {
+            background: rgba(102, 126, 234, 0.25);
+            border-color: rgba(102, 126, 234, 0.6);
           }
 
           .daily-avg {
