@@ -662,7 +662,9 @@ export class SupabaseDataClient implements DataClient {
     try {
       const insertData: Database['public']['Tables']['vendor_locations']['Insert'] = {
         vendor_id: location.vendorId,
-        square_location_id: location.squareLocationId,
+        // Use externalLocationId if provided, fall back to squareLocationId for backward compatibility
+        square_location_id: location.externalLocationId ?? location.squareLocationId,
+        pos_provider: location.posProvider ?? 'square',
         name: location.name,
         is_primary: location.isPrimary,
         is_active: location.isActive,

@@ -81,7 +81,9 @@ export default async function handler(
 
       const location = await dataClient.createVendorLocation({
         vendorId: vendor.id,
-        squareLocationId,
+        externalLocationId: squareLocationId, // POS-agnostic field
+        squareLocationId, // Deprecated alias
+        posProvider: 'square', // Default to Square for now
         name,
         isPrimary,
         isActive,

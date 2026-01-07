@@ -592,7 +592,8 @@ export const defaultMockOrderSnapshots: OrderSnapshot[] = [
     id: 'order_snapshot_demo',
     vendorId: 'vendor_cafe',
     userId: 'user_demo',
-    squareOrderId: 'square_order_demo',
+    externalOrderId: 'square_order_demo',
+    squareOrderId: 'square_order_demo', // Deprecated alias
     placedAt: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
     snapshotJson: {
       items: [{ name: 'Espresso', quantity: 2, price: 325 }],

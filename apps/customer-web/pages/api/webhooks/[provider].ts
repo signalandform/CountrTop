@@ -38,13 +38,14 @@ type WebhookResponse = {
   provider?: POSProvider;
 };
 
-type CanonicalWebhookResult = {
-  processed: boolean;
-  orderId?: string;
-  locationId?: string;
-  vendorId?: string;
-  error?: string;
-};
+// Future use for unified webhook result tracking
+// type CanonicalWebhookResult = {
+//   processed: boolean;
+//   orderId?: string;
+//   locationId?: string;
+//   vendorId?: string;
+//   error?: string;
+// };
 
 // =============================================================================
 // Utilities
@@ -391,6 +392,9 @@ async function handleToastWebhook(
   _req: NextApiRequest,
   _rawBody: string
 ): Promise<{ response: WebhookResponse; statusCode: number }> {
+  // Suppress unused parameter warnings - these will be used when Toast is implemented
+  void _req;
+  void _rawBody;
   // TODO: Implement Toast webhook handling
   return {
     response: { ok: false, status: 'unsupported', reason: 'Toast webhooks not yet implemented', provider: 'toast' },
@@ -406,6 +410,9 @@ async function handleCloverWebhook(
   _req: NextApiRequest,
   _rawBody: string
 ): Promise<{ response: WebhookResponse; statusCode: number }> {
+  // Suppress unused parameter warnings - these will be used when Clover is implemented
+  void _req;
+  void _rawBody;
   // TODO: Implement Clover webhook handling
   return {
     response: { ok: false, status: 'unsupported', reason: 'Clover webhooks not yet implemented', provider: 'clover' },

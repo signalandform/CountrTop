@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { createDataClient, type Database } from '@countrtop/data';
+import type { OrderSource } from '@countrtop/models';
 import { requireKDSSession } from '../../../../lib/auth';
 import type { GetServerSidePropsContext } from 'next';
 
@@ -21,7 +22,7 @@ type TicketsResponse =
           locationId: string;
           ctReferenceId?: string | null;
           customerUserId?: string | null;
-          source: 'countrtop_online' | 'square_pos';
+          source: OrderSource;
           status: 'placed' | 'preparing' | 'ready';
           shortcode?: string | null;
           placedAt: string;
@@ -38,7 +39,7 @@ type TicketsResponse =
           referenceId?: string | null;
           metadata?: Record<string, unknown> | null;
           lineItems?: unknown[] | null;
-          source: 'countrtop_online' | 'square_pos';
+          source: OrderSource;
         };
         customer?: CustomerInfo;
       }>;
