@@ -63,6 +63,8 @@ export const getServerSideProps: GetServerSideProps<LocationsPageProps> = async 
       auth: { persistSession: false }
     });
     
+    type VendorLocationRow = Database['public']['Tables']['vendor_locations']['Row'];
+    
     const { data } = await supabase
       .from('vendor_locations')
       .select('*')
@@ -71,7 +73,7 @@ export const getServerSideProps: GetServerSideProps<LocationsPageProps> = async 
       .order('name', { ascending: true });
     
     if (data) {
-      locations = data.map((row: Database['public']['Tables']['vendor_locations']['Row']) => ({
+      locations = (data as VendorLocationRow[]).map((row) => ({
         id: row.id,
         vendorId: row.vendor_id,
         squareLocationId: row.square_location_id,
