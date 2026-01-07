@@ -43,12 +43,20 @@ export function VendorInsightsDashboard({ vendorSlug, vendorName, insights, stat
           <p className="card-description">Manage active customer orders</p>
         </Link>
         <Link 
+          href={`/vendors/${vendorSlug}/locations`} 
+          className="dashboard-card ct-card"
+        >
+          <div className="card-icon">📍</div>
+          <h3 className="card-title">Locations</h3>
+          <p className="card-description">Manage multiple locations</p>
+        </Link>
+        <Link 
           href={`/vendors/${vendorSlug}/settings`} 
           className="dashboard-card ct-card"
         >
           <div className="card-icon">⚙️</div>
           <h3 className="card-title">Settings</h3>
-          <p className="card-description">Edit pickup instructions & location</p>
+          <p className="card-description">Branding, theming & general</p>
         </Link>
         <Link 
           href={`/vendors/${vendorSlug}/workspace`} 
