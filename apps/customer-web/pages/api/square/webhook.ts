@@ -1,3 +1,8 @@
+/**
+ * @deprecated Use /api/webhooks/square instead
+ * This endpoint is maintained for backward compatibility.
+ * New webhook registrations should use the unified /api/webhooks/[provider] route.
+ */
 import crypto from 'crypto';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
@@ -5,7 +10,7 @@ import { createClient } from '@supabase/supabase-js';
 import { createLogger, getSquareOrder } from '@countrtop/api-client';
 import { getServerDataClient } from '../../../lib/dataClient';
 
-const logger = createLogger({ requestId: 'webhook' });
+const logger = createLogger({ requestId: 'webhook-legacy' });
 
 export const config = {
   api: {

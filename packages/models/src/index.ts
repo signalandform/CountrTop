@@ -2,11 +2,38 @@ export type AuthProvider = 'apple' | 'google';
 
 export type VendorStatus = 'active' | 'inactive';
 
+// =============================================================================
+// POS Provider Types
+// =============================================================================
+
+/**
+ * Supported POS providers
+ */
+export type POSProvider = 'square' | 'toast' | 'clover';
+
+/**
+ * Order source - where the order originated
+ */
+export type OrderSource = 
+  | 'countrtop_online'  // Order placed through CountrTop customer web/mobile
+  | 'pos'               // Order placed directly at POS terminal (generic)
+  | 'square_pos'        // Legacy: Square POS (deprecated, use 'pos' + posProvider)
+  | 'toast_pos'         // Legacy: Toast POS  
+  | 'clover_pos';       // Legacy: Clover POS
+
+// =============================================================================
+// Vendor Types
+// =============================================================================
+
 export type Vendor = {
   id: string;
   slug: string;
   displayName: string;
+  /** @deprecated Use VendorLocation.externalLocationId instead */
   squareLocationId: string;
+  /** POS location ID (POS-agnostic alias for squareLocationId) */
+  externalLocationId?: string;
+  /** @deprecated Use VendorLocation.posProvider instead */
   squareCredentialRef?: string;
   status?: VendorStatus;
   addressLine1?: string | null;
@@ -29,7 +56,12 @@ export type Vendor = {
 export type VendorLocation = {
   id: string;
   vendorId: string;
+  /** POS location ID (external ID from Square/Toast/Clover) */
+  externalLocationId: string;
+  /** @deprecated Use externalLocationId */
   squareLocationId: string;
+  /** POS provider for this location */
+  posProvider: POSProvider;
   name: string;
   isPrimary: boolean;
   isActive: boolean;
@@ -81,7 +113,11 @@ export type OrderSnapshot = {
   id: string;
   vendorId: string;
   userId?: string | null;
+  /** POS order ID (external ID from Square/Toast/Clover) */
+  externalOrderId: string;
+  /** @deprecated Use externalOrderId */
   squareOrderId: string;
+  posProvider?: POSProvider;
   placedAt: string;
   snapshotJson: Record<string, unknown>;
   fulfillmentStatus?: string | null;
@@ -148,6 +184,9 @@ export type OrderItem = {
 export type OrderHistoryEntry = {
   id: string;
   placedAt: string;
+  /** POS order ID */
+  externalOrderId: string;
+  /** @deprecated Use externalOrderId */
   squareOrderId: string;
   snapshotJson: Record<string, unknown>;
   fulfillmentStatus?: string | null;
@@ -157,6 +196,9 @@ export type OrderHistoryEntry = {
 
 export type OpsOrder = {
   id: string;
+  /** POS order ID */
+  externalOrderId: string;
+  /** @deprecated Use externalOrderId */
   squareOrderId: string;
   placedAt: string;
   status: 'new' | 'ready';
@@ -166,9 +208,20 @@ export type OpsOrder = {
   userId: string | null;
 };
 
+// =============================================================================
 // KDS Types
-export type SquareOrder = {
+// =============================================================================
+
+/**
+ * POS Order data - canonical representation of order from any POS
+ */
+export type POSOrder = {
+  /** POS order ID (external ID from Square/Toast/Clover) */
+  externalOrderId: string;
+  /** @deprecated Use externalOrderId */
   squareOrderId: string;
+  /** POS provider that owns this order */
+  posProvider?: POSProvider;
   locationId: string;
   state: string;
   createdAt: string;
@@ -177,9 +230,12 @@ export type SquareOrder = {
   metadata?: Record<string, unknown> | null;
   lineItems?: unknown[] | null;
   fulfillment?: Record<string, unknown> | null;
-  source: 'countrtop_online' | 'square_pos';
+  source: OrderSource;
   raw?: Record<string, unknown> | null;
 };
+
+/** @deprecated Use POSOrder instead */
+export type SquareOrder = POSOrder;
 
 export type KitchenTicketStatus = 'placed' | 'preparing' | 'ready' | 'completed' | 'canceled';
 
@@ -187,11 +243,16 @@ export type CustomerTrackingState = 'queued_up' | 'working' | 'ready' | 'enjoy';
 
 export type KitchenTicket = {
   id: string;
+  /** POS order ID */
+  externalOrderId: string;
+  /** @deprecated Use externalOrderId */
   squareOrderId: string;
+  /** POS provider for this ticket's order */
+  posProvider?: POSProvider;
   locationId: string;
   ctReferenceId?: string | null;
   customerUserId?: string | null;
-  source: 'countrtop_online' | 'square_pos';
+  source: OrderSource;
   status: KitchenTicketStatus;
   shortcode?: string | null;
   promotedAt?: string | null;
@@ -205,7 +266,7 @@ export type KitchenTicket = {
 
 export type KitchenTicketWithOrder = {
   ticket: KitchenTicket;
-  order: SquareOrder;
+  order: POSOrder;
 };
 
 // Environment validation exports

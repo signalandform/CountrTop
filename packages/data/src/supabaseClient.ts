@@ -281,6 +281,7 @@ export type Database = {
         Row: {
           square_order_id: string;
           location_id: string;
+          pos_provider: string;
           state: string;
           created_at: string;
           updated_at: string;
@@ -288,12 +289,13 @@ export type Database = {
           metadata: Record<string, unknown> | null;
           line_items: unknown[] | null;
           fulfillment: Record<string, unknown> | null;
-          source: 'countrtop_online' | 'square_pos';
+          source: 'countrtop_online' | 'square_pos' | 'toast_pos' | 'clover_pos' | 'pos';
           raw: Record<string, unknown> | null;
         };
         Insert: {
           square_order_id: string;
           location_id: string;
+          pos_provider?: string;
           state: string;
           created_at?: string;
           updated_at?: string;
@@ -301,7 +303,7 @@ export type Database = {
           metadata?: Record<string, unknown> | null;
           line_items?: unknown[] | null;
           fulfillment?: Record<string, unknown> | null;
-          source: 'countrtop_online' | 'square_pos';
+          source: 'countrtop_online' | 'square_pos' | 'toast_pos' | 'clover_pos' | 'pos';
           raw?: Record<string, unknown> | null;
         };
         Update: Partial<Database['public']['Tables']['square_orders']['Insert']>;
@@ -312,9 +314,10 @@ export type Database = {
           id: string;
           square_order_id: string;
           location_id: string;
+          pos_provider: string;
           ct_reference_id: string | null;
           customer_user_id: string | null;
-          source: 'countrtop_online' | 'square_pos';
+          source: 'countrtop_online' | 'square_pos' | 'toast_pos' | 'clover_pos' | 'pos';
           status: 'placed' | 'preparing' | 'ready' | 'completed' | 'canceled';
           shortcode: string | null;
           promoted_at: string | null;
@@ -329,9 +332,10 @@ export type Database = {
           id?: string;
           square_order_id: string;
           location_id: string;
+          pos_provider?: string;
           ct_reference_id?: string | null;
           customer_user_id?: string | null;
-          source: 'countrtop_online' | 'square_pos';
+          source: 'countrtop_online' | 'square_pos' | 'toast_pos' | 'clover_pos' | 'pos';
           status: 'placed' | 'preparing' | 'ready' | 'completed' | 'canceled';
           shortcode?: string | null;
           promoted_at?: string | null;
@@ -438,6 +442,7 @@ export type Database = {
           id: string;
           vendor_id: string;
           square_location_id: string;
+          pos_provider: string;
           name: string;
           is_primary: boolean;
           is_active: boolean;
@@ -459,6 +464,7 @@ export type Database = {
           id?: string;
           vendor_id: string;
           square_location_id: string;
+          pos_provider?: string;
           name: string;
           is_primary?: boolean;
           is_active?: boolean;
@@ -2980,7 +2986,10 @@ const mapVendorFromRow = (row: Database['public']['Tables']['vendors']['Row']): 
 const mapVendorLocationFromRow = (row: Database['public']['Tables']['vendor_locations']['Row']): VendorLocation => ({
   id: row.id,
   vendorId: row.vendor_id,
-  squareLocationId: row.square_location_id,
+  // POS-agnostic fields
+  externalLocationId: row.square_location_id, // Use square_location_id for now (will rename column later)
+  squareLocationId: row.square_location_id, // Deprecated alias
+  posProvider: (row.pos_provider ?? 'square') as 'square' | 'toast' | 'clover',
   name: row.name,
   isPrimary: row.is_primary,
   isActive: row.is_active,
@@ -3005,7 +3014,9 @@ const mapOrderSnapshotFromRow = (
   id: row.id,
   vendorId: row.vendor_id,
   userId: row.user_id,
-  squareOrderId: row.square_order_id,
+  // POS-agnostic fields
+  externalOrderId: row.square_order_id, // Use square_order_id for now (will rename column later)
+  squareOrderId: row.square_order_id, // Deprecated alias
   placedAt: row.placed_at,
   snapshotJson: row.snapshot_json,
   fulfillmentStatus: row.fulfillment_status ?? undefined,
@@ -3098,7 +3109,10 @@ const mapAuthUserNullable = (user: SupabaseAuthUser | null): User | null => {
 export const mapSquareOrderFromRow = (
   row: Database['public']['Tables']['square_orders']['Row']
 ): SquareOrder => ({
-  squareOrderId: row.square_order_id,
+  // POS-agnostic fields
+  externalOrderId: row.square_order_id, // Use square_order_id for now (will rename column later)
+  squareOrderId: row.square_order_id, // Deprecated alias
+  posProvider: (row.pos_provider ?? 'square') as 'square' | 'toast' | 'clover',
   locationId: row.location_id,
   state: row.state,
   createdAt: row.created_at,
@@ -3131,7 +3145,10 @@ export const mapKitchenTicketFromRow = (
   row: Database['public']['Tables']['kitchen_tickets']['Row']
 ): KitchenTicket => ({
   id: row.id,
-  squareOrderId: row.square_order_id,
+  // POS-agnostic fields
+  externalOrderId: row.square_order_id, // Use square_order_id for now (will rename column later)
+  squareOrderId: row.square_order_id, // Deprecated alias
+  posProvider: (row.pos_provider ?? 'square') as 'square' | 'toast' | 'clover',
   locationId: row.location_id,
   ctReferenceId: row.ct_reference_id ?? undefined,
   customerUserId: row.customer_user_id ?? undefined,
