@@ -11,6 +11,8 @@ type Vendor = {
 type Location = {
   id: string;
   name: string;
+  isPrimary?: boolean;
+  address?: string;
 };
 
 type Step = 'vendor' | 'location' | 'pin';
@@ -233,6 +235,7 @@ export default function LoginPage() {
                 ← Back
               </button>
               <h2>Select Location</h2>
+              <p className="step-description">{selectedVendor?.displayName}</p>
               {loading ? (
                 <p className="loading">Loading locations...</p>
               ) : (
@@ -242,9 +245,15 @@ export default function LoginPage() {
                       key={location.id}
                       type="button"
                       onClick={() => handleLocationSelect(location)}
-                      className="list-item"
+                      className="list-item location-item"
                     >
-                      {location.name}
+                      <div className="location-name">
+                        {location.name}
+                        {location.isPrimary && <span className="primary-badge">Primary</span>}
+                      </div>
+                      {location.address && (
+                        <div className="location-address">{location.address}</div>
+                      )}
                     </button>
                   ))}
                   {locations.length === 0 && !loading && (
@@ -413,6 +422,33 @@ export default function LoginPage() {
             background: rgba(255, 255, 255, 0.1);
             border-color: #667eea;
             transform: translateY(-2px);
+          }
+
+          .location-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+          }
+
+          .location-name {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+          }
+
+          .primary-badge {
+            font-size: 10px;
+            text-transform: uppercase;
+            background: rgba(102, 126, 234, 0.2);
+            color: #667eea;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 600;
+          }
+
+          .location-address {
+            font-size: 13px;
+            color: #888;
           }
 
           .empty {

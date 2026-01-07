@@ -30,7 +30,9 @@ type TicketsResponse = {
 
 type VendorPageProps = {
   vendorSlug: string;
+  vendorName: string;
   locationId: string;
+  locationName: string;
 };
 
 export const getServerSideProps: GetServerSideProps<VendorPageProps> = async (context) => {
@@ -55,10 +57,45 @@ export const getServerSideProps: GetServerSideProps<VendorPageProps> = async (co
   // Use locationId from session or query param
   const locationId = locationIdParam || authResult.session.locationId;
 
+  // Fetch vendor and location names
+  const { createClient } = await import('@supabase/supabase-js');
+  const { createDataClient, type Database } = await import('@countrtop/data');
+  
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_ANON_KEY;
+  
+  let vendorName = 'Kitchen';
+  let locationName = 'Main';
+
+  if (supabaseUrl && supabaseKey && slug) {
+    const supabase = createClient<Database>(supabaseUrl, supabaseKey, {
+      auth: { persistSession: false }
+    });
+    const dataClient = createDataClient({ supabase });
+    
+    const vendor = await dataClient.getVendorBySlug(slug);
+    if (vendor) {
+      vendorName = vendor.displayName;
+      
+      // Try to get location name from vendor_locations
+      const { data: locationData } = await supabase
+        .from('vendor_locations')
+        .select('name')
+        .eq('square_location_id', locationId)
+        .maybeSingle();
+      
+      if (locationData) {
+        locationName = locationData.name;
+      }
+    }
+  }
+
   return {
     props: {
       vendorSlug: slug ?? 'unknown',
-      locationId
+      vendorName,
+      locationId,
+      locationName
     }
   };
 };
@@ -121,7 +158,7 @@ const getPickupLabel = (ticket: Ticket['ticket'], order: Ticket['order']): strin
   return `Order ${order.squareOrderId.slice(-6).toUpperCase()}`;
 };
 
-export default function VendorQueuePage({ vendorSlug, locationId: initialLocationId }: VendorPageProps) {
+export default function VendorQueuePage({ vendorSlug, vendorName, locationId: initialLocationId, locationName }: VendorPageProps) {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -581,17 +618,17 @@ export default function VendorQueuePage({ vendorSlug, locationId: initialLocatio
   return (
     <>
       <Head>
-        <title>{vendorSlug} - CountrTop KDS</title>
+        <title>{vendorName} · {locationName} - KDS</title>
       </Head>
       <main className="page">
         <div className="container">
           <header className="header">
             <div>
-              <h1 className="title">CountrTop KDS</h1>
-              <p className="vendor-slug">Vendor: {vendorSlug}</p>
+              <h1 className="title">{vendorName}</h1>
+              <p className="vendor-slug">📍 {locationName}</p>
               {dailyAvgPrepTime !== null && (
                 <p className="daily-avg">
-                  Daily Avg: {dailyAvgPrepTime.toFixed(1)} min
+                  Avg Prep: {dailyAvgPrepTime.toFixed(1)} min
                 </p>
               )}
               {isOffline && (

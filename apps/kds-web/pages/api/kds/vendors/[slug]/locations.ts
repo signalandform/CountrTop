@@ -1,11 +1,12 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { createDataClient, type Database } from '@countrtop/data';
-import { squareClientForVendor } from '@countrtop/api-client';
 
 type LocationItem = {
   id: string;
   name: string;
+  isPrimary: boolean;
+  address?: string;
 };
 
 type LocationsResponse =
@@ -15,7 +16,7 @@ type LocationsResponse =
 /**
  * GET /api/kds/vendors/[slug]/locations
  * 
- * Returns Square locations for a vendor.
+ * Returns active locations for a vendor from vendor_locations table.
  * No authentication required (public, but scoped to vendor).
  */
 export default async function handler(
@@ -52,35 +53,42 @@ export default async function handler(
       return res.status(404).json({ success: false, error: 'Vendor not found' });
     }
 
-    // Get Square client for vendor
-    let square;
-    try {
-      square = squareClientForVendor(vendor);
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      if (errorMessage.includes('Square access token not configured')) {
-        return res.status(400).json({
-          success: false,
-          error: 'Square access token not configured for vendor.'
-        });
-      }
-      throw error;
-    }
+    // Fetch active locations from vendor_locations table
+    const { data: locationRows, error: locError } = await supabase
+      .from('vendor_locations')
+      .select('square_location_id, name, is_primary, address_line1, city, state')
+      .eq('vendor_id', vendor.id)
+      .eq('is_active', true)
+      .order('is_primary', { ascending: false })
+      .order('name', { ascending: true });
 
-    // List all locations
-    const { result } = await square.locationsApi.listLocations();
-
-    if (result.errors && result.errors.length > 0) {
-      const errorMessages = result.errors.map(e => e.detail || e.code).join(', ');
+    if (locError) {
+      console.error('Error fetching locations:', locError);
       return res.status(500).json({
         success: false,
-        error: `Square API error: ${errorMessages}`
+        error: 'Failed to fetch locations'
       });
     }
 
-    const locations: LocationItem[] = (result.locations || []).map(loc => ({
-      id: loc.id || '',
-      name: loc.name || 'Unnamed Location'
+    // If no locations in the table, fall back to primary vendor location
+    if (!locationRows || locationRows.length === 0) {
+      // Return vendor's primary Square location as fallback
+      return res.status(200).json({
+        success: true,
+        data: [{
+          id: vendor.squareLocationId,
+          name: vendor.displayName,
+          isPrimary: true,
+          address: [vendor.addressLine1, vendor.city, vendor.state].filter(Boolean).join(', ')
+        }]
+      });
+    }
+
+    const locations: LocationItem[] = locationRows.map(loc => ({
+      id: loc.square_location_id,
+      name: loc.name,
+      isPrimary: loc.is_primary,
+      address: [loc.address_line1, loc.city, loc.state].filter(Boolean).join(', ')
     }));
 
     return res.status(200).json({
