@@ -239,7 +239,7 @@ export default function KdsAnalyticsPage({ vendorSlug, vendorName, locationId, l
             {/* Today's Stats Card */}
             <div className="card today-stats-card">
               <div className="card-header">
-                <h2>Today's Performance</h2>
+                <h2>Today&apos;s Performance</h2>
               </div>
               {todayStats && (
                 <div className="today-metrics">
