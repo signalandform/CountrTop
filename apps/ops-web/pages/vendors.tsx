@@ -5,11 +5,14 @@ import { useState, useEffect } from 'react';
 
 import { requireOpsAdmin } from '../lib/auth';
 
+type POSProvider = 'square' | 'clover' | 'toast';
+
 type Vendor = {
   id: string;
   slug: string;
   display_name: string;
-  square_location_id: string;
+  pos_provider: POSProvider;
+  square_location_id: string; // Now serves as external_location_id
   square_credential_ref?: string | null;
   status?: string | null;
   address_line1?: string | null;
@@ -21,6 +24,18 @@ type Vendor = {
   admin_user_id?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
+};
+
+const POS_LABELS: Record<POSProvider, string> = {
+  square: 'Square',
+  clover: 'Clover',
+  toast: 'Toast'
+};
+
+const POS_COLORS: Record<POSProvider, { bg: string; text: string }> = {
+  square: { bg: 'rgba(0, 128, 255, 0.2)', text: '#60a5fa' },
+  clover: { bg: 'rgba(34, 197, 94, 0.2)', text: '#86efac' },
+  toast: { bg: 'rgba(249, 115, 22, 0.2)', text: '#fdba74' }
 };
 
 type Props = {
@@ -54,6 +69,7 @@ export default function VendorsPage({ userEmail: _userEmail }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [posFilter, setPosFilter] = useState<POSProvider | 'all'>('all');
 
   useEffect(() => {
     fetchVendors();
@@ -86,6 +102,11 @@ export default function VendorsPage({ userEmail: _userEmail }: Props) {
   };
 
   const filteredVendors = vendors.filter(vendor => {
+    // POS filter
+    if (posFilter !== 'all' && vendor.pos_provider !== posFilter) {
+      return false;
+    }
+    // Search filter
     if (!searchQuery) return true;
     const query = searchQuery.toLowerCase();
     return (
@@ -96,6 +117,12 @@ export default function VendorsPage({ userEmail: _userEmail }: Props) {
       (vendor.state && vendor.state.toLowerCase().includes(query))
     );
   });
+
+  // Calculate POS counts for summary
+  const posCounts = vendors.reduce((acc, v) => {
+    acc[v.pos_provider] = (acc[v.pos_provider] || 0) + 1;
+    return acc;
+  }, {} as Record<POSProvider, number>);
 
   return (
     <>
@@ -123,6 +150,34 @@ export default function VendorsPage({ userEmail: _userEmail }: Props) {
               </button>
             </div>
           </div>
+          
+          {/* POS Filter Tabs */}
+          <div className="pos-filter-tabs">
+            <button
+              className={`pos-tab ${posFilter === 'all' ? 'active' : ''}`}
+              onClick={() => setPosFilter('all')}
+            >
+              All ({vendors.length})
+            </button>
+            <button
+              className={`pos-tab pos-square ${posFilter === 'square' ? 'active' : ''}`}
+              onClick={() => setPosFilter('square')}
+            >
+              <span className="pos-icon">■</span> Square ({posCounts.square || 0})
+            </button>
+            <button
+              className={`pos-tab pos-clover ${posFilter === 'clover' ? 'active' : ''}`}
+              onClick={() => setPosFilter('clover')}
+            >
+              <span className="pos-icon">☘</span> Clover ({posCounts.clover || 0})
+            </button>
+            <button
+              className={`pos-tab pos-toast ${posFilter === 'toast' ? 'active' : ''}`}
+              onClick={() => setPosFilter('toast')}
+            >
+              <span className="pos-icon">🍞</span> Toast ({posCounts.toast || 0})
+            </button>
+          </div>
         </header>
 
         <div className="page-content">
@@ -148,10 +203,10 @@ export default function VendorsPage({ userEmail: _userEmail }: Props) {
                   <tr>
                     <th>Name</th>
                     <th>Slug</th>
-                    <th>Location ID</th>
+                    <th>POS</th>
+                    <th>External ID</th>
                     <th>Status</th>
                     <th>Location</th>
-                    <th>Timezone</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
@@ -163,6 +218,17 @@ export default function VendorsPage({ userEmail: _userEmail }: Props) {
                       </td>
                       <td>
                         <code className="slug-code">{vendor.slug}</code>
+                      </td>
+                      <td>
+                        <span 
+                          className="pos-badge"
+                          style={{
+                            background: POS_COLORS[vendor.pos_provider]?.bg || 'rgba(255,255,255,0.1)',
+                            color: POS_COLORS[vendor.pos_provider]?.text || '#e8e8e8'
+                          }}
+                        >
+                          {POS_LABELS[vendor.pos_provider] || vendor.pos_provider}
+                        </span>
                       </td>
                       <td>
                         <code className="location-code">{vendor.square_location_id}</code>
@@ -177,13 +243,6 @@ export default function VendorsPage({ userEmail: _userEmail }: Props) {
                           <span>{vendor.city}, {vendor.state}</span>
                         ) : vendor.address_line1 ? (
                           <span>{vendor.address_line1}</span>
-                        ) : (
-                          <span className="text-muted">—</span>
-                        )}
-                      </td>
-                      <td>
-                        {vendor.timezone ? (
-                          <span>{vendor.timezone}</span>
                         ) : (
                           <span className="text-muted">—</span>
                         )}
@@ -479,6 +538,73 @@ export default function VendorsPage({ userEmail: _userEmail }: Props) {
             color: #888;
             font-size: 14px;
             border-top: 1px solid rgba(255, 255, 255, 0.1);
+          }
+
+          /* POS Filter Tabs */
+          .pos-filter-tabs {
+            display: flex;
+            gap: 8px;
+            margin-top: 24px;
+            padding-top: 16px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+          }
+
+          .pos-tab {
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.05);
+            color: #888;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+          }
+
+          .pos-tab:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #e8e8e8;
+          }
+
+          .pos-tab.active {
+            background: rgba(102, 126, 234, 0.2);
+            border-color: #667eea;
+            color: #a78bfa;
+          }
+
+          .pos-tab.pos-square.active {
+            background: rgba(0, 128, 255, 0.2);
+            border-color: #60a5fa;
+            color: #60a5fa;
+          }
+
+          .pos-tab.pos-clover.active {
+            background: rgba(34, 197, 94, 0.2);
+            border-color: #86efac;
+            color: #86efac;
+          }
+
+          .pos-tab.pos-toast.active {
+            background: rgba(249, 115, 22, 0.2);
+            border-color: #fdba74;
+            color: #fdba74;
+          }
+
+          .pos-icon {
+            font-size: 12px;
+          }
+
+          /* POS Badge in table */
+          .pos-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
           }
 
           @media (max-width: 768px) {

@@ -7,7 +7,8 @@ import { requireOpsAdminApi } from '../../../lib/auth';
 type CreateVendorRequest = {
   slug: string;
   display_name: string;
-  square_location_id: string;
+  pos_provider: 'square' | 'clover' | 'toast';
+  square_location_id: string; // External POS location ID
   square_credential_ref?: string | null;
   status?: 'active' | 'inactive' | null;
   address_line1?: string | null;
@@ -69,7 +70,16 @@ export default async function handler(
     if (!body.slug || !body.display_name || !body.square_location_id) {
       return res.status(400).json({
         success: false,
-        error: 'slug, display_name, and square_location_id are required'
+        error: 'slug, display_name, and location ID are required'
+      });
+    }
+
+    // Validate POS provider
+    const validProviders = ['square', 'clover', 'toast'];
+    if (body.pos_provider && !validProviders.includes(body.pos_provider)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid POS provider. Must be one of: square, clover, toast'
       });
     }
 
@@ -120,6 +130,7 @@ export default async function handler(
         id: vendorId,
         slug: body.slug,
         display_name: body.display_name,
+        pos_provider: body.pos_provider || 'square',
         square_location_id: body.square_location_id,
         square_credential_ref: body.square_credential_ref || null,
         status: body.status || 'active',

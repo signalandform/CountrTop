@@ -8,7 +8,8 @@ type VendorRow = {
   id: string;
   slug: string;
   display_name: string;
-  square_location_id: string;
+  pos_provider: 'square' | 'clover' | 'toast';
+  square_location_id: string; // External POS location ID
   square_credential_ref?: string | null;
   status?: string | null;
   address_line1?: string | null;

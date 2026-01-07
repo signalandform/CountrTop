@@ -10,6 +10,76 @@ type Props = {
   userEmail: string;
 };
 
+type POSProvider = 'square' | 'clover' | 'toast';
+
+const POS_CONFIG: Record<POSProvider, {
+  name: string;
+  color: string;
+  bgColor: string;
+  locationIdLabel: string;
+  locationIdPlaceholder: string;
+  locationIdHint: string;
+  credentialLabel: string;
+  credentialPlaceholder: string;
+  instructions: string[];
+  docsUrl: string;
+}> = {
+  square: {
+    name: 'Square',
+    color: '#60a5fa',
+    bgColor: 'rgba(0, 128, 255, 0.15)',
+    locationIdLabel: 'Square Location ID',
+    locationIdPlaceholder: 'e.g., LK8XKXKXKXKXK',
+    locationIdHint: 'Found in Square Dashboard → Locations → Location details',
+    credentialLabel: 'Square Credential Ref',
+    credentialPlaceholder: 'Optional - for multi-account setups',
+    instructions: [
+      '1. Log in to Square Dashboard (squareup.com/dashboard)',
+      '2. Go to Account & Settings → Business → Locations',
+      '3. Select your location and copy the Location ID',
+      '4. Ensure Online Checkout is enabled for this location',
+      '5. After creation, configure webhook at /api/webhooks/square'
+    ],
+    docsUrl: 'https://developer.squareup.com/docs'
+  },
+  clover: {
+    name: 'Clover',
+    color: '#86efac',
+    bgColor: 'rgba(34, 197, 94, 0.15)',
+    locationIdLabel: 'Clover Merchant ID',
+    locationIdPlaceholder: 'e.g., ABC123XYZ',
+    locationIdHint: 'Found in Clover Dashboard URL: /merchants/{MERCHANT_ID}',
+    credentialLabel: 'Clover Credential Ref',
+    credentialPlaceholder: 'Optional - for multi-account setups',
+    instructions: [
+      '1. Log in to Clover Dashboard (clover.com/dashboard)',
+      '2. Look at your browser URL to find the Merchant ID',
+      '3. Go to Developer Portal to generate an API Token',
+      '4. Provide the API token to CountrTop (contact support)',
+      '5. Configure webhook in Clover Dashboard → Your App → Webhooks'
+    ],
+    docsUrl: 'https://docs.clover.com'
+  },
+  toast: {
+    name: 'Toast',
+    color: '#fdba74',
+    bgColor: 'rgba(249, 115, 22, 0.15)',
+    locationIdLabel: 'Toast Restaurant GUID',
+    locationIdPlaceholder: 'e.g., a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+    locationIdHint: 'Found in Toast Web Portal URL: /restaurants/{GUID}',
+    credentialLabel: 'Toast Credential Ref',
+    credentialPlaceholder: 'Optional - for multi-account setups',
+    instructions: [
+      '1. Toast requires Partner API access (apply at pos.toasttab.com/partners)',
+      '2. Log in to Toast Web Portal',
+      '3. Find your Restaurant GUID in the URL when viewing your restaurant',
+      '4. Provide Client ID and Secret to CountrTop (contact support)',
+      '5. Configure webhooks in Toast Developer Portal'
+    ],
+    docsUrl: 'https://pos.toasttab.com/partners'
+  }
+};
+
 export const getServerSideProps: GetServerSideProps<Props> = async (context) => {
   const authResult = await requireOpsAdmin(context);
   if (!authResult.authorized) {
@@ -36,9 +106,11 @@ export default function NewVendorPage({ userEmail: _userEmail }: Props) {
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showInstructions, setShowInstructions] = useState(false);
   const [formData, setFormData] = useState({
     slug: '',
     display_name: '',
+    pos_provider: 'square' as POSProvider,
     square_location_id: '',
     square_credential_ref: '',
     status: 'active' as 'active' | 'inactive',
@@ -53,6 +125,8 @@ export default function NewVendorPage({ userEmail: _userEmail }: Props) {
     kds_active_limit_total: '',
     kds_active_limit_ct: ''
   });
+
+  const posConfig = POS_CONFIG[formData.pos_provider];
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -73,7 +147,8 @@ export default function NewVendorPage({ userEmail: _userEmail }: Props) {
       const payload = {
         slug: formData.slug.trim(),
         display_name: formData.display_name.trim(),
-        square_location_id: formData.square_location_id.trim(),
+        pos_provider: formData.pos_provider,
+        square_location_id: formData.square_location_id.trim(), // External POS location ID
         square_credential_ref: formData.square_credential_ref.trim() || null,
         status: formData.status,
         address_line1: formData.address_line1.trim() || null,
@@ -124,6 +199,50 @@ export default function NewVendorPage({ userEmail: _userEmail }: Props) {
 
         <div className="page-content">
           <form onSubmit={handleSubmit} className="vendor-form">
+            {/* POS Selection */}
+            <div className="form-section pos-selection-section">
+              <h2>Point of Sale System</h2>
+              <div className="pos-selector">
+                {(['square', 'clover', 'toast'] as POSProvider[]).map((pos) => (
+                  <button
+                    key={pos}
+                    type="button"
+                    className={`pos-option ${formData.pos_provider === pos ? 'selected' : ''}`}
+                    onClick={() => setFormData(prev => ({ ...prev, pos_provider: pos }))}
+                    disabled={submitting}
+                    style={{
+                      borderColor: formData.pos_provider === pos ? POS_CONFIG[pos].color : undefined,
+                      background: formData.pos_provider === pos ? POS_CONFIG[pos].bgColor : undefined
+                    }}
+                  >
+                    <span className="pos-name" style={{ color: formData.pos_provider === pos ? POS_CONFIG[pos].color : undefined }}>
+                      {POS_CONFIG[pos].name}
+                    </span>
+                  </button>
+                ))}
+              </div>
+              <button
+                type="button"
+                className="btn-show-instructions"
+                onClick={() => setShowInstructions(!showInstructions)}
+              >
+                {showInstructions ? '▼ Hide' : '▶ Show'} {posConfig.name} Setup Instructions
+              </button>
+              {showInstructions && (
+                <div className="pos-instructions" style={{ borderColor: posConfig.color, background: posConfig.bgColor }}>
+                  <h3 style={{ color: posConfig.color }}>{posConfig.name} Integration Setup</h3>
+                  <ol>
+                    {posConfig.instructions.map((step, i) => (
+                      <li key={i}>{step.replace(/^\d+\.\s*/, '')}</li>
+                    ))}
+                  </ol>
+                  <a href={posConfig.docsUrl} target="_blank" rel="noopener noreferrer" className="docs-link">
+                    📚 {posConfig.name} Documentation →
+                  </a>
+                </div>
+              )}
+            </div>
+
             <div className="form-section">
               <h2>Basic Information</h2>
               <div className="form-grid">
@@ -160,7 +279,7 @@ export default function NewVendorPage({ userEmail: _userEmail }: Props) {
                 </div>
 
                 <div className="form-group required">
-                  <label htmlFor="square_location_id">Square Location ID</label>
+                  <label htmlFor="square_location_id">{posConfig.locationIdLabel}</label>
                   <input
                     type="text"
                     id="square_location_id"
@@ -168,21 +287,22 @@ export default function NewVendorPage({ userEmail: _userEmail }: Props) {
                     value={formData.square_location_id}
                     onChange={handleChange}
                     required
-                    placeholder="e.g., LK8XKXKXKXKXK"
+                    placeholder={posConfig.locationIdPlaceholder}
                     className="form-input"
                     disabled={submitting}
                   />
+                  <small className="form-hint">{posConfig.locationIdHint}</small>
                 </div>
 
                 <div className="form-group">
-                  <label htmlFor="square_credential_ref">Square Credential Ref</label>
+                  <label htmlFor="square_credential_ref">{posConfig.credentialLabel}</label>
                   <input
                     type="text"
                     id="square_credential_ref"
                     name="square_credential_ref"
                     value={formData.square_credential_ref}
                     onChange={handleChange}
-                    placeholder="Optional"
+                    placeholder={posConfig.credentialPlaceholder}
                     className="form-input"
                     disabled={submitting}
                   />
@@ -554,6 +674,104 @@ export default function NewVendorPage({ userEmail: _userEmail }: Props) {
             cursor: not-allowed;
           }
 
+          /* POS Selection */
+          .pos-selection-section {
+            background: rgba(102, 126, 234, 0.05);
+          }
+
+          .pos-selector {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 16px;
+          }
+
+          .pos-option {
+            flex: 1;
+            padding: 20px 24px;
+            border-radius: 12px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.03);
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            font-family: inherit;
+          }
+
+          .pos-option:hover:not(:disabled) {
+            border-color: rgba(255, 255, 255, 0.4);
+            background: rgba(255, 255, 255, 0.08);
+          }
+
+          .pos-option.selected {
+            border-width: 2px;
+          }
+
+          .pos-option:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+          }
+
+          .pos-name {
+            font-size: 18px;
+            font-weight: 700;
+            color: #e8e8e8;
+          }
+
+          .btn-show-instructions {
+            background: none;
+            border: none;
+            color: #a78bfa;
+            font-size: 14px;
+            cursor: pointer;
+            padding: 8px 0;
+            font-family: inherit;
+            text-align: left;
+          }
+
+          .btn-show-instructions:hover {
+            color: #8b5cf6;
+          }
+
+          .pos-instructions {
+            margin-top: 16px;
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid;
+          }
+
+          .pos-instructions h3 {
+            margin: 0 0 16px;
+            font-size: 16px;
+            font-weight: 600;
+          }
+
+          .pos-instructions ol {
+            margin: 0 0 16px;
+            padding-left: 24px;
+          }
+
+          .pos-instructions li {
+            margin-bottom: 8px;
+            font-size: 14px;
+            color: #c8c8c8;
+            line-height: 1.5;
+          }
+
+          .docs-link {
+            display: inline-block;
+            color: #a78bfa;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+          }
+
+          .docs-link:hover {
+            text-decoration: underline;
+          }
+
           @media (max-width: 768px) {
             .page-header {
               padding: 24px;
@@ -578,6 +796,14 @@ export default function NewVendorPage({ userEmail: _userEmail }: Props) {
             .btn-cancel,
             .btn-submit {
               width: 100%;
+            }
+
+            .pos-selector {
+              flex-direction: column;
+            }
+
+            .pos-option {
+              padding: 16px 20px;
             }
           }
         `}</style>
