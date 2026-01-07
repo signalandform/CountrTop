@@ -249,7 +249,7 @@ export class CloverAdapter implements POSAdapter {
       const items = response.elements || [];
       return items
         .filter(item => item.available !== false)
-        .map(item => this.mapItemToCanonical(item, locationId));
+        .map(item => this.mapItemToCanonical(item));
     } catch (error) {
       throw this.wrapError(error, 'fetchCatalog');
     }
@@ -265,7 +265,7 @@ export class CloverAdapter implements POSAdapter {
         return null;
       }
 
-      return this.mapItemToCanonical(item, locationId);
+      return this.mapItemToCanonical(item);
     } catch (error) {
       if (error instanceof POSNotFoundError) {
         return null;
@@ -464,7 +464,7 @@ export class CloverAdapter implements POSAdapter {
   // Private Mapping Methods
   // ---------------------------------------------------------------------------
 
-  private mapItemToCanonical(item: CloverItem, _locationId: string): CanonicalCatalogItem {
+  private mapItemToCanonical(item: CloverItem): CanonicalCatalogItem {
     const modifierGroups: CanonicalModifierGroup[] = (item.modifierGroups?.elements || []).map(group => ({
       id: group.id,
       externalId: group.id,
@@ -512,7 +512,6 @@ export class CloverAdapter implements POSAdapter {
     // Determine order status from payments
     const payments = order.payments?.elements || [];
     const hasSuccessfulPayment = payments.some(p => p.result === 'SUCCESS');
-    const _isCompleted = order.state === 'locked' && hasSuccessfulPayment; // Reserved for future status mapping
 
     // Determine source from externalReferenceId
     const isCountrTopOrder = order.externalReferenceId?.startsWith('ct_');

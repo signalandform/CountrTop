@@ -330,7 +330,7 @@ export class ToastAdapter implements POSAdapter {
       return items
         .filter(item => item.isActive !== false && item.isDeleted !== true)
         .filter(item => item.visibility?.includes('ALL') || item.visibility?.includes('ONLINE'))
-        .map(item => this.mapItemToCanonical(item, locationId));
+        .map(item => this.mapItemToCanonical(item));
     } catch (error) {
       throw this.wrapError(error, 'fetchCatalog');
     }
@@ -346,7 +346,7 @@ export class ToastAdapter implements POSAdapter {
         return null;
       }
 
-      return this.mapItemToCanonical(item, locationId);
+      return this.mapItemToCanonical(item);
     } catch (error) {
       if (error instanceof POSNotFoundError) {
         return null;
@@ -378,7 +378,7 @@ export class ToastAdapter implements POSAdapter {
     }
   }
 
-  async searchOrders(locationId: string, since: string, _until?: string): Promise<CanonicalOrder[]> {
+  async searchOrders(locationId: string, since: string): Promise<CanonicalOrder[]> {
     try {
       const sinceDate = new Date(since).toISOString();
       // Note: Toast bulk order API uses businessDate, not a date range
@@ -538,7 +538,7 @@ export class ToastAdapter implements POSAdapter {
   // Private Mapping Methods
   // ---------------------------------------------------------------------------
 
-  private mapItemToCanonical(item: ToastMenuItem, _locationId: string): CanonicalCatalogItem {
+  private mapItemToCanonical(item: ToastMenuItem): CanonicalCatalogItem {
     const modifierGroups: CanonicalModifierGroup[] = (item.modifierGroups || []).map(group => ({
       id: group.guid,
       externalId: group.guid,
@@ -589,7 +589,6 @@ export class ToastAdapter implements POSAdapter {
 
     // Determine order status
     const hasPaid = check?.payments?.some(p => p.paidDate);
-    const _isCompleted = !!order.closedDate && hasPaid; // Reserved for future status mapping
 
     // Determine source from order.source field
     const isCountrTopOrder = order.externalId?.startsWith('ct_') || order.source === 'CountrTop';
@@ -616,8 +615,8 @@ export class ToastAdapter implements POSAdapter {
       customerEmail: customer?.email,
       customerPhone: customer?.phone,
       customerName: customerName || undefined,
-      displayNumber: order.displayNumber,
       metadata: {
+        displayNumber: order.displayNumber,
         toastOrderGuid: order.guid,
         externalId: order.externalId,
         diningOption: order.diningOption?.name,
@@ -650,7 +649,7 @@ export class ToastAdapter implements POSAdapter {
 
   private mapOrderStatus(order: ToastOrder, hasPaid?: boolean): CanonicalOrderStatus {
     if (order.voided || order.deleted) {
-      return 'cancelled';
+      return 'canceled';
     }
     if (order.closedDate && hasPaid) {
       return 'completed';
