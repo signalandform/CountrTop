@@ -71,7 +71,7 @@ export const getServerSideProps: GetServerSideProps<LocationsPageProps> = async 
       .order('name', { ascending: true });
     
     if (data) {
-      locations = data.map(row => ({
+      locations = data.map((row: Database['public']['Tables']['vendor_locations']['Row']) => ({
         id: row.id,
         vendorId: row.vendor_id,
         squareLocationId: row.square_location_id,

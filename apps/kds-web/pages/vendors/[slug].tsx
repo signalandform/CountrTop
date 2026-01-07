@@ -1,6 +1,8 @@
 import Head from 'next/head';
 import type { GetServerSideProps } from 'next';
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { createClient } from '@supabase/supabase-js';
+import { createDataClient, type Database } from '@countrtop/data';
 
 import { getBrowserSupabaseClient } from '../../lib/supabaseBrowser';
 import { requireKDSSession } from '../../lib/auth';
@@ -58,9 +60,6 @@ export const getServerSideProps: GetServerSideProps<VendorPageProps> = async (co
   const locationId = locationIdParam || authResult.session.locationId;
 
   // Fetch vendor and location names
-  const { createClient } = await import('@supabase/supabase-js');
-  const { createDataClient, type Database } = await import('@countrtop/data');
-  
   const supabaseUrl = process.env.SUPABASE_URL;
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_ANON_KEY;
   

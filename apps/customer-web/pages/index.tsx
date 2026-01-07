@@ -1,8 +1,9 @@
 import type { GetServerSideProps } from 'next';
 import Head from 'next/head';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { createClient } from '@supabase/supabase-js';
 
-import { resolveVendorSlugFromHost } from '@countrtop/data';
+import { resolveVendorSlugFromHost, type Database } from '@countrtop/data';
 import { CartItem, MenuItem, OrderHistoryEntry, Vendor } from '@countrtop/models';
 import { useAuth } from '@countrtop/ui';
 import { getServerDataClient } from '../lib/dataClient';
@@ -72,9 +73,6 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req }) => 
   // Fetch locations for the vendor
   let locations: LocationOption[] = [];
   if (rawVendor) {
-    const { createClient } = await import('@supabase/supabase-js');
-    const { type Database } = await import('@countrtop/data');
-    
     const supabaseUrl = process.env.SUPABASE_URL;
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_ANON_KEY;
     
