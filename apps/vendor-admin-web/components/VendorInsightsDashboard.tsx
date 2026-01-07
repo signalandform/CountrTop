@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import { useState } from 'react';
 import { Vendor, VendorInsights } from '@countrtop/models';
 import { getBrowserSupabaseClient } from '../lib/supabaseBrowser';
@@ -52,45 +51,45 @@ export function VendorInsightsDashboard({ vendorSlug, vendorName, vendor, insigh
         <section className="quick-actions">
           <h2 className="section-title">Quick Actions</h2>
           <div className="dashboard-grid">
-            <Link href={`/vendors/${vendorSlug}/analytics`} className="dashboard-card">
+            <a href={`/vendors/${vendorSlug}/analytics`} className="dashboard-card">
               <div className="card-icon">📊</div>
               <h3 className="card-title">Analytics</h3>
               <p className="card-description">
                 View KDS performance, revenue trends, and customer insights
               </p>
-            </Link>
+            </a>
 
-            <Link href={`/vendors/${vendorSlug}/orders`} className="dashboard-card">
+            <a href={`/vendors/${vendorSlug}/orders`} className="dashboard-card">
               <div className="card-icon">📦</div>
               <h3 className="card-title">Orders</h3>
               <p className="card-description">
                 View and manage active customer orders
               </p>
-            </Link>
+            </a>
 
-            <Link href={`/vendors/${vendorSlug}/locations`} className="dashboard-card">
+            <a href={`/vendors/${vendorSlug}/locations`} className="dashboard-card">
               <div className="card-icon">📍</div>
               <h3 className="card-title">Locations</h3>
               <p className="card-description">
                 Manage multiple store locations and settings
               </p>
-            </Link>
+            </a>
 
-            <Link href={`/vendors/${vendorSlug}/settings`} className="dashboard-card">
+            <a href={`/vendors/${vendorSlug}/settings`} className="dashboard-card">
               <div className="card-icon">🎨</div>
               <h3 className="card-title">Branding</h3>
               <p className="card-description">
                 Customize colors, logo, and theme
               </p>
-            </Link>
+            </a>
 
-            <Link href={`/vendors/${vendorSlug}/workspace`} className="dashboard-card">
+            <a href={`/vendors/${vendorSlug}/workspace`} className="dashboard-card">
               <div className="card-icon">👥</div>
               <h3 className="card-title">Team</h3>
               <p className="card-description">
                 Manage employees and permissions
               </p>
-            </Link>
+            </a>
 
             <a 
               href={`https://${vendorSlug}.countrtop.com`} 
@@ -111,9 +110,9 @@ export function VendorInsightsDashboard({ vendorSlug, vendorName, vendor, insigh
         <section className="stats-section">
           <div className="section-header">
             <h2 className="section-title">Performance Snapshot</h2>
-            <Link href={`/vendors/${vendorSlug}/analytics`} className="view-all-link">
+            <a href={`/vendors/${vendorSlug}/analytics`} className="view-all-link">
               View detailed analytics →
-            </Link>
+            </a>
           </div>
           <div className="stats-grid">
             <div className="stat-card">
