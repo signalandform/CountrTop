@@ -59,33 +59,35 @@ export class MockDataClient implements DataClient {
     return this.vendors.find((vendor) => vendor.squareLocationId === locationId) ?? null;
   }
 
+  /* eslint-disable @typescript-eslint/no-unused-vars */
   // Mock vendor location methods - return empty/null for mock client
-  async listVendorLocations(_vendorId: string, _includeInactive = false): Promise<import('./models').VendorLocation[]> {
+  async listVendorLocations(vendorId: string, includeInactive = false): Promise<import('./models').VendorLocation[]> {
     return [];
   }
 
-  async getVendorLocationBySquareId(_squareLocationId: string): Promise<import('./models').VendorLocation | null> {
+  async getVendorLocationBySquareId(squareLocationId: string): Promise<import('./models').VendorLocation | null> {
     return null;
   }
 
-  async getVendorLocationById(_locationId: string): Promise<import('./models').VendorLocation | null> {
+  async getVendorLocationById(locationId: string): Promise<import('./models').VendorLocation | null> {
     return null;
   }
 
-  async createVendorLocation(_location: Omit<import('./models').VendorLocation, 'id' | 'createdAt' | 'updatedAt'>): Promise<import('./models').VendorLocation> {
+  async createVendorLocation(location: Omit<import('./models').VendorLocation, 'id' | 'createdAt' | 'updatedAt'>): Promise<import('./models').VendorLocation> {
     throw new Error('createVendorLocation not implemented in mock client');
   }
 
   async updateVendorLocation(
-    _locationId: string,
-    _updates: Partial<Omit<import('./models').VendorLocation, 'id' | 'vendorId' | 'squareLocationId' | 'createdAt' | 'updatedAt'>>
+    locationId: string,
+    updates: Partial<Omit<import('./models').VendorLocation, 'id' | 'vendorId' | 'squareLocationId' | 'createdAt' | 'updatedAt'>>
   ): Promise<import('./models').VendorLocation> {
     throw new Error('updateVendorLocation not implemented in mock client');
   }
 
-  async deleteVendorLocation(_locationId: string): Promise<void> {
+  async deleteVendorLocation(locationId: string): Promise<void> {
     throw new Error('deleteVendorLocation not implemented in mock client');
   }
+  /* eslint-enable @typescript-eslint/no-unused-vars */
 
   async createOrderSnapshot(order: OrderSnapshotInput): Promise<OrderSnapshot> {
     const id = order.id ?? this.createId('order');
