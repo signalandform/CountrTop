@@ -24,6 +24,7 @@ import {
   SquareOrder,
   User,
   Vendor,
+  VendorLocation,
   VendorStatus
 } from './models';
 import { assignShortcode } from './shortcodes';
@@ -432,6 +433,52 @@ export type Database = {
         Update: Partial<Database['public']['Tables']['time_entries']['Insert']>;
         Relationships: [];
       };
+      vendor_locations: {
+        Row: {
+          id: string;
+          vendor_id: string;
+          square_location_id: string;
+          name: string;
+          is_primary: boolean;
+          is_active: boolean;
+          address_line1: string | null;
+          address_line2: string | null;
+          city: string | null;
+          state: string | null;
+          postal_code: string | null;
+          phone: string | null;
+          timezone: string | null;
+          pickup_instructions: string | null;
+          online_ordering_enabled: boolean;
+          kds_active_limit_total: number | null;
+          kds_active_limit_ct: number | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          vendor_id: string;
+          square_location_id: string;
+          name: string;
+          is_primary?: boolean;
+          is_active?: boolean;
+          address_line1?: string | null;
+          address_line2?: string | null;
+          city?: string | null;
+          state?: string | null;
+          postal_code?: string | null;
+          phone?: string | null;
+          timezone?: string | null;
+          pickup_instructions?: string | null;
+          online_ordering_enabled?: boolean;
+          kds_active_limit_total?: number | null;
+          kds_active_limit_ct?: number | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['vendor_locations']['Insert']>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
@@ -533,6 +580,170 @@ export class SupabaseDataClient implements DataClient {
       return result;
     } catch (error) {
       logQueryPerformance('getVendorBySquareLocationId', startTime, false, error);
+      throw error;
+    }
+  }
+
+  // --- Vendor Locations ---
+
+  async listVendorLocations(vendorId: string, includeInactive = false): Promise<VendorLocation[]> {
+    const startTime = Date.now();
+    try {
+      let query = this.client
+        .from('vendor_locations')
+        .select('*')
+        .eq('vendor_id', vendorId)
+        .order('is_primary', { ascending: false })
+        .order('name', { ascending: true });
+
+      if (!includeInactive) {
+        query = query.eq('is_active', true);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+
+      logQueryPerformance('listVendorLocations', startTime, true);
+      return (data || []).map(row => 
+        mapVendorLocationFromRow(row as Database['public']['Tables']['vendor_locations']['Row'])
+      );
+    } catch (error) {
+      logQueryPerformance('listVendorLocations', startTime, false, error);
+      throw error;
+    }
+  }
+
+  async getVendorLocationBySquareId(squareLocationId: string): Promise<VendorLocation | null> {
+    const startTime = Date.now();
+    try {
+      const { data, error } = await this.client
+        .from('vendor_locations')
+        .select('*')
+        .eq('square_location_id', squareLocationId)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      logQueryPerformance('getVendorLocationBySquareId', startTime, true);
+      return data ? mapVendorLocationFromRow(data as Database['public']['Tables']['vendor_locations']['Row']) : null;
+    } catch (error) {
+      logQueryPerformance('getVendorLocationBySquareId', startTime, false, error);
+      throw error;
+    }
+  }
+
+  async getVendorLocationById(locationId: string): Promise<VendorLocation | null> {
+    const startTime = Date.now();
+    try {
+      const { data, error } = await this.client
+        .from('vendor_locations')
+        .select('*')
+        .eq('id', locationId)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      logQueryPerformance('getVendorLocationById', startTime, true);
+      return data ? mapVendorLocationFromRow(data as Database['public']['Tables']['vendor_locations']['Row']) : null;
+    } catch (error) {
+      logQueryPerformance('getVendorLocationById', startTime, false, error);
+      throw error;
+    }
+  }
+
+  async createVendorLocation(location: Omit<VendorLocation, 'id' | 'createdAt' | 'updatedAt'>): Promise<VendorLocation> {
+    const startTime = Date.now();
+    try {
+      const insertData: Database['public']['Tables']['vendor_locations']['Insert'] = {
+        vendor_id: location.vendorId,
+        square_location_id: location.squareLocationId,
+        name: location.name,
+        is_primary: location.isPrimary,
+        is_active: location.isActive,
+        address_line1: location.addressLine1 ?? null,
+        address_line2: location.addressLine2 ?? null,
+        city: location.city ?? null,
+        state: location.state ?? null,
+        postal_code: location.postalCode ?? null,
+        phone: location.phone ?? null,
+        timezone: location.timezone ?? null,
+        pickup_instructions: location.pickupInstructions ?? null,
+        online_ordering_enabled: location.onlineOrderingEnabled,
+        kds_active_limit_total: location.kdsActiveLimitTotal ?? null,
+        kds_active_limit_ct: location.kdsActiveLimitCt ?? null,
+      };
+
+      const { data, error } = await this.client
+        .from('vendor_locations')
+        .insert(insertData)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      logQueryPerformance('createVendorLocation', startTime, true);
+      return mapVendorLocationFromRow(data as Database['public']['Tables']['vendor_locations']['Row']);
+    } catch (error) {
+      logQueryPerformance('createVendorLocation', startTime, false, error);
+      throw error;
+    }
+  }
+
+  async updateVendorLocation(
+    locationId: string,
+    updates: Partial<Omit<VendorLocation, 'id' | 'vendorId' | 'squareLocationId' | 'createdAt' | 'updatedAt'>>
+  ): Promise<VendorLocation> {
+    const startTime = Date.now();
+    try {
+      const updateData: Database['public']['Tables']['vendor_locations']['Update'] = {
+        updated_at: new Date().toISOString(),
+      };
+
+      if (updates.name !== undefined) updateData.name = updates.name;
+      if (updates.isPrimary !== undefined) updateData.is_primary = updates.isPrimary;
+      if (updates.isActive !== undefined) updateData.is_active = updates.isActive;
+      if (updates.addressLine1 !== undefined) updateData.address_line1 = updates.addressLine1 ?? null;
+      if (updates.addressLine2 !== undefined) updateData.address_line2 = updates.addressLine2 ?? null;
+      if (updates.city !== undefined) updateData.city = updates.city ?? null;
+      if (updates.state !== undefined) updateData.state = updates.state ?? null;
+      if (updates.postalCode !== undefined) updateData.postal_code = updates.postalCode ?? null;
+      if (updates.phone !== undefined) updateData.phone = updates.phone ?? null;
+      if (updates.timezone !== undefined) updateData.timezone = updates.timezone ?? null;
+      if (updates.pickupInstructions !== undefined) updateData.pickup_instructions = updates.pickupInstructions ?? null;
+      if (updates.onlineOrderingEnabled !== undefined) updateData.online_ordering_enabled = updates.onlineOrderingEnabled;
+      if (updates.kdsActiveLimitTotal !== undefined) updateData.kds_active_limit_total = updates.kdsActiveLimitTotal ?? null;
+      if (updates.kdsActiveLimitCt !== undefined) updateData.kds_active_limit_ct = updates.kdsActiveLimitCt ?? null;
+
+      const { data, error } = await this.client
+        .from('vendor_locations')
+        .update(updateData)
+        .eq('id', locationId)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      logQueryPerformance('updateVendorLocation', startTime, true);
+      return mapVendorLocationFromRow(data as Database['public']['Tables']['vendor_locations']['Row']);
+    } catch (error) {
+      logQueryPerformance('updateVendorLocation', startTime, false, error);
+      throw error;
+    }
+  }
+
+  async deleteVendorLocation(locationId: string): Promise<void> {
+    const startTime = Date.now();
+    try {
+      const { error } = await this.client
+        .from('vendor_locations')
+        .delete()
+        .eq('id', locationId);
+
+      if (error) throw error;
+
+      logQueryPerformance('deleteVendorLocation', startTime, true);
+    } catch (error) {
+      logQueryPerformance('deleteVendorLocation', startTime, false, error);
       throw error;
     }
   }
@@ -2764,6 +2975,28 @@ const mapVendorFromRow = (row: Database['public']['Tables']['vendors']['Row']): 
   primaryColor: row.primary_color ?? undefined,
   accentColor: row.accent_color ?? undefined,
   fontFamily: row.font_family ?? undefined,
+});
+
+const mapVendorLocationFromRow = (row: Database['public']['Tables']['vendor_locations']['Row']): VendorLocation => ({
+  id: row.id,
+  vendorId: row.vendor_id,
+  squareLocationId: row.square_location_id,
+  name: row.name,
+  isPrimary: row.is_primary,
+  isActive: row.is_active,
+  addressLine1: row.address_line1 ?? undefined,
+  addressLine2: row.address_line2 ?? undefined,
+  city: row.city ?? undefined,
+  state: row.state ?? undefined,
+  postalCode: row.postal_code ?? undefined,
+  phone: row.phone ?? undefined,
+  timezone: row.timezone ?? undefined,
+  pickupInstructions: row.pickup_instructions ?? undefined,
+  onlineOrderingEnabled: row.online_ordering_enabled,
+  kdsActiveLimitTotal: row.kds_active_limit_total ?? undefined,
+  kdsActiveLimitCt: row.kds_active_limit_ct ?? undefined,
+  createdAt: row.created_at,
+  updatedAt: row.updated_at,
 });
 
 const mapOrderSnapshotFromRow = (

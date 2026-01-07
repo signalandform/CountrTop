@@ -26,6 +26,28 @@ export type Vendor = {
   fontFamily?: string | null;
 };
 
+export type VendorLocation = {
+  id: string;
+  vendorId: string;
+  squareLocationId: string;
+  name: string;
+  isPrimary: boolean;
+  isActive: boolean;
+  addressLine1?: string | null;
+  addressLine2?: string | null;
+  city?: string | null;
+  state?: string | null;
+  postalCode?: string | null;
+  phone?: string | null;
+  timezone?: string | null;
+  pickupInstructions?: string | null;
+  onlineOrderingEnabled: boolean;
+  kdsActiveLimitTotal?: number | null;
+  kdsActiveLimitCt?: number | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type Employee = {
   id: string;
   vendorId: string;

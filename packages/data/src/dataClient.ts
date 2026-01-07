@@ -7,7 +7,8 @@ import {
   PushDevice,
   PushPlatform,
   User,
-  Vendor
+  Vendor,
+  VendorLocation
 } from './models';
 
 export type Subscription = {
@@ -33,6 +34,17 @@ export interface DataClient {
   getVendorBySlug(slug: string): Promise<Vendor | null>;
   getVendorById(vendorId: string): Promise<Vendor | null>;
   getVendorBySquareLocationId(locationId: string): Promise<Vendor | null>;
+
+  // Multi-Location Support
+  listVendorLocations(vendorId: string, includeInactive?: boolean): Promise<VendorLocation[]>;
+  getVendorLocationBySquareId(squareLocationId: string): Promise<VendorLocation | null>;
+  getVendorLocationById(locationId: string): Promise<VendorLocation | null>;
+  createVendorLocation(location: Omit<VendorLocation, 'id' | 'createdAt' | 'updatedAt'>): Promise<VendorLocation>;
+  updateVendorLocation(
+    locationId: string,
+    updates: Partial<Omit<VendorLocation, 'id' | 'vendorId' | 'squareLocationId' | 'createdAt' | 'updatedAt'>>
+  ): Promise<VendorLocation>;
+  deleteVendorLocation(locationId: string): Promise<void>;
 
   createOrderSnapshot(order: OrderSnapshotInput): Promise<OrderSnapshot>;
   getOrderSnapshot(orderId: string): Promise<OrderSnapshot | null>;
