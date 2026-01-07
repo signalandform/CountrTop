@@ -947,6 +947,7 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor }: Props) 
             </div>
           </section>
         </div>
+        </div>
       </main>
 
       {/* Styles must be outside main to persist through re-renders */}
