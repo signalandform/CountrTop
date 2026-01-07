@@ -29,6 +29,12 @@ type TicketsResponse =
           readyAt?: string | null;
           completedAt?: string | null;
           updatedAt: string;
+          // New fields for hold/notes/reorder
+          heldAt?: string | null;
+          heldReason?: string | null;
+          staffNotes?: string | null;
+          customLabel?: string | null;
+          priorityOrder?: number;
         };
         order: {
           squareOrderId: string;
@@ -189,7 +195,13 @@ export default async function handler(
           placedAt: ticket.placedAt,
           readyAt: ticket.readyAt ?? null,
           completedAt: ticket.completedAt ?? null,
-          updatedAt: ticket.updatedAt
+          updatedAt: ticket.updatedAt,
+          // New fields
+          heldAt: (ticket as Record<string, unknown>).heldAt as string | null ?? null,
+          heldReason: (ticket as Record<string, unknown>).heldReason as string | null ?? null,
+          staffNotes: (ticket as Record<string, unknown>).staffNotes as string | null ?? null,
+          customLabel: (ticket as Record<string, unknown>).customLabel as string | null ?? null,
+          priorityOrder: (ticket as Record<string, unknown>).priorityOrder as number ?? 0
         },
         order: {
           squareOrderId: order.squareOrderId,

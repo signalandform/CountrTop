@@ -1319,6 +1319,11 @@ export class SupabaseDataClient implements DataClient {
           canceled_at,
           last_updated_by_vendor_user_id,
           updated_at,
+          held_at,
+          held_reason,
+          staff_notes,
+          custom_label,
+          priority_order,
           square_orders (
             square_order_id,
             location_id,
@@ -1334,6 +1339,7 @@ export class SupabaseDataClient implements DataClient {
         `)
         .eq('location_id', locationId)
         .in('status', ['placed', 'ready', 'preparing'])
+        .order('priority_order', { ascending: true })
         .order('placed_at', { ascending: true });
 
       if (error) throw error;
@@ -3163,7 +3169,13 @@ export const mapKitchenTicketFromRow = (
   completedAt: row.completed_at ?? undefined,
   canceledAt: row.canceled_at ?? undefined,
   lastUpdatedByVendorUserId: row.last_updated_by_vendor_user_id ?? undefined,
-  updatedAt: row.updated_at
+  updatedAt: row.updated_at,
+  // New hold/notes/reorder fields
+  heldAt: (row as Record<string, unknown>).held_at as string | undefined ?? undefined,
+  heldReason: (row as Record<string, unknown>).held_reason as string | undefined ?? undefined,
+  staffNotes: (row as Record<string, unknown>).staff_notes as string | undefined ?? undefined,
+  customLabel: (row as Record<string, unknown>).custom_label as string | undefined ?? undefined,
+  priorityOrder: (row as Record<string, unknown>).priority_order as number | undefined ?? 0
 });
 
 export const toKitchenTicketInsert = (

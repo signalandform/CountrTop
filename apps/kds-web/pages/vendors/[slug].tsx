@@ -118,6 +118,20 @@ const getAgeColor = (placedAt: string): 'green' | 'yellow' | 'red' => {
   return 'red';
 };
 
+// Keywords that indicate allergy or special handling
+const ALLERGY_KEYWORDS = ['allergy', 'allergic', 'no ', 'without', 'dairy-free', 'gluten-free', 'nut-free', 'vegan', 'vegetarian'];
+const EXTRA_KEYWORDS = ['extra', 'double', 'add ', 'with '];
+
+const isAllergyModifier = (modName: string): boolean => {
+  const lower = modName.toLowerCase();
+  return ALLERGY_KEYWORDS.some(kw => lower.includes(kw));
+};
+
+const isExtraModifier = (modName: string): boolean => {
+  const lower = modName.toLowerCase();
+  return EXTRA_KEYWORDS.some(kw => lower.includes(kw));
+};
+
 const renderLineItems = (lineItems: unknown[] | null | undefined) => {
   if (!Array.isArray(lineItems) || lineItems.length === 0) {
     return <div className="line-items-empty">No items</div>;
@@ -128,10 +142,37 @@ const renderLineItems = (lineItems: unknown[] | null | undefined) => {
         const itemObj = item as Record<string, unknown> | null;
         const name = (itemObj?.name as string) || 'Item';
         const qty = (itemObj?.quantity as number) || 1;
+        const modifiers = (itemObj?.modifiers as Array<Record<string, unknown>>) || [];
+        const note = (itemObj?.note as string) || '';
+        
         return (
           <div key={idx} className="line-item">
-            <span className="quantity">{qty}×</span>
-            <span className="name">{name}</span>
+            <div className="item-header">
+              <span className="quantity">{qty}</span>
+              <span className="name">{name}</span>
+            </div>
+            {modifiers.length > 0 && (
+              <div className="modifiers-list">
+                {modifiers.map((mod, modIdx) => {
+                  const modName = (mod?.name as string) || '';
+                  const isAllergy = isAllergyModifier(modName);
+                  const isExtra = isExtraModifier(modName);
+                  return (
+                    <span 
+                      key={modIdx} 
+                      className={`modifier ${isAllergy ? 'modifier-allergy' : ''} ${isExtra ? 'modifier-extra' : ''}`}
+                    >
+                      {isAllergy && '⚠️ '}{modName}
+                    </span>
+                  );
+                })}
+              </div>
+            )}
+            {note && (
+              <div className="item-note">
+                📝 {note}
+              </div>
+            )}
           </div>
         );
       })}
@@ -180,6 +221,13 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
   const [timeClockLoading, setTimeClockLoading] = useState(false);
   const [timeClockError, setTimeClockError] = useState<string | null>(null);
   const [timeClockSuccess, setTimeClockSuccess] = useState<string | null>(null);
+  
+  // Ticket menu state
+  const [activeTicketMenu, setActiveTicketMenu] = useState<string | null>(null);
+  const [editingNote, setEditingNote] = useState<string | null>(null);
+  const [noteText, setNoteText] = useState('');
+  const [editingLabel, setEditingLabel] = useState<string | null>(null);
+  const [labelText, setLabelText] = useState('');
 
   // Update current time every second for live timer
   useEffect(() => {
@@ -551,6 +599,135 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
     }
   };
 
+  // ============================================
+  // Ticket Menu Actions
+  // ============================================
+  
+  const handleTicketMenuToggle = (ticketId: string) => {
+    setActiveTicketMenu(prev => prev === ticketId ? null : ticketId);
+  };
+
+  const handleHoldTicket = async (ticketId: string) => {
+    setActiveTicketMenu(null);
+    try {
+      const response = await fetch(`/api/vendors/${vendorSlug}/tickets/${ticketId}/hold${locationId ? `?locationId=${locationId}` : ''}`, {
+        method: 'POST',
+        credentials: 'include'
+      });
+      const data = await response.json();
+      if (data.ok) {
+        await fetchTickets();
+      } else {
+        setError(data.error || 'Failed to hold ticket');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to hold ticket');
+    }
+  };
+
+  const handleUnholdTicket = async (ticketId: string) => {
+    setActiveTicketMenu(null);
+    try {
+      const response = await fetch(`/api/vendors/${vendorSlug}/tickets/${ticketId}/unhold${locationId ? `?locationId=${locationId}` : ''}`, {
+        method: 'POST',
+        credentials: 'include'
+      });
+      const data = await response.json();
+      if (data.ok) {
+        await fetchTickets();
+      } else {
+        setError(data.error || 'Failed to unhold ticket');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to unhold ticket');
+    }
+  };
+
+  const handleOpenNoteEditor = (ticketId: string, currentNote: string) => {
+    setActiveTicketMenu(null);
+    setEditingNote(ticketId);
+    setNoteText(currentNote || '');
+  };
+
+  const handleSaveNote = async (ticketId: string) => {
+    try {
+      const response = await fetch(`/api/vendors/${vendorSlug}/tickets/${ticketId}/note${locationId ? `?locationId=${locationId}` : ''}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ note: noteText })
+      });
+      const data = await response.json();
+      if (data.ok) {
+        setEditingNote(null);
+        setNoteText('');
+        await fetchTickets();
+      } else {
+        setError(data.error || 'Failed to save note');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save note');
+    }
+  };
+
+  const handleOpenLabelEditor = (ticketId: string, currentLabel: string) => {
+    setActiveTicketMenu(null);
+    setEditingLabel(ticketId);
+    setLabelText(currentLabel || '');
+  };
+
+  const handleSaveLabel = async (ticketId: string) => {
+    try {
+      const response = await fetch(`/api/vendors/${vendorSlug}/tickets/${ticketId}/label${locationId ? `?locationId=${locationId}` : ''}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ label: labelText })
+      });
+      const data = await response.json();
+      if (data.ok) {
+        setEditingLabel(null);
+        setLabelText('');
+        await fetchTickets();
+      } else {
+        setError(data.error || 'Failed to save label');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save label');
+    }
+  };
+
+  const handleMoveTicket = async (ticketId: string, direction: 'up' | 'down') => {
+    setActiveTicketMenu(null);
+    try {
+      const response = await fetch(`/api/vendors/${vendorSlug}/tickets/${ticketId}/reorder${locationId ? `?locationId=${locationId}` : ''}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ direction })
+      });
+      const data = await response.json();
+      if (data.ok) {
+        await fetchTickets();
+      } else {
+        setError(data.error || 'Failed to reorder ticket');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to reorder ticket');
+    }
+  };
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = () => {
+      if (activeTicketMenu) {
+        setActiveTicketMenu(null);
+      }
+    };
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [activeTicketMenu]);
+
   const handleSettings = () => {
     // Placeholder: Open settings modal or navigate to settings page
     alert('Settings - Coming soon');
@@ -689,9 +866,41 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
             </div>
           ) : (
             <div className="tickets-list">
-              {tickets.map(({ ticket, order, customer }) => {
-                const pickupLabel = getPickupLabel(ticket, order);
-                const customerName = customer?.displayName || null;
+              {/* Separate held tickets */}
+              {tickets.filter(t => t.ticket.heldAt).length > 0 && (
+                <div className="held-section">
+                  <div className="held-section-header">⏸️ On Hold</div>
+                  {tickets.filter(t => t.ticket.heldAt).map(({ ticket, order, customer }) => {
+                    const displayLabel = ticket.customLabel || (customer?.displayName) || getPickupLabel(ticket, order);
+                    return (
+                      <div key={ticket.id} className="ticket-card ticket-held">
+                        <div className="ticket-left">
+                          <div className="pickup-label">{displayLabel}</div>
+                          <div className="held-badge">⏸️ Held</div>
+                        </div>
+                        <div className="ticket-middle">
+                          {renderLineItems(order.lineItems)}
+                          {ticket.staffNotes && (
+                            <div className="staff-notes">📝 {ticket.staffNotes}</div>
+                          )}
+                        </div>
+                        <div className="ticket-right">
+                          <button 
+                            className="action-button unhold-button"
+                            onClick={() => handleUnholdTicket(ticket.id)}
+                          >
+                            Resume
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Active tickets */}
+              {tickets.filter(t => !t.ticket.heldAt).map(({ ticket, order, customer }, index, activeTickets) => {
+                const displayLabel = ticket.customLabel || (customer?.displayName) || getPickupLabel(ticket, order);
                 const sourceBadge = ticket.source === 'countrtop_online' ? 'Online' : 'POS';
                 const age = formatAge(ticket.placedAt, currentTime);
                 const ageColor = getAgeColor(ticket.placedAt);
@@ -714,20 +923,55 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
                 const isOnlineOrder = ticket.source === 'countrtop_online';
                 const hasLoyalty = customer?.isLoyaltyMember;
                 const isPreparing = ticket.status === 'preparing';
+                const isMenuOpen = activeTicketMenu === ticket.id;
+                const isFirst = index === 0;
+                const isLast = index === activeTickets.length - 1;
 
                 return (
                   <div key={ticket.id} className={`ticket-card ${isOnlineOrder ? 'ticket-online' : 'ticket-pos'} ${isPreparing ? 'ticket-preparing' : ''}`}>
+                    {/* Menu button */}
+                    <div className="ticket-menu-wrapper" onClick={(e) => e.stopPropagation()}>
+                      <button 
+                        className="ticket-menu-button"
+                        onClick={() => handleTicketMenuToggle(ticket.id)}
+                      >
+                        ⋮
+                      </button>
+                      {isMenuOpen && (
+                        <div className="ticket-menu-dropdown">
+                          <button onClick={() => handleHoldTicket(ticket.id)}>
+                            ⏸️ Hold
+                          </button>
+                          <button onClick={() => handleOpenNoteEditor(ticket.id, ticket.staffNotes || '')}>
+                            📝 {ticket.staffNotes ? 'Edit Note' : 'Add Note'}
+                          </button>
+                          <button onClick={() => handleOpenLabelEditor(ticket.id, ticket.customLabel || '')}>
+                            ✏️ Rename
+                          </button>
+                          <div className="menu-divider" />
+                          <button 
+                            onClick={() => handleMoveTicket(ticket.id, 'up')}
+                            disabled={isFirst}
+                          >
+                            ⬆️ Move Up
+                          </button>
+                          <button 
+                            onClick={() => handleMoveTicket(ticket.id, 'down')}
+                            disabled={isLast}
+                          >
+                            ⬇️ Move Down
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
                     {ticket.shortcode && (
                       <div className="ticket-shortcode">
                         {ticket.shortcode}
                       </div>
                     )}
                     <div className="ticket-left">
-                      {customerName ? (
-                        <div className="customer-name">{customerName}</div>
-                      ) : (
-                        <div className="pickup-label">{pickupLabel}</div>
-                      )}
+                      <div className="pickup-label">{displayLabel}</div>
                       <div className="badge-row">
                         <div className="source-badge" data-source={ticket.source}>
                           {sourceBadge}
@@ -746,6 +990,9 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
                     </div>
                     <div className="ticket-middle">
                       {renderLineItems(order.lineItems)}
+                      {ticket.staffNotes && (
+                        <div className="staff-notes">📝 {ticket.staffNotes}</div>
+                      )}
                     </div>
                     <div className="ticket-right">
                       <div className={`age-timer age-timer-${ageColor}`}>{age}</div>
@@ -763,6 +1010,58 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
                 );
               })}
             </div>
+
+            {/* Note Editor Modal */}
+            {editingNote && (
+              <div className="modal-overlay" onClick={() => setEditingNote(null)}>
+                <div className="modal-content modal-small" onClick={(e) => e.stopPropagation()}>
+                  <div className="modal-header">
+                    <h2>Add Staff Note</h2>
+                    <button className="modal-close" onClick={() => setEditingNote(null)}>×</button>
+                  </div>
+                  <div className="modal-body">
+                    <textarea
+                      className="note-input"
+                      value={noteText}
+                      onChange={(e) => setNoteText(e.target.value)}
+                      placeholder="e.g., Customer waiting in red car, Extra napkins requested..."
+                      rows={3}
+                      autoFocus
+                    />
+                    <div className="modal-actions">
+                      <button className="btn-cancel" onClick={() => setEditingNote(null)}>Cancel</button>
+                      <button className="btn-save" onClick={() => handleSaveNote(editingNote)}>Save Note</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Label Editor Modal */}
+            {editingLabel && (
+              <div className="modal-overlay" onClick={() => setEditingLabel(null)}>
+                <div className="modal-content modal-small" onClick={(e) => e.stopPropagation()}>
+                  <div className="modal-header">
+                    <h2>Rename Ticket</h2>
+                    <button className="modal-close" onClick={() => setEditingLabel(null)}>×</button>
+                  </div>
+                  <div className="modal-body">
+                    <input
+                      type="text"
+                      className="label-input"
+                      value={labelText}
+                      onChange={(e) => setLabelText(e.target.value)}
+                      placeholder="e.g., Table 5, John's Order..."
+                      autoFocus
+                    />
+                    <div className="modal-actions">
+                      <button className="btn-cancel" onClick={() => setEditingLabel(null)}>Cancel</button>
+                      <button className="btn-save" onClick={() => handleSaveLabel(editingLabel)}>Save</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           )}
         </div>
 
@@ -1247,24 +1546,252 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
 
           .line-item {
             display: flex;
-            gap: 16px;
-            font-size: 25px;
-            color: #e8e8e8;
+            flex-direction: column;
+            gap: 4px;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+          }
+
+          .line-item:last-child {
+            border-bottom: none;
+          }
+
+          .item-header {
+            display: flex;
+            align-items: baseline;
+            gap: 12px;
           }
 
           .line-item .quantity {
-            font-weight: 600;
+            font-size: 28px;
+            font-weight: 700;
             color: #a78bfa;
-            min-width: 42px;
+            min-width: 36px;
+            text-align: center;
           }
 
           .line-item .name {
+            font-size: 22px;
             color: #e8e8e8;
+            font-weight: 500;
+          }
+
+          /* Modifier highlighting */
+          .modifiers-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-left: 48px;
+          }
+
+          .modifier {
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            background: rgba(255, 255, 255, 0.1);
+            color: #c8c8c8;
+          }
+
+          .modifier-allergy {
+            background: rgba(255, 59, 48, 0.25);
+            color: #ff6b6b;
+            border: 1px solid rgba(255, 59, 48, 0.4);
+            font-weight: 600;
+          }
+
+          .modifier-extra {
+            background: rgba(52, 199, 89, 0.2);
+            color: #6ee7b7;
+          }
+
+          .item-note {
+            margin-left: 48px;
+            font-size: 14px;
+            color: #ffd60a;
+            font-style: italic;
           }
 
           .line-items-empty {
             font-size: 14px;
             color: #888;
+          }
+
+          /* Staff notes on ticket */
+          .staff-notes {
+            margin-top: 12px;
+            padding: 8px 12px;
+            background: rgba(255, 214, 10, 0.15);
+            border: 1px solid rgba(255, 214, 10, 0.3);
+            border-radius: 8px;
+            font-size: 14px;
+            color: #ffd60a;
+          }
+
+          /* Held tickets section */
+          .held-section {
+            margin-bottom: 24px;
+            padding: 16px;
+            background: rgba(255, 159, 10, 0.1);
+            border: 1px solid rgba(255, 159, 10, 0.3);
+            border-radius: 16px;
+          }
+
+          .held-section-header {
+            font-size: 16px;
+            font-weight: 600;
+            color: #ff9f0a;
+            margin-bottom: 12px;
+          }
+
+          .ticket-held {
+            opacity: 0.8;
+            background: rgba(255, 159, 10, 0.1) !important;
+            border-color: rgba(255, 159, 10, 0.3) !important;
+          }
+
+          .held-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            background: rgba(255, 159, 10, 0.3);
+            color: #ff9f0a;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+          }
+
+          .unhold-button {
+            background: linear-gradient(135deg, #ff9f0a 0%, #ff6b00 100%) !important;
+          }
+
+          /* Ticket menu */
+          .ticket-menu-wrapper {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            z-index: 10;
+          }
+
+          .ticket-menu-button {
+            width: 32px;
+            height: 32px;
+            border: none;
+            background: rgba(255, 255, 255, 0.1);
+            color: #888;
+            font-size: 18px;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+          }
+
+          .ticket-menu-button:hover {
+            background: rgba(255, 255, 255, 0.2);
+            color: #e8e8e8;
+          }
+
+          .ticket-menu-dropdown {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            margin-top: 4px;
+            background: #1c1c1e;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            padding: 8px 0;
+            min-width: 160px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+          }
+
+          .ticket-menu-dropdown button {
+            width: 100%;
+            padding: 10px 16px;
+            border: none;
+            background: none;
+            color: #e8e8e8;
+            font-size: 14px;
+            text-align: left;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+          }
+
+          .ticket-menu-dropdown button:hover:not(:disabled) {
+            background: rgba(255, 255, 255, 0.1);
+          }
+
+          .ticket-menu-dropdown button:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+          }
+
+          .menu-divider {
+            height: 1px;
+            background: rgba(255, 255, 255, 0.1);
+            margin: 8px 0;
+          }
+
+          /* Note/Label editor modals */
+          .modal-small {
+            max-width: 400px;
+          }
+
+          .note-input, .label-input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            color: #e8e8e8;
+            font-size: 16px;
+            font-family: inherit;
+            resize: vertical;
+          }
+
+          .note-input:focus, .label-input:focus {
+            outline: none;
+            border-color: #667eea;
+          }
+
+          .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            margin-top: 16px;
+          }
+
+          .btn-cancel {
+            padding: 10px 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            background: none;
+            color: #888;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+          }
+
+          .btn-cancel:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #e8e8e8;
+          }
+
+          .btn-save {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+          }
+
+          .btn-save:hover {
+            opacity: 0.9;
           }
 
           .ticket-right {

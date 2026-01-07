@@ -262,6 +262,12 @@ export type KitchenTicket = {
   canceledAt?: string | null;
   lastUpdatedByVendorUserId?: string | null;
   updatedAt: string;
+  // Hold/notes/reorder features
+  heldAt?: string | null;
+  heldReason?: string | null;
+  staffNotes?: string | null;
+  customLabel?: string | null;
+  priorityOrder?: number;
 };
 
 export type KitchenTicketWithOrder = {

@@ -29,6 +29,12 @@ export type Ticket = {
     readyAt?: string | null;
     completedAt?: string | null;
     updatedAt: string;
+    // New fields for hold/notes/reorder
+    heldAt?: string | null;
+    heldReason?: string | null;
+    staffNotes?: string | null;
+    customLabel?: string | null;
+    priorityOrder?: number;
   };
   order: {
     squareOrderId: string;
