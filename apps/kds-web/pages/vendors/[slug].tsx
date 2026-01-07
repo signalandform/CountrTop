@@ -644,25 +644,39 @@ export default function VendorQueuePage({ vendorSlug, locationId: initialLocatio
             </div>
           ) : (
             <div className="tickets-list">
-              {tickets.map(({ ticket, order }) => {
+              {tickets.map(({ ticket, order, customer }) => {
                 const pickupLabel = getPickupLabel(ticket, order);
+                const customerName = customer?.displayName || null;
                 const sourceBadge = ticket.source === 'countrtop_online' ? 'Online' : 'POS';
                 const age = formatAge(ticket.placedAt, currentTime);
                 const ageColor = getAgeColor(ticket.placedAt);
                 const actionLabel = ticket.status === 'placed' || ticket.status === 'preparing' ? 'Mark Ready' : 'Complete';
                 const isUpdating = updatingTicketId === ticket.id;
+                const isOnlineOrder = ticket.source === 'countrtop_online';
+                const hasLoyalty = customer?.isLoyaltyMember;
 
                 return (
-                  <div key={ticket.id} className="ticket-card">
+                  <div key={ticket.id} className={`ticket-card ${isOnlineOrder ? 'ticket-online' : 'ticket-pos'}`}>
                     {ticket.shortcode && (
                       <div className="ticket-shortcode">
                         {ticket.shortcode}
                       </div>
                     )}
                     <div className="ticket-left">
-                      <div className="pickup-label">{pickupLabel}</div>
-                      <div className="source-badge" data-source={ticket.source}>
-                        {sourceBadge}
+                      {customerName ? (
+                        <div className="customer-name">{customerName}</div>
+                      ) : (
+                        <div className="pickup-label">{pickupLabel}</div>
+                      )}
+                      <div className="badge-row">
+                        <div className="source-badge" data-source={ticket.source}>
+                          {sourceBadge}
+                        </div>
+                        {hasLoyalty && (
+                          <div className="loyalty-badge" title={`${customer?.loyaltyPoints} loyalty points`}>
+                            ⭐ {customer?.loyaltyPoints}
+                          </div>
+                        )}
                       </div>
                     </div>
                     <div className="ticket-middle">
@@ -1088,6 +1102,40 @@ export default function VendorQueuePage({ vendorSlug, locationId: initialLocatio
             border: 1px solid rgba(255, 159, 10, 0.3);
           }
 
+          .customer-name {
+            font-size: 20px;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 4px;
+          }
+
+          .badge-row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+          }
+
+          .loyalty-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 10px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.2) 0%, rgba(255, 193, 7, 0.2) 100%);
+            color: #ffc107;
+            border: 1px solid rgba(255, 215, 0, 0.3);
+          }
+
+          .ticket-online {
+            border-left: 4px solid #34c759;
+          }
+
+          .ticket-pos {
+            border-left: 4px solid #ff9f0a;
+          }
 
           .ticket-middle {
             flex: 1;

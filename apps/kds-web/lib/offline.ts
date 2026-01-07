@@ -8,6 +8,12 @@
  * - Sync helpers
  */
 
+export type CustomerInfo = {
+  displayName?: string | null;
+  loyaltyPoints?: number | null;
+  isLoyaltyMember: boolean;
+};
+
 export type Ticket = {
   ticket: {
     id: string;
@@ -35,6 +41,7 @@ export type Ticket = {
     lineItems?: unknown[] | null;
     source: 'countrtop_online' | 'square_pos';
   };
+  customer?: CustomerInfo;
 };
 
 export type OfflineAction = {

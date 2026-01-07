@@ -4,6 +4,12 @@ import { createDataClient, type Database } from '@countrtop/data';
 import { requireKDSSession } from '../../../../lib/auth';
 import type { GetServerSidePropsContext } from 'next';
 
+type CustomerInfo = {
+  displayName?: string | null;
+  loyaltyPoints?: number | null;
+  isLoyaltyMember: boolean;
+};
+
 type TicketsResponse =
   | {
       ok: true;
@@ -34,6 +40,7 @@ type TicketsResponse =
           lineItems?: unknown[] | null;
           source: 'countrtop_online' | 'square_pos';
         };
+        customer?: CustomerInfo;
       }>;
     }
   | { ok: false; error: string; statusCode?: number };
@@ -95,39 +102,84 @@ export default async function handler(
     });
     const dataClient = createDataClient({ supabase: supabaseAdmin });
 
+    // Fetch vendor for loyalty lookups
+    const vendor = await dataClient.getVendorBySlug(slug);
+    if (!vendor) {
+      return res.status(404).json({
+        ok: false,
+        error: 'Vendor not found'
+      });
+    }
+
     // Fetch active tickets filtered by locationId
     const tickets = await dataClient.listActiveKitchenTickets(locationId);
+
+    // Enrich tickets with customer info for online orders
+    const enrichedTickets = await Promise.all(
+      tickets.map(async ({ ticket, order }) => {
+        let customer: CustomerInfo | undefined;
+
+        // Only enrich CountrTop online orders with customer data
+        if (ticket.source === 'countrtop_online' && ticket.customerUserId) {
+          try {
+            // Fetch loyalty balance for the customer
+            const loyaltyPoints = await dataClient.getLoyaltyBalance(vendor.id, ticket.customerUserId);
+            
+            // Try to get customer display name from order_snapshots via reference
+            let displayName: string | null = null;
+            if (order.referenceId) {
+              const snapshot = await dataClient.getOrderSnapshotBySquareOrderId(vendor.id, ticket.squareOrderId);
+              if (snapshot) {
+                displayName = snapshot.customerDisplayName ?? snapshot.pickupLabel ?? null;
+              }
+            }
+
+            customer = {
+              displayName,
+              loyaltyPoints: loyaltyPoints > 0 ? loyaltyPoints : null,
+              isLoyaltyMember: loyaltyPoints > 0
+            };
+          } catch (err) {
+            // Log but don't fail - customer info is not critical
+            console.warn(`Failed to fetch customer info for ticket ${ticket.id}:`, err);
+          }
+        }
+
+        return {
+          ticket: {
+            id: ticket.id,
+            squareOrderId: ticket.squareOrderId,
+            locationId: ticket.locationId,
+            ctReferenceId: ticket.ctReferenceId ?? null,
+            customerUserId: ticket.customerUserId ?? null,
+            source: ticket.source,
+            status: ticket.status as 'placed' | 'preparing' | 'ready',
+            shortcode: ticket.shortcode ?? null,
+            placedAt: ticket.placedAt,
+            readyAt: ticket.readyAt ?? null,
+            completedAt: ticket.completedAt ?? null,
+            updatedAt: ticket.updatedAt
+          },
+          order: {
+            squareOrderId: order.squareOrderId,
+            locationId: order.locationId,
+            state: order.state,
+            createdAt: order.createdAt,
+            updatedAt: order.updatedAt,
+            referenceId: order.referenceId ?? null,
+            metadata: order.metadata ?? null,
+            lineItems: order.lineItems ?? null,
+            source: order.source
+          },
+          customer
+        };
+      })
+    );
 
     return res.status(200).json({
       ok: true,
       locationId,
-      tickets: tickets.map(({ ticket, order }) => ({
-        ticket: {
-          id: ticket.id,
-          squareOrderId: ticket.squareOrderId,
-          locationId: ticket.locationId,
-          ctReferenceId: ticket.ctReferenceId ?? null,
-          customerUserId: ticket.customerUserId ?? null,
-          source: ticket.source,
-          status: ticket.status as 'placed' | 'preparing' | 'ready',
-          shortcode: ticket.shortcode ?? null,
-          placedAt: ticket.placedAt,
-          readyAt: ticket.readyAt ?? null,
-          completedAt: ticket.completedAt ?? null,
-          updatedAt: ticket.updatedAt
-        },
-        order: {
-          squareOrderId: order.squareOrderId,
-          locationId: order.locationId,
-          state: order.state,
-          createdAt: order.createdAt,
-          updatedAt: order.updatedAt,
-          referenceId: order.referenceId ?? null,
-          metadata: order.metadata ?? null,
-          lineItems: order.lineItems ?? null,
-          source: order.source
-        }
-      }))
+      tickets: enrichedTickets
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Internal server error';
