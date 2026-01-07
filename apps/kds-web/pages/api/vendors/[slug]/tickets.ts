@@ -114,67 +114,96 @@ export default async function handler(
     // Fetch active tickets filtered by locationId
     const tickets = await dataClient.listActiveKitchenTickets(locationId);
 
-    // Enrich tickets with customer info for online orders
-    const enrichedTickets = await Promise.all(
-      tickets.map(async ({ ticket, order }) => {
-        let customer: CustomerInfo | undefined;
+    // Batch fetch customer data to avoid N+1 queries
+    // 1. Collect unique customer user IDs and square order IDs for online orders
+    const onlineTickets = tickets.filter(
+      t => t.ticket.source === 'countrtop_online' && t.ticket.customerUserId
+    );
+    const customerUserIds = [...new Set(onlineTickets.map(t => t.ticket.customerUserId!))];
+    const squareOrderIds = onlineTickets.map(t => t.ticket.squareOrderId);
 
-        // Only enrich CountrTop online orders with customer data
-        if (ticket.source === 'countrtop_online' && ticket.customerUserId) {
-          try {
-            // Fetch loyalty balance for the customer
-            const loyaltyPoints = await dataClient.getLoyaltyBalance(vendor.id, ticket.customerUserId);
-            
-            // Try to get customer display name from order_snapshots via reference
-            let displayName: string | null = null;
-            if (order.referenceId) {
-              const snapshot = await dataClient.getOrderSnapshotBySquareOrderId(vendor.id, ticket.squareOrderId);
-              if (snapshot) {
-                displayName = snapshot.customerDisplayName ?? snapshot.pickupLabel ?? null;
-              }
-            }
+    // 2. Batch fetch loyalty balances (parallel)
+    const loyaltyMap = new Map<string, number>();
+    if (customerUserIds.length > 0) {
+      const loyaltyPromises = customerUserIds.map(async userId => {
+        try {
+          const balance = await dataClient.getLoyaltyBalance(vendor.id, userId);
+          loyaltyMap.set(userId, balance);
+        } catch {
+          loyaltyMap.set(userId, 0);
+        }
+      });
+      await Promise.all(loyaltyPromises);
+    }
 
-            customer = {
-              displayName,
-              loyaltyPoints: loyaltyPoints > 0 ? loyaltyPoints : null,
-              isLoyaltyMember: loyaltyPoints > 0
-            };
-          } catch (err) {
-            // Log but don't fail - customer info is not critical
-            console.warn(`Failed to fetch customer info for ticket ${ticket.id}:`, err);
+    // 3. Batch fetch order snapshots (single query)
+    const snapshotMap = new Map<string, { displayName: string | null; pickupLabel: string | null }>();
+    if (squareOrderIds.length > 0) {
+      try {
+        const { data: snapshots } = await supabaseAdmin
+          .from('order_snapshots')
+          .select('square_order_id, customer_display_name, pickup_label')
+          .eq('vendor_id', vendor.id)
+          .in('square_order_id', squareOrderIds);
+        
+        if (snapshots) {
+          for (const s of snapshots) {
+            snapshotMap.set(s.square_order_id, {
+              displayName: s.customer_display_name,
+              pickupLabel: s.pickup_label
+            });
           }
         }
+      } catch (err) {
+        console.warn('Failed to batch fetch order snapshots:', err);
+      }
+    }
 
-        return {
-          ticket: {
-            id: ticket.id,
-            squareOrderId: ticket.squareOrderId,
-            locationId: ticket.locationId,
-            ctReferenceId: ticket.ctReferenceId ?? null,
-            customerUserId: ticket.customerUserId ?? null,
-            source: ticket.source,
-            status: ticket.status as 'placed' | 'preparing' | 'ready',
-            shortcode: ticket.shortcode ?? null,
-            placedAt: ticket.placedAt,
-            readyAt: ticket.readyAt ?? null,
-            completedAt: ticket.completedAt ?? null,
-            updatedAt: ticket.updatedAt
-          },
-          order: {
-            squareOrderId: order.squareOrderId,
-            locationId: order.locationId,
-            state: order.state,
-            createdAt: order.createdAt,
-            updatedAt: order.updatedAt,
-            referenceId: order.referenceId ?? null,
-            metadata: order.metadata ?? null,
-            lineItems: order.lineItems ?? null,
-            source: order.source
-          },
-          customer
+    // 4. Build enriched tickets with cached customer data
+    const enrichedTickets = tickets.map(({ ticket, order }) => {
+      let customer: CustomerInfo | undefined;
+
+      if (ticket.source === 'countrtop_online' && ticket.customerUserId) {
+        const loyaltyPoints = loyaltyMap.get(ticket.customerUserId) ?? 0;
+        const snapshotData = snapshotMap.get(ticket.squareOrderId);
+        const displayName = snapshotData?.displayName ?? snapshotData?.pickupLabel ?? null;
+
+        customer = {
+          displayName,
+          loyaltyPoints: loyaltyPoints > 0 ? loyaltyPoints : null,
+          isLoyaltyMember: loyaltyPoints > 0
         };
-      })
-    );
+      }
+
+      return {
+        ticket: {
+          id: ticket.id,
+          squareOrderId: ticket.squareOrderId,
+          locationId: ticket.locationId,
+          ctReferenceId: ticket.ctReferenceId ?? null,
+          customerUserId: ticket.customerUserId ?? null,
+          source: ticket.source,
+          status: ticket.status as 'placed' | 'preparing' | 'ready',
+          shortcode: ticket.shortcode ?? null,
+          placedAt: ticket.placedAt,
+          readyAt: ticket.readyAt ?? null,
+          completedAt: ticket.completedAt ?? null,
+          updatedAt: ticket.updatedAt
+        },
+        order: {
+          squareOrderId: order.squareOrderId,
+          locationId: order.locationId,
+          state: order.state,
+          createdAt: order.createdAt,
+          updatedAt: order.updatedAt,
+          referenceId: order.referenceId ?? null,
+          metadata: order.metadata ?? null,
+          lineItems: order.lineItems ?? null,
+          source: order.source
+        },
+        customer
+      };
+    });
 
     return res.status(200).json({
       ok: true,

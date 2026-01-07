@@ -58,13 +58,20 @@ export default async function handler(
     // 1. A ct_reference_id (starts with ct_)
     // 2. A square_order_id
     
-    // First, try to find the kitchen ticket by ct_reference_id or square_order_id
-    const { data: ticketData, error: ticketError } = await supabaseAdmin
+    // Build query based on orderId format
+    let ticketQuery = supabaseAdmin
       .from('kitchen_tickets')
       .select('id, status, shortcode, placed_at, ready_at, completed_at, ct_reference_id, square_order_id, location_id')
-      .eq('location_id', vendor.squareLocationId)
-      .or(`ct_reference_id.eq.${orderId},square_order_id.eq.${orderId}`)
-      .maybeSingle();
+      .eq('location_id', vendor.squareLocationId);
+    
+    // Use appropriate filter based on ID format
+    if (orderId.startsWith('ct_')) {
+      ticketQuery = ticketQuery.eq('ct_reference_id', orderId);
+    } else {
+      ticketQuery = ticketQuery.eq('square_order_id', orderId);
+    }
+    
+    const { data: ticketData, error: ticketError } = await ticketQuery.maybeSingle();
 
     if (ticketError) {
       console.error('Error fetching ticket:', ticketError);
@@ -106,6 +113,11 @@ export default async function handler(
         estimatedWaitMinutes = Math.ceil(remainingMs / 60000);
       }
     }
+
+    // Add cache headers to reduce server load from polling
+    // Short cache for active orders, longer for completed
+    const cacheSeconds = ticketData.status === 'completed' ? 300 : 5;
+    res.setHeader('Cache-Control', `private, max-age=${cacheSeconds}`);
 
     return res.status(200).json({
       ok: true,

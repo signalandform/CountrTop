@@ -1,7 +1,7 @@
 import type { GetServerSideProps } from 'next';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
-import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 
 import { resolveVendorSlugFromHost } from '@countrtop/data';
 
@@ -89,6 +89,14 @@ export default function ConfirmPage({ vendorName }: ConfirmProps) {
     }
   }, [orderId, status]);
 
+  // Track if polling should continue (use ref to avoid effect dependency issues)
+  const shouldPollRef = useRef(true);
+  
+  // Update ref when status changes
+  useEffect(() => {
+    shouldPollRef.current = !(orderStatus?.status === 'ready' || orderStatus?.status === 'completed');
+  }, [orderStatus?.status]);
+
   // Poll for order status updates
   useEffect(() => {
     if (!orderId || status !== 'ready') return;
@@ -98,15 +106,14 @@ export default function ConfirmPage({ vendorName }: ConfirmProps) {
 
     // Poll every 10 seconds until order is ready or completed
     const interval = setInterval(() => {
-      if (orderStatus?.status === 'ready' || orderStatus?.status === 'completed') {
-        clearInterval(interval);
-        return;
+      if (!shouldPollRef.current) {
+        return; // Don't clear interval, just skip - cleanup handles it
       }
       fetchOrderStatus();
     }, 10000);
 
     return () => clearInterval(interval);
-  }, [orderId, status, fetchOrderStatus, orderStatus?.status]);
+  }, [orderId, status, fetchOrderStatus]);
 
   useEffect(() => {
     if (!orderId) return;
