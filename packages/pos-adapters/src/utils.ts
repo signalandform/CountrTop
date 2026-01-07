@@ -5,7 +5,7 @@
  */
 
 import type { VendorLocation, Vendor, POSProvider } from '@countrtop/models';
-import { createAdapter, type POSAdapter, type POSAdapterConfig, type SquareCredentials } from './adapter';
+import { createAdapter, type POSAdapter, type POSAdapterConfig, type SquareCredentials, type CloverCredentials } from './adapter';
 
 // =============================================================================
 // Environment Configuration
@@ -69,12 +69,34 @@ function resolveToastCredentials(_location: VendorLocation): null {
 }
 
 /**
- * Resolves Clover credentials for a vendor location (placeholder)
+ * Resolves Clover credentials for a vendor location
  */
-function resolveCloverCredentials(_location: VendorLocation): null {
-  // TODO: Implement Clover credential resolution
-  // Would need: CLOVER_ACCESS_TOKEN, merchant ID from location
-  return null;
+function resolveCloverCredentials(location: VendorLocation): CloverCredentials | null {
+  // Try location-specific token first
+  const locationKey = location.externalLocationId?.replace(/[^A-Z0-9_]/gi, '_').toUpperCase();
+  let accessToken = locationKey ? process.env[`CLOVER_ACCESS_TOKEN_${locationKey}`] : null;
+  
+  // Fall back to default Clover token
+  if (!accessToken) {
+    accessToken = process.env.CLOVER_ACCESS_TOKEN ?? null;
+  }
+
+  if (!accessToken) {
+    return null;
+  }
+
+  // merchantId is the Clover location ID (stored in externalLocationId)
+  const merchantId = location.externalLocationId;
+  if (!merchantId) {
+    return null;
+  }
+
+  return {
+    provider: 'clover',
+    accessToken,
+    merchantId,
+    webhookSigningKey: process.env.CLOVER_WEBHOOK_SIGNING_KEY,
+  };
 }
 
 // =============================================================================

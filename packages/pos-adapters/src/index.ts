@@ -41,6 +41,9 @@ export {
 // Export Square adapter
 export { SquareAdapter, createSquareAdapter } from './square';
 
+// Export Clover adapter
+export { CloverAdapter, createCloverAdapter } from './clover';
+
 // Export utility functions
 export {
   getAdapterForVendor,
@@ -56,11 +59,14 @@ export {
 
 import { registerAdapter } from './adapter';
 import { createSquareAdapter } from './square';
+import { createCloverAdapter } from './clover';
 
 // Register Square adapter on module load
 registerAdapter('square', createSquareAdapter);
 
-// Toast and Clover adapters will be added later:
+// Register Clover adapter on module load
+registerAdapter('clover', createCloverAdapter);
+
+// Toast adapter will be added later:
 // registerAdapter('toast', createToastAdapter);
-// registerAdapter('clover', createCloverAdapter);
 

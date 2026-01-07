@@ -404,20 +404,114 @@ async function handleToastWebhook(
 }
 
 // =============================================================================
-// Clover Webhook Handler (Placeholder)
+// Clover Webhook Handler
 // =============================================================================
 
+type CloverWebhookPayload = {
+  appId: string;
+  merchants: {
+    [merchantId: string]: Array<{
+      type: string;
+      objectId: string;
+      ts: number;
+    }>;
+  };
+};
+
 async function handleCloverWebhook(
-  _req: NextApiRequest,
-  _rawBody: string
+  req: NextApiRequest,
+  rawBody: string
 ): Promise<{ response: WebhookResponse; statusCode: number }> {
-  // Suppress unused parameter warnings - these will be used when Clover is implemented
-  void _req;
-  void _rawBody;
-  // TODO: Implement Clover webhook handling
+  // Verify signature if configured
+  const signingKey = process.env.CLOVER_WEBHOOK_SIGNING_KEY;
+  const signature = req.headers['x-clover-signature'] as string | undefined;
+  
+  let signatureValid = true;
+  if (signingKey && signature) {
+    const expectedSignature = crypto.createHmac('sha256', signingKey).update(rawBody).digest('hex');
+    signatureValid = signature === expectedSignature;
+    if (!signatureValid) {
+      logger.warn('Clover signature validation failed');
+    }
+  } else if (process.env.NODE_ENV === 'production' && !signingKey) {
+    logger.warn('Clover webhook signature key not configured');
+  }
+
+  let payload: CloverWebhookPayload;
+  try {
+    payload = JSON.parse(rawBody);
+  } catch {
+    return {
+      response: { ok: false, status: 'invalid', reason: 'Invalid JSON payload', provider: 'clover' },
+      statusCode: 400
+    };
+  }
+
+  // Clover sends events grouped by merchant
+  const merchantIds = Object.keys(payload.merchants || {});
+  if (merchantIds.length === 0) {
+    return {
+      response: { ok: true, status: 'ignored', reason: 'No merchant events', provider: 'clover', signatureValid },
+      statusCode: 200
+    };
+  }
+
+  const dataClient = getServerDataClient();
+
+  // Process events for each merchant
+  for (const merchantId of merchantIds) {
+    const events = payload.merchants[merchantId] || [];
+    
+    // Find vendor by Clover merchantId (stored in externalLocationId via vendor_locations)
+    const location = await dataClient.getVendorLocationBySquareId(merchantId);
+    if (!location) {
+      logger.info(`Unknown Clover merchant: ${merchantId}`);
+      continue;
+    }
+
+    const vendor = await dataClient.getVendorById(location.vendorId);
+    if (!vendor) {
+      continue;
+    }
+
+    for (const event of events) {
+      // Handle order events
+      if (event.type.startsWith('O:')) {
+        const orderId = event.objectId;
+        
+        try {
+          // For order updates, we need to fetch the full order from Clover
+          // This would require the CloverAdapter - for now we just log
+          logger.info(`Clover order event: ${event.type} for order ${orderId}`, {
+            merchantId,
+            vendorId: vendor.id
+          });
+
+          // TODO: Fetch order from Clover and process like Square
+          // const adapter = getAdapterForLocation(location, vendor);
+          // const order = await adapter.fetchOrder(orderId);
+          // await dataClient.upsertCloverOrder(order);
+          // await dataClient.ensureKitchenTicketForOpenOrder(order);
+        } catch (error) {
+          logger.error(`Failed to process Clover order ${orderId}`, error instanceof Error ? error : new Error(String(error)));
+        }
+      }
+
+      // Handle payment events
+      if (event.type.startsWith('P:')) {
+        const paymentId = event.objectId;
+        logger.info(`Clover payment event: ${event.type} for payment ${paymentId}`, {
+          merchantId,
+          vendorId: vendor.id
+        });
+        // Payment handling would be similar to Square
+      }
+    }
+  }
+
   return {
-    response: { ok: false, status: 'unsupported', reason: 'Clover webhooks not yet implemented', provider: 'clover' },
-    statusCode: 501
+    response: { ok: true, status: 'processed', provider: 'clover', signatureValid },
+    statusCode: 200
   };
 }
 
