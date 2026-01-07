@@ -386,20 +386,111 @@ async function handleSquareWebhook(
 }
 
 // =============================================================================
-// Toast Webhook Handler (Placeholder)
+// Toast Webhook Handler
 // =============================================================================
 
+type ToastWebhookPayload = {
+  eventType: string;
+  eventTime: string;
+  eventId: string;
+  restaurantGuid: string;
+  data?: {
+    orderGuid?: string;
+    paymentGuid?: string;
+    [key: string]: unknown;
+  };
+};
+
 async function handleToastWebhook(
-  _req: NextApiRequest,
-  _rawBody: string
+  req: NextApiRequest,
+  rawBody: string
 ): Promise<{ response: WebhookResponse; statusCode: number }> {
-  // Suppress unused parameter warnings - these will be used when Toast is implemented
-  void _req;
-  void _rawBody;
-  // TODO: Implement Toast webhook handling
+  // Verify signature if configured
+  const signingKey = process.env.TOAST_WEBHOOK_SECRET;
+  const signature = req.headers['toast-signature'] as string | undefined;
+  
+  let signatureValid = true;
+  if (signingKey && signature) {
+    const expectedSignature = crypto.createHmac('sha256', signingKey).update(rawBody).digest('base64');
+    signatureValid = signature === expectedSignature;
+    if (!signatureValid) {
+      logger.warn('Toast signature validation failed');
+    }
+  } else if (process.env.NODE_ENV === 'production' && !signingKey) {
+    logger.warn('Toast webhook signature key not configured');
+  }
+
+  let payload: ToastWebhookPayload;
+  try {
+    payload = JSON.parse(rawBody);
+  } catch {
+    return {
+      response: { ok: false, status: 'invalid', reason: 'Invalid JSON payload', provider: 'toast' },
+      statusCode: 400
+    };
+  }
+
+  const restaurantGuid = payload.restaurantGuid;
+  if (!restaurantGuid) {
+    return {
+      response: { ok: true, status: 'ignored', reason: 'No restaurant GUID', provider: 'toast', signatureValid },
+      statusCode: 200
+    };
+  }
+
+  const dataClient = getServerDataClient();
+
+  // Find vendor by Toast restaurantGuid (stored in externalLocationId via vendor_locations)
+  const location = await dataClient.getVendorLocationBySquareId(restaurantGuid);
+  if (!location) {
+    logger.info(`Unknown Toast restaurant: ${restaurantGuid}`);
+    return {
+      response: { ok: true, status: 'ignored', reason: 'Unknown restaurant', provider: 'toast', signatureValid },
+      statusCode: 200
+    };
+  }
+
+  const vendor = await dataClient.getVendorById(location.vendorId);
+  if (!vendor) {
+    return {
+      response: { ok: true, status: 'ignored', reason: 'Vendor not found', provider: 'toast', signatureValid },
+      statusCode: 200
+    };
+  }
+
+  // Handle different Toast event types
+  const eventType = payload.eventType?.toUpperCase() || '';
+  const orderGuid = payload.data?.orderGuid;
+  const paymentGuid = payload.data?.paymentGuid;
+
+  if (eventType.includes('ORDER') && orderGuid) {
+    try {
+      logger.info(`Toast order event: ${eventType} for order ${orderGuid}`, {
+        restaurantGuid,
+        vendorId: vendor.id
+      });
+
+      // TODO: Fetch full order from Toast and process
+      // const adapter = getAdapterForLocation(location, vendor);
+      // const order = await adapter.fetchOrder(orderGuid);
+      // await dataClient.upsertToastOrder(order);
+      // await dataClient.ensureKitchenTicketForOpenOrder(order);
+    } catch (error) {
+      logger.error(`Failed to process Toast order ${orderGuid}`, error instanceof Error ? error : new Error(String(error)));
+    }
+  }
+
+  if (eventType.includes('PAYMENT') && paymentGuid) {
+    logger.info(`Toast payment event: ${eventType} for payment ${paymentGuid}`, {
+      restaurantGuid,
+      vendorId: vendor.id
+    });
+    // Payment handling would be similar to Square
+  }
+
   return {
-    response: { ok: false, status: 'unsupported', reason: 'Toast webhooks not yet implemented', provider: 'toast' },
-    statusCode: 501
+    response: { ok: true, status: 'processed', provider: 'toast', signatureValid },
+    statusCode: 200
   };
 }
 

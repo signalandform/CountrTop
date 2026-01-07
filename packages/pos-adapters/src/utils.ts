@@ -5,7 +5,7 @@
  */
 
 import type { VendorLocation, Vendor, POSProvider } from '@countrtop/models';
-import { createAdapter, type POSAdapter, type POSAdapterConfig, type SquareCredentials, type CloverCredentials } from './adapter';
+import { createAdapter, type POSAdapter, type POSAdapterConfig, type SquareCredentials, type CloverCredentials, type ToastCredentials } from './adapter';
 
 // =============================================================================
 // Environment Configuration
@@ -60,12 +60,39 @@ function resolveSquareCredentials(vendor: Vendor): SquareCredentials | null {
 }
 
 /**
- * Resolves Toast credentials for a vendor location (placeholder)
+ * Resolves Toast credentials for a vendor location
  */
-function resolveToastCredentials(_location: VendorLocation): null {
-  // TODO: Implement Toast credential resolution
-  // Would need: TOAST_CLIENT_ID, TOAST_CLIENT_SECRET, restaurant GUID from location
-  return null;
+function resolveToastCredentials(location: VendorLocation): ToastCredentials | null {
+  // Try location-specific credentials first
+  const locationKey = location.externalLocationId?.replace(/[^A-Z0-9_]/gi, '_').toUpperCase();
+  let clientId = locationKey ? process.env[`TOAST_CLIENT_ID_${locationKey}`] : null;
+  let clientSecret = locationKey ? process.env[`TOAST_CLIENT_SECRET_${locationKey}`] : null;
+  
+  // Fall back to default Toast credentials
+  if (!clientId) {
+    clientId = process.env.TOAST_CLIENT_ID ?? null;
+  }
+  if (!clientSecret) {
+    clientSecret = process.env.TOAST_CLIENT_SECRET ?? null;
+  }
+
+  if (!clientId || !clientSecret) {
+    return null;
+  }
+
+  // restaurantGuid is the Toast location ID (stored in externalLocationId)
+  const restaurantGuid = location.externalLocationId;
+  if (!restaurantGuid) {
+    return null;
+  }
+
+  return {
+    provider: 'toast',
+    clientId,
+    clientSecret,
+    restaurantGuid,
+    webhookSecret: process.env.TOAST_WEBHOOK_SECRET,
+  };
 }
 
 /**
