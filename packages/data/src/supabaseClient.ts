@@ -1184,7 +1184,7 @@ export class SupabaseDataClient implements DataClient {
       // Validate status transition
       const currentStatus = currentTicket.status;
       const validTransitions: Record<string, string[]> = {
-        placed: ['ready'],
+        placed: ['preparing', 'ready'],
         preparing: ['ready'],
         ready: ['completed']
       };

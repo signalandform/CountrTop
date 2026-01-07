@@ -47,7 +47,7 @@ export type Ticket = {
 export type OfflineAction = {
   id: string;
   ticketId: string;
-  newStatus: 'ready' | 'completed';
+  newStatus: 'preparing' | 'ready' | 'completed';
   createdAt: string;
   attempts: number;
 };
@@ -119,7 +119,7 @@ export function clearTicketsCache(vendorSlug: string): void {
 export function queueOfflineAction(
   vendorSlug: string,
   ticketId: string,
-  newStatus: 'ready' | 'completed'
+  newStatus: 'preparing' | 'ready' | 'completed'
 ): void {
   try {
     const queue = getOfflineQueue(vendorSlug);
@@ -248,12 +248,12 @@ export async function syncOfflineQueue(
 
 /**
  * Apply optimistic update to cached tickets
- * (Remove ticket when completed, update status when ready)
+ * (Remove ticket when completed, update status for preparing/ready)
  */
 export function applyOptimisticUpdateToCache(
   vendorSlug: string,
   ticketId: string,
-  newStatus: 'ready' | 'completed'
+  newStatus: 'preparing' | 'ready' | 'completed'
 ): void {
   const cached = loadTicketsFromCache(vendorSlug);
   if (!cached) return;
@@ -261,6 +261,21 @@ export function applyOptimisticUpdateToCache(
   if (newStatus === 'completed') {
     // Remove completed tickets from cache
     const updated = cached.filter(t => t.ticket.id !== ticketId);
+    saveTicketsToCache(vendorSlug, updated);
+  } else if (newStatus === 'preparing') {
+    // Update status to preparing
+    const updated = cached.map(t => {
+      if (t.ticket.id === ticketId) {
+        return {
+          ...t,
+          ticket: {
+            ...t.ticket,
+            status: 'preparing' as const
+          }
+        };
+      }
+      return t;
+    });
     saveTicketsToCache(vendorSlug, updated);
   } else if (newStatus === 'ready') {
     // Update status to ready

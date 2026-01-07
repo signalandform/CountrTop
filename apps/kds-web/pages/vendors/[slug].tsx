@@ -443,7 +443,16 @@ export default function VendorQueuePage({ vendorSlug, locationId: initialLocatio
   };
 
   const handleBumpStatus = async (ticketId: string, currentStatus: string) => {
-    const newStatus = currentStatus === 'placed' || currentStatus === 'preparing' ? 'ready' : 'completed';
+    // Three-stage tap-to-start flow:
+    // placed → preparing → ready → completed
+    let newStatus: 'preparing' | 'ready' | 'completed';
+    if (currentStatus === 'placed') {
+      newStatus = 'preparing';
+    } else if (currentStatus === 'preparing') {
+      newStatus = 'ready';
+    } else {
+      newStatus = 'completed';
+    }
     
     setUpdatingTicketId(ticketId);
 
@@ -458,8 +467,8 @@ export default function VendorQueuePage({ vendorSlug, locationId: initialLocatio
             ...t,
             ticket: {
               ...t.ticket,
-              status: 'ready' as const,
-              readyAt: new Date().toISOString()
+              status: newStatus as 'preparing' | 'ready',
+              ...(newStatus === 'ready' ? { readyAt: new Date().toISOString() } : {})
             }
           };
         }
@@ -650,13 +659,28 @@ export default function VendorQueuePage({ vendorSlug, locationId: initialLocatio
                 const sourceBadge = ticket.source === 'countrtop_online' ? 'Online' : 'POS';
                 const age = formatAge(ticket.placedAt, currentTime);
                 const ageColor = getAgeColor(ticket.placedAt);
-                const actionLabel = ticket.status === 'placed' || ticket.status === 'preparing' ? 'Mark Ready' : 'Complete';
+                
+                // Three-stage tap-to-start flow labels
+                let actionLabel: string;
+                let buttonClass: string;
+                if (ticket.status === 'placed') {
+                  actionLabel = 'Start';
+                  buttonClass = 'start-button';
+                } else if (ticket.status === 'preparing') {
+                  actionLabel = 'Ready';
+                  buttonClass = 'ready-button';
+                } else {
+                  actionLabel = 'Complete';
+                  buttonClass = 'complete-button';
+                }
+                
                 const isUpdating = updatingTicketId === ticket.id;
                 const isOnlineOrder = ticket.source === 'countrtop_online';
                 const hasLoyalty = customer?.isLoyaltyMember;
+                const isPreparing = ticket.status === 'preparing';
 
                 return (
-                  <div key={ticket.id} className={`ticket-card ${isOnlineOrder ? 'ticket-online' : 'ticket-pos'}`}>
+                  <div key={ticket.id} className={`ticket-card ${isOnlineOrder ? 'ticket-online' : 'ticket-pos'} ${isPreparing ? 'ticket-preparing' : ''}`}>
                     {ticket.shortcode && (
                       <div className="ticket-shortcode">
                         {ticket.shortcode}
@@ -672,6 +696,11 @@ export default function VendorQueuePage({ vendorSlug, locationId: initialLocatio
                         <div className="source-badge" data-source={ticket.source}>
                           {sourceBadge}
                         </div>
+                        {isPreparing && (
+                          <div className="status-badge preparing">
+                            🔥 Cooking
+                          </div>
+                        )}
                         {hasLoyalty && (
                           <div className="loyalty-badge" title={`${customer?.loyaltyPoints} loyalty points`}>
                             ⭐ {customer?.loyaltyPoints}
@@ -686,7 +715,7 @@ export default function VendorQueuePage({ vendorSlug, locationId: initialLocatio
                       <div className={`age-timer age-timer-${ageColor}`}>{age}</div>
                       <div className="ticket-actions">
                         <button
-                          className={`action-button ${ticket.status === 'ready' ? 'complete-button' : 'ready-button'}`}
+                          className={`action-button ${buttonClass}`}
                           onClick={() => handleBumpStatus(ticket.id, ticket.status)}
                           disabled={isUpdating}
                         >
@@ -1137,6 +1166,37 @@ export default function VendorQueuePage({ vendorSlug, locationId: initialLocatio
             border-left: 4px solid #ff9f0a;
           }
 
+          .ticket-preparing {
+            background: rgba(255, 159, 10, 0.08);
+            border-color: rgba(255, 159, 10, 0.2);
+          }
+
+          .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 10px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+          }
+
+          .status-badge.preparing {
+            background: linear-gradient(135deg, rgba(255, 159, 10, 0.2) 0%, rgba(255, 69, 58, 0.2) 100%);
+            color: #ff9f0a;
+            border: 1px solid rgba(255, 159, 10, 0.3);
+            animation: cooking-pulse 1.5s ease-in-out infinite;
+          }
+
+          @keyframes cooking-pulse {
+            0%, 100% {
+              opacity: 1;
+            }
+            50% {
+              opacity: 0.7;
+            }
+          }
+
           .ticket-middle {
             flex: 1;
             min-width: 0;
@@ -1519,6 +1579,16 @@ export default function VendorQueuePage({ vendorSlug, locationId: initialLocatio
             transition: all 0.2s;
             font-family: inherit;
             white-space: nowrap;
+          }
+
+          .start-button {
+            background: linear-gradient(135deg, #ff9f0a 0%, #ff6b35 100%);
+            color: white;
+          }
+
+          .start-button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(255, 159, 10, 0.4);
           }
 
           .ready-button {

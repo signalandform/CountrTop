@@ -43,10 +43,10 @@ export default async function handler(
   }
 
   const { status } = req.body;
-  if (status !== 'ready' && status !== 'completed') {
+  if (status !== 'preparing' && status !== 'ready' && status !== 'completed') {
     return res.status(400).json({
       ok: false,
-      error: 'Invalid status. Must be "ready" or "completed"'
+      error: 'Invalid status. Must be "preparing", "ready", or "completed"'
     });
   }
 
