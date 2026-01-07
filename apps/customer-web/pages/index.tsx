@@ -478,6 +478,17 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor }: Props) 
     '--theme-font': `'${fontFamily}', -apple-system, BlinkMacSystemFont, sans-serif`,
   };
 
+  // Ensure theme CSS variables are applied to document root (persists through re-renders)
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      const root = document.documentElement;
+      root.style.setProperty('--theme-primary', primaryColor);
+      root.style.setProperty('--theme-accent', accentColor);
+      root.style.setProperty('--theme-gradient', `linear-gradient(135deg, ${primaryColor} 0%, ${accentColor} 100%)`);
+      root.style.setProperty('--theme-font', `'${fontFamily}', -apple-system, BlinkMacSystemFont, sans-serif`);
+    }
+  }, [primaryColor, accentColor, fontFamily]);
+
   // ---------------------------------------------------------------------------
   // Render
   // ---------------------------------------------------------------------------
