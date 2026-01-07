@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import Head from 'next/head';
+import Link from 'next/link';
 import { Vendor } from '@countrtop/models';
 
 type Props = {
@@ -31,7 +32,6 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
 
   // Google Font URL for preview (memoized to avoid re-renders)
   const googleFontUrl = useMemo(() => {
-    // System fonts don't need loading
     if (!fontFamily || fontFamily === 'SF Pro Display' || fontFamily === 'system-ui') {
       return null;
     }
@@ -91,9 +91,7 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
     try {
       const response = await fetch(`/api/vendors/${vendorSlug}/feature-flags`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ featureKey, enabled })
       });
@@ -130,22 +128,16 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
     try {
       const response = await fetch(`/api/vendors/${vendorSlug}/location-pins`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ locationId, pin })
       });
 
       const data = await response.json();
       if (data.success) {
-        // Update location PIN status
         setLocations(prev =>
-          prev.map(loc =>
-            loc.locationId === locationId ? { ...loc, hasPin: true } : loc
-          )
+          prev.map(loc => loc.locationId === locationId ? { ...loc, hasPin: true } : loc)
         );
-        // Clear input
         setPinInputs(prev => {
           const next = { ...prev };
           delete next[locationId];
@@ -171,9 +163,7 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
     try {
       const response = await fetch(`/api/vendors/${vendorSlug}/settings`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({
           addressLine1: addressLine1 || null,
@@ -185,7 +175,6 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
           pickupInstructions: pickupInstructions || null,
           kdsActiveLimitTotal: kdsActiveLimitTotal ? parseInt(kdsActiveLimitTotal, 10) : null,
           kdsActiveLimitCt: kdsActiveLimitCt ? parseInt(kdsActiveLimitCt, 10) : null,
-          // Theming fields
           logoUrl: logoUrl || null,
           primaryColor: primaryColor || null,
           accentColor: accentColor || null,
@@ -210,421 +199,514 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
   };
 
   return (
-    <section className="section">
-      {/* Load Google Font for preview */}
+    <main className="page">
       {googleFontUrl && (
         <Head>
           <link href={googleFontUrl} rel="stylesheet" />
         </Head>
       )}
-      
-      <div className="section-header">
-        <h2>Vendor Settings</h2>
-        <span className="muted">Address & pickup information</span>
-      </div>
 
-      <form onSubmit={handleSave} className="settings-form">
-        <div className="form-group">
-          <label htmlFor="addressLine1">Address Line 1</label>
-          <input
-            id="addressLine1"
-            type="text"
-            value={addressLine1}
-            onChange={(e) => setAddressLine1(e.target.value)}
-            className="input-field"
-            disabled={saving}
-          />
-        </div>
+      <header className="page-header">
+        <Link href={`/vendors/${vendorSlug}`} className="back-link">← Back to Dashboard</Link>
+        <h1>Settings</h1>
+        <p className="page-subtitle">{vendor.displayName}</p>
+      </header>
 
-        <div className="form-group">
-          <label htmlFor="addressLine2">Address Line 2</label>
-          <input
-            id="addressLine2"
-            type="text"
-            value={addressLine2}
-            onChange={(e) => setAddressLine2(e.target.value)}
-            className="input-field"
-            disabled={saving}
-          />
-        </div>
+      <div className="page-content">
+        <form onSubmit={handleSave} className="vendor-form">
+          {/* Branding Section */}
+          <div className="form-section highlight">
+            <h2>🎨 Branding & Theme</h2>
+            <p className="section-description">Customize the appearance of your customer-facing pages</p>
 
-        <div className="form-row">
-          <div className="form-group">
-            <label htmlFor="city">City</label>
-            <input
-              id="city"
-              type="text"
-              value={city}
-              onChange={(e) => setCity(e.target.value)}
-              className="input-field"
-              disabled={saving}
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="state">State</label>
-            <input
-              id="state"
-              type="text"
-              value={state}
-              onChange={(e) => setState(e.target.value)}
-              className="input-field"
-              disabled={saving}
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="postalCode">Postal Code</label>
-            <input
-              id="postalCode"
-              type="text"
-              value={postalCode}
-              onChange={(e) => setPostalCode(e.target.value)}
-              className="input-field"
-              disabled={saving}
-            />
-          </div>
-        </div>
-
-        <div className="form-group">
-          <label htmlFor="phone">Phone (optional)</label>
-          <input
-            id="phone"
-            type="tel"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            className="input-field"
-            disabled={saving}
-          />
-        </div>
-
-        <div className="form-group">
-          <label htmlFor="pickupInstructions">Pickup Instructions</label>
-          <textarea
-            id="pickupInstructions"
-            value={pickupInstructions}
-            onChange={(e) => setPickupInstructions(e.target.value)}
-            className="textarea-field"
-            rows={4}
-            disabled={saving}
-            placeholder="Enter pickup instructions for customers..."
-          />
-        </div>
-
-        <div className="form-section-divider">
-          <h3>Branding & Theming</h3>
-          <p className="section-description">Customize the appearance of your customer-facing pages</p>
-        </div>
-
-        <div className="form-group">
-          <label htmlFor="logoUrl">Logo URL</label>
-          <input
-            id="logoUrl"
-            type="url"
-            value={logoUrl}
-            onChange={(e) => setLogoUrl(e.target.value)}
-            className="input-field"
-            disabled={saving}
-            placeholder="https://example.com/logo.png"
-          />
-          <span className="field-hint">URL to your logo image (recommended: square, 200x200px or larger)</span>
-        </div>
-
-        <div className="form-row">
-          <div className="form-group">
-            <label htmlFor="primaryColor">Primary Color</label>
-            <div className="color-input-group">
-              <input
-                id="primaryColor"
-                type="color"
-                value={primaryColor}
-                onChange={(e) => setPrimaryColor(e.target.value)}
-                className="color-picker"
-                disabled={saving}
-              />
-              <input
-                type="text"
-                value={primaryColor}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  if (/^#[0-9A-Fa-f]{0,6}$/.test(val)) {
-                    setPrimaryColor(val);
-                  }
-                }}
-                className="input-field color-text"
-                disabled={saving}
-                placeholder="#667eea"
-              />
-            </div>
-            <span className="field-hint">Main brand color for buttons and accents</span>
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="accentColor">Accent Color</label>
-            <div className="color-input-group">
-              <input
-                id="accentColor"
-                type="color"
-                value={accentColor}
-                onChange={(e) => setAccentColor(e.target.value)}
-                className="color-picker"
-                disabled={saving}
-              />
-              <input
-                type="text"
-                value={accentColor}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  if (/^#[0-9A-Fa-f]{0,6}$/.test(val)) {
-                    setAccentColor(val);
-                  }
-                }}
-                className="input-field color-text"
-                disabled={saving}
-                placeholder="#764ba2"
-              />
-            </div>
-            <span className="field-hint">Secondary color for gradients and highlights</span>
-          </div>
-        </div>
-
-        <div className="form-group">
-          <label htmlFor="fontFamily">Font Family</label>
-          <select
-            id="fontFamily"
-            value={fontFamily}
-            onChange={(e) => setFontFamily(e.target.value)}
-            className="input-field"
-            disabled={saving}
-          >
-            <option value="SF Pro Display">SF Pro Display (Default)</option>
-            <option value="Inter">Inter</option>
-            <option value="Poppins">Poppins</option>
-            <option value="Roboto">Roboto</option>
-            <option value="Open Sans">Open Sans</option>
-            <option value="Montserrat">Montserrat</option>
-            <option value="Lato">Lato</option>
-            <option value="Playfair Display">Playfair Display</option>
-          </select>
-          <span className="field-hint">Font used for customer-facing text</span>
-        </div>
-
-        {/* Theme Preview */}
-        <div className="theme-preview">
-          <div className="preview-label">Preview</div>
-          <div 
-            className="preview-box"
-            style={{
-              background: `linear-gradient(135deg, ${primaryColor} 0%, ${accentColor} 100%)`,
-              fontFamily: `'${fontFamily}', -apple-system, BlinkMacSystemFont, sans-serif`
-            }}
-          >
-            <div className="preview-title">{vendor.displayName}</div>
-            <div className="preview-subtitle">Order fast, earn points</div>
-            <button 
-              type="button"
-              className="preview-button"
-              style={{ 
-                background: primaryColor,
-                fontFamily: `'${fontFamily}', -apple-system, BlinkMacSystemFont, sans-serif`
-              }}
-            >
-              Sample Button
-            </button>
-          </div>
-        </div>
-
-        <div className="form-section-divider">
-          <h3>Feature Flags</h3>
-          <p className="section-description">Enable or disable features for this vendor</p>
-        </div>
-
-        {flagsLoading ? (
-          <p className="muted">Loading feature flags...</p>
-        ) : (
-          <div className="feature-flags-list">
-            <label className="checkbox-group">
-              <input
-                type="checkbox"
-                checked={featureFlags['analytics_enabled'] ?? false}
-                onChange={(e) => handleFeatureFlagChange('analytics_enabled', e.target.checked)}
-                disabled={flagsSaving}
-              />
-              <div>
-                <span className="checkbox-label">Analytics Dashboard</span>
-                <span className="field-hint">Enable analytics dashboard access</span>
+            <div className="form-grid">
+              <div className="form-group full-width">
+                <label htmlFor="logoUrl">Logo URL</label>
+                <input
+                  id="logoUrl"
+                  type="url"
+                  value={logoUrl}
+                  onChange={(e) => setLogoUrl(e.target.value)}
+                  className="form-input"
+                  disabled={saving}
+                  placeholder="https://example.com/logo.png"
+                />
+                <small className="form-hint">Square image recommended (200×200px or larger)</small>
               </div>
-            </label>
 
-            <label className="checkbox-group">
-              <input
-                type="checkbox"
-                checked={featureFlags['kds_realtime_enabled'] ?? false}
-                onChange={(e) => handleFeatureFlagChange('kds_realtime_enabled', e.target.checked)}
-                disabled={flagsSaving}
-              />
-              <div>
-                <span className="checkbox-label">KDS Realtime Updates</span>
-                <span className="field-hint">Enable real-time queue updates in KDS</span>
-              </div>
-            </label>
-
-            <label className="checkbox-group">
-              <input
-                type="checkbox"
-                checked={featureFlags['kds_pin_auth_enabled'] ?? false}
-                onChange={(e) => handleFeatureFlagChange('kds_pin_auth_enabled', e.target.checked)}
-                disabled={flagsSaving}
-              />
-              <div>
-                <span className="checkbox-label">KDS PIN Authentication</span>
-                <span className="field-hint">Enable PIN-based authentication for KDS</span>
-              </div>
-            </label>
-
-            <label className="checkbox-group">
-              <input
-                type="checkbox"
-                checked={featureFlags['customer_loyalty_enabled'] ?? false}
-                onChange={(e) => handleFeatureFlagChange('customer_loyalty_enabled', e.target.checked)}
-                disabled={flagsSaving}
-              />
-              <div>
-                <span className="checkbox-label">Customer Loyalty Program</span>
-                <span className="field-hint">Enable customer loyalty points system</span>
-              </div>
-            </label>
-          </div>
-        )}
-
-        <div className="form-section-divider">
-          <h3>KDS Location PINs</h3>
-          <p className="section-description">Set 4-digit PINs for each Square location to enable KDS access</p>
-        </div>
-
-        {locationsLoading ? (
-          <p className="muted">Loading locations...</p>
-        ) : locations.length === 0 ? (
-          <p className="muted">No locations found. Make sure Square access token is configured.</p>
-        ) : (
-          <div className="locations-list">
-            {locations.map(location => (
-              <div key={location.locationId} className="location-pin-item">
-                <div className="location-info">
-                  <div className="location-name">{location.locationName}</div>
-                  <div className="location-id">ID: {location.locationId}</div>
-                  {location.hasPin && (
-                    <span className="pin-status has-pin">✓ PIN Set</span>
-                  )}
-                  {!location.hasPin && (
-                    <span className="pin-status no-pin">No PIN</span>
-                  )}
-                </div>
-                <div className="pin-input-group">
+              <div className="form-group">
+                <label htmlFor="primaryColor">Primary Color</label>
+                <div className="color-input-row">
+                  <input
+                    id="primaryColor"
+                    type="color"
+                    value={primaryColor}
+                    onChange={(e) => setPrimaryColor(e.target.value)}
+                    className="color-picker"
+                    disabled={saving}
+                  />
                   <input
                     type="text"
-                    inputMode="numeric"
-                    pattern="[0-9]{4}"
-                    maxLength={4}
-                    value={pinInputs[location.locationId] || ''}
+                    value={primaryColor}
                     onChange={(e) => {
-                      const value = e.target.value.replace(/\D/g, '').slice(0, 4);
-                      setPinInputs(prev => ({ ...prev, [location.locationId]: value }));
-                      setPinErrors(prev => ({ ...prev, [location.locationId]: '' }));
+                      const val = e.target.value;
+                      if (/^#[0-9A-Fa-f]{0,6}$/.test(val)) {
+                        setPrimaryColor(val);
+                      }
                     }}
-                    placeholder={location.hasPin ? 'Change PIN' : 'Set PIN (4 digits)'}
-                    className={`pin-input ${pinErrors[location.locationId] ? 'error' : ''}`}
-                    disabled={pinSaving[location.locationId]}
+                    className="form-input color-text"
+                    disabled={saving}
+                    placeholder="#667eea"
                   />
-                  <button
-                    type="button"
-                    onClick={() => handleSetPin(location.locationId)}
-                    className="btn-set-pin"
-                    disabled={pinSaving[location.locationId] || !pinInputs[location.locationId]}
-                  >
-                    {pinSaving[location.locationId] ? 'Saving...' : location.hasPin ? 'Update' : 'Set'}
-                  </button>
                 </div>
-                {pinErrors[location.locationId] && (
-                  <div className="pin-error">{pinErrors[location.locationId]}</div>
-                )}
+                <small className="form-hint">Main brand color for buttons</small>
               </div>
-            ))}
+
+              <div className="form-group">
+                <label htmlFor="accentColor">Accent Color</label>
+                <div className="color-input-row">
+                  <input
+                    id="accentColor"
+                    type="color"
+                    value={accentColor}
+                    onChange={(e) => setAccentColor(e.target.value)}
+                    className="color-picker"
+                    disabled={saving}
+                  />
+                  <input
+                    type="text"
+                    value={accentColor}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (/^#[0-9A-Fa-f]{0,6}$/.test(val)) {
+                        setAccentColor(val);
+                      }
+                    }}
+                    className="form-input color-text"
+                    disabled={saving}
+                    placeholder="#764ba2"
+                  />
+                </div>
+                <small className="form-hint">Secondary color for gradients</small>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="fontFamily">Font Family</label>
+                <select
+                  id="fontFamily"
+                  value={fontFamily}
+                  onChange={(e) => setFontFamily(e.target.value)}
+                  className="form-input"
+                  disabled={saving}
+                >
+                  <option value="SF Pro Display">SF Pro Display (Default)</option>
+                  <option value="Inter">Inter</option>
+                  <option value="Poppins">Poppins</option>
+                  <option value="Roboto">Roboto</option>
+                  <option value="Open Sans">Open Sans</option>
+                  <option value="Montserrat">Montserrat</option>
+                  <option value="Lato">Lato</option>
+                  <option value="Playfair Display">Playfair Display</option>
+                </select>
+                <small className="form-hint">Font for customer-facing text</small>
+              </div>
+            </div>
+
+            {/* Theme Preview */}
+            <div className="preview-container">
+              <div className="preview-label">Live Preview</div>
+              <div 
+                className="preview-box"
+                style={{
+                  background: `linear-gradient(135deg, ${primaryColor} 0%, ${accentColor} 100%)`,
+                  fontFamily: `'${fontFamily}', -apple-system, BlinkMacSystemFont, sans-serif`
+                }}
+              >
+                {logoUrl && <img src={logoUrl} alt="" className="preview-logo" />}
+                <div className="preview-title">{vendor.displayName}</div>
+                <div className="preview-subtitle">Order fast, earn points</div>
+                <button 
+                  type="button"
+                  className="preview-button"
+                  style={{ 
+                    background: primaryColor,
+                    fontFamily: `'${fontFamily}', -apple-system, BlinkMacSystemFont, sans-serif`
+                  }}
+                >
+                  Start Order
+                </button>
+              </div>
+            </div>
           </div>
-        )}
 
-        <div className="form-section-divider">
-          <h3>KDS Queue Settings</h3>
-        </div>
+          {/* Location Section */}
+          <div className="form-section">
+            <h2>📍 Location</h2>
+            <div className="form-grid">
+              <div className="form-group">
+                <label htmlFor="addressLine1">Address Line 1</label>
+                <input
+                  id="addressLine1"
+                  type="text"
+                  value={addressLine1}
+                  onChange={(e) => setAddressLine1(e.target.value)}
+                  className="form-input"
+                  disabled={saving}
+                />
+              </div>
 
-        <div className="form-row">
-          <div className="form-group">
-            <label htmlFor="kdsActiveLimitTotal">Max Active Tickets (Total)</label>
-            <input
-              id="kdsActiveLimitTotal"
-              type="number"
-              min="1"
-              max="50"
-              value={kdsActiveLimitTotal}
-              onChange={(e) => setKdsActiveLimitTotal(e.target.value)}
-              className="input-field"
-              disabled={saving}
-              placeholder="10"
-            />
-            <span className="field-hint">Maximum number of active tickets shown in KDS queue (all sources)</span>
+              <div className="form-group">
+                <label htmlFor="addressLine2">Address Line 2</label>
+                <input
+                  id="addressLine2"
+                  type="text"
+                  value={addressLine2}
+                  onChange={(e) => setAddressLine2(e.target.value)}
+                  className="form-input"
+                  disabled={saving}
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="city">City</label>
+                <input
+                  id="city"
+                  type="text"
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                  className="form-input"
+                  disabled={saving}
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="state">State</label>
+                <input
+                  id="state"
+                  type="text"
+                  value={state}
+                  onChange={(e) => setState(e.target.value)}
+                  className="form-input"
+                  disabled={saving}
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="postalCode">Postal Code</label>
+                <input
+                  id="postalCode"
+                  type="text"
+                  value={postalCode}
+                  onChange={(e) => setPostalCode(e.target.value)}
+                  className="form-input"
+                  disabled={saving}
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="phone">Phone</label>
+                <input
+                  id="phone"
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  className="form-input"
+                  disabled={saving}
+                />
+              </div>
+
+              <div className="form-group full-width">
+                <label htmlFor="pickupInstructions">Pickup Instructions</label>
+                <textarea
+                  id="pickupInstructions"
+                  value={pickupInstructions}
+                  onChange={(e) => setPickupInstructions(e.target.value)}
+                  className="form-input"
+                  rows={3}
+                  disabled={saving}
+                  placeholder="Enter pickup instructions for customers..."
+                />
+              </div>
+            </div>
           </div>
 
-          <div className="form-group">
-            <label htmlFor="kdsActiveLimitCt">Max Active CountrTop Orders</label>
-            <input
-              id="kdsActiveLimitCt"
-              type="number"
-              min="1"
-              max="50"
-              value={kdsActiveLimitCt}
-              onChange={(e) => setKdsActiveLimitCt(e.target.value)}
-              className="input-field"
-              disabled={saving}
-              placeholder="10"
-            />
-            <span className="field-hint">Maximum number of active CountrTop orders in queue</span>
-          </div>
-        </div>
+          {/* KDS Settings Section */}
+          <div className="form-section">
+            <h2>🖥️ KDS Queue Settings</h2>
+            <div className="form-grid">
+              <div className="form-group">
+                <label htmlFor="kdsActiveLimitTotal">Max Active Tickets (Total)</label>
+                <input
+                  id="kdsActiveLimitTotal"
+                  type="number"
+                  min="1"
+                  max="50"
+                  value={kdsActiveLimitTotal}
+                  onChange={(e) => setKdsActiveLimitTotal(e.target.value)}
+                  className="form-input"
+                  disabled={saving}
+                />
+                <small className="form-hint">Maximum tickets in queue from all sources</small>
+              </div>
 
-        <div className="form-actions">
-          <button 
-            type="submit" 
-            className={`btn-save ${saving ? 'saving' : ''} ${saveStatus === 'success' ? 'saved' : ''}`}
-            disabled={saving}
-          >
-            {saving ? (
-              <>
-                <span className="spinner"></span>
-                Saving...
-              </>
-            ) : saveStatus === 'success' ? (
-              <>✓ Saved!</>
+              <div className="form-group">
+                <label htmlFor="kdsActiveLimitCt">Max CountrTop Orders</label>
+                <input
+                  id="kdsActiveLimitCt"
+                  type="number"
+                  min="1"
+                  max="50"
+                  value={kdsActiveLimitCt}
+                  onChange={(e) => setKdsActiveLimitCt(e.target.value)}
+                  className="form-input"
+                  disabled={saving}
+                />
+                <small className="form-hint">Maximum CountrTop orders in queue</small>
+              </div>
+            </div>
+          </div>
+
+          {/* Feature Flags Section */}
+          <div className="form-section">
+            <h2>⚡ Feature Flags</h2>
+            <p className="section-description">Enable or disable features for this vendor</p>
+
+            {flagsLoading ? (
+              <p className="muted">Loading feature flags...</p>
             ) : (
-              'Save All Settings'
-            )}
-          </button>
-          {saveStatus === 'error' && (
-            <div className="save-error">{errorMessage || 'Error saving settings'}</div>
-          )}
-        </div>
-      </form>
+              <div className="flags-grid">
+                <label className="flag-card">
+                  <input
+                    type="checkbox"
+                    checked={featureFlags['analytics_enabled'] ?? false}
+                    onChange={(e) => handleFeatureFlagChange('analytics_enabled', e.target.checked)}
+                    disabled={flagsSaving}
+                  />
+                  <div className="flag-content">
+                    <span className="flag-icon">📊</span>
+                    <div>
+                      <span className="flag-name">Analytics Dashboard</span>
+                      <span className="flag-description">Enable analytics access</span>
+                    </div>
+                  </div>
+                </label>
 
-      <style jsx>{`
-        .settings-form {
-          display: flex;
-          flex-direction: column;
-          gap: 20px;
+                <label className="flag-card">
+                  <input
+                    type="checkbox"
+                    checked={featureFlags['kds_realtime_enabled'] ?? false}
+                    onChange={(e) => handleFeatureFlagChange('kds_realtime_enabled', e.target.checked)}
+                    disabled={flagsSaving}
+                  />
+                  <div className="flag-content">
+                    <span className="flag-icon">⚡</span>
+                    <div>
+                      <span className="flag-name">KDS Realtime Updates</span>
+                      <span className="flag-description">Live queue updates</span>
+                    </div>
+                  </div>
+                </label>
+
+                <label className="flag-card">
+                  <input
+                    type="checkbox"
+                    checked={featureFlags['kds_pin_auth_enabled'] ?? false}
+                    onChange={(e) => handleFeatureFlagChange('kds_pin_auth_enabled', e.target.checked)}
+                    disabled={flagsSaving}
+                  />
+                  <div className="flag-content">
+                    <span className="flag-icon">🔐</span>
+                    <div>
+                      <span className="flag-name">KDS PIN Authentication</span>
+                      <span className="flag-description">PIN-based KDS login</span>
+                    </div>
+                  </div>
+                </label>
+
+                <label className="flag-card">
+                  <input
+                    type="checkbox"
+                    checked={featureFlags['customer_loyalty_enabled'] ?? false}
+                    onChange={(e) => handleFeatureFlagChange('customer_loyalty_enabled', e.target.checked)}
+                    disabled={flagsSaving}
+                  />
+                  <div className="flag-content">
+                    <span className="flag-icon">⭐</span>
+                    <div>
+                      <span className="flag-name">Loyalty Program</span>
+                      <span className="flag-description">Customer points system</span>
+                    </div>
+                  </div>
+                </label>
+              </div>
+            )}
+          </div>
+
+          {/* KDS Location PINs Section */}
+          <div className="form-section">
+            <h2>🔑 KDS Location PINs</h2>
+            <p className="section-description">Set 4-digit PINs for each location to enable KDS access</p>
+
+            {locationsLoading ? (
+              <p className="muted">Loading locations...</p>
+            ) : locations.length === 0 ? (
+              <p className="muted">No locations found. Make sure POS access token is configured.</p>
+            ) : (
+              <div className="locations-grid">
+                {locations.map(location => (
+                  <div key={location.locationId} className="location-card">
+                    <div className="location-header">
+                      <div className="location-name">{location.locationName}</div>
+                      <span className={`pin-badge ${location.hasPin ? 'set' : 'unset'}`}>
+                        {location.hasPin ? '✓ PIN Set' : 'No PIN'}
+                      </span>
+                    </div>
+                    <div className="location-id">{location.locationId}</div>
+                    <div className="pin-row">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]{4}"
+                        maxLength={4}
+                        value={pinInputs[location.locationId] || ''}
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/\D/g, '').slice(0, 4);
+                          setPinInputs(prev => ({ ...prev, [location.locationId]: value }));
+                          setPinErrors(prev => ({ ...prev, [location.locationId]: '' }));
+                        }}
+                        placeholder={location.hasPin ? '••••' : '0000'}
+                        className={`pin-input ${pinErrors[location.locationId] ? 'error' : ''}`}
+                        disabled={pinSaving[location.locationId]}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleSetPin(location.locationId)}
+                        className="btn-pin"
+                        disabled={pinSaving[location.locationId] || !pinInputs[location.locationId]}
+                      >
+                        {pinSaving[location.locationId] ? '...' : location.hasPin ? 'Update' : 'Set'}
+                      </button>
+                    </div>
+                    {pinErrors[location.locationId] && (
+                      <div className="pin-error">{pinErrors[location.locationId]}</div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Error Banner */}
+          {saveStatus === 'error' && (
+            <div className="error-banner">
+              <p>{errorMessage || 'Error saving settings'}</p>
+            </div>
+          )}
+
+          {/* Form Actions */}
+          <div className="form-actions">
+            <Link href={`/vendors/${vendorSlug}`} className="btn-cancel">
+              Cancel
+            </Link>
+            <button type="submit" className="btn-submit" disabled={saving}>
+              {saving ? (
+                <>
+                  <span className="spinner"></span>
+                  Saving...
+                </>
+              ) : saveStatus === 'success' ? (
+                '✓ Saved!'
+              ) : (
+                'Save All Settings'
+              )}
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <style jsx global>{`
+        .page {
+          min-height: 100vh;
+          background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 50%, #16213e 100%);
+          color: #e8e8e8;
+          font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
         }
 
-        .form-row {
+        .page-header {
+          padding: 32px 48px;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .back-link {
+          display: inline-block;
+          margin-bottom: 16px;
+          color: #a78bfa;
+          text-decoration: none;
+          font-size: 14px;
+          transition: color 0.2s;
+        }
+
+        .back-link:hover {
+          color: #c4b5fd;
+        }
+
+        .page-header h1 {
+          font-size: 32px;
+          font-weight: 700;
+          margin: 0 0 4px;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+        }
+
+        .page-subtitle {
+          font-size: 14px;
+          color: #888;
+          margin: 0;
+        }
+
+        .page-content {
+          max-width: 900px;
+          margin: 0 auto;
+          padding: 48px;
+        }
+
+        .vendor-form {
+          display: flex;
+          flex-direction: column;
+          gap: 32px;
+        }
+
+        .form-section {
+          background: rgba(255, 255, 255, 0.03);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 16px;
+          padding: 32px;
+        }
+
+        .form-section.highlight {
+          background: rgba(102, 126, 234, 0.05);
+          border-color: rgba(102, 126, 234, 0.2);
+        }
+
+        .form-section h2 {
+          font-size: 20px;
+          font-weight: 600;
+          margin: 0 0 8px;
+          color: #e8e8e8;
+        }
+
+        .section-description {
+          font-size: 14px;
+          color: #888;
+          margin: 0 0 24px;
+        }
+
+        .form-grid {
           display: grid;
-          grid-template-columns: 2fr 1fr 1fr;
-          gap: 16px;
+          grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+          gap: 24px;
         }
 
         .form-group {
@@ -633,84 +715,17 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
           gap: 8px;
         }
 
+        .form-group.full-width {
+          grid-column: 1 / -1;
+        }
+
         .form-group label {
-          font-size: 13px;
-          font-weight: 600;
-          color: #a78bfa;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-        }
-
-        .form-section-divider {
-          margin-top: 32px;
-          margin-bottom: 16px;
-          padding-top: 24px;
-          border-top: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .form-section-divider h3 {
-          font-size: 18px;
-          font-weight: 600;
-          color: #e8e8e8;
-          margin: 0;
-        }
-
-        .field-hint {
-          font-size: 12px;
-          color: #888;
-          margin-top: 4px;
-        }
-
-        .section-description {
-          font-size: 13px;
-          color: #888;
-          margin: 8px 0 0 0;
-        }
-
-        .feature-flags-list {
-          display: flex;
-          flex-direction: column;
-          gap: 16px;
-        }
-
-        .checkbox-group {
-          display: flex;
-          gap: 12px;
-          align-items: flex-start;
-          cursor: pointer;
-          padding: 12px;
-          border-radius: 8px;
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          background: rgba(255, 255, 255, 0.03);
-          transition: background 0.2s;
-        }
-
-        .checkbox-group:hover {
-          background: rgba(255, 255, 255, 0.05);
-        }
-
-        .checkbox-group input[type="checkbox"] {
-          margin-top: 2px;
-          cursor: pointer;
-          width: 18px;
-          height: 18px;
-        }
-
-        .checkbox-group .checkbox-label {
           font-size: 14px;
           font-weight: 600;
           color: #e8e8e8;
-          display: block;
-          margin-bottom: 4px;
         }
 
-        .muted {
-          color: #888;
-          font-size: 14px;
-        }
-
-        .input-field,
-        .textarea-field {
+        .form-input {
           padding: 12px 16px;
           border-radius: 8px;
           border: 1px solid rgba(255, 255, 255, 0.2);
@@ -719,34 +734,253 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
           font-size: 14px;
           font-family: inherit;
           transition: border-color 0.2s;
+          box-sizing: border-box;
         }
 
-        .input-field:focus,
-        .textarea-field:focus {
+        .form-input:focus {
           outline: none;
           border-color: #667eea;
         }
 
-        .input-field:disabled,
-        .textarea-field:disabled {
+        .form-input:disabled {
           opacity: 0.6;
           cursor: not-allowed;
         }
 
-        .textarea-field {
+        .form-input::placeholder {
+          color: #666;
+        }
+
+        textarea.form-input {
           resize: vertical;
           min-height: 80px;
         }
 
-        .form-actions {
+        .form-hint {
+          font-size: 12px;
+          color: #666;
+        }
+
+        /* Color inputs */
+        .color-input-row {
+          display: flex;
+          gap: 12px;
+          align-items: center;
+        }
+
+        .color-picker {
+          width: 48px;
+          height: 48px;
+          padding: 0;
+          border: 2px solid rgba(255, 255, 255, 0.2);
+          border-radius: 10px;
+          cursor: pointer;
+          background: transparent;
+        }
+
+        .color-picker::-webkit-color-swatch-wrapper {
+          padding: 4px;
+        }
+
+        .color-picker::-webkit-color-swatch {
+          border-radius: 6px;
+          border: none;
+        }
+
+        .color-text {
+          width: 100px;
+          font-family: monospace;
+          text-transform: uppercase;
+        }
+
+        /* Preview */
+        .preview-container {
+          margin-top: 24px;
+          padding-top: 24px;
+          border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .preview-label {
+          font-size: 12px;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 1px;
+          color: #888;
+          margin-bottom: 16px;
+        }
+
+        .preview-box {
+          padding: 32px;
+          border-radius: 16px;
+          text-align: center;
+          color: white;
+        }
+
+        .preview-logo {
+          width: 64px;
+          height: 64px;
+          border-radius: 12px;
+          object-fit: cover;
+          margin-bottom: 16px;
+        }
+
+        .preview-title {
+          font-size: 28px;
+          font-weight: 700;
+          margin-bottom: 8px;
+        }
+
+        .preview-subtitle {
+          font-size: 16px;
+          opacity: 0.9;
+          margin-bottom: 20px;
+        }
+
+        .preview-button {
+          padding: 12px 28px;
+          border-radius: 10px;
+          border: none;
+          color: white;
+          font-weight: 600;
+          font-size: 15px;
+          cursor: default;
+        }
+
+        /* Feature Flags */
+        .flags-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+          gap: 16px;
+        }
+
+        .flag-card {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+          padding: 16px;
+          border-radius: 12px;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          background: rgba(255, 255, 255, 0.03);
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .flag-card:hover {
+          background: rgba(255, 255, 255, 0.06);
+          border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .flag-card input[type="checkbox"] {
+          width: 20px;
+          height: 20px;
+          cursor: pointer;
+          flex-shrink: 0;
+        }
+
+        .flag-content {
           display: flex;
           align-items: center;
           gap: 12px;
-          padding-top: 8px;
         }
 
-        .btn-primary {
-          padding: 12px 24px;
+        .flag-icon {
+          font-size: 24px;
+        }
+
+        .flag-name {
+          display: block;
+          font-size: 14px;
+          font-weight: 600;
+          color: #e8e8e8;
+        }
+
+        .flag-description {
+          display: block;
+          font-size: 12px;
+          color: #888;
+          margin-top: 2px;
+        }
+
+        /* Location PINs */
+        .locations-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+          gap: 16px;
+        }
+
+        .location-card {
+          padding: 20px;
+          border-radius: 12px;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          background: rgba(255, 255, 255, 0.03);
+        }
+
+        .location-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 8px;
+        }
+
+        .location-name {
+          font-size: 16px;
+          font-weight: 600;
+          color: #e8e8e8;
+        }
+
+        .pin-badge {
+          padding: 4px 10px;
+          border-radius: 6px;
+          font-size: 12px;
+          font-weight: 600;
+        }
+
+        .pin-badge.set {
+          background: rgba(74, 222, 128, 0.2);
+          color: #4ade80;
+        }
+
+        .pin-badge.unset {
+          background: rgba(255, 255, 255, 0.1);
+          color: #888;
+        }
+
+        .location-id {
+          font-size: 12px;
+          font-family: monospace;
+          color: #666;
+          margin-bottom: 16px;
+        }
+
+        .pin-row {
+          display: flex;
+          gap: 12px;
+        }
+
+        .pin-input {
+          flex: 1;
+          padding: 12px 16px;
+          border-radius: 8px;
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          background: rgba(255, 255, 255, 0.05);
+          color: #e8e8e8;
+          font-size: 18px;
+          font-family: monospace;
+          text-align: center;
+          letter-spacing: 8px;
+        }
+
+        .pin-input:focus {
+          outline: none;
+          border-color: #667eea;
+        }
+
+        .pin-input.error {
+          border-color: #f87171;
+        }
+
+        .btn-pin {
+          padding: 12px 20px;
           border-radius: 8px;
           border: none;
           background: #667eea;
@@ -758,16 +992,62 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
           font-family: inherit;
         }
 
-        .btn-primary:hover:not(:disabled) {
+        .btn-pin:hover:not(:disabled) {
           background: #5568d3;
         }
 
-        .btn-primary:disabled {
-          opacity: 0.6;
+        .btn-pin:disabled {
+          opacity: 0.5;
           cursor: not-allowed;
         }
 
-        .btn-save {
+        .pin-error {
+          margin-top: 8px;
+          font-size: 12px;
+          color: #f87171;
+        }
+
+        /* Error Banner */
+        .error-banner {
+          background: rgba(239, 68, 68, 0.1);
+          border: 1px solid rgba(239, 68, 68, 0.3);
+          border-radius: 12px;
+          padding: 16px;
+        }
+
+        .error-banner p {
+          margin: 0;
+          color: #fca5a5;
+          font-size: 14px;
+        }
+
+        /* Form Actions */
+        .form-actions {
+          display: flex;
+          justify-content: flex-end;
+          gap: 16px;
+          padding-top: 24px;
+          border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .btn-cancel {
+          padding: 14px 28px;
+          border-radius: 10px;
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          background: rgba(255, 255, 255, 0.05);
+          color: #e8e8e8;
+          text-decoration: none;
+          font-weight: 600;
+          font-size: 14px;
+          transition: background 0.2s;
+          display: inline-block;
+        }
+
+        .btn-cancel:hover {
+          background: rgba(255, 255, 255, 0.1);
+        }
+
+        .btn-submit {
           padding: 14px 32px;
           border-radius: 10px;
           border: none;
@@ -776,32 +1056,22 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
           font-weight: 600;
           font-size: 15px;
           cursor: pointer;
-          transition: all 0.3s;
+          transition: all 0.2s;
           font-family: inherit;
           display: flex;
           align-items: center;
-          justify-content: center;
           gap: 8px;
-          min-width: 180px;
         }
 
-        .btn-save:hover:not(:disabled) {
-          transform: translateY(-1px);
-          box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        .btn-submit:hover:not(:disabled) {
+          transform: translateY(-2px);
+          box-shadow: 0 8px 24px rgba(102, 126, 234, 0.3);
         }
 
-        .btn-save:disabled {
+        .btn-submit:disabled {
           opacity: 0.7;
           cursor: not-allowed;
           transform: none;
-        }
-
-        .btn-save.saving {
-          background: #555;
-        }
-
-        .btn-save.saved {
-          background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
         }
 
         .spinner {
@@ -817,242 +1087,44 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
           to { transform: rotate(360deg); }
         }
 
-        .save-error {
-          margin-top: 12px;
-          padding: 12px 16px;
-          background: rgba(239, 68, 68, 0.1);
-          border: 1px solid rgba(239, 68, 68, 0.3);
-          border-radius: 8px;
-          color: #fca5a5;
-          font-size: 14px;
-        }
-
-        .save-status {
-          font-size: 14;
-          font-weight: 500;
-        }
-
-        .save-status.success {
-          color: #4ade80;
-        }
-
-        .save-status.error {
-          color: #fca5a5;
-        }
-
-        .locations-list {
-          display: flex;
-          flex-direction: column;
-          gap: 16px;
-        }
-
-        .location-pin-item {
-          padding: 16px;
-          border-radius: 8px;
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          background: rgba(255, 255, 255, 0.03);
-        }
-
-        .location-info {
-          margin-bottom: 12px;
-        }
-
-        .location-name {
-          font-size: 16px;
-          font-weight: 600;
-          color: #e8e8e8;
-          margin-bottom: 4px;
-        }
-
-        .location-id {
-          font-size: 12px;
+        .muted {
           color: #888;
-          font-family: monospace;
-          margin-bottom: 8px;
-        }
-
-        .pin-status {
-          display: inline-block;
-          padding: 4px 8px;
-          border-radius: 4px;
-          font-size: 12px;
-          font-weight: 600;
-        }
-
-        .pin-status.has-pin {
-          background: rgba(74, 222, 128, 0.2);
-          color: #4ade80;
-        }
-
-        .pin-status.no-pin {
-          background: rgba(255, 255, 255, 0.1);
-          color: #888;
-        }
-
-        .pin-input-group {
-          display: flex;
-          gap: 8px;
-          align-items: flex-start;
-        }
-
-        .pin-input {
-          width: 120px;
-          padding: 10px 12px;
-          border-radius: 6px;
-          border: 1px solid rgba(255, 255, 255, 0.2);
-          background: rgba(255, 255, 255, 0.05);
-          color: #e8e8e8;
-          font-size: 16px;
-          font-family: monospace;
-          text-align: center;
-          letter-spacing: 4px;
-          transition: border-color 0.2s;
-        }
-
-        .pin-input:focus {
-          outline: none;
-          border-color: #667eea;
-        }
-
-        .pin-input.error {
-          border-color: #fca5a5;
-        }
-
-        .pin-input:disabled {
-          opacity: 0.6;
-          cursor: not-allowed;
-        }
-
-        .btn-set-pin {
-          padding: 10px 16px;
-          border-radius: 6px;
-          border: none;
-          background: #667eea;
-          color: white;
-          font-weight: 600;
           font-size: 14px;
-          cursor: pointer;
-          transition: background 0.2s;
-          font-family: inherit;
-        }
-
-        .btn-set-pin:hover:not(:disabled) {
-          background: #5568d3;
-        }
-
-        .btn-set-pin:disabled {
-          opacity: 0.6;
-          cursor: not-allowed;
-        }
-
-        .pin-error {
-          margin-top: 8px;
-          font-size: 12px;
-          color: #fca5a5;
-        }
-
-        /* Theming styles */
-        .color-input-group {
-          display: flex;
-          gap: 8px;
-          align-items: center;
-        }
-
-        .color-picker {
-          width: 48px;
-          height: 48px;
-          padding: 0;
-          border: 2px solid rgba(255, 255, 255, 0.2);
-          border-radius: 8px;
-          cursor: pointer;
-          background: transparent;
-        }
-
-        .color-picker::-webkit-color-swatch-wrapper {
-          padding: 4px;
-        }
-
-        .color-picker::-webkit-color-swatch {
-          border-radius: 4px;
-          border: none;
-        }
-
-        .color-text {
-          width: 100px;
-          font-family: monospace;
-          text-transform: uppercase;
-        }
-
-        .theme-preview {
-          margin-top: 16px;
-          padding: 16px;
-          border-radius: 12px;
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          background: rgba(255, 255, 255, 0.03);
-        }
-
-        .preview-label {
-          font-size: 12px;
-          font-weight: 600;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-          color: #888;
-          margin-bottom: 12px;
-        }
-
-        .preview-box {
-          padding: 24px;
-          border-radius: 12px;
-          text-align: center;
-          color: white;
-        }
-
-        .preview-title {
-          font-size: 24px;
-          font-weight: 700;
-          margin-bottom: 8px;
-        }
-
-        .preview-subtitle {
-          font-size: 14px;
-          opacity: 0.9;
-          margin-bottom: 16px;
-        }
-
-        .preview-button {
-          padding: 10px 20px;
-          border-radius: 8px;
-          border: none;
-          color: white;
-          font-weight: 600;
-          font-size: 14px;
-          cursor: default;
-          opacity: 0.95;
         }
 
         @media (max-width: 768px) {
-          .form-row {
+          .page-header {
+            padding: 24px;
+          }
+
+          .page-content {
+            padding: 24px;
+          }
+
+          .form-section {
+            padding: 24px;
+          }
+
+          .form-grid {
             grid-template-columns: 1fr;
           }
 
-          .pin-input-group {
+          .form-actions {
             flex-direction: column;
           }
 
-          .pin-input {
+          .btn-cancel,
+          .btn-submit {
             width: 100%;
+            justify-content: center;
           }
 
-          .btn-set-pin {
-            width: 100%;
-          }
-
-          .color-input-group {
-            flex-direction: row;
+          .flags-grid,
+          .locations-grid {
+            grid-template-columns: 1fr;
           }
         }
       `}</style>
-    </section>
+    </main>
   );
 }
-
