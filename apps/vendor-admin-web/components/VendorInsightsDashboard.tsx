@@ -96,7 +96,7 @@ export function VendorInsightsDashboard({ vendorSlug, vendorName, vendor, insigh
               href={`https://${vendorSlug}.countrtop.com`} 
               target="_blank" 
               rel="noopener noreferrer"
-              className="dashboard-card highlight"
+              className="dashboard-card"
             >
               <div className="card-icon">🌐</div>
               <h3 className="card-title">View Store</h3>
@@ -290,9 +290,9 @@ export function VendorInsightsDashboard({ vendorSlug, vendorName, vendor, insigh
         }
 
         .dashboard-card {
-          background: rgba(255, 255, 255, 0.05);
+          background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%);
           backdrop-filter: blur(10px);
-          border: 1px solid rgba(255, 255, 255, 0.1);
+          border: 1px solid rgba(102, 126, 234, 0.3);
           border-radius: 16px;
           padding: 28px;
           text-decoration: none;
@@ -303,19 +303,10 @@ export function VendorInsightsDashboard({ vendorSlug, vendorName, vendor, insigh
         }
 
         .dashboard-card:hover {
-          background: rgba(255, 255, 255, 0.08);
-          border-color: rgba(102, 126, 234, 0.4);
-          transform: translateY(-3px);
-          box-shadow: 0 12px 40px rgba(102, 126, 234, 0.15);
-        }
-
-        .dashboard-card.highlight {
-          background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%);
-          border-color: rgba(102, 126, 234, 0.3);
-        }
-
-        .dashboard-card.highlight:hover {
+          background: linear-gradient(135deg, rgba(102, 126, 234, 0.25) 0%, rgba(118, 75, 162, 0.25) 100%);
           border-color: rgba(102, 126, 234, 0.6);
+          transform: translateY(-3px);
+          box-shadow: 0 12px 40px rgba(102, 126, 234, 0.2);
         }
 
         .card-icon {
