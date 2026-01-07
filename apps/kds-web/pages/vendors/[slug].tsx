@@ -1010,8 +1010,9 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
                 );
               })}
             </div>
+          )}
 
-            {/* Note Editor Modal */}
+          {/* Note Editor Modal */}
             {editingNote && (
               <div className="modal-overlay" onClick={() => setEditingNote(null)}>
                 <div className="modal-content modal-small" onClick={(e) => e.stopPropagation()}>
@@ -1062,7 +1063,6 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
                 </div>
               </div>
             )}
-          )}
         </div>
 
         {/* Recall Modal */}

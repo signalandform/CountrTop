@@ -1,7 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from '@countrtop/data';
-import { requireKDSSessionApi } from '../../../../../../lib/auth';
+import { requireKDSSession } from '../../../../../../lib/auth';
+import type { GetServerSidePropsContext } from 'next';
 
 type ReorderResponse =
   | { ok: true }
@@ -15,23 +16,35 @@ export default async function handler(
     return res.status(405).json({ ok: false, error: 'Method not allowed' });
   }
 
-  const { slug, ticketId } = req.query;
-  const slugStr = Array.isArray(slug) ? slug[0] : slug;
-  const ticketIdStr = Array.isArray(ticketId) ? ticketId[0] : ticketId;
-  const locationId = req.query.locationId as string | undefined;
+  const slug = typeof req.query.slug === 'string' ? req.query.slug : null;
+  const ticketId = typeof req.query.ticketId === 'string' ? req.query.ticketId : null;
+  const locationIdParam = typeof req.query.locationId === 'string' ? req.query.locationId : null;
 
-  // Check KDS session
-  const authResult = await requireKDSSessionApi(req, res, slugStr, locationId);
-  if (!authResult.authorized) {
-    return res.status(authResult.statusCode || 401).json({
-      ok: false,
-      error: authResult.error || 'Unauthorized'
-    });
+  if (!slug || !ticketId) {
+    return res.status(400).json({ ok: false, error: 'Vendor slug and ticket ID required' });
   }
 
   try {
+    // Create a mock context for requireKDSSession
+    const mockContext = {
+      req: req,
+      res: res,
+      query: req.query,
+      params: { slug }
+    } as unknown as GetServerSidePropsContext;
+
+    // Verify KDS session
+    const authResult = await requireKDSSession(mockContext, slug, locationIdParam);
+    if (!authResult.authorized) {
+      return res.status(authResult.statusCode || 401).json({
+        ok: false,
+        error: authResult.error || 'Unauthorized'
+      });
+    }
+
+    const locationId = locationIdParam || authResult.session.locationId;
     const { direction } = req.body;
-    
+
     if (direction !== 'up' && direction !== 'down') {
       return res.status(400).json({ ok: false, error: 'Invalid direction' });
     }
@@ -50,7 +63,7 @@ export default async function handler(
     const { data: currentTicket, error: fetchError } = await supabase
       .from('kitchen_tickets')
       .select('id, priority_order, placed_at')
-      .eq('id', ticketIdStr)
+      .eq('id', ticketId)
       .eq('location_id', locationId)
       .single();
 
@@ -73,7 +86,7 @@ export default async function handler(
     }
 
     // Find current ticket index
-    const currentIndex = allTickets?.findIndex(t => t.id === ticketIdStr) ?? -1;
+    const currentIndex = allTickets?.findIndex(t => t.id === ticketId) ?? -1;
     if (currentIndex === -1) {
       return res.status(404).json({ ok: false, error: 'Ticket not in active queue' });
     }
@@ -94,7 +107,7 @@ export default async function handler(
     const { error: updateError1 } = await supabase
       .from('kitchen_tickets')
       .update({ priority_order: swapPriority, updated_at: new Date().toISOString() })
-      .eq('id', ticketIdStr);
+      .eq('id', ticketId);
 
     const { error: updateError2 } = await supabase
       .from('kitchen_tickets')
@@ -115,4 +128,3 @@ export default async function handler(
     });
   }
 }
-

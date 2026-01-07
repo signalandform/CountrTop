@@ -327,6 +327,12 @@ export type Database = {
           canceled_at: string | null;
           last_updated_by_vendor_user_id: string | null;
           updated_at: string;
+          // Hold/notes/reorder features
+          held_at: string | null;
+          held_reason: string | null;
+          staff_notes: string | null;
+          custom_label: string | null;
+          priority_order: number;
         };
         Insert: {
           id?: string;
@@ -345,6 +351,12 @@ export type Database = {
           canceled_at?: string | null;
           last_updated_by_vendor_user_id?: string | null;
           updated_at?: string;
+          // Hold/notes/reorder features
+          held_at?: string | null;
+          held_reason?: string | null;
+          staff_notes?: string | null;
+          custom_label?: string | null;
+          priority_order?: number;
         };
         Update: Partial<Database['public']['Tables']['kitchen_tickets']['Insert']>;
         Relationships: [];
@@ -3170,12 +3182,12 @@ export const mapKitchenTicketFromRow = (
   canceledAt: row.canceled_at ?? undefined,
   lastUpdatedByVendorUserId: row.last_updated_by_vendor_user_id ?? undefined,
   updatedAt: row.updated_at,
-  // New hold/notes/reorder fields
-  heldAt: (row as Record<string, unknown>).held_at as string | undefined ?? undefined,
-  heldReason: (row as Record<string, unknown>).held_reason as string | undefined ?? undefined,
-  staffNotes: (row as Record<string, unknown>).staff_notes as string | undefined ?? undefined,
-  customLabel: (row as Record<string, unknown>).custom_label as string | undefined ?? undefined,
-  priorityOrder: (row as Record<string, unknown>).priority_order as number | undefined ?? 0
+  // Hold/notes/reorder fields
+  heldAt: row.held_at ?? undefined,
+  heldReason: row.held_reason ?? undefined,
+  staffNotes: row.staff_notes ?? undefined,
+  customLabel: row.custom_label ?? undefined,
+  priorityOrder: row.priority_order ?? 0
 });
 
 export const toKitchenTicketInsert = (
