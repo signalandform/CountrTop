@@ -836,17 +836,17 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
               )}
             </div>
             <div className="header-actions">
-              <button onClick={handleRecallClick} className="recall-button-header">
-                Recall
-              </button>
-              <Link href={`/vendors/${vendorSlug}/analytics?locationId=${locationId}`} className="analytics-button">
-                📊 Analytics
+              <Link href={`/vendors/${vendorSlug}/analytics?locationId=${locationId}`} className="header-button">
+                Analytics
               </Link>
-              <button onClick={handleSettings} className="settings-button">
+              <button onClick={handleSettings} className="header-button">
                 Settings
               </button>
-              <button onClick={handleTimeClock} className="time-clock-button">
+              <button onClick={handleTimeClock} className="header-button">
                 Time Clock
+              </button>
+              <button onClick={handleRecallClick} className="header-button">
+                Recall
               </button>
             </div>
           </header>
@@ -1325,8 +1325,7 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
             align-items: center;
           }
 
-          .settings-button,
-          .time-clock-button {
+          .header-button {
             padding: 12px 20px;
             border-radius: 12px;
             border: 1px solid rgba(255, 255, 255, 0.2);
@@ -1335,36 +1334,17 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
             font-weight: 600;
             font-size: 14px;
             cursor: pointer;
-            transition: background 0.2s;
-            font-family: inherit;
-          }
-
-          .settings-button:hover,
-          .time-clock-button:hover {
-            background: rgba(255, 255, 255, 0.1);
-            border-color: rgba(255, 255, 255, 0.3);
-          }
-
-          .analytics-button {
-            padding: 12px 20px;
-            border-radius: 12px;
-            border: 1px solid rgba(102, 126, 234, 0.4);
-            background: rgba(102, 126, 234, 0.15);
-            color: #a5b4fc;
-            font-weight: 600;
-            font-size: 14px;
-            cursor: pointer;
-            transition: background 0.2s;
+            transition: all 0.2s;
             font-family: inherit;
             text-decoration: none;
             display: inline-flex;
             align-items: center;
-            gap: 6px;
+            justify-content: center;
           }
 
-          .analytics-button:hover {
-            background: rgba(102, 126, 234, 0.25);
-            border-color: rgba(102, 126, 234, 0.6);
+          .header-button:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.3);
           }
 
           .daily-avg {
@@ -1835,23 +1815,6 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
             align-items: center;
           }
 
-          .recall-button-header {
-            padding: 10px 20px;
-            border-radius: 8px;
-            border: 1px solid rgba(167, 139, 250, 0.3);
-            background: rgba(167, 139, 250, 0.1);
-            color: #a78bfa;
-            font-weight: 600;
-            font-size: 14px;
-            cursor: pointer;
-            transition: all 0.2s;
-            font-family: inherit;
-          }
-
-          .recall-button-header:hover {
-            background: rgba(167, 139, 250, 0.2);
-            border-color: rgba(167, 139, 250, 0.5);
-          }
 
           .modal-overlay {
             position: fixed;
