@@ -1,7 +1,6 @@
 import Head from 'next/head';
 import type { GetServerSideProps } from 'next';
 import { useState, useEffect, useCallback, useRef } from 'react';
-import Link from 'next/link';
 import { createClient } from '@supabase/supabase-js';
 import { createDataClient, type Database } from '@countrtop/data';
 
@@ -836,9 +835,9 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
               )}
             </div>
             <div className="header-actions">
-              <Link href={`/vendors/${vendorSlug}/analytics?locationId=${locationId}`} className="header-button">
+              <a href={`/vendors/${vendorSlug}/analytics?locationId=${locationId}`} className="header-button">
                 Analytics
-              </Link>
+              </a>
               <button onClick={handleSettings} className="header-button">
                 Settings
               </button>
