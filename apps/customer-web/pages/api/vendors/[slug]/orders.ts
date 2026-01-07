@@ -8,7 +8,8 @@ type OrderHistoryResponse =
       orders: Array<{
         id: string;
         placedAt: string;
-        squareOrderId: string;
+        externalOrderId: string;
+        squareOrderId: string; // Deprecated alias
         snapshotJson: unknown;
         fulfillmentStatus?: string | null;
         readyAt?: string | null;
@@ -44,6 +45,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       orders: orders.map((order) => ({
         id: order.id,
         placedAt: order.placedAt,
+        externalOrderId: order.externalOrderId,
         squareOrderId: order.squareOrderId,
         snapshotJson: order.snapshotJson,
         fulfillmentStatus: order.fulfillmentStatus,

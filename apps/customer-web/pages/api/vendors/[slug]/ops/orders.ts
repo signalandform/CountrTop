@@ -42,7 +42,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     );
     const mapped = sorted.slice(0, 30).map((order) => ({
       id: order.id,
-      squareOrderId: order.squareOrderId,
+      externalOrderId: order.externalOrderId, // POS-agnostic field
+      squareOrderId: order.squareOrderId, // Deprecated alias
       placedAt: order.placedAt,
       status: 'new' as OpsOrder['status'],
       items: normalizeItems(order.snapshotJson),
