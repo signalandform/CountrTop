@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import { useRouter } from 'next/router';
 
 type AnalyticsLayoutProps = {
@@ -44,9 +43,9 @@ export function AnalyticsLayout({ vendorSlug, vendorName, children, currentTab }
             <h1 className="title">{vendorName}</h1>
             <p className="subtitle">Performance insights and trends</p>
           </div>
-          <Link href={`/vendors/${vendorSlug}`} className="back-button">
+          <a href={`/vendors/${vendorSlug}`} className="back-link">
             ← Back to Dashboard
-          </Link>
+          </a>
         </div>
 
         {/* Navigation Tabs */}
@@ -54,13 +53,13 @@ export function AnalyticsLayout({ vendorSlug, vendorName, children, currentTab }
           {tabs.map((tab) => {
             const isActive = isActiveTab(tab.id);
             return (
-              <Link
+              <a
                 key={tab.id}
                 href={tab.href}
                 className={`analytics-nav-item ct-card ${isActive ? 'active' : ''}`}
               >
                 {tab.label}
-              </Link>
+              </a>
             );
           })}
         </nav>
@@ -105,26 +104,16 @@ export function AnalyticsLayout({ vendorSlug, vendorName, children, currentTab }
           max-width: 500px;
         }
 
-        .back-button {
-          display: inline-flex;
-          align-items: center;
-          gap: 8px;
-          padding: 8px 16px;
-          font-size: 14px;
-          font-weight: 500;
-          color: #888;
+        .back-link {
+          color: #a78bfa;
           text-decoration: none;
-          border-radius: 8px;
-          transition: all 0.2s ease;
-          background: rgba(255, 255, 255, 0.03);
-          border: 1px solid rgba(255, 255, 255, 0.1);
+          font-size: 14px;
+          transition: color 0.2s;
           align-self: flex-start;
         }
 
-        .back-button:hover {
-          color: #e8e8e8;
-          background: rgba(255, 255, 255, 0.05);
-          border-color: rgba(102, 126, 234, 0.3);
+        .back-link:hover {
+          color: #c4b5fd;
         }
 
         .eyebrow {

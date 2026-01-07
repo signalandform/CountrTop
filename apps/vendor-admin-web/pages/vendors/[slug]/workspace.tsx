@@ -1,6 +1,5 @@
 import type { GetServerSideProps } from 'next';
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
 import { requireVendorAdmin } from '../../../lib/auth';
 import { getServerDataClient } from '../../../lib/dataClient';
 import type { Vendor } from '@countrtop/models';
@@ -257,9 +256,9 @@ export default function WorkspacePage({ vendorSlug, vendorName, vendor }: Worksp
       <div className="container">
         <header className="page-header">
           <div className="header-top">
-            <Link href={`/vendors/${vendorSlug}`} className="back-button">
-              ← Back
-            </Link>
+            <a href={`/vendors/${vendorSlug}`} className="back-link">
+              ← Back to Dashboard
+            </a>
           </div>
           <h1>{vendorName}</h1>
           <p>Workspace</p>
@@ -433,26 +432,15 @@ export default function WorkspacePage({ vendorSlug, vendorName, vendor }: Worksp
           margin-bottom: 16px;
         }
 
-        .back-button {
-          display: inline-flex;
-          align-items: center;
-          gap: 8px;
-          padding: 8px 16px;
-          border-radius: 8px;
-          border: 1px solid rgba(255, 255, 255, 0.2);
-          background: rgba(255, 255, 255, 0.05);
-          color: #e8e8e8;
-          font-size: 14px;
-          font-weight: 600;
+        .back-link {
+          color: #a78bfa;
           text-decoration: none;
-          transition: all 0.2s;
-          font-family: inherit;
+          font-size: 14px;
+          transition: color 0.2s;
         }
 
-        .back-button:hover {
-          background: rgba(255, 255, 255, 0.1);
-          border-color: rgba(255, 255, 255, 0.3);
-          transform: translateX(-2px);
+        .back-link:hover {
+          color: #c4b5fd;
         }
 
         .page-header h1 {

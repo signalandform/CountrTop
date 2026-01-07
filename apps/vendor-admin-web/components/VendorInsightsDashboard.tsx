@@ -76,10 +76,10 @@ export function VendorInsightsDashboard({ vendorSlug, vendorName, vendor, insigh
             </a>
 
             <a href={`/vendors/${vendorSlug}/settings`} className="dashboard-card">
-              <div className="card-icon">🎨</div>
-              <h3 className="card-title">Branding</h3>
+              <div className="card-icon">⚙️</div>
+              <h3 className="card-title">Settings</h3>
               <p className="card-description">
-                Customize colors, logo, and theme
+                Branding, theming, and configuration
               </p>
             </a>
 

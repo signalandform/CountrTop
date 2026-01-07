@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
 import Head from 'next/head';
-import Link from 'next/link';
 import { Vendor } from '@countrtop/models';
 
 type Props = {
@@ -207,7 +206,7 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
       )}
 
       <header className="page-header">
-        <Link href={`/vendors/${vendorSlug}`} className="back-link">← Back to Dashboard</Link>
+        <a href={`/vendors/${vendorSlug}`} className="back-link">← Back to Dashboard</a>
         <h1>Settings</h1>
         <p className="page-subtitle">{vendor.displayName}</p>
       </header>
@@ -605,9 +604,9 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
 
           {/* Form Actions */}
           <div className="form-actions">
-            <Link href={`/vendors/${vendorSlug}`} className="btn-cancel">
+            <a href={`/vendors/${vendorSlug}`} className="btn-cancel">
               Cancel
-            </Link>
+            </a>
             <button type="submit" className="btn-submit" disabled={saving}>
               {saving ? (
                 <>

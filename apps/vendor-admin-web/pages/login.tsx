@@ -363,17 +363,17 @@ export default function LoginPage() {
             padding: 14px 24px;
             border-radius: 12px;
             border: none;
-            background: #4285f4;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             font-weight: 600;
             font-size: 16px;
             cursor: pointer;
-            transition: background 0.2s;
+            transition: opacity 0.2s;
             font-family: inherit;
           }
 
           .btn-signin:hover:not(:disabled) {
-            background: #357ae8;
+            opacity: 0.9;
           }
 
           .btn-signin:disabled {

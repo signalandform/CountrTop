@@ -1,5 +1,4 @@
 import Head from 'next/head';
-import Link from 'next/link';
 import type { GetServerSideProps } from 'next';
 import { useState } from 'react';
 
@@ -160,9 +159,9 @@ export default function VendorOrdersPage({ vendorSlug, vendorName, orders: initi
             <h1 className="title">{vendorName} Orders</h1>
             <p className="subtitle">Recent order snapshots</p>
           </div>
-          <Link href={`/vendors/${vendorSlug}`} className="btn-secondary">
-            ← Back to Insights
-          </Link>
+          <a href={`/vendors/${vendorSlug}`} className="back-link">
+            ← Back to Dashboard
+          </a>
         </header>
 
         {statusMessage && <div className="error-banner">{statusMessage}</div>}
@@ -306,19 +305,15 @@ export default function VendorOrdersPage({ vendorSlug, vendorName, orders: initi
             margin: 0;
           }
 
-          .btn-secondary {
-            padding: 12px 20px;
-            border-radius: 12px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            background: rgba(255, 255, 255, 0.05);
-            color: #e8e8e8;
-            font-weight: 600;
+          .back-link {
+            color: #a78bfa;
             text-decoration: none;
-            transition: background 0.2s;
+            font-size: 14px;
+            transition: color 0.2s;
           }
 
-          .btn-secondary:hover {
-            background: rgba(255, 255, 255, 0.1);
+          .back-link:hover {
+            color: #c4b5fd;
           }
 
           .error-banner {

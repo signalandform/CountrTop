@@ -1,5 +1,4 @@
 import Head from 'next/head';
-import Link from 'next/link';
 import type { GetServerSideProps } from 'next';
 import { useState, useCallback } from 'react';
 
@@ -176,9 +175,9 @@ export default function LocationsPage({
         <div className="container">
           <header className="header">
             <div className="header-left">
-              <Link href={`/vendors/${vendorSlug}`} className="back-link">
+              <a href={`/vendors/${vendorSlug}`} className="back-link">
                 ← Back to Dashboard
-              </Link>
+              </a>
               <h1 className="title">Locations</h1>
               <p className="subtitle">{vendorName} · Manage your locations</p>
             </div>
@@ -232,7 +231,7 @@ export default function LocationsPage({
           }
 
           .back-link {
-            color: #888;
+            color: #a78bfa;
             text-decoration: none;
             font-size: 14px;
             display: inline-block;
@@ -240,7 +239,7 @@ export default function LocationsPage({
           }
 
           .back-link:hover {
-            color: #e8e8e8;
+            color: #c4b5fd;
           }
 
           .title {
