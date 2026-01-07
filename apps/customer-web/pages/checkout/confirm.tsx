@@ -1,7 +1,7 @@
 import type { GetServerSideProps } from 'next';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 
 import { resolveVendorSlugFromHost } from '@countrtop/data';
 
@@ -16,6 +16,15 @@ type StoredSnapshot = {
   items: { id: string; name: string; quantity: number; price: number }[];
   total: number;
   currency: string;
+};
+
+type OrderStatus = {
+  status: 'placed' | 'preparing' | 'ready' | 'completed' | 'unknown';
+  shortcode?: string | null;
+  placedAt?: string;
+  readyAt?: string | null;
+  completedAt?: string | null;
+  estimatedWaitMinutes?: number | null;
 };
 
 export const getServerSideProps: GetServerSideProps<ConfirmProps> = async ({ req }) => {
@@ -40,6 +49,26 @@ export default function ConfirmPage({ vendorName }: ConfirmProps) {
   const [status, setStatus] = useState<'idle' | 'ready' | 'error'>('idle');
   const [error, setError] = useState<string | null>(null);
   const [snapshot, setSnapshot] = useState<StoredSnapshot | null>(null);
+  const [orderStatus, setOrderStatus] = useState<OrderStatus | null>(null);
+  const [statusLoading, setStatusLoading] = useState(false);
+
+  // Fetch order status
+  const fetchOrderStatus = useCallback(async () => {
+    if (!orderId) return;
+    
+    setStatusLoading(true);
+    try {
+      const res = await fetch(`/api/orders/${encodeURIComponent(orderId)}/status`);
+      const data = await res.json();
+      if (data.ok) {
+        setOrderStatus(data.order);
+      }
+    } catch (err) {
+      console.error('Failed to fetch order status:', err);
+    } finally {
+      setStatusLoading(false);
+    }
+  }, [orderId]);
 
   useEffect(() => {
     if (!orderId || status !== 'idle') return;
@@ -60,6 +89,25 @@ export default function ConfirmPage({ vendorName }: ConfirmProps) {
     }
   }, [orderId, status]);
 
+  // Poll for order status updates
+  useEffect(() => {
+    if (!orderId || status !== 'ready') return;
+
+    // Initial fetch
+    fetchOrderStatus();
+
+    // Poll every 10 seconds until order is ready or completed
+    const interval = setInterval(() => {
+      if (orderStatus?.status === 'ready' || orderStatus?.status === 'completed') {
+        clearInterval(interval);
+        return;
+      }
+      fetchOrderStatus();
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, [orderId, status, fetchOrderStatus, orderStatus?.status]);
+
   useEffect(() => {
     if (!orderId) return;
     sessionStorage.setItem('ct_refresh_after_checkout', orderId);
@@ -67,6 +115,26 @@ export default function ConfirmPage({ vendorName }: ConfirmProps) {
 
   const formatCurrency = (cents: number, currency: string) =>
     new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(cents / 100);
+
+  const getStatusLabel = (s: OrderStatus['status']) => {
+    switch (s) {
+      case 'placed': return 'Order Received';
+      case 'preparing': return 'Being Prepared';
+      case 'ready': return 'Ready for Pickup!';
+      case 'completed': return 'Completed';
+      default: return 'Processing...';
+    }
+  };
+
+  const getStatusIcon = (s: OrderStatus['status']) => {
+    switch (s) {
+      case 'placed': return '📋';
+      case 'preparing': return '👨‍🍳';
+      case 'ready': return '✅';
+      case 'completed': return '🎉';
+      default: return '⏳';
+    }
+  };
 
   return (
     <>
@@ -83,6 +151,47 @@ export default function ConfirmPage({ vendorName }: ConfirmProps) {
         </div>
 
         <div className="content">
+          {/* Order Status Tracker */}
+          {status === 'ready' && (
+            <section className="card status-card">
+              <div className="status-header">
+                <h2>Order Status</h2>
+                {orderStatus?.shortcode && (
+                  <div className="shortcode">#{orderStatus.shortcode}</div>
+                )}
+              </div>
+              
+              <div className="status-tracker">
+                <div className={`status-step ${orderStatus?.status === 'placed' || orderStatus?.status === 'preparing' || orderStatus?.status === 'ready' || orderStatus?.status === 'completed' ? 'active' : ''} ${orderStatus?.status !== 'placed' && orderStatus?.status !== 'unknown' ? 'completed' : ''}`}>
+                  <div className="status-icon">📋</div>
+                  <div className="status-label">Received</div>
+                </div>
+                <div className="status-line"></div>
+                <div className={`status-step ${orderStatus?.status === 'preparing' || orderStatus?.status === 'ready' || orderStatus?.status === 'completed' ? 'active' : ''} ${orderStatus?.status === 'ready' || orderStatus?.status === 'completed' ? 'completed' : ''}`}>
+                  <div className="status-icon">👨‍🍳</div>
+                  <div className="status-label">Preparing</div>
+                </div>
+                <div className="status-line"></div>
+                <div className={`status-step ${orderStatus?.status === 'ready' || orderStatus?.status === 'completed' ? 'active completed' : ''}`}>
+                  <div className="status-icon">✅</div>
+                  <div className="status-label">Ready!</div>
+                </div>
+              </div>
+
+              <div className="status-message">
+                <span className="status-icon-large">{getStatusIcon(orderStatus?.status || 'unknown')}</span>
+                <span className="status-text">{getStatusLabel(orderStatus?.status || 'unknown')}</span>
+                {orderStatus?.estimatedWaitMinutes && orderStatus.status !== 'ready' && orderStatus.status !== 'completed' && (
+                  <span className="estimated-time">~{orderStatus.estimatedWaitMinutes} min</span>
+                )}
+              </div>
+
+              {statusLoading && !orderStatus && (
+                <p className="muted">Loading status...</p>
+              )}
+            </section>
+          )}
+
           <section className="card">
             {status === 'idle' && <p className="muted">Finalizing your order…</p>}
             {status === 'error' && <p className="error">{error}</p>}
@@ -233,6 +342,123 @@ export default function ConfirmPage({ vendorName }: ConfirmProps) {
 
           .btn-primary:active {
             transform: scale(0.98);
+          }
+
+          .status-card {
+            margin-bottom: 16px;
+          }
+
+          .status-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+          }
+
+          .status-header h2 {
+            font-size: 18px;
+            margin: 0;
+          }
+
+          .shortcode {
+            font-size: 24px;
+            font-weight: 700;
+            color: #667eea;
+            background: rgba(102, 126, 234, 0.1);
+            padding: 8px 16px;
+            border-radius: 12px;
+          }
+
+          .status-tracker {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 24px;
+          }
+
+          .status-step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            opacity: 0.4;
+            transition: opacity 0.3s, transform 0.3s;
+          }
+
+          .status-step.active {
+            opacity: 1;
+          }
+
+          .status-step.completed .status-icon {
+            background: linear-gradient(135deg, #34c759 0%, #30d158 100%);
+          }
+
+          .status-step .status-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+          }
+
+          .status-step.active .status-icon {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            animation: pulse-glow 2s infinite;
+          }
+
+          @keyframes pulse-glow {
+            0%, 100% {
+              box-shadow: 0 0 0 0 rgba(102, 126, 234, 0.4);
+            }
+            50% {
+              box-shadow: 0 0 20px 10px rgba(102, 126, 234, 0);
+            }
+          }
+
+          .status-step .status-label {
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          }
+
+          .status-line {
+            flex: 1;
+            height: 3px;
+            background: rgba(255, 255, 255, 0.1);
+            margin: 0 8px;
+            margin-bottom: 28px;
+          }
+
+          .status-message {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            padding: 16px;
+            background: rgba(102, 126, 234, 0.1);
+            border-radius: 12px;
+          }
+
+          .status-icon-large {
+            font-size: 32px;
+          }
+
+          .status-text {
+            font-size: 18px;
+            font-weight: 600;
+            color: #e8e8e8;
+          }
+
+          .estimated-time {
+            font-size: 14px;
+            color: #888;
+            padding: 4px 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
           }
         `}</style>
       </main>
