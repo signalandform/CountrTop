@@ -91,6 +91,9 @@ export const requireVendorAdmin = async (
     };
   }
 
+  // Collect cookies to set (multiple cookies need to be set as an array)
+  const cookiesToSet: string[] = [];
+  
   // Use Supabase auth helpers to get user from session
   const supabase = createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL ?? '',
@@ -101,15 +104,28 @@ export const requireVendorAdmin = async (
           return context.req.cookies[name] ?? undefined;
         },
         set(name: string, value: string, options?: CookieOptions) {
-          context.res.setHeader('Set-Cookie', `${name}=${value}; ${options?.maxAge ? `Max-Age=${options.maxAge};` : ''} ${options?.path ? `Path=${options.path};` : ''} ${options?.sameSite ? `SameSite=${options.sameSite};` : ''} ${options?.httpOnly ? 'HttpOnly;' : ''} ${options?.secure ? 'Secure;' : ''}`);
+          const parts = [`${name}=${value}`];
+          if (options?.maxAge) parts.push(`Max-Age=${options.maxAge}`);
+          if (options?.path) parts.push(`Path=${options.path}`);
+          if (options?.sameSite) parts.push(`SameSite=${options.sameSite}`);
+          if (options?.httpOnly) parts.push('HttpOnly');
+          if (options?.secure) parts.push('Secure');
+          cookiesToSet.push(parts.join('; '));
         },
         remove(name: string, options?: CookieOptions) {
-          context.res.setHeader('Set-Cookie', `${name}=; Max-Age=0; ${options?.path ? `Path=${options.path};` : ''}`);
+          const parts = [`${name}=`, 'Max-Age=0'];
+          if (options?.path) parts.push(`Path=${options.path}`);
+          cookiesToSet.push(parts.join('; '));
         }
       }
     }
   );
   const { data: { user }, error } = await supabase.auth.getUser();
+  
+  // Set any cookies that were collected during auth
+  if (cookiesToSet.length > 0) {
+    context.res.setHeader('Set-Cookie', cookiesToSet);
+  }
   
   if (error || !user) {
     return {
@@ -141,6 +157,9 @@ export const requireVendorAdminApi = async (
     };
   }
 
+  // Collect cookies to set (multiple cookies need to be set as an array)
+  const cookiesToSet: string[] = [];
+  
   // Use Supabase auth helpers to get user from session
   const supabase = createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL ?? '',
@@ -151,15 +170,28 @@ export const requireVendorAdminApi = async (
           return req.cookies[name] ?? undefined;
         },
         set(name: string, value: string, options?: CookieOptions) {
-          res.setHeader('Set-Cookie', `${name}=${value}; ${options?.maxAge ? `Max-Age=${options.maxAge};` : ''} ${options?.path ? `Path=${options.path};` : ''} ${options?.sameSite ? `SameSite=${options.sameSite};` : ''} ${options?.httpOnly ? 'HttpOnly;' : ''} ${options?.secure ? 'Secure;' : ''}`);
+          const parts = [`${name}=${value}`];
+          if (options?.maxAge) parts.push(`Max-Age=${options.maxAge}`);
+          if (options?.path) parts.push(`Path=${options.path}`);
+          if (options?.sameSite) parts.push(`SameSite=${options.sameSite}`);
+          if (options?.httpOnly) parts.push('HttpOnly');
+          if (options?.secure) parts.push('Secure');
+          cookiesToSet.push(parts.join('; '));
         },
         remove(name: string, options?: CookieOptions) {
-          res.setHeader('Set-Cookie', `${name}=; Max-Age=0; ${options?.path ? `Path=${options.path};` : ''}`);
+          const parts = [`${name}=`, 'Max-Age=0'];
+          if (options?.path) parts.push(`Path=${options.path}`);
+          cookiesToSet.push(parts.join('; '));
         }
       }
     }
   );
   const { data: { user }, error } = await supabase.auth.getUser();
+  
+  // Set any cookies that were collected during auth
+  if (cookiesToSet.length > 0) {
+    res.setHeader('Set-Cookie', cookiesToSet);
+  }
   
   if (error || !user) {
     return {
