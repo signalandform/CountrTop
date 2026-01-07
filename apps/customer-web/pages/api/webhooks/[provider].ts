@@ -332,7 +332,8 @@ async function handleSquareWebhook(
       const snapshot = await dataClient.createOrderSnapshot({
         vendorId: vendor.id,
         userId: userId ?? null,
-        squareOrderId: orderId,
+        externalOrderId: orderId, // POS-agnostic field
+        squareOrderId: orderId, // Deprecated alias
         placedAt: (order?.createdAt ?? payment.createdAt ?? new Date().toISOString()) as string,
         snapshotJson: {
           items,
