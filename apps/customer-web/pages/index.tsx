@@ -12,10 +12,20 @@ import { getBrowserSupabaseClient } from '../lib/supabaseBrowser';
 // TYPES
 // ============================================================================
 
+type LocationOption = {
+  id: string;
+  squareLocationId: string;
+  name: string;
+  isPrimary: boolean;
+  address?: string;
+  pickupInstructions?: string | null;
+};
+
 type Props = {
   vendorSlug: string | null;
   vendorName: string;
   vendor: Vendor | null;
+  locations: LocationOption[];
 };
 
 type Notice = {
@@ -59,11 +69,60 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req }) => 
     fontFamily: rawVendor.fontFamily ?? null,
   })) : null;
 
+  // Fetch locations for the vendor
+  let locations: LocationOption[] = [];
+  if (rawVendor) {
+    const { createClient } = await import('@supabase/supabase-js');
+    const { type Database } = await import('@countrtop/data');
+    
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_ANON_KEY;
+    
+    if (supabaseUrl && supabaseKey) {
+      const supabase = createClient<Database>(supabaseUrl, supabaseKey, {
+        auth: { persistSession: false }
+      });
+      
+      const { data: locationRows } = await supabase
+        .from('vendor_locations')
+        .select('id, square_location_id, name, is_primary, address_line1, city, state, pickup_instructions')
+        .eq('vendor_id', rawVendor.id)
+        .eq('is_active', true)
+        .eq('online_ordering_enabled', true)
+        .order('is_primary', { ascending: false })
+        .order('name', { ascending: true });
+
+      if (locationRows && locationRows.length > 0) {
+        locations = locationRows.map(loc => ({
+          id: loc.id,
+          squareLocationId: loc.square_location_id,
+          name: loc.name,
+          isPrimary: loc.is_primary,
+          address: [loc.address_line1, loc.city, loc.state].filter(Boolean).join(', ') || undefined,
+          pickupInstructions: loc.pickup_instructions
+        }));
+      }
+    }
+
+    // Fallback to vendor's primary location if no locations configured
+    if (locations.length === 0) {
+      locations = [{
+        id: rawVendor.id,
+        squareLocationId: rawVendor.squareLocationId,
+        name: rawVendor.displayName,
+        isPrimary: true,
+        address: [rawVendor.addressLine1, rawVendor.city, rawVendor.state].filter(Boolean).join(', ') || undefined,
+        pickupInstructions: rawVendor.pickupInstructions ?? null
+      }];
+    }
+  }
+
   return {
     props: {
       vendorSlug: vendorSlug ?? null,
       vendorName: vendor?.displayName ?? 'CountrTop',
-      vendor
+      vendor,
+      locations
     }
   };
 };
@@ -101,7 +160,7 @@ async function apiFetch<T>(url: string): Promise<{ ok: true; data: T } | { ok: f
 // COMPONENT
 // ============================================================================
 
-export default function CustomerHome({ vendorSlug, vendorName, vendor }: Props) {
+export default function CustomerHome({ vendorSlug, vendorName, vendor, locations }: Props) {
   // ---------------------------------------------------------------------------
   // Core state
   // ---------------------------------------------------------------------------
@@ -109,6 +168,12 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor }: Props) 
   const [supabase, setSupabase] = useState<ReturnType<typeof getBrowserSupabaseClient>>(null);
   const [notice, setNotice] = useState<Notice | null>(null);
   const [isNative, setIsNative] = useState(false);
+
+  // Location state - default to primary or first location
+  const [selectedLocation, setSelectedLocation] = useState<LocationOption | null>(
+    () => locations.find(l => l.isPrimary) ?? locations[0] ?? null
+  );
+  const hasMultipleLocations = locations.length > 1;
 
   // Menu state
   const [menu, setMenu] = useState<MenuItem[]>([]);
@@ -533,20 +598,39 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor }: Props) 
 
         {/* Main content */}
         <div className="content">
+          {/* Location Selector (when multiple locations) */}
+          {hasMultipleLocations && (
+            <section className="card location-selector">
+              <div className="location-header">
+                <h2>📍 Select Location</h2>
+              </div>
+              <div className="location-options">
+                {locations.map((loc) => (
+                  <button
+                    key={loc.id}
+                    className={`location-option ${selectedLocation?.id === loc.id ? 'selected' : ''}`}
+                    onClick={() => setSelectedLocation(loc)}
+                    type="button"
+                  >
+                    <div className="location-option-name">
+                      {loc.name}
+                      {loc.isPrimary && <span className="primary-badge">Primary</span>}
+                    </div>
+                    {loc.address && <div className="location-option-address">{loc.address}</div>}
+                  </button>
+                ))}
+              </div>
+            </section>
+          )}
+
           {/* Vendor Info */}
-          {vendor && (vendor.addressLine1 || vendor.city || vendor.pickupInstructions) && (
+          {vendor && (selectedLocation?.address || selectedLocation?.pickupInstructions) && (
             <section className="card vendor-info">
-              {vendor.addressLine1 && (
+              {selectedLocation?.address && (
                 <div className="vendor-address">
-                  <div className="info-label">Location</div>
+                  <div className="info-label">📍 {selectedLocation?.name || 'Location'}</div>
                   {(() => {
-                    const fullAddress = [
-                      vendor.addressLine1,
-                      vendor.addressLine2,
-                      vendor.city,
-                      vendor.state,
-                      vendor.postalCode
-                    ].filter(Boolean).join(', ');
+                    const fullAddress = selectedLocation.address || '';
                     const isIOS = typeof window !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent);
                     const mapsUrl = isIOS
                       ? `https://maps.apple.com/?q=${encodeURIComponent(fullAddress)}`
@@ -558,30 +642,16 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor }: Props) 
                         rel="noopener noreferrer"
                         className="info-content vendor-address-link"
                       >
-                        {vendor.addressLine1}
-                        {vendor.addressLine2 && <>{'\n'}{vendor.addressLine2}</>}
-                        {vendor.city && (
-                          <>
-                            {'\n'}
-                            {vendor.city}
-                            {vendor.state && `, ${vendor.state}`}
-                            {vendor.postalCode && ` ${vendor.postalCode}`}
-                          </>
-                        )}
+                        {fullAddress}
                       </a>
                     );
                   })()}
-                  {vendor.phone && (
-                    <div className="info-content" style={{ marginTop: '8px' }}>
-                      <a href={`tel:${vendor.phone}`} className="phone-link">{vendor.phone}</a>
-                    </div>
-                  )}
                 </div>
               )}
-              {vendor.pickupInstructions && (
+              {selectedLocation?.pickupInstructions && (
                 <div className="vendor-pickup">
                   <div className="info-label">Pickup Instructions</div>
-                  <div className="info-content">{vendor.pickupInstructions}</div>
+                  <div className="info-content">{selectedLocation.pickupInstructions}</div>
                 </div>
               )}
             </section>
@@ -1108,6 +1178,7 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor }: Props) 
             display: grid;
             grid-template-columns: 1fr 300px;
             grid-template-areas:
+              'location-selector cart'
               'vendor-info cart'
               'account cart'
               'order-tracking cart'
@@ -1123,6 +1194,7 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor }: Props) 
             .content {
               grid-template-columns: 1fr;
               grid-template-areas:
+                'location-selector'
                 'vendor-info'
                 'account'
                 'order-tracking'
@@ -1130,6 +1202,68 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor }: Props) 
                 'menu'
                 'history';
             }
+          }
+
+          .location-selector {
+            grid-area: location-selector;
+          }
+
+          .location-header h2 {
+            font-size: 16px;
+            font-weight: 600;
+            margin: 0 0 12px;
+          }
+
+          .location-options {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+          }
+
+          .location-option {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 12px;
+            padding: 14px 16px;
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: #e8e8e8;
+            font-family: inherit;
+          }
+
+          .location-option:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.25);
+          }
+
+          .location-option.selected {
+            background: rgba(102, 126, 234, 0.15);
+            border-color: var(--theme-primary, #667eea);
+          }
+
+          .location-option-name {
+            font-weight: 600;
+            font-size: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+          }
+
+          .location-option .primary-badge {
+            font-size: 10px;
+            text-transform: uppercase;
+            background: rgba(102, 126, 234, 0.25);
+            color: var(--theme-primary, #667eea);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 600;
+          }
+
+          .location-option-address {
+            font-size: 13px;
+            color: #888;
+            margin-top: 4px;
           }
 
           .account {
