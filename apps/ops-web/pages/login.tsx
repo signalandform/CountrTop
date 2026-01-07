@@ -36,7 +36,9 @@ export default function LoginPage() {
               })
             }).then((response) => {
               if (response.ok) {
-                setTimeout(() => router.replace('/'), 300);
+                setTimeout(() => {
+                  window.location.href = '/';
+                }, 300);
               } else {
                 setLoading(false);
               }
@@ -74,7 +76,7 @@ export default function LoginPage() {
 
             if (setSessionResponse.ok) {
               await new Promise(resolve => setTimeout(resolve, 300));
-              router.replace('/');
+              window.location.href = '/';
             } else {
               setLoading(false);
             }
@@ -137,9 +139,9 @@ export default function LoginPage() {
           // Wait a moment for cookies to be set
           await new Promise(resolve => setTimeout(resolve, 300));
           
-          // Redirect to dashboard
-          // The dashboard's getServerSideProps will verify email allowlist
-          router.replace('/');
+          // Use window.location for full page reload to ensure getServerSideProps runs properly
+          // This prevents "Loading initial props cancelled" errors
+          window.location.href = '/';
         } catch (err) {
           setError(err instanceof Error ? err.message : 'Failed to set session');
           setSigningIn(false);
