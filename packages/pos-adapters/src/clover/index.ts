@@ -239,9 +239,10 @@ export class CloverAdapter implements POSAdapter {
   // Catalog Operations
   // ---------------------------------------------------------------------------
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async fetchCatalog(locationId: string): Promise<CanonicalCatalogItem[]> {
     try {
-      // Clover uses merchantId as location, but we accept locationId for interface compatibility
+      // Clover uses merchantId as location, so locationId param is unused but required by interface
       const response = await this.fetch<{ elements: CloverItem[] }>(
         '/items?expand=modifierGroups,modifierGroups.modifiers&filter=hidden=false'
       );
