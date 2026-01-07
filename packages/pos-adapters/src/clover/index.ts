@@ -464,7 +464,7 @@ export class CloverAdapter implements POSAdapter {
   // Private Mapping Methods
   // ---------------------------------------------------------------------------
 
-  private mapItemToCanonical(item: CloverItem, locationId: string): CanonicalCatalogItem {
+  private mapItemToCanonical(item: CloverItem, _locationId: string): CanonicalCatalogItem {
     const modifierGroups: CanonicalModifierGroup[] = (item.modifierGroups?.elements || []).map(group => ({
       id: group.id,
       externalId: group.id,
@@ -512,7 +512,7 @@ export class CloverAdapter implements POSAdapter {
     // Determine order status from payments
     const payments = order.payments?.elements || [];
     const hasSuccessfulPayment = payments.some(p => p.result === 'SUCCESS');
-    const isCompleted = order.state === 'locked' && hasSuccessfulPayment;
+    const _isCompleted = order.state === 'locked' && hasSuccessfulPayment; // Reserved for future status mapping
 
     // Determine source from externalReferenceId
     const isCountrTopOrder = order.externalReferenceId?.startsWith('ct_');

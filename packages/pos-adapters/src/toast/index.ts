@@ -378,10 +378,11 @@ export class ToastAdapter implements POSAdapter {
     }
   }
 
-  async searchOrders(locationId: string, since: string, until?: string): Promise<CanonicalOrder[]> {
+  async searchOrders(locationId: string, since: string, _until?: string): Promise<CanonicalOrder[]> {
     try {
       const sinceDate = new Date(since).toISOString();
-      const untilDate = until ? new Date(until).toISOString() : new Date().toISOString();
+      // Note: Toast bulk order API uses businessDate, not a date range
+      // const untilDate = until ? new Date(until).toISOString() : new Date().toISOString();
 
       // Toast uses businessDate format YYYYMMDD for some queries
       const businessDate = sinceDate.split('T')[0].replace(/-/g, '');
@@ -537,7 +538,7 @@ export class ToastAdapter implements POSAdapter {
   // Private Mapping Methods
   // ---------------------------------------------------------------------------
 
-  private mapItemToCanonical(item: ToastMenuItem, locationId: string): CanonicalCatalogItem {
+  private mapItemToCanonical(item: ToastMenuItem, _locationId: string): CanonicalCatalogItem {
     const modifierGroups: CanonicalModifierGroup[] = (item.modifierGroups || []).map(group => ({
       id: group.guid,
       externalId: group.guid,
@@ -588,7 +589,7 @@ export class ToastAdapter implements POSAdapter {
 
     // Determine order status
     const hasPaid = check?.payments?.some(p => p.paidDate);
-    const isCompleted = !!order.closedDate && hasPaid;
+    const _isCompleted = !!order.closedDate && hasPaid; // Reserved for future status mapping
 
     // Determine source from order.source field
     const isCountrTopOrder = order.externalId?.startsWith('ct_') || order.source === 'CountrTop';
