@@ -29,9 +29,22 @@ export const getBrowserSupabaseClient = (): SupabaseClient<Database> | null => {
     auth: {
       persistSession: true,
       autoRefreshToken: true,
-      detectSessionInUrl: true
+      detectSessionInUrl: true,
+      // Handle refresh token errors gracefully
+      storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+      storageKey: 'ops-supabase-auth-token'
     }
   });
+
+  // Listen for auth errors and clear invalid sessions
+  if (typeof window !== 'undefined') {
+    cachedClient.auth.onAuthStateChange((event, session) => {
+      if (event === 'TOKEN_REFRESHED' && !session) {
+        // Token refresh failed - clear the session
+        cachedClient?.auth.signOut();
+      }
+    });
+  }
   return cachedClient;
 };
 

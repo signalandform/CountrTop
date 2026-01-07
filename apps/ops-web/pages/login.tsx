@@ -18,9 +18,46 @@ export default function LoginPage() {
     setSupabase(client);
 
     if (client) {
+      // Clear any stale sessions first to prevent refresh token errors
+      client.auth.onAuthStateChange((event, session) => {
+        if (event === 'TOKEN_REFRESHED' || event === 'SIGNED_IN') {
+          // Valid session - check if we should redirect
+          if (session?.user) {
+            // Set session cookies on server, then redirect
+            fetch('/api/auth/set-session', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              credentials: 'include',
+              body: JSON.stringify({
+                access_token: session.access_token,
+                refresh_token: session.refresh_token
+              })
+            }).then((response) => {
+              if (response.ok) {
+                setTimeout(() => router.replace('/'), 300);
+              } else {
+                setLoading(false);
+              }
+            }).catch(() => {
+              setLoading(false);
+            });
+          }
+        } else if (event === 'SIGNED_OUT' || event === 'USER_UPDATED') {
+          // Session cleared or user updated
+          setLoading(false);
+        }
+      });
+
       // Check if user is already logged in
-      client.auth.getSession().then(async ({ data: { session } }) => {
-        if (session?.user) {
+      client.auth.getSession().then(async ({ data: { session }, error }) => {
+        if (error) {
+          // If there's an error (like invalid refresh token), clear the session
+          console.warn('Session check error:', error.message);
+          await client.auth.signOut();
+          setLoading(false);
+        } else if (session?.user) {
           // Already logged in - set session cookies on server, then redirect
           try {
             const setSessionResponse = await fetch('/api/auth/set-session', {
@@ -47,7 +84,12 @@ export default function LoginPage() {
         } else {
           setLoading(false);
         }
-      }).catch(() => {
+      }).catch(async (err) => {
+        // If there's an error getting the session, clear it
+        console.warn('Failed to get session:', err);
+        if (client) {
+          await client.auth.signOut();
+        }
         setLoading(false);
       });
     } else {
