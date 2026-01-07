@@ -76,7 +76,9 @@ export const getServerSideProps: GetServerSideProps<LocationsPageProps> = async 
       locations = (data as VendorLocationRow[]).map((row) => ({
         id: row.id,
         vendorId: row.vendor_id,
-        squareLocationId: row.square_location_id,
+        externalLocationId: row.square_location_id, // POS-agnostic field
+        squareLocationId: row.square_location_id, // Deprecated alias
+        posProvider: (row.pos_provider ?? 'square') as 'square' | 'toast' | 'clover',
         name: row.name,
         isPrimary: row.is_primary,
         isActive: row.is_active,

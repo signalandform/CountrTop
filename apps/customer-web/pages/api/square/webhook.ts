@@ -326,7 +326,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const snapshot = await dataClient.createOrderSnapshot({
       vendorId: vendor.id,
       userId: userId ?? null,
-      squareOrderId: orderId,
+      externalOrderId: orderId, // POS-agnostic field
+      squareOrderId: orderId, // Deprecated alias
       placedAt: order?.createdAt ?? payment.createdAt ?? new Date().toISOString(),
       snapshotJson: {
         items,
