@@ -533,11 +533,10 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
   const fontFamily = vendor?.fontFamily || 'SF Pro Display';
   const logoUrl = vendor?.logoUrl;
 
-  // Build dynamic theme style variables
+  // Build dynamic theme style variables (solid colors, no gradients)
   const themeStyles: React.CSSProperties & Record<string, string> = {
-    '--theme-primary': primaryColor,
+    '--theme-button': primaryColor,
     '--theme-accent': accentColor,
-    '--theme-gradient': `linear-gradient(135deg, ${primaryColor} 0%, ${accentColor} 100%)`,
     '--theme-font': `'${fontFamily}', -apple-system, BlinkMacSystemFont, sans-serif`,
   };
 
@@ -545,9 +544,8 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
   useEffect(() => {
     if (typeof document !== 'undefined') {
       const root = document.documentElement;
-      root.style.setProperty('--theme-primary', primaryColor);
+      root.style.setProperty('--theme-button', primaryColor);
       root.style.setProperty('--theme-accent', accentColor);
-      root.style.setProperty('--theme-gradient', `linear-gradient(135deg, ${primaryColor} 0%, ${accentColor} 100%)`);
       root.style.setProperty('--theme-font', `'${fontFamily}', -apple-system, BlinkMacSystemFont, sans-serif`);
     }
   }, [primaryColor, accentColor, fontFamily]);
@@ -1059,7 +1057,7 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
             text-transform: uppercase;
             letter-spacing: 3px;
             font-size: 11px;
-            color: var(--theme-primary, #a78bfa);
+            color: var(--theme-accent, #a78bfa);
             margin: 0 0 8px;
           }
 
@@ -1067,7 +1065,7 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
             font-size: 36px;
             font-weight: 700;
             margin: 0 0 8px;
-            background: var(--theme-gradient, linear-gradient(135deg, #667eea 0%, #764ba2 100%));
+            background: var(--theme-button, #667eea);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
@@ -1110,7 +1108,7 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            color: var(--theme-primary, #a78bfa);
+            color: var(--theme-accent, #a78bfa);
           }
 
           .info-content {
@@ -1122,7 +1120,7 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
 
           .vendor-address-link {
             text-decoration: none;
-            color: var(--theme-primary, #a78bfa);
+            color: var(--theme-accent, #a78bfa);
             transition: color 0.2s;
           }
 
@@ -1132,7 +1130,7 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
           }
 
           .phone-link {
-            color: var(--theme-primary, #a78bfa);
+            color: var(--theme-accent, #a78bfa);
             text-decoration: none;
           }
 
@@ -1237,7 +1235,7 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
 
           .location-option.selected {
             background: rgba(102, 126, 234, 0.15);
-            border-color: var(--theme-primary, #667eea);
+            border-color: var(--theme-button, #667eea);
           }
 
           .location-option-name {
@@ -1252,7 +1250,7 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
             font-size: 10px;
             text-transform: uppercase;
             background: rgba(102, 126, 234, 0.25);
-            color: var(--theme-primary, #667eea);
+            color: var(--theme-button, #667eea);
             padding: 2px 6px;
             border-radius: 4px;
             font-weight: 600;
@@ -1314,7 +1312,7 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
 
           .order-item .item-quantity {
             font-weight: 600;
-            color: var(--theme-primary, #a78bfa);
+            color: var(--theme-accent, #a78bfa);
             min-width: 24px;
           }
 
@@ -1446,7 +1444,7 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
             font-size: 72px;
             font-weight: 900;
             text-align: center;
-            background: var(--theme-gradient, linear-gradient(135deg, #667eea 0%, #764ba2 100%));
+            background: var(--theme-button, #667eea);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
@@ -1470,13 +1468,13 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
           }
 
           .progress-dot.active {
-            background: var(--theme-primary, #667eea);
+            background: var(--theme-button, #667eea);
             box-shadow: 0 0 8px rgba(102, 126, 234, 0.5);
             transform: scale(1.2);
           }
 
           .points {
-            background: var(--theme-gradient, linear-gradient(135deg, #667eea 0%, #764ba2 100%));
+            background: var(--theme-button, #667eea);
             padding: 8px 16px;
             border-radius: 20px;
             font-weight: 700;
@@ -1509,7 +1507,7 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
             padding: 12px;
             border-radius: 12px;
             border: none;
-            background: var(--theme-gradient, linear-gradient(135deg, #667eea 0%, #764ba2 100%));
+            background: var(--theme-button, #667eea);
             color: #fff;
             font-weight: 600;
             cursor: pointer;
@@ -1678,7 +1676,7 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
 
           .price {
             font-weight: 700;
-            color: var(--theme-primary, #a78bfa);
+            color: var(--theme-accent, #a78bfa);
           }
 
           .history-header {

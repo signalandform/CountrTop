@@ -26,7 +26,7 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
   // Theming state
   const [logoUrl, setLogoUrl] = useState(vendor.logoUrl || '');
   const [primaryColor, setPrimaryColor] = useState(vendor.primaryColor || '#667eea');
-  const [accentColor, setAccentColor] = useState(vendor.accentColor || '#764ba2');
+  const [accentColor, setAccentColor] = useState(vendor.accentColor || '#a78bfa');
   const [fontFamily, setFontFamily] = useState(vendor.fontFamily || 'SF Pro Display');
 
   // Google Font URL for preview (memoized to avoid re-renders)
@@ -234,7 +234,7 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
               </div>
 
               <div className="form-group">
-                <label htmlFor="primaryColor">Primary Color</label>
+                <label htmlFor="primaryColor">Button Color</label>
                 <div className="color-input-row">
                   <input
                     id="primaryColor"
@@ -258,7 +258,7 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
                     placeholder="#667eea"
                   />
                 </div>
-                <small className="form-hint">Main brand color for buttons</small>
+                <small className="form-hint">Color for buttons and CTAs</small>
               </div>
 
               <div className="form-group">
@@ -283,10 +283,10 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
                     }}
                     className="form-input color-text"
                     disabled={saving}
-                    placeholder="#764ba2"
+                    placeholder="#a78bfa"
                   />
                 </div>
-                <small className="form-hint">Secondary color for gradients</small>
+                <small className="form-hint">Color for text highlights and badges</small>
               </div>
 
               <div className="form-group">
@@ -317,13 +317,14 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
               <div 
                 className="preview-box"
                 style={{
-                  background: `linear-gradient(135deg, ${primaryColor} 0%, ${accentColor} 100%)`,
+                  background: '#0c0c0c',
                   fontFamily: `'${fontFamily}', -apple-system, BlinkMacSystemFont, sans-serif`
                 }}
               >
                 {logoUrl && <img src={logoUrl} alt="" className="preview-logo" />}
-                <div className="preview-title">{vendor.displayName}</div>
+                <div className="preview-title" style={{ color: accentColor }}>{vendor.displayName}</div>
                 <div className="preview-subtitle">Order fast, earn points</div>
+                <div className="preview-accent-text" style={{ color: accentColor }}>⭐ 150 points</div>
                 <button 
                   type="button"
                   className="preview-button"
@@ -831,7 +832,13 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
 
         .preview-subtitle {
           font-size: 16px;
-          opacity: 0.9;
+          color: #888;
+          margin-bottom: 12px;
+        }
+
+        .preview-accent-text {
+          font-size: 14px;
+          font-weight: 600;
           margin-bottom: 20px;
         }
 
