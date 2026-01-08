@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { resolveVendorSlugFromHost } from '@countrtop/data';
 
 import { getServerDataClient } from '../../lib/dataClient';
+import { OrderStatusTracker, OrderStatusState } from '../../components/OrderStatusTracker';
 
 type ConfirmProps = {
   vendorName: string;
@@ -120,28 +121,6 @@ export default function ConfirmPage({ vendorName }: ConfirmProps) {
     sessionStorage.setItem('ct_refresh_after_checkout', orderId);
   }, [orderId]);
 
-  const formatCurrency = (cents: number, currency: string) =>
-    new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(cents / 100);
-
-  const getStatusLabel = (s: OrderStatus['status']) => {
-    switch (s) {
-      case 'placed': return 'Order Received';
-      case 'preparing': return 'Being Prepared';
-      case 'ready': return 'Ready for Pickup!';
-      case 'completed': return 'Completed';
-      default: return 'Processing...';
-    }
-  };
-
-  const getStatusIcon = (s: OrderStatus['status']) => {
-    switch (s) {
-      case 'placed': return '📋';
-      case 'preparing': return '👨‍🍳';
-      case 'ready': return '✅';
-      case 'completed': return '🎉';
-      default: return '⏳';
-    }
-  };
 
   return (
     <>
@@ -158,77 +137,38 @@ export default function ConfirmPage({ vendorName }: ConfirmProps) {
         </div>
 
         <div className="content">
-          {/* Order Status Tracker */}
+          {status === 'idle' && (
+            <div className="card">
+              <p className="muted">Finalizing your order…</p>
+            </div>
+          )}
+          {status === 'error' && (
+            <div className="card">
+              <p className="error">{error}</p>
+            </div>
+          )}
           {status === 'ready' && (
-            <section className="card status-card">
-              <div className="status-header">
-                <h2>Order Status</h2>
-                {orderStatus?.shortcode && (
-                  <div className="shortcode">#{orderStatus.shortcode}</div>
-                )}
-              </div>
-              
-              <div className="status-tracker">
-                <div className={`status-step ${orderStatus?.status === 'placed' || orderStatus?.status === 'preparing' || orderStatus?.status === 'ready' || orderStatus?.status === 'completed' ? 'active' : ''} ${orderStatus?.status !== 'placed' && orderStatus?.status !== 'unknown' ? 'completed' : ''}`}>
-                  <div className="status-icon">📋</div>
-                  <div className="status-label">Received</div>
-                </div>
-                <div className="status-line"></div>
-                <div className={`status-step ${orderStatus?.status === 'preparing' || orderStatus?.status === 'ready' || orderStatus?.status === 'completed' ? 'active' : ''} ${orderStatus?.status === 'ready' || orderStatus?.status === 'completed' ? 'completed' : ''}`}>
-                  <div className="status-icon">👨‍🍳</div>
-                  <div className="status-label">Preparing</div>
-                </div>
-                <div className="status-line"></div>
-                <div className={`status-step ${orderStatus?.status === 'ready' || orderStatus?.status === 'completed' ? 'active completed' : ''}`}>
-                  <div className="status-icon">✅</div>
-                  <div className="status-label">Ready!</div>
-                </div>
-              </div>
-
-              <div className="status-message">
-                <span className="status-icon-large">{getStatusIcon(orderStatus?.status || 'unknown')}</span>
-                <span className="status-text">{getStatusLabel(orderStatus?.status || 'unknown')}</span>
-                {orderStatus?.estimatedWaitMinutes && orderStatus.status !== 'ready' && orderStatus.status !== 'completed' && (
-                  <span className="estimated-time">~{orderStatus.estimatedWaitMinutes} min</span>
-                )}
-              </div>
-
-              {statusLoading && !orderStatus && (
-                <p className="muted">Loading status...</p>
-              )}
-            </section>
+            <OrderStatusTracker
+              status={(orderStatus?.status || 'placed') as OrderStatusState}
+              shortcode={orderStatus?.shortcode}
+              estimatedWaitMinutes={orderStatus?.estimatedWaitMinutes}
+              orderId={orderId}
+              items={snapshot?.items.map(item => ({
+                name: item.name,
+                quantity: item.quantity,
+                price: item.price
+              }))}
+              total={snapshot?.total}
+              currency={snapshot?.currency}
+              placedAt={orderStatus?.placedAt}
+            />
           )}
 
-          <section className="card">
-            {status === 'idle' && <p className="muted">Finalizing your order…</p>}
-            {status === 'error' && <p className="error">{error}</p>}
-            {snapshot && status === 'ready' && (
-              <>
-                <div className="card-header">
-                  <h2>Order Summary</h2>
-                </div>
-                <div className="order-summary">
-                  {snapshot.items.map((item) => (
-                    <div key={item.id} className="order-summary-row">
-                      <span>
-                        {item.quantity} × {item.name}
-                      </span>
-                      <span>{formatCurrency(item.price * item.quantity, snapshot.currency)}</span>
-                    </div>
-                  ))}
-                  <div className="order-summary-total">
-                    <span>Total</span>
-                    <strong>{formatCurrency(snapshot.total, snapshot.currency)}</strong>
-                  </div>
-                </div>
-              </>
-            )}
-            <div style={{ marginTop: 20 }}>
-              <button type="button" onClick={() => router.push('/')} className="btn-primary">
-                Back to Home
-              </button>
-            </div>
-          </section>
+          <div style={{ marginTop: 20, textAlign: 'center' }}>
+            <button type="button" onClick={() => router.push('/')} className="btn-primary">
+              Back to Home
+            </button>
+          </div>
         </div>
 
         <style jsx>{`
@@ -309,36 +249,14 @@ export default function ConfirmPage({ vendorName }: ConfirmProps) {
             margin: 8px 0 0;
           }
 
-          .order-summary {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-          }
-
-          .order-summary-row {
-            display: flex;
-            justify-content: space-between;
-            font-size: 14px;
-            color: #e8e8e8;
-          }
-
-          .order-summary-total {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 8px;
-            padding-top: 12px;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-            font-size: 16px;
-          }
-
           .btn-primary {
-            width: 100%;
-            padding: 12px;
+            padding: 14px 32px;
             border-radius: 12px;
             border: none;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--theme-button, #667eea);
             color: #fff;
             font-weight: 600;
+            font-size: 16px;
             cursor: pointer;
             transition: transform 0.1s, opacity 0.2s;
           }
@@ -349,123 +267,6 @@ export default function ConfirmPage({ vendorName }: ConfirmProps) {
 
           .btn-primary:active {
             transform: scale(0.98);
-          }
-
-          .status-card {
-            margin-bottom: 16px;
-          }
-
-          .status-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 24px;
-          }
-
-          .status-header h2 {
-            font-size: 18px;
-            margin: 0;
-          }
-
-          .shortcode {
-            font-size: 24px;
-            font-weight: 700;
-            color: #667eea;
-            background: rgba(102, 126, 234, 0.1);
-            padding: 8px 16px;
-            border-radius: 12px;
-          }
-
-          .status-tracker {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 24px;
-          }
-
-          .status-step {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 8px;
-            opacity: 0.4;
-            transition: opacity 0.3s, transform 0.3s;
-          }
-
-          .status-step.active {
-            opacity: 1;
-          }
-
-          .status-step.completed .status-icon {
-            background: linear-gradient(135deg, #34c759 0%, #30d158 100%);
-          }
-
-          .status-step .status-icon {
-            width: 48px;
-            height: 48px;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.1);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 24px;
-          }
-
-          .status-step.active .status-icon {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            animation: pulse-glow 2s infinite;
-          }
-
-          @keyframes pulse-glow {
-            0%, 100% {
-              box-shadow: 0 0 0 0 rgba(102, 126, 234, 0.4);
-            }
-            50% {
-              box-shadow: 0 0 20px 10px rgba(102, 126, 234, 0);
-            }
-          }
-
-          .status-step .status-label {
-            font-size: 12px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-          }
-
-          .status-line {
-            flex: 1;
-            height: 3px;
-            background: rgba(255, 255, 255, 0.1);
-            margin: 0 8px;
-            margin-bottom: 28px;
-          }
-
-          .status-message {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 12px;
-            padding: 16px;
-            background: rgba(102, 126, 234, 0.1);
-            border-radius: 12px;
-          }
-
-          .status-icon-large {
-            font-size: 32px;
-          }
-
-          .status-text {
-            font-size: 18px;
-            font-weight: 600;
-            color: #e8e8e8;
-          }
-
-          .estimated-time {
-            font-size: 14px;
-            color: #888;
-            padding: 4px 12px;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 8px;
           }
         `}</style>
       </main>

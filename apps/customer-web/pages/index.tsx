@@ -8,6 +8,7 @@ import { CartItem, MenuItem, OrderHistoryEntry, Vendor } from '@countrtop/models
 import { useAuth } from '@countrtop/ui';
 import { getServerDataClient } from '../lib/dataClient';
 import { getBrowserSupabaseClient } from '../lib/supabaseBrowser';
+import { OrderStatusTracker, OrderStatusState } from '../components/OrderStatusTracker';
 
 // ============================================================================
 // TYPES
@@ -819,18 +820,21 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
           </section>
 
           {/* Order Tracking */}
-          <section className="card order-tracking">
-            <div className="card-header">
-              <h2>Order Tracking</h2>
-            </div>
-            {!mounted && <p className="muted">Loading…</p>}
+          <section className="order-tracking">
+            {!mounted && <div className="card"><p className="muted">Loading…</p></div>}
             {mounted && !user && (
-              <p className="muted">Sign in to track orders.</p>
+              <div className="card">
+                <div className="card-header"><h2>Order Tracking</h2></div>
+                <p className="muted">Sign in to track orders.</p>
+              </div>
             )}
-            {user && ordersLoading && <p className="muted">Loading orders…</p>}
-            {user && ordersError && <p className="error">{ordersError}</p>}
+            {user && ordersLoading && <div className="card"><p className="muted">Loading orders…</p></div>}
+            {user && ordersError && <div className="card"><p className="error">{ordersError}</p></div>}
             {user && !ordersLoading && !recentOrder && (
-              <p className="muted">No orders yet.</p>
+              <div className="card">
+                <div className="card-header"><h2>Order Tracking</h2></div>
+                <p className="muted">No active orders.</p>
+              </div>
             )}
             {user && !ordersLoading && recentOrder && recentOrderDetails && (() => {
               // Auto-hide if completed >30 minutes ago
@@ -844,76 +848,44 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
               if (!shouldShow) return null;
 
               // Parse items from snapshot
-              const parseItems = (snapshot: Record<string, unknown> | null): Array<{ name: string; quantity: number }> => {
+              const parseItems = (snapshot: Record<string, unknown> | null): Array<{ name: string; quantity: number; price?: number }> => {
                 if (!snapshot || typeof snapshot !== 'object') return [];
                 const items = (snapshot.items as unknown[]) || (snapshot.line_items as unknown[]) || [];
                 return items.map((item: unknown) => {
                   const itemObj = item as Record<string, unknown> | null;
                   return {
                     name: (itemObj?.name as string) || 'Item',
-                    quantity: (itemObj?.quantity as number) || 1
+                    quantity: (itemObj?.quantity as number) || 1,
+                    price: (itemObj?.price as number) || undefined
                   };
                 });
               };
 
               const items = parseItems(recentOrder.snapshotJson);
-              const dateTime = new Date(recentOrder.placedAt);
-              const formattedDateTime = dateTime.toLocaleDateString('en-US', {
-                month: 'short',
-                day: 'numeric',
-                hour: 'numeric',
-                minute: '2-digit'
-              });
+              
+              // Map tracking state to OrderStatusState
+              const mapTrackingToStatus = (): OrderStatusState => {
+                if (!trackingState) return 'placed';
+                switch (trackingState.state) {
+                  case 'queued_up': return 'placed';
+                  case 'working': return 'preparing';
+                  case 'ready': return 'ready';
+                  case 'enjoy': return 'completed';
+                  default: return 'placed';
+                }
+              };
 
               return (
-                <div className="order-tracking-info">
-                  <div>
-                    <div style={{ marginBottom: '4px' }}>
-                      <div className="label">Order {recentOrder.squareOrderId.slice(-6)}</div>
-                    </div>
-                    <div className="muted">
-                      {formattedDateTime} · {recentOrderDetails.count} items · {formatCurrency(recentOrderDetails.total, recentOrderDetails.currency)}
-                    </div>
-                    {items.length > 0 && (
-                      <div className="order-items-list" style={{ marginTop: '12px' }}>
-                        {items.slice(0, 6).map((item, idx) => (
-                          <div key={idx} className="order-item">
-                            <span className="item-quantity">{item.quantity}×</span>
-                            <span className="item-name">{item.name}</span>
-                          </div>
-                        ))}
-                        {items.length > 6 && (
-                          <div className="order-item-more">+{items.length - 6} more</div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                {trackingLoading && <p className="muted" style={{ marginTop: '12px' }}>Loading tracking...</p>}
-                {!trackingLoading && trackingState && (
-                  <div className={`tracking-ladder tracking-state-${trackingState.state}`} style={{ marginTop: '16px' }}>
-                    <div className="tracking-icon">
-                      {trackingState.state === 'queued_up' && '⏳'}
-                      {trackingState.state === 'working' && '👨‍🍳'}
-                      {trackingState.state === 'ready' && '✅'}
-                      {trackingState.state === 'enjoy' && '🎉'}
-                    </div>
-                    <div className="tracking-message">{trackingState.message}</div>
-                    {trackingState.state === 'ready' && trackingState.shortcode && (
-                      <>
-                        <div className="tracking-shortcode-label">Your code</div>
-                        <div className="tracking-shortcode">{trackingState.shortcode}</div>
-                      </>
-                    )}
-                    {(trackingState.state === 'queued_up' || trackingState.state === 'working') && (
-                      <div className="tracking-progress">
-                        <div className={`progress-dot ${trackingState.state === 'queued_up' ? 'active' : ''}`}></div>
-                        <div className={`progress-dot ${trackingState.state === 'working' ? 'active' : ''}`}></div>
-                        <div className="progress-dot"></div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
+                <OrderStatusTracker
+                  status={mapTrackingToStatus()}
+                  shortcode={trackingState?.shortcode}
+                  orderId={recentOrder.squareOrderId}
+                  items={items}
+                  total={recentOrderDetails.total}
+                  currency={recentOrderDetails.currency}
+                  placedAt={recentOrder.placedAt}
+                  compact={true}
+                />
               );
             })()}
           </section>

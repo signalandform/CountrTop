@@ -1,0 +1,383 @@
+import React from 'react';
+
+export type OrderStatusState = 'placed' | 'preparing' | 'ready' | 'completed' | 'unknown';
+
+type OrderStatusTrackerProps = {
+  status: OrderStatusState;
+  shortcode?: string | null;
+  estimatedWaitMinutes?: number | null;
+  orderId?: string;
+  items?: Array<{ name: string; quantity: number; price?: number }>;
+  total?: number;
+  currency?: string;
+  placedAt?: string;
+  compact?: boolean;
+};
+
+const getStatusLabel = (s: OrderStatusState) => {
+  switch (s) {
+    case 'placed': return 'Order Received';
+    case 'preparing': return 'Being Prepared';
+    case 'ready': return 'Ready for Pickup!';
+    case 'completed': return 'Completed';
+    default: return 'Processing...';
+  }
+};
+
+const getStatusIcon = (s: OrderStatusState) => {
+  switch (s) {
+    case 'placed': return '📋';
+    case 'preparing': return '👨‍🍳';
+    case 'ready': return '✅';
+    case 'completed': return '🎉';
+    default: return '⏳';
+  }
+};
+
+export function OrderStatusTracker({
+  status,
+  shortcode,
+  estimatedWaitMinutes,
+  orderId,
+  items,
+  total,
+  currency = 'USD',
+  placedAt,
+  compact = false,
+}: OrderStatusTrackerProps) {
+  const formatCurrency = (cents: number, curr: string) =>
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: curr }).format(cents / 100);
+
+  const formatTime = (isoString: string) => {
+    const date = new Date(isoString);
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit'
+    });
+  };
+
+  const isStepActive = (step: 'received' | 'preparing' | 'ready') => {
+    if (step === 'received') return true;
+    if (step === 'preparing') return status === 'preparing' || status === 'ready' || status === 'completed';
+    if (step === 'ready') return status === 'ready' || status === 'completed';
+    return false;
+  };
+
+  const isStepCompleted = (step: 'received' | 'preparing' | 'ready') => {
+    if (step === 'received') return status !== 'placed' && status !== 'unknown';
+    if (step === 'preparing') return status === 'ready' || status === 'completed';
+    if (step === 'ready') return status === 'completed';
+    return false;
+  };
+
+  return (
+    <div className={`order-status-tracker ${compact ? 'compact' : ''}`}>
+      {/* Header with order ID and shortcode */}
+      <div className="tracker-header">
+        <div className="tracker-title">
+          {orderId && <span className="order-id">Order #{orderId.slice(-6).toUpperCase()}</span>}
+          {placedAt && <span className="order-time">{formatTime(placedAt)}</span>}
+        </div>
+        {shortcode && (
+          <div className="shortcode-badge">#{shortcode}</div>
+        )}
+      </div>
+
+      {/* 3-Step Progress Tracker */}
+      <div className="status-steps">
+        <div className={`status-step ${isStepActive('received') ? 'active' : ''} ${isStepCompleted('received') ? 'completed' : ''}`}>
+          <div className="step-icon">📋</div>
+          <div className="step-label">Received</div>
+        </div>
+        <div className="step-line"></div>
+        <div className={`status-step ${isStepActive('preparing') ? 'active' : ''} ${isStepCompleted('preparing') ? 'completed' : ''}`}>
+          <div className="step-icon">👨‍🍳</div>
+          <div className="step-label">Preparing</div>
+        </div>
+        <div className="step-line"></div>
+        <div className={`status-step ${isStepActive('ready') ? 'active' : ''} ${isStepCompleted('ready') ? 'completed' : ''}`}>
+          <div className="step-icon">✅</div>
+          <div className="step-label">Ready!</div>
+        </div>
+      </div>
+
+      {/* Current Status Message */}
+      <div className={`status-message status-${status}`}>
+        <span className="status-emoji">{getStatusIcon(status)}</span>
+        <span className="status-text">{getStatusLabel(status)}</span>
+        {estimatedWaitMinutes && status !== 'ready' && status !== 'completed' && (
+          <span className="estimated-time">~{estimatedWaitMinutes} min</span>
+        )}
+      </div>
+
+      {/* Ready Shortcode Display */}
+      {status === 'ready' && shortcode && (
+        <div className="ready-shortcode">
+          <div className="shortcode-label">Show this code at pickup</div>
+          <div className="shortcode-value">#{shortcode}</div>
+        </div>
+      )}
+
+      {/* Items Summary (if provided and not compact) */}
+      {!compact && items && items.length > 0 && (
+        <div className="items-summary">
+          {items.slice(0, 5).map((item, idx) => (
+            <div key={idx} className="item-row">
+              <span className="item-qty">{item.quantity}×</span>
+              <span className="item-name">{item.name}</span>
+              {item.price !== undefined && (
+                <span className="item-price">{formatCurrency(item.price * item.quantity, currency)}</span>
+              )}
+            </div>
+          ))}
+          {items.length > 5 && (
+            <div className="items-more">+{items.length - 5} more items</div>
+          )}
+          {total !== undefined && (
+            <div className="items-total">
+              <span>Total</span>
+              <strong>{formatCurrency(total, currency)}</strong>
+            </div>
+          )}
+        </div>
+      )}
+
+      <style jsx>{`
+        .order-status-tracker {
+          background: rgba(255, 255, 255, 0.05);
+          backdrop-filter: blur(10px);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 16px;
+          padding: 20px;
+        }
+
+        .order-status-tracker.compact {
+          padding: 16px;
+        }
+
+        .tracker-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 20px;
+        }
+
+        .compact .tracker-header {
+          margin-bottom: 16px;
+        }
+
+        .tracker-title {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+
+        .order-id {
+          font-weight: 600;
+          font-size: 14px;
+          color: var(--theme-accent, #a78bfa);
+        }
+
+        .order-time {
+          font-size: 12px;
+          color: #888;
+        }
+
+        .shortcode-badge {
+          background: var(--theme-button, #667eea);
+          color: white;
+          padding: 6px 12px;
+          border-radius: 20px;
+          font-weight: 700;
+          font-size: 14px;
+        }
+
+        /* Status Steps */
+        .status-steps {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 20px;
+        }
+
+        .compact .status-steps {
+          margin-bottom: 16px;
+        }
+
+        .status-step {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 6px;
+          opacity: 0.4;
+          transition: opacity 0.3s;
+        }
+
+        .status-step.active {
+          opacity: 1;
+        }
+
+        .status-step.completed .step-icon {
+          background: var(--theme-button, #667eea);
+        }
+
+        .step-icon {
+          width: 44px;
+          height: 44px;
+          border-radius: 50%;
+          background: rgba(255, 255, 255, 0.1);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 20px;
+          transition: background 0.3s;
+        }
+
+        .compact .step-icon {
+          width: 36px;
+          height: 36px;
+          font-size: 16px;
+        }
+
+        .step-label {
+          font-size: 12px;
+          font-weight: 500;
+          color: #e8e8e8;
+        }
+
+        .compact .step-label {
+          font-size: 11px;
+        }
+
+        .step-line {
+          flex: 1;
+          height: 2px;
+          background: rgba(255, 255, 255, 0.1);
+          margin: 0 8px;
+          margin-bottom: 20px;
+        }
+
+        .compact .step-line {
+          margin-bottom: 16px;
+        }
+
+        /* Status Message */
+        .status-message {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 10px;
+          padding: 16px;
+          border-radius: 12px;
+          background: rgba(255, 255, 255, 0.05);
+          margin-bottom: 16px;
+        }
+
+        .compact .status-message {
+          padding: 12px;
+          margin-bottom: 0;
+        }
+
+        .status-message.status-ready {
+          background: rgba(34, 197, 94, 0.15);
+          border: 1px solid rgba(34, 197, 94, 0.3);
+        }
+
+        .status-emoji {
+          font-size: 24px;
+        }
+
+        .compact .status-emoji {
+          font-size: 20px;
+        }
+
+        .status-text {
+          font-weight: 600;
+          font-size: 16px;
+        }
+
+        .compact .status-text {
+          font-size: 14px;
+        }
+
+        .estimated-time {
+          color: #888;
+          font-size: 14px;
+        }
+
+        /* Ready Shortcode */
+        .ready-shortcode {
+          text-align: center;
+          padding: 20px;
+          background: rgba(34, 197, 94, 0.1);
+          border-radius: 12px;
+          margin-bottom: 16px;
+        }
+
+        .shortcode-label {
+          font-size: 12px;
+          color: #888;
+          margin-bottom: 8px;
+          text-transform: uppercase;
+          letter-spacing: 1px;
+        }
+
+        .shortcode-value {
+          font-size: 32px;
+          font-weight: 800;
+          color: #22c55e;
+        }
+
+        /* Items Summary */
+        .items-summary {
+          border-top: 1px solid rgba(255, 255, 255, 0.1);
+          padding-top: 16px;
+        }
+
+        .item-row {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 8px 0;
+          font-size: 14px;
+        }
+
+        .item-qty {
+          color: var(--theme-accent, #a78bfa);
+          font-weight: 600;
+          min-width: 28px;
+        }
+
+        .item-name {
+          flex: 1;
+          color: #e8e8e8;
+        }
+
+        .item-price {
+          color: #888;
+        }
+
+        .items-more {
+          font-size: 13px;
+          color: #888;
+          padding: 8px 0;
+        }
+
+        .items-total {
+          display: flex;
+          justify-content: space-between;
+          padding-top: 12px;
+          margin-top: 8px;
+          border-top: 1px solid rgba(255, 255, 255, 0.1);
+          font-size: 15px;
+        }
+
+        .items-total strong {
+          color: var(--theme-accent, #a78bfa);
+        }
+      `}</style>
+    </div>
+  );
+}
