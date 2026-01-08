@@ -148,8 +148,8 @@ const renderLineItems = (lineItems: unknown[] | null | undefined) => {
         return (
           <div key={idx} className="line-item">
             <div className="item-header">
-              <span className="quantity">{qty}</span>
-              <span className="name">{name}</span>
+              <span className="quantity-badge">{qty}×</span>
+              <span className="item-name">{name}</span>
             </div>
             {modifiers.length > 0 && (
               <div className="modifiers-list">
@@ -1563,22 +1563,32 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
 
           .item-header {
             display: flex;
-            align-items: baseline;
-            gap: 12px;
+            align-items: center;
+            gap: 16px;
           }
 
-          .line-item .quantity {
-            font-size: 28px;
-            font-weight: 700;
-            color: #a78bfa;
-            min-width: 36px;
-            text-align: center;
-          }
-
-          .line-item .name {
-            font-size: 22px;
+          .quantity-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 56px;
+            height: 44px;
+            padding: 0 12px;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.3) 0%, rgba(167, 139, 250, 0.3) 100%);
+            border: 2px solid #a78bfa;
+            border-radius: 10px;
+            font-size: 26px;
+            font-weight: 800;
             color: #e8e8e8;
-            font-weight: 500;
+            font-variant-numeric: tabular-nums;
+            box-shadow: 0 2px 8px rgba(167, 139, 250, 0.2);
+          }
+
+          .item-name {
+            font-size: 24px;
+            color: #e8e8e8;
+            font-weight: 600;
+            line-height: 1.3;
           }
 
           /* Modifier highlighting */
@@ -1586,7 +1596,8 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
             display: flex;
             flex-wrap: wrap;
             gap: 6px;
-            margin-left: 48px;
+            margin-left: 72px;
+            margin-top: 4px;
           }
 
           .modifier {
@@ -1611,8 +1622,9 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
           }
 
           .item-note {
-            margin-left: 48px;
-            font-size: 14px;
+            margin-left: 72px;
+            margin-top: 4px;
+            font-size: 15px;
             color: #ffd60a;
             font-style: italic;
           }
