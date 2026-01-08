@@ -1441,6 +1441,7 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
             display: flex;
             flex-direction: column;
             gap: 8px;
+            padding-top: 36px; /* Space for menu button */
           }
 
           .pickup-label {
@@ -1567,15 +1568,16 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
             gap: 16px;
           }
 
-          .quantity-badge {
-            display: inline-flex;
+          .line-item .quantity-badge,
+          .ticket-middle .quantity-badge {
+            display: inline-flex !important;
             align-items: center;
             justify-content: center;
             min-width: 56px;
             height: 44px;
             padding: 0 12px;
-            background: linear-gradient(135deg, rgba(102, 126, 234, 0.3) 0%, rgba(167, 139, 250, 0.3) 100%);
-            border: 2px solid #a78bfa;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.3) 0%, rgba(167, 139, 250, 0.3) 100%) !important;
+            border: 2px solid #a78bfa !important;
             border-radius: 10px;
             font-size: 26px;
             font-weight: 800;
@@ -1584,7 +1586,8 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
             box-shadow: 0 2px 8px rgba(167, 139, 250, 0.2);
           }
 
-          .item-name {
+          .line-item .item-name,
+          .ticket-middle .item-name {
             font-size: 24px;
             color: #e8e8e8;
             font-weight: 600;
@@ -1681,11 +1684,11 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
             background: linear-gradient(135deg, #ff9f0a 0%, #ff6b00 100%) !important;
           }
 
-          /* Ticket menu */
+          /* Ticket menu - positioned top-left to avoid timer overlap */
           .ticket-menu-wrapper {
             position: absolute;
             top: 12px;
-            right: 12px;
+            left: 12px;
             z-index: 10;
           }
 
@@ -1968,6 +1971,62 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
 
           .completed-ticket-details {
             margin-bottom: 8px;
+          }
+
+          .completed-ticket-details .line-items-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+          }
+
+          .completed-ticket-details .line-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+          }
+
+          .completed-ticket-details .item-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+          }
+
+          .completed-ticket-details .quantity-badge {
+            min-width: 36px;
+            height: 28px;
+            padding: 0 8px;
+            font-size: 14px;
+            font-weight: 700;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.2) 0%, rgba(167, 139, 250, 0.2) 100%);
+            border: 1px solid rgba(167, 139, 250, 0.4);
+            border-radius: 6px;
+          }
+
+          .completed-ticket-details .item-name {
+            font-size: 14px;
+            font-weight: 500;
+            color: #c8c8c8;
+          }
+
+          .completed-ticket-details .modifiers-list {
+            margin-left: 46px;
+            gap: 4px;
+          }
+
+          .completed-ticket-details .modifier-tag {
+            font-size: 11px;
+            padding: 2px 6px;
+          }
+
+          .completed-ticket-details .item-note {
+            margin-left: 46px;
+            font-size: 12px;
+          }
+
+          .completed-ticket-details .line-items-empty {
+            color: #666;
+            font-size: 13px;
+            font-style: italic;
           }
 
           .completed-ticket-time {
