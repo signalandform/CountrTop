@@ -51,7 +51,7 @@ export default function ConfirmPage({ vendorName }: ConfirmProps) {
   const [error, setError] = useState<string | null>(null);
   const [snapshot, setSnapshot] = useState<StoredSnapshot | null>(null);
   const [orderStatus, setOrderStatus] = useState<OrderStatus | null>(null);
-  const [statusLoading, setStatusLoading] = useState(false);
+  const [, setStatusLoading] = useState(false);
 
   // Fetch order status
   const fetchOrderStatus = useCallback(async () => {

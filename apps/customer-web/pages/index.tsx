@@ -196,7 +196,7 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
     shortcode: string | null;
     message: string;
   } | null>(null);
-  const [trackingLoading, setTrackingLoading] = useState(false);
+  const [, setTrackingLoading] = useState(false);
   const [loyalty, setLoyalty] = useState<number | null>(null);
 
   // Track what user data we've loaded to prevent duplicate fetches
