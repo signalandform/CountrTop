@@ -131,11 +131,11 @@ export default async function handler(
       });
     }
 
-    // Fetch orders for these tickets
+    // Fetch orders from square_orders table (has dedicated line_items column)
     const squareOrderIds = ticketsData.map(t => t.square_order_id);
     const { data: ordersData, error: ordersError } = await supabaseAdmin
-      .from('order_snapshots')
-      .select('*')
+      .from('square_orders')
+      .select('square_order_id, location_id, state, created_at, updated_at, reference_id, metadata, line_items, source')
       .in('square_order_id', squareOrderIds);
 
     if (ordersError) {
@@ -144,10 +144,7 @@ export default async function handler(
 
     // Map tickets with their orders
     const ordersMap = new Map(
-      (ordersData || []).map(order => {
-        const orderRow = order as Database['public']['Tables']['order_snapshots']['Row'];
-        return [orderRow.square_order_id, orderRow];
-      })
+      (ordersData || []).map(order => [order.square_order_id, order])
     );
 
     const tickets = ticketsData
@@ -155,8 +152,6 @@ export default async function handler(
         const ticket = ticketRow as Database['public']['Tables']['kitchen_tickets']['Row'];
         const order = ordersMap.get(ticket.square_order_id);
         if (!order) return null;
-
-        const orderRow = order as Database['public']['Tables']['order_snapshots']['Row'];
 
         return {
           ticket: {
@@ -174,15 +169,15 @@ export default async function handler(
             updatedAt: ticket.updated_at
           },
           order: {
-            squareOrderId: orderRow.square_order_id,
-            locationId: ticket.location_id, // Use ticket's locationId since order_snapshots doesn't have it
-            state: orderRow.fulfillment_status ?? 'UNKNOWN',
-            createdAt: orderRow.placed_at,
-            updatedAt: orderRow.updated_at ?? orderRow.placed_at,
-            referenceId: null, // order_snapshots doesn't have reference_id
-            metadata: orderRow.snapshot_json as Record<string, unknown> | null,
-            lineItems: (orderRow.snapshot_json as Record<string, unknown>)?.line_items as unknown[] | null ?? null,
-            source: ticket.source as 'countrtop_online' | 'square_pos' // Use ticket's source
+            squareOrderId: order.square_order_id,
+            locationId: order.location_id,
+            state: order.state ?? 'UNKNOWN',
+            createdAt: order.created_at,
+            updatedAt: order.updated_at ?? order.created_at,
+            referenceId: order.reference_id ?? null,
+            metadata: order.metadata as Record<string, unknown> | null,
+            lineItems: order.line_items as unknown[] | null,
+            source: (order.source ?? ticket.source) as 'countrtop_online' | 'square_pos'
           }
         };
       })
