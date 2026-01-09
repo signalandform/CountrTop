@@ -974,6 +974,7 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
                       </div>
                     )}
                     <div className="ticket-left">
+                      <div className={`age-timer age-timer-${ageColor}`}>{age}</div>
                       <div className="pickup-label">{displayLabel}</div>
                       <div className="badge-row">
                         <div className="source-badge" data-source={ticket.source}>
@@ -998,7 +999,6 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
                       )}
                     </div>
                     <div className="ticket-right">
-                      <div className={`age-timer age-timer-${ageColor}`}>{age}</div>
                       <div className="ticket-actions">
                         <button
                           className={`action-button ${buttonClass}`}
@@ -1437,11 +1437,15 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
           }
 
           .ticket-left {
-            flex: 0 0 180px;
+            flex: 0 0 200px;
             display: flex;
             flex-direction: column;
             gap: 8px;
-            padding-top: 36px; /* Space for menu button */
+            align-items: flex-start;
+          }
+
+          .ticket-left .age-timer {
+            align-self: flex-start;
           }
 
           .pickup-label {
@@ -1684,11 +1688,11 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
             background: linear-gradient(135deg, #ff9f0a 0%, #ff6b00 100%) !important;
           }
 
-          /* Ticket menu - positioned top-left to avoid timer overlap */
+          /* Ticket menu - positioned top-right */
           .ticket-menu-wrapper {
             position: absolute;
             top: 12px;
-            left: 12px;
+            right: 12px;
             z-index: 10;
           }
 
@@ -1819,8 +1823,10 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
             display: flex;
             flex-direction: column;
             align-items: flex-end;
+            justify-content: flex-end;
             gap: 12px;
             font-size: 25px;
+            padding-top: 40px; /* Space for menu button */
           }
 
           .ticket-actions {
