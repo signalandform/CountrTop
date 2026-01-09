@@ -469,6 +469,11 @@ export type Database = {
           online_ordering_enabled: boolean;
           kds_active_limit_total: number | null;
           kds_active_limit_ct: number | null;
+          kds_auto_bump_minutes: number | null;
+          kds_sound_alerts_enabled: boolean;
+          kds_display_mode: string;
+          online_ordering_lead_time_minutes: number;
+          online_ordering_hours_json: Record<string, unknown> | null;
           created_at: string;
           updated_at: string;
         };
@@ -491,6 +496,11 @@ export type Database = {
           online_ordering_enabled?: boolean;
           kds_active_limit_total?: number | null;
           kds_active_limit_ct?: number | null;
+          kds_auto_bump_minutes?: number | null;
+          kds_sound_alerts_enabled?: boolean;
+          kds_display_mode?: string;
+          online_ordering_lead_time_minutes?: number;
+          online_ordering_hours_json?: Record<string, unknown> | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -691,6 +701,11 @@ export class SupabaseDataClient implements DataClient {
         online_ordering_enabled: location.onlineOrderingEnabled,
         kds_active_limit_total: location.kdsActiveLimitTotal ?? null,
         kds_active_limit_ct: location.kdsActiveLimitCt ?? null,
+        kds_auto_bump_minutes: location.kdsAutoBumpMinutes ?? null,
+        kds_sound_alerts_enabled: location.kdsSoundAlertsEnabled ?? true,
+        kds_display_mode: location.kdsDisplayMode ?? 'grid',
+        online_ordering_lead_time_minutes: location.onlineOrderingLeadTimeMinutes ?? 15,
+        online_ordering_hours_json: location.onlineOrderingHoursJson ?? null,
       };
 
       const { data, error } = await this.client
@@ -733,6 +748,11 @@ export class SupabaseDataClient implements DataClient {
       if (updates.onlineOrderingEnabled !== undefined) updateData.online_ordering_enabled = updates.onlineOrderingEnabled;
       if (updates.kdsActiveLimitTotal !== undefined) updateData.kds_active_limit_total = updates.kdsActiveLimitTotal ?? null;
       if (updates.kdsActiveLimitCt !== undefined) updateData.kds_active_limit_ct = updates.kdsActiveLimitCt ?? null;
+      if (updates.kdsAutoBumpMinutes !== undefined) updateData.kds_auto_bump_minutes = updates.kdsAutoBumpMinutes ?? null;
+      if (updates.kdsSoundAlertsEnabled !== undefined) updateData.kds_sound_alerts_enabled = updates.kdsSoundAlertsEnabled;
+      if (updates.kdsDisplayMode !== undefined) updateData.kds_display_mode = updates.kdsDisplayMode;
+      if (updates.onlineOrderingLeadTimeMinutes !== undefined) updateData.online_ordering_lead_time_minutes = updates.onlineOrderingLeadTimeMinutes;
+      if (updates.onlineOrderingHoursJson !== undefined) updateData.online_ordering_hours_json = updates.onlineOrderingHoursJson ?? null;
 
       const { data, error } = await this.client
         .from('vendor_locations')
@@ -3024,6 +3044,11 @@ const mapVendorLocationFromRow = (row: Database['public']['Tables']['vendor_loca
   onlineOrderingEnabled: row.online_ordering_enabled,
   kdsActiveLimitTotal: row.kds_active_limit_total ?? undefined,
   kdsActiveLimitCt: row.kds_active_limit_ct ?? undefined,
+  kdsAutoBumpMinutes: row.kds_auto_bump_minutes ?? undefined,
+  kdsSoundAlertsEnabled: row.kds_sound_alerts_enabled,
+  kdsDisplayMode: (row.kds_display_mode ?? 'grid') as 'grid' | 'list',
+  onlineOrderingLeadTimeMinutes: row.online_ordering_lead_time_minutes,
+  onlineOrderingHoursJson: row.online_ordering_hours_json ?? undefined,
   createdAt: row.created_at,
   updatedAt: row.updated_at,
 });

@@ -79,12 +79,11 @@ Your menu is automatically synced from your POS system. To make changes:
 
 ### Online Ordering Settings
 
-In **Settings > Online Ordering**:
+Each location has its own online ordering settings in **Locations > [Location Name]**:
 
-- **Enable/Disable ordering** - Turn online ordering on/off
-- **Operating hours** - Set when orders can be placed
-- **Lead time** - Minimum minutes before pickup
-- **Order limits** - Max concurrent orders (optional)
+- **Enable/Disable ordering** - Turn online ordering on/off per location
+- **Lead time** - Minimum minutes before pickup (default: 15 min)
+- **Operating hours** - Set when orders can be placed (JSON configuration)
 
 ---
 
@@ -101,10 +100,13 @@ The Kitchen Display System (KDS) shows incoming orders in real-time.
 
 ### KDS Settings
 
-- **Auto-bump time** - Auto-complete ready orders after X minutes
-- **Sound alerts** - Play sound for new orders
+Per-location settings in **Locations > [Location Name]**:
+
+- **Active ticket limit** - Max tickets shown in queue (prevents overwhelm)
+- **CountrTop order limit** - Max CountrTop orders in queue
+- **Auto-bump time** - Auto-complete ready orders after X minutes (optional)
+- **Sound alerts** - Play sound for new orders (on/off)
 - **Display mode** - Grid or list view
-- **Active ticket limit** - Max tickets shown (prevents overwhelm)
 
 ### KDS Workflow
 

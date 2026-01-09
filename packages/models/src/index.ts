@@ -76,6 +76,16 @@ export type VendorLocation = {
   onlineOrderingEnabled: boolean;
   kdsActiveLimitTotal?: number | null;
   kdsActiveLimitCt?: number | null;
+  /** Auto-complete ready orders after X minutes (null = disabled) */
+  kdsAutoBumpMinutes?: number | null;
+  /** Play sound for new orders */
+  kdsSoundAlertsEnabled?: boolean;
+  /** KDS display mode: grid or list view */
+  kdsDisplayMode?: 'grid' | 'list';
+  /** Minimum minutes before pickup */
+  onlineOrderingLeadTimeMinutes?: number;
+  /** Operating hours JSON (day of week -> open/close times) */
+  onlineOrderingHoursJson?: Record<string, unknown>;
   createdAt: string;
   updatedAt: string;
 };
