@@ -20,6 +20,190 @@ import { getServerDataClient } from '../../../lib/dataClient';
 
 const logger = createLogger({ requestId: 'webhook' });
 
+// =============================================================================
+// Email Helper (optional - gracefully skips if not configured)
+// =============================================================================
+
+type EmailParams = {
+  userId: string;
+  customerDisplayName: string | null;
+  vendorSlug: string;
+  snapshotId: string;
+  orderId: string;
+  order: Record<string, unknown>;
+  locationId: string;
+  items: Array<{ id: string; name: string; quantity: number; price: number; modifiers: unknown[] }>;
+  total: number;
+  currency: string;
+  dataClient: ReturnType<typeof getServerDataClient>;
+  logger: ReturnType<typeof createLogger>;
+};
+
+async function sendOrderConfirmationEmail(params: EmailParams) {
+  const { userId, customerDisplayName, vendorSlug, snapshotId, orderId, order, locationId, items, total, currency, dataClient, logger: log } = params;
+  
+  try {
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!supabaseUrl || !supabaseKey) return;
+    
+    const supabaseAdmin = createClient(supabaseUrl, supabaseKey, {
+      auth: { autoRefreshToken: false, persistSession: false }
+    });
+    const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(userId);
+    const customerEmail = authUser?.user?.email;
+    
+    if (!customerEmail) return;
+    
+    // Get location for pickup instructions
+    const vendorLocation = await dataClient.getVendorLocationBySquareId(locationId);
+    
+    // Use order reference ID for shortcode (last 4 chars)
+    const referenceId = order?.referenceId as string | undefined;
+    const shortcode = referenceId?.slice(-4).toUpperCase() || orderId.slice(-4).toUpperCase();
+    
+    // Call email service via HTTP instead of importing package
+    // This avoids TypeScript issues with optional packages
+    const emailPayload = {
+      customerEmail,
+      customerName: customerDisplayName || 'Customer',
+      vendorName: vendorSlug || 'Restaurant',
+      orderId: snapshotId,
+      shortcode,
+      items: items.map(i => ({ name: i.name, quantity: i.quantity, price: i.price })),
+      total,
+      currency,
+      pickupInstructions: vendorLocation?.pickupInstructions,
+      estimatedWaitMinutes: 15
+    };
+    
+    // For now, just log that we would send email
+    // Real implementation would call Resend API directly
+    log.info('Order confirmation email queued', { email: customerEmail, shortcode });
+    
+    // Direct Resend API call
+    if (process.env.RESEND_API_KEY) {
+      const response = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          from: `${emailPayload.vendorName} <orders@countrtop.com>`,
+          to: emailPayload.customerEmail,
+          subject: `Order Confirmed - ${emailPayload.vendorName} #${emailPayload.shortcode}`,
+          html: generateOrderConfirmationHtml({
+            ...emailPayload,
+            pickupInstructions: emailPayload.pickupInstructions ?? undefined
+          })
+        })
+      });
+      
+      if (!response.ok) {
+        const error = await response.text();
+        log.warn('Failed to send order confirmation email', { error });
+      }
+    }
+  } catch (err) {
+    log.warn('Failed to send order confirmation email', { error: err });
+  }
+}
+
+function generateOrderConfirmationHtml(data: {
+  customerName: string;
+  vendorName: string;
+  shortcode: string;
+  items: Array<{ name: string; quantity: number; price: number }>;
+  total: number;
+  currency: string;
+  pickupInstructions?: string;
+  estimatedWaitMinutes?: number;
+}) {
+  const formatCurrency = (cents: number) =>
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: data.currency }).format(cents / 100);
+  
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Order Confirmation</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #0f0f23; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #0f0f23; padding: 40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); border-radius: 16px;">
+          <tr>
+            <td style="padding: 40px 40px 20px; text-align: center;">
+              <h1 style="margin: 0; color: #667eea; font-size: 28px;">Order Confirmed! ✓</h1>
+              <p style="margin: 10px 0 0; color: #a0a0a0;">${data.vendorName}</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 20px 40px; text-align: center;">
+              <div style="background: rgba(102, 126, 234, 0.1); border: 2px solid #667eea; border-radius: 12px; padding: 20px; display: inline-block;">
+                <p style="margin: 0 0 8px; color: #a0a0a0; font-size: 14px;">Your Pickup Code</p>
+                <p style="margin: 0; color: #667eea; font-size: 48px; font-weight: 800; letter-spacing: 4px;">${data.shortcode}</p>
+              </div>
+            </td>
+          </tr>
+          ${data.estimatedWaitMinutes ? `
+          <tr>
+            <td style="padding: 10px 40px; text-align: center;">
+              <p style="margin: 0; color: #e8e8e8; font-size: 18px;">⏱️ Estimated wait: <strong>${data.estimatedWaitMinutes} minutes</strong></p>
+            </td>
+          </tr>
+          ` : ''}
+          <tr>
+            <td style="padding: 30px 40px;">
+              <h2 style="margin: 0 0 16px; color: #e8e8e8; font-size: 18px;">Order Summary</h2>
+              <table width="100%" cellpadding="0" cellspacing="0">
+                ${data.items.map(item => `
+                <tr>
+                  <td style="padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.1);">
+                    <span style="color: #a78bfa; font-weight: 700;">${item.quantity}×</span>
+                    <span style="color: #e8e8e8; margin-left: 8px;">${item.name}</span>
+                  </td>
+                  <td style="padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.1); text-align: right; color: #e8e8e8;">
+                    ${formatCurrency(item.price * item.quantity)}
+                  </td>
+                </tr>
+                `).join('')}
+                <tr>
+                  <td style="padding: 16px 0 0; color: #e8e8e8; font-weight: 700; font-size: 18px;">Total</td>
+                  <td style="padding: 16px 0 0; text-align: right; color: #667eea; font-weight: 700; font-size: 18px;">
+                    ${formatCurrency(data.total)}
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          ${data.pickupInstructions ? `
+          <tr>
+            <td style="padding: 0 40px 30px;">
+              <div style="background: rgba(52, 199, 89, 0.1); border: 1px solid rgba(52, 199, 89, 0.3); border-radius: 8px; padding: 16px;">
+                <p style="margin: 0 0 8px; color: #34c759; font-weight: 600;">📍 Pickup Instructions</p>
+                <p style="margin: 0; color: #e8e8e8;">${data.pickupInstructions}</p>
+              </div>
+            </td>
+          </tr>
+          ` : ''}
+          <tr>
+            <td style="padding: 30px 40px; background: rgba(0,0,0,0.2); text-align: center;">
+              <p style="margin: 0; color: #666; font-size: 12px;">Powered by CountrTop</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `;
+}
+
 export const config = {
   api: {
     bodyParser: false
@@ -356,6 +540,25 @@ async function handleSquareWebhook(
             userId,
             orderId: snapshot.id,
             pointsDelta: points
+          });
+        }
+
+        // Send order confirmation email (async, don't wait)
+        // Email functionality is optional - gracefully skip if not configured
+        if (process.env.RESEND_API_KEY) {
+          sendOrderConfirmationEmail({
+            userId,
+            customerDisplayName,
+            vendorSlug: vendor.slug,
+            snapshotId: snapshot.id,
+            orderId,
+            order,
+            locationId,
+            items,
+            total,
+            currency,
+            dataClient,
+            logger
           });
         }
       }
