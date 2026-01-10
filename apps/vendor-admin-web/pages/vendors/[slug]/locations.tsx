@@ -92,6 +92,10 @@ export const getServerSideProps: GetServerSideProps<LocationsPageProps> = async 
         onlineOrderingEnabled: row.online_ordering_enabled,
         kdsActiveLimitTotal: row.kds_active_limit_total ?? undefined,
         kdsActiveLimitCt: row.kds_active_limit_ct ?? undefined,
+        kdsAutoBumpMinutes: (row as Record<string, unknown>).kds_auto_bump_minutes as number | undefined,
+        kdsSoundAlertsEnabled: (row as Record<string, unknown>).kds_sound_alerts_enabled as boolean | undefined,
+        kdsDisplayMode: ((row as Record<string, unknown>).kds_display_mode as 'grid' | 'list' | undefined) ?? 'grid',
+        onlineOrderingLeadTimeMinutes: (row as Record<string, unknown>).online_ordering_lead_time_minutes as number | undefined,
         createdAt: row.created_at,
         updatedAt: row.updated_at
       }));
@@ -335,12 +339,30 @@ function LocationCard({
   const [name, setName] = useState(location.name);
   const [pickupInstructions, setPickupInstructions] = useState(location.pickupInstructions || '');
   const [onlineOrderingEnabled, setOnlineOrderingEnabled] = useState(location.onlineOrderingEnabled);
+  
+  // KDS settings
+  const [kdsActiveLimitTotal, setKdsActiveLimitTotal] = useState(location.kdsActiveLimitTotal?.toString() || '10');
+  const [kdsActiveLimitCt, setKdsActiveLimitCt] = useState(location.kdsActiveLimitCt?.toString() || '10');
+  const [kdsAutoBumpMinutes, setKdsAutoBumpMinutes] = useState(location.kdsAutoBumpMinutes?.toString() || '');
+  const [kdsSoundAlertsEnabled, setKdsSoundAlertsEnabled] = useState(location.kdsSoundAlertsEnabled ?? true);
+  const [kdsDisplayMode, setKdsDisplayMode] = useState<'grid' | 'list'>(location.kdsDisplayMode || 'grid');
+  
+  // Online ordering settings
+  const [onlineOrderingLeadTimeMinutes, setOnlineOrderingLeadTimeMinutes] = useState(
+    location.onlineOrderingLeadTimeMinutes?.toString() || '15'
+  );
 
   const handleSaveClick = () => {
     onSave({
       name,
       pickupInstructions: pickupInstructions || null,
-      onlineOrderingEnabled
+      onlineOrderingEnabled,
+      kdsActiveLimitTotal: kdsActiveLimitTotal ? parseInt(kdsActiveLimitTotal, 10) : null,
+      kdsActiveLimitCt: kdsActiveLimitCt ? parseInt(kdsActiveLimitCt, 10) : null,
+      kdsAutoBumpMinutes: kdsAutoBumpMinutes ? parseInt(kdsAutoBumpMinutes, 10) : null,
+      kdsSoundAlertsEnabled,
+      kdsDisplayMode,
+      onlineOrderingLeadTimeMinutes: onlineOrderingLeadTimeMinutes ? parseInt(onlineOrderingLeadTimeMinutes, 10) : 15,
     });
   };
 
@@ -396,24 +418,120 @@ function LocationCard({
 
         {isEditing && (
           <div className="edit-section">
-            <div className="form-group">
-              <label>Pickup Instructions</label>
-              <textarea
-                value={pickupInstructions}
-                onChange={(e) => setPickupInstructions(e.target.value)}
-                rows={3}
-                placeholder="Enter pickup instructions for customers..."
-              />
-            </div>
-            <div className="form-group checkbox-group">
-              <label>
-                <input
-                  type="checkbox"
-                  checked={onlineOrderingEnabled}
-                  onChange={(e) => setOnlineOrderingEnabled(e.target.checked)}
+            {/* General Settings */}
+            <div className="settings-group">
+              <h4 className="settings-group-title">📝 General</h4>
+              <div className="form-group">
+                <label>Pickup Instructions</label>
+                <textarea
+                  value={pickupInstructions}
+                  onChange={(e) => setPickupInstructions(e.target.value)}
+                  rows={3}
+                  placeholder="Enter pickup instructions for customers..."
                 />
-                Online Ordering Enabled
-              </label>
+              </div>
+            </div>
+
+            {/* Online Ordering Settings */}
+            <div className="settings-group">
+              <h4 className="settings-group-title">🛒 Online Ordering</h4>
+              <div className="form-row">
+                <div className="form-group checkbox-group">
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={onlineOrderingEnabled}
+                      onChange={(e) => setOnlineOrderingEnabled(e.target.checked)}
+                    />
+                    Online Ordering Enabled
+                  </label>
+                </div>
+              </div>
+              {onlineOrderingEnabled && (
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Lead Time (minutes)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="120"
+                      value={onlineOrderingLeadTimeMinutes}
+                      onChange={(e) => setOnlineOrderingLeadTimeMinutes(e.target.value)}
+                      className="input-small"
+                    />
+                    <small className="form-hint">Minimum minutes before pickup</small>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* KDS Settings */}
+            <div className="settings-group">
+              <h4 className="settings-group-title">🖥️ KDS Queue Settings</h4>
+              <div className="form-row two-col">
+                <div className="form-group">
+                  <label>Max Active Tickets (Total)</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="50"
+                    value={kdsActiveLimitTotal}
+                    onChange={(e) => setKdsActiveLimitTotal(e.target.value)}
+                    className="input-small"
+                  />
+                  <small className="form-hint">Max tickets from all sources</small>
+                </div>
+                <div className="form-group">
+                  <label>Max CountrTop Orders</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="50"
+                    value={kdsActiveLimitCt}
+                    onChange={(e) => setKdsActiveLimitCt(e.target.value)}
+                    className="input-small"
+                  />
+                  <small className="form-hint">Max online orders in queue</small>
+                </div>
+              </div>
+              <div className="form-row two-col">
+                <div className="form-group">
+                  <label>Auto-Bump Time (minutes)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="60"
+                    value={kdsAutoBumpMinutes}
+                    onChange={(e) => setKdsAutoBumpMinutes(e.target.value)}
+                    placeholder="Disabled"
+                    className="input-small"
+                  />
+                  <small className="form-hint">Auto-complete ready orders (0 = off)</small>
+                </div>
+                <div className="form-group">
+                  <label>Display Mode</label>
+                  <select
+                    value={kdsDisplayMode}
+                    onChange={(e) => setKdsDisplayMode(e.target.value as 'grid' | 'list')}
+                    className="input-small"
+                  >
+                    <option value="grid">Grid View</option>
+                    <option value="list">List View</option>
+                  </select>
+                </div>
+              </div>
+              <div className="form-row">
+                <div className="form-group checkbox-group">
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={kdsSoundAlertsEnabled}
+                      onChange={(e) => setKdsSoundAlertsEnabled(e.target.checked)}
+                    />
+                    Sound Alerts for New Orders
+                  </label>
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -597,6 +715,58 @@ function LocationCard({
         .checkbox-group input[type="checkbox"] {
           width: 18px;
           height: 18px;
+        }
+
+        .settings-group {
+          margin-bottom: 20px;
+          padding-bottom: 16px;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .settings-group:last-child {
+          border-bottom: none;
+          margin-bottom: 0;
+          padding-bottom: 0;
+        }
+
+        .settings-group-title {
+          font-size: 14px;
+          font-weight: 600;
+          color: #e8e8e8;
+          margin: 0 0 12px 0;
+        }
+
+        .form-row {
+          margin-bottom: 12px;
+        }
+
+        .form-row.two-col {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 16px;
+        }
+
+        .form-group input[type="number"],
+        .form-group select {
+          width: 100%;
+          background: rgba(255, 255, 255, 0.1);
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          border-radius: 8px;
+          padding: 10px 12px;
+          color: #e8e8e8;
+          font-family: inherit;
+          font-size: 14px;
+        }
+
+        .input-small {
+          max-width: 100%;
+        }
+
+        .form-hint {
+          display: block;
+          font-size: 12px;
+          color: #666;
+          margin-top: 4px;
         }
 
         .card-actions {

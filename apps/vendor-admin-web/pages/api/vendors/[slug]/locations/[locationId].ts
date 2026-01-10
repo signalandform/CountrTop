@@ -73,7 +73,13 @@ export default async function handler(
         pickupInstructions,
         onlineOrderingEnabled,
         kdsActiveLimitTotal,
-        kdsActiveLimitCt
+        kdsActiveLimitCt,
+        // New KDS settings
+        kdsAutoBumpMinutes,
+        kdsSoundAlertsEnabled,
+        kdsDisplayMode,
+        // Online ordering settings
+        onlineOrderingLeadTimeMinutes,
       } = req.body;
 
       const updates: Parameters<typeof dataClient.updateVendorLocation>[1] = {};
@@ -92,6 +98,12 @@ export default async function handler(
       if (onlineOrderingEnabled !== undefined) updates.onlineOrderingEnabled = onlineOrderingEnabled;
       if (kdsActiveLimitTotal !== undefined) updates.kdsActiveLimitTotal = kdsActiveLimitTotal;
       if (kdsActiveLimitCt !== undefined) updates.kdsActiveLimitCt = kdsActiveLimitCt;
+      // New KDS settings
+      if (kdsAutoBumpMinutes !== undefined) updates.kdsAutoBumpMinutes = kdsAutoBumpMinutes;
+      if (kdsSoundAlertsEnabled !== undefined) updates.kdsSoundAlertsEnabled = kdsSoundAlertsEnabled;
+      if (kdsDisplayMode !== undefined) updates.kdsDisplayMode = kdsDisplayMode;
+      // Online ordering settings  
+      if (onlineOrderingLeadTimeMinutes !== undefined) updates.onlineOrderingLeadTimeMinutes = onlineOrderingLeadTimeMinutes;
 
       const updatedLocation = await dataClient.updateVendorLocation(locationId, updates);
       return res.status(200).json({ ok: true, location: updatedLocation });
