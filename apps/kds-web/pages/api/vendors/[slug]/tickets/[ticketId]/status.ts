@@ -7,6 +7,7 @@ import type { GetServerSidePropsContext } from 'next';
 
 // =============================================================================
 // Email Helper (optional - gracefully skips if not configured)
+// Supports both logged-in users AND guest users
 // =============================================================================
 
 type EmailParams = {
@@ -14,28 +15,52 @@ type EmailParams = {
   dataClient: ReturnType<typeof createDataClient>;
   slug: string;
   locationId: string;
-  customerUserId: string;
+  squareOrderId: string;
+  customerUserId: string | null;
   shortcode: string;
 };
 
 async function sendOrderReadyEmail(params: EmailParams) {
-  const { supabaseAdmin, dataClient, slug, locationId, customerUserId, shortcode } = params;
+  const { supabaseAdmin, dataClient, slug, locationId, squareOrderId, customerUserId, shortcode } = params;
   
   try {
-    const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(customerUserId);
-    const customerEmail = authUser?.user?.email;
+    let customerEmail: string | null = null;
+    let customerName: string = 'Customer';
+    
+    // Try to get email from auth user (logged-in users)
+    if (customerUserId) {
+      const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(customerUserId);
+      customerEmail = authUser?.user?.email ?? null;
+      customerName = authUser?.user?.user_metadata?.full_name || 
+                     authUser?.user?.user_metadata?.name ||
+                     authUser?.user?.email?.split('@')[0] || 
+                     'Customer';
+    }
+    
+    // If no email yet, try to get from order snapshot (guest users)
+    if (!customerEmail) {
+      const { data: snapshot } = await supabaseAdmin
+        .from('order_snapshots')
+        .select('snapshot_json, customer_display_name')
+        .eq('external_order_id', squareOrderId)
+        .single();
+      
+      if (snapshot) {
+        const snapshotJson = snapshot.snapshot_json as Record<string, unknown> | null;
+        customerEmail = (snapshotJson?.customerEmail as string) ?? null;
+        customerName = (snapshotJson?.customerName as string) || 
+                       snapshot.customer_display_name || 
+                       'Customer';
+      }
+    }
     
     if (!customerEmail) {
-      console.log('No customer email found for order ready notification');
+      console.log('No customer email found for order ready notification', { squareOrderId, customerUserId });
       return;
     }
     
     const vendor = await dataClient.getVendorBySlug(slug);
     const vendorLocation = await dataClient.getVendorLocationById(locationId);
-    const customerName = authUser.user?.user_metadata?.full_name || 
-                         authUser.user?.user_metadata?.name ||
-                         authUser.user?.email?.split('@')[0] || 
-                         'Customer';
     
     // Use the @countrtop/email package
     const result = await sendOrderReady({
@@ -166,13 +191,15 @@ export default async function handler(
     );
 
     // Send order ready email when status changes to 'ready'
-    if (status === 'ready' && updatedTicket.customerUserId && process.env.RESEND_API_KEY) {
+    // Works for both logged-in users (via auth) AND guest users (via order snapshot)
+    if (status === 'ready' && process.env.RESEND_API_KEY) {
       sendOrderReadyEmail({
         supabaseAdmin,
         dataClient,
         slug: slug!,
         locationId,
-        customerUserId: updatedTicket.customerUserId,
+        squareOrderId: updatedTicket.squareOrderId,
+        customerUserId: updatedTicket.customerUserId ?? null,
         shortcode: updatedTicket.shortcode || updatedTicket.squareOrderId.slice(-4).toUpperCase()
       });
     }

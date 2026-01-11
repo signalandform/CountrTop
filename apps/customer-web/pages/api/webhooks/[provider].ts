@@ -26,8 +26,9 @@ const logger = createLogger({ requestId: 'webhook' });
 // =============================================================================
 
 type EmailParams = {
-  userId: string;
+  userId: string | null;
   customerDisplayName: string | null;
+  customerEmail: string | null; // Can come from Square order or auth user
   vendorSlug: string;
   vendorDisplayName: string;
   snapshotId: string;
@@ -42,21 +43,32 @@ type EmailParams = {
 };
 
 async function sendOrderConfirmationEmail(params: EmailParams) {
-  const { userId, customerDisplayName, vendorDisplayName, snapshotId, orderId, order, locationId, items, total, currency, dataClient, logger: log } = params;
+  const { userId, customerDisplayName, customerEmail: providedEmail, vendorDisplayName, snapshotId, orderId, order, locationId, items, total, currency, dataClient, logger: log } = params;
   
   try {
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    if (!supabaseUrl || !supabaseKey) return;
+    let customerEmail = providedEmail;
+    let customerName = customerDisplayName;
     
-    const supabaseAdmin = createClient(supabaseUrl, supabaseKey, {
-      auth: { autoRefreshToken: false, persistSession: false }
-    });
-    const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(userId);
-    const customerEmail = authUser?.user?.email;
+    // If we have a userId, try to get email from auth (more reliable)
+    if (userId && !customerEmail) {
+      const supabaseUrl = process.env.SUPABASE_URL;
+      const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+      if (supabaseUrl && supabaseKey) {
+        const supabaseAdmin = createClient(supabaseUrl, supabaseKey, {
+          auth: { autoRefreshToken: false, persistSession: false }
+        });
+        const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(userId);
+        customerEmail = authUser?.user?.email ?? null;
+        if (!customerName) {
+          customerName = authUser?.user?.user_metadata?.full_name ??
+            authUser?.user?.user_metadata?.name ??
+            authUser?.user?.email?.split('@')[0] ?? null;
+        }
+      }
+    }
     
     if (!customerEmail) {
-      log.info('No customer email found for order confirmation');
+      log.info('No customer email found for order confirmation', { userId, orderId });
       return;
     }
     
@@ -72,7 +84,7 @@ async function sendOrderConfirmationEmail(params: EmailParams) {
     // Use the @countrtop/email package
     const result = await sendOrderConfirmation({
       customerEmail,
-      customerName: customerDisplayName || 'Customer',
+      customerName: customerName || 'Customer',
       vendorName: vendorDisplayName || 'Restaurant',
       orderId: snapshotId,
       shortcode,
@@ -91,6 +103,56 @@ async function sendOrderConfirmationEmail(params: EmailParams) {
   } catch (err) {
     log.warn('Failed to send order confirmation email', { error: err });
   }
+}
+
+// Extract customer email from Square order data (for guest checkout)
+function extractSquareCustomerEmail(order: Record<string, unknown>): string | null {
+  // Try to get email from fulfillments (pickup info)
+  const fulfillments = order?.fulfillments as Array<Record<string, unknown>> | undefined;
+  if (fulfillments?.length) {
+    const pickup = fulfillments[0]?.pickupDetails as Record<string, unknown> | undefined;
+    const recipient = pickup?.recipient as Record<string, unknown> | undefined;
+    if (recipient?.emailAddress) {
+      return recipient.emailAddress as string;
+    }
+  }
+  
+  // Try to get from customer object
+  const customer = order?.customer as Record<string, unknown> | undefined;
+  if (customer?.emailAddress) {
+    return customer.emailAddress as string;
+  }
+  
+  // Try tenders for receipt email
+  const tenders = order?.tenders as Array<Record<string, unknown>> | undefined;
+  if (tenders?.length) {
+    const tender = tenders[0];
+    const cardDetails = tender?.cardDetails as Record<string, unknown> | undefined;
+    if (cardDetails?.entryMethod === 'ON_FILE') {
+      // Customer used saved card, may have email on file
+    }
+  }
+  
+  return null;
+}
+
+// Extract customer name from Square order data
+function extractSquareCustomerName(order: Record<string, unknown>): string | null {
+  const fulfillments = order?.fulfillments as Array<Record<string, unknown>> | undefined;
+  if (fulfillments?.length) {
+    const pickup = fulfillments[0]?.pickupDetails as Record<string, unknown> | undefined;
+    const recipient = pickup?.recipient as Record<string, unknown> | undefined;
+    if (recipient?.displayName) {
+      return recipient.displayName as string;
+    }
+  }
+  
+  const customer = order?.customer as Record<string, unknown> | undefined;
+  if (customer?.givenName || customer?.familyName) {
+    return [customer.givenName, customer.familyName].filter(Boolean).join(' ');
+  }
+  
+  return null;
 }
 
 export const config = {
@@ -401,6 +463,10 @@ async function handleSquareWebhook(
       }
 
       const pickupLabel = customerDisplayName ?? `Order ${orderId.slice(-6).toUpperCase()}`;
+      
+      // Extract guest customer info from Square order
+      const squareEmail = extractSquareCustomerEmail(order);
+      const squareName = extractSquareCustomerName(order);
 
       const snapshot = await dataClient.createOrderSnapshot({
         vendorId: vendor.id,
@@ -414,12 +480,16 @@ async function handleSquareWebhook(
           currency,
           squarePaymentId: payment.id,
           squareLocationId: locationId,
-          squareReferenceId: order?.referenceId ?? null
+          squareReferenceId: order?.referenceId ?? null,
+          // Store customer info for Order Ready emails (works for guests too)
+          customerEmail: squareEmail,
+          customerName: customerDisplayName || squareName
         },
-        customerDisplayName: customerDisplayName ?? null,
+        customerDisplayName: customerDisplayName ?? squareName ?? null,
         pickupLabel
       });
 
+      // Award loyalty points for logged-in users
       if (userId) {
         const points = Math.max(0, Math.floor(total / 100));
         if (points > 0) {
@@ -431,26 +501,27 @@ async function handleSquareWebhook(
             pointsDelta: points
           });
         }
+      }
 
-        // Send order confirmation email (async, don't wait)
-        // Email functionality is optional - gracefully skip if not configured
-        if (process.env.RESEND_API_KEY) {
-          sendOrderConfirmationEmail({
-            userId,
-            customerDisplayName,
-            vendorSlug: vendor.slug,
-            vendorDisplayName: vendor.displayName,
-            snapshotId: snapshot.id,
-            orderId,
-            order,
-            locationId,
-            items,
-            total,
-            currency,
-            dataClient,
-            logger
-          });
-        }
+      // Send order confirmation email (works for both logged-in AND guest users)
+      // Email functionality is optional - gracefully skip if not configured
+      if (process.env.RESEND_API_KEY) {
+        sendOrderConfirmationEmail({
+          userId: userId ?? null,
+          customerDisplayName: customerDisplayName || squareName,
+          customerEmail: squareEmail, // Will fall back to auth user email if userId exists
+          vendorSlug: vendor.slug,
+          vendorDisplayName: vendor.displayName,
+          snapshotId: snapshot.id,
+          orderId,
+          order,
+          locationId,
+          items,
+          total,
+          currency,
+          dataClient,
+          logger
+        });
       }
 
       return {
