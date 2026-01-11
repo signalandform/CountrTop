@@ -23,27 +23,39 @@ type EmailParams = {
 async function sendOrderReadyEmail(params: EmailParams) {
   const { supabaseAdmin, dataClient, slug, locationId, squareOrderId, customerUserId, shortcode } = params;
   
+  console.log('sendOrderReadyEmail started', { slug, locationId, squareOrderId, customerUserId, shortcode });
+  
   try {
     let customerEmail: string | null = null;
     let customerName: string = 'Customer';
     
     // Try to get email from auth user (logged-in users)
     if (customerUserId) {
-      const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(customerUserId);
+      console.log('Looking up auth user', { customerUserId });
+      const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.getUserById(customerUserId);
+      if (authError) {
+        console.warn('Auth user lookup failed', { error: authError.message });
+      }
       customerEmail = authUser?.user?.email ?? null;
       customerName = authUser?.user?.user_metadata?.full_name || 
                      authUser?.user?.user_metadata?.name ||
                      authUser?.user?.email?.split('@')[0] || 
                      'Customer';
+      console.log('Auth user result', { email: customerEmail, name: customerName });
     }
     
     // If no email yet, try to get from order snapshot (guest users)
     if (!customerEmail) {
-      const { data: snapshot } = await supabaseAdmin
+      console.log('Looking up order snapshot', { squareOrderId });
+      const { data: snapshot, error: snapshotError } = await supabaseAdmin
         .from('order_snapshots')
         .select('snapshot_json, customer_display_name')
         .eq('external_order_id', squareOrderId)
         .single();
+      
+      if (snapshotError) {
+        console.warn('Snapshot lookup failed', { error: snapshotError.message });
+      }
       
       if (snapshot) {
         const snapshotJson = snapshot.snapshot_json as Record<string, unknown> | null;
@@ -51,6 +63,7 @@ async function sendOrderReadyEmail(params: EmailParams) {
         customerName = (snapshotJson?.customerName as string) || 
                        snapshot.customer_display_name || 
                        'Customer';
+        console.log('Snapshot result', { email: customerEmail, name: customerName });
       }
     }
     
@@ -62,6 +75,12 @@ async function sendOrderReadyEmail(params: EmailParams) {
     const vendor = await dataClient.getVendorBySlug(slug);
     const vendorLocation = await dataClient.getVendorLocationById(locationId);
     
+    console.log('Sending order ready email', { 
+      email: customerEmail, 
+      vendorName: vendor?.displayName || vendor?.slug,
+      shortcode 
+    });
+    
     // Use the @countrtop/email package
     const result = await sendOrderReady({
       customerEmail,
@@ -72,12 +91,12 @@ async function sendOrderReadyEmail(params: EmailParams) {
     });
     
     if (!result.success) {
-      console.warn('Failed to send order ready email:', result.error);
+      console.error('Failed to send order ready email:', result.error);
     } else {
-      console.log('Order ready email sent to', customerEmail);
+      console.log('Order ready email sent successfully to', customerEmail);
     }
   } catch (err) {
-    console.warn('Failed to send order ready email:', err);
+    console.error('sendOrderReadyEmail error:', err);
   }
 }
 
@@ -192,7 +211,15 @@ export default async function handler(
 
     // Send order ready email when status changes to 'ready'
     // Works for both logged-in users (via auth) AND guest users (via order snapshot)
+    console.log('Checking order ready email conditions', {
+      status,
+      hasResendKey: !!process.env.RESEND_API_KEY,
+      squareOrderId: updatedTicket.squareOrderId,
+      customerUserId: updatedTicket.customerUserId ?? null
+    });
+    
     if (status === 'ready' && process.env.RESEND_API_KEY) {
+      console.log('Calling sendOrderReadyEmail');
       sendOrderReadyEmail({
         supabaseAdmin,
         dataClient,
@@ -201,6 +228,13 @@ export default async function handler(
         squareOrderId: updatedTicket.squareOrderId,
         customerUserId: updatedTicket.customerUserId ?? null,
         shortcode: updatedTicket.shortcode || updatedTicket.squareOrderId.slice(-4).toUpperCase()
+      }).catch(err => {
+        console.error('sendOrderReadyEmail failed:', err);
+      });
+    } else {
+      console.log('Skipping order ready email', { 
+        isReady: status === 'ready', 
+        hasKey: !!process.env.RESEND_API_KEY 
       });
     }
 
