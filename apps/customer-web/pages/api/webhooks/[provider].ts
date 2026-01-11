@@ -68,7 +68,7 @@ async function sendOrderConfirmationEmail(params: EmailParams) {
     }
     
     if (!customerEmail) {
-      log.info('No customer email found for order confirmation', { userId, orderId });
+      log.info('No customer email found for order confirmation', { userId: userId ?? undefined, orderId });
       return;
     }
     
