@@ -503,22 +503,12 @@ async function handleSquareWebhook(
         }
       }
 
-      // Send order confirmation email (works for both logged-in AND guest users)
-      // Email functionality is optional - gracefully skip if not configured
-      logger.info('Checking email send conditions', { 
-        hasResendKey: !!process.env.RESEND_API_KEY,
-        userId: userId ?? undefined,
-        squareEmail: squareEmail ?? undefined,
-        customerDisplayName: customerDisplayName ?? undefined
-      });
-      
+      // Send order confirmation email (async, don't block response)
       if (process.env.RESEND_API_KEY) {
-        logger.info('Calling sendOrderConfirmationEmail');
-        // Don't await - send email in background but log any errors
         sendOrderConfirmationEmail({
           userId: userId ?? null,
           customerDisplayName: customerDisplayName || squareName,
-          customerEmail: squareEmail, // Will fall back to auth user email if userId exists
+          customerEmail: squareEmail,
           vendorSlug: vendor.slug,
           vendorDisplayName: vendor.displayName,
           snapshotId: snapshot.id,
@@ -530,11 +520,7 @@ async function handleSquareWebhook(
           currency,
           dataClient,
           logger
-        }).catch(err => {
-          logger.error('Email send failed', err instanceof Error ? err : new Error(String(err)));
         });
-      } else {
-        logger.warn('RESEND_API_KEY not configured, skipping email');
       }
 
       return {
