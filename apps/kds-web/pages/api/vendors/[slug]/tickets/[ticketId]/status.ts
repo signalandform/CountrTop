@@ -73,7 +73,7 @@ async function sendOrderReadyEmail(params: EmailParams) {
     }
     
     const vendor = await dataClient.getVendorBySlug(slug);
-    const vendorLocation = await dataClient.getVendorLocationById(locationId);
+    const vendorLocation = await dataClient.getVendorLocationBySquareId(locationId);
     
     console.log('Sending order ready email', { 
       email: customerEmail, 
