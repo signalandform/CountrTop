@@ -8,6 +8,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 
 import { createLogger, getSquareOrder } from '@countrtop/api-client';
+import { sendOrderConfirmation } from '@countrtop/email';
 import { getServerDataClient } from '../../../lib/dataClient';
 
 const logger = createLogger({ requestId: 'webhook-legacy' });
@@ -351,6 +352,63 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
           orderId: snapshot.id,
           pointsDelta: points
         });
+      }
+    }
+
+    // Send order confirmation email
+    logger.info('Checking email send conditions', { 
+      hasResendKey: !!process.env.RESEND_API_KEY,
+      userId: userId ?? undefined,
+      customerDisplayName: customerDisplayName ?? undefined
+    });
+    
+    if (process.env.RESEND_API_KEY && userId) {
+      try {
+        // Get customer email from auth
+        const supabaseUrl = process.env.SUPABASE_URL;
+        const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+        if (supabaseUrl && supabaseKey) {
+          const supabaseAdmin = createClient(supabaseUrl, supabaseKey, {
+            auth: { autoRefreshToken: false, persistSession: false }
+          });
+          const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(userId);
+          const customerEmail = authUser?.user?.email;
+          
+          if (customerEmail) {
+            // Get location for pickup instructions
+            const vendorLocation = await dataClient.getVendorLocationBySquareId(locationId);
+            const shortcode = order?.referenceId?.slice(-4).toUpperCase() || orderId.slice(-4).toUpperCase();
+            
+            logger.info('Sending order confirmation email', { email: customerEmail, shortcode });
+            
+            const result = await sendOrderConfirmation({
+              customerEmail,
+              customerName: customerDisplayName || 'Customer',
+              vendorName: vendor.displayName || vendor.slug || 'Restaurant',
+              orderId: snapshot.id,
+              shortcode,
+              items: items.map((i: { name: string; quantity: number; price: number }) => ({ 
+                name: i.name, 
+                quantity: i.quantity, 
+                price: i.price 
+              })),
+              total,
+              currency,
+              pickupInstructions: vendorLocation?.pickupInstructions ?? undefined,
+              estimatedWaitMinutes: 15
+            });
+            
+            if (result.success) {
+              logger.info('Order confirmation email sent', { email: customerEmail });
+            } else {
+              logger.warn('Failed to send order confirmation email', { error: result.error });
+            }
+          } else {
+            logger.info('No customer email found', { userId });
+          }
+        }
+      } catch (emailError) {
+        logger.error('Email send error', emailError instanceof Error ? emailError : new Error(String(emailError)));
       }
     }
 
