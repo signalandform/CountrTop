@@ -507,9 +507,9 @@ async function handleSquareWebhook(
       // Email functionality is optional - gracefully skip if not configured
       logger.info('Checking email send conditions', { 
         hasResendKey: !!process.env.RESEND_API_KEY,
-        userId: userId ?? null,
-        squareEmail,
-        customerDisplayName 
+        userId: userId ?? undefined,
+        squareEmail: squareEmail ?? undefined,
+        customerDisplayName: customerDisplayName ?? undefined
       });
       
       if (process.env.RESEND_API_KEY) {
