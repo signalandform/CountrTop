@@ -1,7 +1,1 @@
-{
-  "$schema": "https://openapi.vercel.sh/vercel.json",
-  "installCommand": "cd ../.. && pnpm install",
-  "buildCommand": "cd ../.. && pnpm --filter @countrtop/marketing-web run build",
-  "outputDirectory": ".next",
-  "framework": null
-}
+{}
