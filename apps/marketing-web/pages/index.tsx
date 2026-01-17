@@ -77,17 +77,20 @@ export default function Home() {
           <div className="hero-content">
             <div className="hero-badge animate-fade-in">
               <span className="badge-dot" />
-              Now accepting early access signups
+              Bootstrapped • Private Beta • POS-Integrated SaaS
             </div>
             <h1 className="hero-title animate-fade-in animate-delay-1">
               Your restaurant.<br />
               <span className="gradient-text">Your orders.</span><br />
               Your revenue.
             </h1>
+            <p className="hero-positioning animate-fade-in animate-delay-2">
+              Commission-free online ordering for independent restaurants.
+              The owned-channel alternative to DoorDash and Uber Eats.
+            </p>
             <p className="hero-subtitle animate-fade-in animate-delay-2">
-              Launch your own branded online ordering system in minutes. 
-              No commissions, no middlemen, no monthly fees during beta.
-              Connect to your existing POS and start accepting orders today.
+              Launch your own branded storefront in minutes. 
+              Connect to your existing POS. Keep 100% of your revenue.
             </p>
             <div className="hero-cta animate-fade-in animate-delay-3">
               <a href="#contact" className="btn-primary btn-large">
@@ -197,6 +200,60 @@ export default function Home() {
                 <path d="M10 15 L20 10 L30 15 L30 25 L20 30 L10 25 Z" />
                 <text x="38" y="26" fontSize="14" fontWeight="600">Clover</text>
               </svg>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Why CountrTop Wins */}
+      <section className="why-wins">
+        <div className="container">
+          <div className="section-header">
+            <span className="section-tag">Why CountrTop</span>
+            <h2>Built different. Built to last.</h2>
+          </div>
+          <div className="wins-grid">
+            <div className="win-item">
+              <span className="win-icon">💰</span>
+              <div className="win-content">
+                <h4>Zero Commission Economics</h4>
+                <p>Restaurants keep 100% of order revenue. Flat monthly SaaS fee—no per-order cuts.</p>
+              </div>
+            </div>
+            <div className="win-item">
+              <span className="win-icon">🔌</span>
+              <div className="win-content">
+                <h4>POS Integration as Moat</h4>
+                <p>Deep Square, Toast, and Clover integrations. Menu syncs automatically. Orders flow directly to existing systems.</p>
+              </div>
+            </div>
+            <div className="win-item">
+              <span className="win-icon">🏪</span>
+              <div className="win-content">
+                <h4>Branded Storefront Ownership</h4>
+                <p>Customers order from the restaurant—not a marketplace. Custom domain, colors, and branding.</p>
+              </div>
+            </div>
+            <div className="win-item">
+              <span className="win-icon">📺</span>
+              <div className="win-content">
+                <h4>Built-In Kitchen Display System</h4>
+                <p>KDS shows all orders—online and in-store POS—in one unified queue. Replaces paper tickets entirely.</p>
+              </div>
+            </div>
+            <div className="win-item">
+              <span className="win-icon">🍕</span>
+              <div className="win-content">
+                <h4>Founder-Operator Insight</h4>
+                <p>Built by people who&apos;ve run restaurants and felt the 30% commission pain firsthand.</p>
+              </div>
+            </div>
+            <div className="win-item">
+              <span className="win-icon">📈</span>
+              <div className="win-content">
+                <h4>Expansion Ready</h4>
+                <p>Premium add-ons roadmap: SMS notifications, loyalty programs, multi-location management.</p>
+              </div>
             </div>
           </div>
         </div>
@@ -342,7 +399,7 @@ export default function Home() {
           <div className="section-header">
             <span className="section-tag">Pricing</span>
             <h2>Simple, transparent pricing</h2>
-            <p>No hidden fees. No per-order commissions. Ever.</p>
+            <p>Subscription SaaS model. No transaction fees. No per-order commissions. Ever.</p>
           </div>
           <div className="pricing-cards">
             <div className="pricing-card">
@@ -410,7 +467,7 @@ export default function Home() {
                 <span className="price-amount">$49</span>
                 <span className="price-period">/month</span>
               </div>
-              <p className="pricing-description">Full platform access after beta. Still zero commissions on orders.</p>
+              <p className="pricing-description">Full platform access post-beta. Zero commissions. Premium add-ons available.</p>
               <ul className="pricing-features">
                 <li>
                   <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
@@ -508,7 +565,14 @@ export default function Home() {
                 <span className="logo-icon">◉</span>
                 CountrTop
               </a>
-              <p>Modern online ordering for independent restaurants.</p>
+              <p>Commission-free online ordering for independent restaurants. Built by operators who lived the marketplace pain.</p>
+              <div className="footer-meta">
+                <span>Bootstrapped</span>
+                <span>•</span>
+                <span>Founded 2025</span>
+                <span>•</span>
+                <span>Private Beta</span>
+              </div>
             </div>
             <div className="footer-links">
               <div className="footer-col">
@@ -663,8 +727,16 @@ export default function Home() {
           -webkit-text-fill-color: transparent;
           background-clip: text;
         }
+        .hero-positioning {
+          font-size: 1.125rem;
+          font-weight: 600;
+          color: var(--color-text);
+          margin-bottom: 1rem;
+          line-height: 1.5;
+          opacity: 0;
+        }
         .hero-subtitle {
-          font-size: 1.25rem;
+          font-size: 1.125rem;
           color: var(--color-text-muted);
           margin-bottom: 2rem;
           line-height: 1.7;
@@ -937,6 +1009,46 @@ export default function Home() {
         .pos-logo svg {
           height: 40px;
           width: auto;
+        }
+
+        /* Why CountrTop Wins */
+        .why-wins {
+          padding: var(--section-padding) 0;
+          background: var(--color-bg);
+        }
+        .wins-grid {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 2rem;
+          max-width: 1000px;
+          margin: 0 auto;
+        }
+        .win-item {
+          display: flex;
+          gap: 1rem;
+          align-items: flex-start;
+        }
+        .win-icon {
+          font-size: 1.5rem;
+          flex-shrink: 0;
+          width: 48px;
+          height: 48px;
+          background: var(--color-bg-warm);
+          border-radius: 12px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .win-content h4 {
+          font-size: 1rem;
+          font-weight: 700;
+          margin-bottom: 0.375rem;
+          color: var(--color-text);
+        }
+        .win-content p {
+          font-size: 0.9375rem;
+          color: var(--color-text-muted);
+          line-height: 1.5;
         }
 
         /* Features */
@@ -1342,6 +1454,13 @@ export default function Home() {
         .footer-brand p {
           color: rgba(255,255,255,0.5);
           font-size: 0.9375rem;
+          margin-bottom: 1rem;
+        }
+        .footer-meta {
+          display: flex;
+          gap: 0.5rem;
+          font-size: 0.8125rem;
+          color: rgba(255,255,255,0.4);
         }
         .footer-links {
           display: flex;
@@ -1401,6 +1520,9 @@ export default function Home() {
           .kds-mockup {
             width: 260px;
           }
+          .wins-grid {
+            grid-template-columns: repeat(2, 1fr);
+          }
           .features-grid {
             grid-template-columns: repeat(2, 1fr);
           }
@@ -1423,6 +1545,9 @@ export default function Home() {
           }
           .stat-divider {
             display: none;
+          }
+          .wins-grid {
+            grid-template-columns: 1fr;
           }
           .features-grid {
             grid-template-columns: 1fr;
@@ -1449,6 +1574,9 @@ export default function Home() {
           }
           .footer-links {
             gap: 2rem;
+          }
+          .footer-meta {
+            flex-wrap: wrap;
           }
           .pos-logos {
             gap: 2rem;
