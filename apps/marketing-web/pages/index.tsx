@@ -73,50 +73,51 @@ export default function Home() {
           <div className="hero-gradient" />
           <div className="hero-pattern" />
         </div>
-        <div className="container hero-content">
-          <div className="hero-badge animate-fade-in">
-            <span className="badge-dot" />
-            Now accepting early access signups
-          </div>
-          <h1 className="hero-title animate-fade-in animate-delay-1">
-            Your restaurant.<br />
-            <span className="gradient-text">Your orders.</span><br />
-            Your revenue.
-          </h1>
-          <p className="hero-subtitle animate-fade-in animate-delay-2">
-            Launch your own branded online ordering system in minutes. 
-            No commissions, no middlemen, no monthly fees during beta.
-            Connect to your existing POS and start accepting orders today.
-          </p>
-          <div className="hero-cta animate-fade-in animate-delay-3">
-            <a href="#contact" className="btn-primary btn-large">
-              Join the Waitlist
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                <path d="M4 10h12m0 0l-4-4m4 4l-4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </a>
-            <a href="#how-it-works" className="btn-secondary btn-large">
-              See How It Works
-            </a>
-          </div>
-          <div className="hero-stats animate-fade-in animate-delay-4">
-            <div className="stat">
-              <span className="stat-value">0%</span>
-              <span className="stat-label">Commission fees</span>
+        <div className="container hero-inner">
+          <div className="hero-content">
+            <div className="hero-badge animate-fade-in">
+              <span className="badge-dot" />
+              Now accepting early access signups
             </div>
-            <div className="stat-divider" />
-            <div className="stat">
-              <span className="stat-value">&lt;5min</span>
-              <span className="stat-label">Setup time</span>
+            <h1 className="hero-title animate-fade-in animate-delay-1">
+              Your restaurant.<br />
+              <span className="gradient-text">Your orders.</span><br />
+              Your revenue.
+            </h1>
+            <p className="hero-subtitle animate-fade-in animate-delay-2">
+              Launch your own branded online ordering system in minutes. 
+              No commissions, no middlemen, no monthly fees during beta.
+              Connect to your existing POS and start accepting orders today.
+            </p>
+            <div className="hero-cta animate-fade-in animate-delay-3">
+              <a href="#contact" className="btn-primary btn-large">
+                Join the Waitlist
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                  <path d="M4 10h12m0 0l-4-4m4 4l-4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </a>
+              <a href="#how-it-works" className="btn-secondary btn-large">
+                See How It Works
+              </a>
             </div>
-            <div className="stat-divider" />
-            <div className="stat">
-              <span className="stat-value">24/7</span>
-              <span className="stat-label">Order acceptance</span>
+            <div className="hero-stats animate-fade-in animate-delay-4">
+              <div className="stat">
+                <span className="stat-value">0%</span>
+                <span className="stat-label">Commission fees</span>
+              </div>
+              <div className="stat-divider" />
+              <div className="stat">
+                <span className="stat-value">&lt;5min</span>
+                <span className="stat-label">Setup time</span>
+              </div>
+              <div className="stat-divider" />
+              <div className="stat">
+                <span className="stat-value">24/7</span>
+                <span className="stat-label">Order acceptance</span>
+              </div>
             </div>
           </div>
-        </div>
-        <div className="hero-visual animate-fade-in animate-delay-5">
+          <div className="hero-visual animate-fade-in animate-delay-5">
           <div className="phone-mockup">
             <div className="phone-screen">
               <div className="mockup-header">
@@ -169,6 +170,7 @@ export default function Home() {
                 <div className="ticket-status">COOKING</div>
               </div>
             </div>
+          </div>
           </div>
         </div>
       </section>
@@ -617,10 +619,16 @@ export default function Home() {
           background-image: radial-gradient(circle at 1px 1px, rgba(26, 26, 46, 0.03) 1px, transparent 0);
           background-size: 40px 40px;
         }
-        .hero-content {
+        .hero-inner {
           position: relative;
           z-index: 1;
-          max-width: 640px;
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 4rem;
+          align-items: center;
+        }
+        .hero-content {
+          max-width: 580px;
         }
         .hero-badge {
           display: inline-flex;
@@ -746,21 +754,21 @@ export default function Home() {
 
         /* Hero Visual */
         .hero-visual {
-          position: absolute;
-          right: 5%;
-          top: 50%;
-          transform: translateY(-50%);
           display: flex;
+          flex-direction: column;
           gap: 1.5rem;
           opacity: 0;
+          justify-content: center;
+          align-items: flex-start;
         }
         .phone-mockup {
-          width: 280px;
+          width: 260px;
           background: white;
           border-radius: 32px;
           padding: 12px;
           box-shadow: 0 25px 50px -12px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,0,0,0.05);
           animation: float 6s ease-in-out infinite;
+          align-self: flex-end;
         }
         .phone-screen {
           background: #FAFAFA;
@@ -837,13 +845,15 @@ export default function Home() {
         }
 
         .kds-mockup {
-          width: 320px;
+          width: 300px;
           background: var(--color-bg-dark);
           border-radius: 16px;
           padding: 1rem;
           box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
           animation: float 6s ease-in-out infinite;
           animation-delay: -3s;
+          align-self: flex-start;
+          margin-left: 2rem;
         }
         .kds-header {
           color: white;
@@ -1365,11 +1375,31 @@ export default function Home() {
 
         /* Responsive */
         @media (max-width: 1024px) {
+          .hero-inner {
+            grid-template-columns: 1fr;
+            gap: 3rem;
+          }
           .hero-visual {
-            display: none;
+            display: flex;
+            flex-direction: row;
+            justify-content: center;
+            order: -1;
           }
           .hero-content {
             max-width: 100%;
+            text-align: center;
+          }
+          .hero-cta {
+            justify-content: center;
+          }
+          .hero-stats {
+            justify-content: center;
+          }
+          .phone-mockup {
+            width: 220px;
+          }
+          .kds-mockup {
+            width: 260px;
           }
           .features-grid {
             grid-template-columns: repeat(2, 1fr);
