@@ -3,6 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "packageManager": "pnpm@9.10.0",
+  "pnpm": {
+    "overrides": {
+      "react": "18.2.0",
+      "react-dom": "18.2.0"
+    }
+  },
   "scripts": {
     "dev:customer-web": "pnpm --filter @countrtop/customer-web dev",
     "dev:customer": "pnpm --filter @countrtop/customer-mobile start",
