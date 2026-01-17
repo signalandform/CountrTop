@@ -39,6 +39,7 @@
   },
   "dependencies": {
     "@babel/runtime": "^7.28.4",
+    "next": "14.2.35",
     "pino": "^10.1.0",
     "pino-pretty": "^13.1.3"
   }
