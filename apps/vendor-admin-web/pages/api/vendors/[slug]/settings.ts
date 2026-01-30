@@ -76,6 +76,26 @@ export default async function handler(
       }
     });
 
+    // Fetch vendor row for ID and previous settings
+    const { data: vendorRow, error: vendorError } = await supabase
+      .from('vendors')
+      .select('id, pickup_instructions')
+      .eq('slug', vendorSlug)
+      .maybeSingle();
+
+    if (vendorError) {
+      return res.status(500).json({
+        success: false,
+        error: `Failed to load vendor: ${vendorError.message}`
+      });
+    }
+
+    if (!vendorRow) {
+      return res.status(404).json({ success: false, error: 'Vendor not found' });
+    }
+
+    const previousPickupInstructions = vendorRow.pickup_instructions ?? null;
+
     // Build update object - only include provided fields
     const updateData: Partial<Database['public']['Tables']['vendors']['Update']> = {};
 
@@ -107,6 +127,40 @@ export default async function handler(
         success: false, 
         error: `Failed to update vendor: ${updateError.message}` 
       });
+    }
+
+    // Keep location pickup instructions in sync when settings update the default.
+    if (pickupInstructions !== undefined) {
+      const normalizedPickupInstructions = pickupInstructions || null;
+      const { data: locationRows, error: locationError } = await supabase
+        .from('vendor_locations')
+        .select('id, pickup_instructions')
+        .eq('vendor_id', vendorRow.id);
+
+      if (locationError) {
+        return res.status(500).json({
+          success: false,
+          error: `Failed to load vendor locations: ${locationError.message}`
+        });
+      }
+
+      const locationIdsToUpdate = (locationRows ?? [])
+        .filter((loc) => loc.pickup_instructions == null || (loc.pickup_instructions ?? null) === previousPickupInstructions)
+        .map((loc) => loc.id);
+
+      if (locationIdsToUpdate.length > 0) {
+        const { error: locationUpdateError } = await supabase
+          .from('vendor_locations')
+          .update({ pickup_instructions: normalizedPickupInstructions })
+          .in('id', locationIdsToUpdate);
+
+        if (locationUpdateError) {
+          return res.status(500).json({
+            success: false,
+            error: `Failed to update vendor locations: ${locationUpdateError.message}`
+          });
+        }
+      }
     }
 
     return res.status(200).json({ success: true });
