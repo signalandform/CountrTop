@@ -1324,9 +1324,10 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
 
           .card {
             background: var(--ct-bg-surface);
-            border: 1px solid var(--color-border);
+            border: 1px solid var(--ct-card-border);
             border-radius: 20px;
             padding: 20px;
+            box-shadow: var(--ct-card-shadow);
           }
 
           .card-header {
@@ -1593,20 +1594,28 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
           }
 
           .menu-card {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: var(--ct-bg-surface);
+            border: 1px solid var(--ct-card-border);
             border-radius: 16px;
             padding: 24px;
             display: flex;
             flex-direction: column;
             gap: 16px;
             min-height: 200px;
+            box-shadow: var(--ct-card-shadow);
+            transition: box-shadow 0.2s ease, border-color 0.2s ease;
+          }
+
+          .menu-card:hover {
+            border-color: rgba(232, 93, 4, 0.22);
+            box-shadow: var(--ct-card-shadow-hover);
           }
 
           .menu-image {
             height: 120px;
             border-radius: 12px;
-            background: rgba(255, 255, 255, 0.03);
+            background: var(--ct-bg-surface-warm);
+            border: 1px solid var(--ct-card-border);
             display: flex;
             align-items: center;
             justify-content: center;

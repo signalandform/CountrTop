@@ -146,11 +146,11 @@ export function OrderStatusTracker({
 
       <style jsx>{`
         .order-status-tracker {
-          background: rgba(255, 255, 255, 0.05);
-          backdrop-filter: blur(10px);
-          border: 1px solid rgba(255, 255, 255, 0.1);
+          background: var(--ct-bg-surface);
+          border: 1px solid var(--ct-card-border);
           border-radius: 16px;
           padding: 20px;
+          box-shadow: var(--ct-card-shadow);
         }
 
         .order-status-tracker.compact {
@@ -272,7 +272,8 @@ export function OrderStatusTracker({
           gap: 10px;
           padding: 16px;
           border-radius: 12px;
-          background: var(--color-bg-warm);
+          background: var(--ct-bg-surface-warm);
+          border: 1px solid var(--ct-card-border);
           margin-bottom: 16px;
         }
 
@@ -282,8 +283,8 @@ export function OrderStatusTracker({
         }
 
         .status-message.status-ready {
-          background: rgba(16, 185, 129, 0.15);
-          border: 1px solid rgba(16, 185, 129, 0.3);
+          background: rgba(16, 185, 129, 0.12);
+          border-color: rgba(16, 185, 129, 0.3);
         }
 
         .status-emoji {
@@ -313,6 +314,7 @@ export function OrderStatusTracker({
           text-align: center;
           padding: 20px;
           background: rgba(16, 185, 129, 0.12);
+          border: 1px solid rgba(16, 185, 129, 0.28);
           border-radius: 12px;
           margin-bottom: 16px;
         }
@@ -333,7 +335,7 @@ export function OrderStatusTracker({
 
         /* Items Summary */
         .items-summary {
-          border-top: 1px solid var(--color-border);
+          border-top: 1px solid var(--ct-card-border);
           padding-top: 16px;
         }
 
@@ -371,7 +373,7 @@ export function OrderStatusTracker({
           justify-content: space-between;
           padding-top: 12px;
           margin-top: 8px;
-          border-top: 1px solid var(--color-border);
+          border-top: 1px solid var(--ct-card-border);
           font-size: 15px;
         }
 
