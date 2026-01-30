@@ -12,17 +12,6 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
   const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Form state
-  const [addressLine1, setAddressLine1] = useState(vendor.addressLine1 || '');
-  const [addressLine2, setAddressLine2] = useState(vendor.addressLine2 || '');
-  const [city, setCity] = useState(vendor.city || '');
-  const [state, setState] = useState(vendor.state || '');
-  const [postalCode, setPostalCode] = useState(vendor.postalCode || '');
-  const [phone, setPhone] = useState(vendor.phone || '');
-  const [pickupInstructions, setPickupInstructions] = useState(vendor.pickupInstructions || '');
-  const [kdsActiveLimitTotal, setKdsActiveLimitTotal] = useState(vendor.kdsActiveLimitTotal?.toString() || '10');
-  const [kdsActiveLimitCt, setKdsActiveLimitCt] = useState(vendor.kdsActiveLimitCt?.toString() || '10');
-
   // Theming state
   const [logoUrl, setLogoUrl] = useState(vendor.logoUrl || '');
   const [primaryColor, setPrimaryColor] = useState(vendor.primaryColor || '#E85D04');
@@ -165,15 +154,6 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({
-          addressLine1: addressLine1 || null,
-          addressLine2: addressLine2 || null,
-          city: city || null,
-          state: state || null,
-          postalCode: postalCode || null,
-          phone: phone || null,
-          pickupInstructions: pickupInstructions || null,
-          kdsActiveLimitTotal: kdsActiveLimitTotal ? parseInt(kdsActiveLimitTotal, 10) : null,
-          kdsActiveLimitCt: kdsActiveLimitCt ? parseInt(kdsActiveLimitCt, 10) : null,
           logoUrl: logoUrl || null,
           primaryColor: primaryColor || null,
           accentColor: accentColor || null,
@@ -204,12 +184,6 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
           <link href={googleFontUrl} rel="stylesheet" />
         </Head>
       )}
-
-      <header className="page-header">
-        <a href={`/vendors/${vendorSlug}`} className="back-link">← Back to Dashboard</a>
-        <h1>Settings</h1>
-        <p className="page-subtitle">{vendor.displayName}</p>
-      </header>
 
       <div className="page-content">
         <form onSubmit={handleSave} className="vendor-form">
@@ -337,133 +311,6 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
                 >
                   Start Order
                 </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Location Section */}
-          <div className="form-section">
-            <h2>📍 Location</h2>
-            <div className="form-grid">
-              <div className="form-group">
-                <label htmlFor="addressLine1">Address Line 1</label>
-                <input
-                  id="addressLine1"
-                  type="text"
-                  value={addressLine1}
-                  onChange={(e) => setAddressLine1(e.target.value)}
-                  className="form-input"
-                  disabled={saving}
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="addressLine2">Address Line 2</label>
-                <input
-                  id="addressLine2"
-                  type="text"
-                  value={addressLine2}
-                  onChange={(e) => setAddressLine2(e.target.value)}
-                  className="form-input"
-                  disabled={saving}
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="city">City</label>
-                <input
-                  id="city"
-                  type="text"
-                  value={city}
-                  onChange={(e) => setCity(e.target.value)}
-                  className="form-input"
-                  disabled={saving}
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="state">State</label>
-                <input
-                  id="state"
-                  type="text"
-                  value={state}
-                  onChange={(e) => setState(e.target.value)}
-                  className="form-input"
-                  disabled={saving}
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="postalCode">Postal Code</label>
-                <input
-                  id="postalCode"
-                  type="text"
-                  value={postalCode}
-                  onChange={(e) => setPostalCode(e.target.value)}
-                  className="form-input"
-                  disabled={saving}
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="phone">Phone</label>
-                <input
-                  id="phone"
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  className="form-input"
-                  disabled={saving}
-                />
-              </div>
-
-              <div className="form-group full-width">
-                <label htmlFor="pickupInstructions">Pickup Instructions</label>
-                <textarea
-                  id="pickupInstructions"
-                  value={pickupInstructions}
-                  onChange={(e) => setPickupInstructions(e.target.value)}
-                  className="form-input"
-                  rows={3}
-                  disabled={saving}
-                  placeholder="Enter pickup instructions for customers..."
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* KDS Settings Section */}
-          <div className="form-section">
-            <h2>🖥️ KDS Queue Settings</h2>
-            <div className="form-grid">
-              <div className="form-group">
-                <label htmlFor="kdsActiveLimitTotal">Max Active Tickets (Total)</label>
-                <input
-                  id="kdsActiveLimitTotal"
-                  type="number"
-                  min="1"
-                  max="50"
-                  value={kdsActiveLimitTotal}
-                  onChange={(e) => setKdsActiveLimitTotal(e.target.value)}
-                  className="form-input"
-                  disabled={saving}
-                />
-                <small className="form-hint">Maximum tickets in queue from all sources</small>
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="kdsActiveLimitCt">Max CountrTop Orders</label>
-                <input
-                  id="kdsActiveLimitCt"
-                  type="number"
-                  min="1"
-                  max="50"
-                  value={kdsActiveLimitCt}
-                  onChange={(e) => setKdsActiveLimitCt(e.target.value)}
-                  className="form-input"
-                  disabled={saving}
-                />
-                <small className="form-hint">Maximum CountrTop orders in queue</small>
               </div>
             </div>
           </div>
