@@ -262,9 +262,9 @@ export default function VendorOrdersPage({ vendorSlug, vendorName, orders: initi
         <style jsx>{`
           .page {
             min-height: 100vh;
-            background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 50%, #16213e 100%);
-            color: #e8e8e8;
-            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--ct-bg-primary);
+            color: var(--ct-text);
+            font-family: var(--ct-font-body);
             padding: 0 24px 48px;
           }
 
@@ -285,7 +285,7 @@ export default function VendorOrdersPage({ vendorSlug, vendorName, orders: initi
             text-transform: uppercase;
             letter-spacing: 3px;
             font-size: 11px;
-            color: #a78bfa;
+            color: var(--color-accent);
             margin: 0 0 8px;
           }
 
@@ -293,7 +293,7 @@ export default function VendorOrdersPage({ vendorSlug, vendorName, orders: initi
             font-size: 32px;
             font-weight: 700;
             margin: 0 0 8px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--ct-gradient-primary);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
@@ -301,19 +301,19 @@ export default function VendorOrdersPage({ vendorSlug, vendorName, orders: initi
 
           .subtitle {
             font-size: 16px;
-            color: #888;
+            color: var(--color-text-muted);
             margin: 0;
           }
 
           .back-link {
-            color: #a78bfa;
+            color: var(--color-accent);
             text-decoration: none;
             font-size: 14px;
             transition: color 0.2s;
           }
 
           .back-link:hover {
-            color: #c4b5fd;
+            color: var(--color-primary);
           }
 
           .error-banner {
@@ -328,7 +328,7 @@ export default function VendorOrdersPage({ vendorSlug, vendorName, orders: initi
           .empty-state {
             text-align: center;
             padding: 60px 20px;
-            color: #666;
+            color: var(--color-text-muted);
           }
 
           .empty-icon {
@@ -344,19 +344,19 @@ export default function VendorOrdersPage({ vendorSlug, vendorName, orders: initi
           }
 
           .order-card {
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: var(--ct-bg-surface);
+            border: 1px solid var(--color-border);
             border-radius: 16px;
             overflow: hidden;
             transition: border-color 0.2s;
           }
 
           .order-card:hover {
-            border-color: rgba(255, 255, 255, 0.15);
+            border-color: rgba(232, 93, 4, 0.2);
           }
 
           .order-card.expanded {
-            border-color: rgba(102, 126, 234, 0.4);
+            border-color: rgba(232, 93, 4, 0.4);
           }
 
           .order-header {
@@ -398,7 +398,7 @@ export default function VendorOrdersPage({ vendorSlug, vendorName, orders: initi
           }
 
           .order-id {
-            color: #666;
+            color: var(--color-text-muted);
             font-size: 12px;
             font-family: monospace;
           }
@@ -406,16 +406,16 @@ export default function VendorOrdersPage({ vendorSlug, vendorName, orders: initi
           .order-total {
             font-weight: 700;
             font-size: 16px;
-            color: #a78bfa;
+            color: var(--color-accent);
           }
 
           .order-items {
-            color: #888;
+            color: var(--color-text-muted);
             font-size: 14px;
           }
 
           .order-customer {
-            color: #666;
+            color: var(--color-text-muted);
             font-size: 13px;
             font-family: monospace;
           }
@@ -435,21 +435,21 @@ export default function VendorOrdersPage({ vendorSlug, vendorName, orders: initi
           }
 
           .status-badge.status-placed {
-            background: rgba(102, 126, 234, 0.2);
-            color: #a78bfa;
-            border: 1px solid rgba(102, 126, 234, 0.3);
+            background: rgba(232, 93, 4, 0.12);
+            color: var(--color-primary);
+            border: 1px solid rgba(232, 93, 4, 0.28);
           }
 
           .status-badge.status-ready {
-            background: rgba(251, 191, 36, 0.2);
-            color: #fbbf24;
-            border: 1px solid rgba(251, 191, 36, 0.3);
+            background: rgba(255, 182, 39, 0.18);
+            color: var(--color-accent);
+            border: 1px solid rgba(255, 182, 39, 0.28);
           }
 
           .status-badge.status-complete {
-            background: rgba(34, 197, 94, 0.2);
-            color: #4ade80;
-            border: 1px solid rgba(34, 197, 94, 0.3);
+            background: rgba(16, 185, 129, 0.18);
+            color: var(--color-success);
+            border: 1px solid rgba(16, 185, 129, 0.28);
           }
 
           .order-expand {
@@ -458,21 +458,21 @@ export default function VendorOrdersPage({ vendorSlug, vendorName, orders: initi
             display: flex;
             align-items: center;
             justify-content: center;
-            background: rgba(255, 255, 255, 0.05);
+            background: var(--color-bg-warm);
             border-radius: 8px;
             font-size: 18px;
-            color: #888;
+            color: var(--color-text-muted);
           }
 
           .order-details {
             padding: 0 20px 20px;
-            border-top: 1px solid rgba(255, 255, 255, 0.06);
+            border-top: 1px solid var(--color-border);
             margin-top: 0;
           }
 
           .detail-divider {
             height: 1px;
-            background: rgba(255, 255, 255, 0.06);
+            background: var(--color-border);
             margin: 16px 0;
           }
 
@@ -481,7 +481,7 @@ export default function VendorOrdersPage({ vendorSlug, vendorName, orders: initi
             align-items: center;
             gap: 12px;
             padding: 12px 0;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            border-bottom: 1px solid var(--color-border);
           }
 
           .detail-row:last-child {
@@ -494,20 +494,20 @@ export default function VendorOrdersPage({ vendorSlug, vendorName, orders: initi
             display: flex;
             align-items: center;
             justify-content: center;
-            background: rgba(102, 126, 234, 0.2);
+            background: rgba(232, 93, 4, 0.15);
             border-radius: 6px;
             font-size: 12px;
             font-weight: 600;
-            color: #a78bfa;
+            color: var(--color-primary);
           }
 
           .detail-name {
             flex: 1;
-            color: #ccc;
+            color: var(--color-text);
           }
 
           .detail-price {
-            color: #888;
+            color: var(--color-text-muted);
             font-size: 14px;
           }
 
@@ -535,29 +535,29 @@ export default function VendorOrdersPage({ vendorSlug, vendorName, orders: initi
           }
 
           .btn-ready {
-            background: rgba(251, 191, 36, 0.2);
-            color: #fbbf24;
-            border: 1px solid rgba(251, 191, 36, 0.3);
+            background: rgba(255, 182, 39, 0.18);
+            color: var(--color-accent);
+            border: 1px solid rgba(255, 182, 39, 0.28);
           }
 
           .btn-ready:hover:not(:disabled) {
-            background: rgba(251, 191, 36, 0.3);
-            border-color: rgba(251, 191, 36, 0.5);
+            background: rgba(255, 182, 39, 0.28);
+            border-color: rgba(255, 182, 39, 0.5);
           }
 
           .btn-complete {
-            background: rgba(34, 197, 94, 0.2);
-            color: #4ade80;
-            border: 1px solid rgba(34, 197, 94, 0.3);
+            background: rgba(16, 185, 129, 0.18);
+            color: var(--color-success);
+            border: 1px solid rgba(16, 185, 129, 0.28);
           }
 
           .btn-complete:hover:not(:disabled) {
-            background: rgba(34, 197, 94, 0.3);
-            border-color: rgba(34, 197, 94, 0.5);
+            background: rgba(16, 185, 129, 0.28);
+            border-color: rgba(16, 185, 129, 0.5);
           }
 
           .status-complete-text {
-            color: #4ade80;
+            color: var(--color-success);
             font-size: 14px;
             font-weight: 600;
           }

@@ -56,9 +56,9 @@ export default function KDSHome() {
         <style jsx>{`
           .page {
             min-height: 100vh;
-            background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 50%, #16213e 100%);
-            color: #e8e8e8;
-            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--ct-bg-primary);
+            color: var(--ct-text);
+            font-family: var(--ct-font-body);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -75,7 +75,7 @@ export default function KDSHome() {
             font-size: 48px;
             font-weight: 700;
             margin: 0 0 8px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--ct-gradient-primary);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
@@ -83,18 +83,18 @@ export default function KDSHome() {
 
           .subtitle {
             font-size: 18px;
-            color: #888;
+            color: var(--color-text-muted);
             margin: 0 0 32px;
           }
 
           .pwa-banner {
-            background: rgba(102, 126, 234, 0.2);
-            border: 1px solid rgba(102, 126, 234, 0.3);
+            background: rgba(232, 93, 4, 0.12);
+            border: 1px solid rgba(232, 93, 4, 0.3);
             border-radius: 12px;
             padding: 12px 16px;
             margin-bottom: 32px;
             font-size: 14px;
-            color: #a78bfa;
+            color: var(--color-primary);
           }
 
           .form {
@@ -113,7 +113,7 @@ export default function KDSHome() {
           .form-group label {
             font-size: 14px;
             font-weight: 600;
-            color: #a78bfa;
+            color: var(--color-accent);
             text-transform: uppercase;
             letter-spacing: 0.5px;
           }
@@ -121,9 +121,9 @@ export default function KDSHome() {
           .input {
             padding: 16px;
             border-radius: 12px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            background: rgba(255, 255, 255, 0.05);
-            color: #e8e8e8;
+            border: 1px solid var(--color-border);
+            background: var(--ct-bg-surface);
+            color: var(--color-text);
             font-size: 16px;
             font-family: inherit;
             transition: border-color 0.2s;
@@ -131,7 +131,7 @@ export default function KDSHome() {
 
           .input:focus {
             outline: none;
-            border-color: #667eea;
+            border-color: var(--color-primary);
           }
 
           .error {
@@ -144,7 +144,7 @@ export default function KDSHome() {
             padding: 16px 24px;
             border-radius: 12px;
             border: none;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--ct-gradient-primary);
             color: white;
             font-weight: 600;
             font-size: 16px;

@@ -304,9 +304,9 @@ export default function LoginPage() {
         <style jsx>{`
           .page {
             min-height: 100vh;
-            background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 50%, #16213e 100%);
-            color: #e8e8e8;
-            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--ct-bg-primary);
+            color: var(--ct-text);
+            font-family: var(--ct-font-body);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -323,7 +323,7 @@ export default function LoginPage() {
             font-weight: 700;
             margin: 0 0 8px;
             text-align: center;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--ct-gradient-primary);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
@@ -331,7 +331,7 @@ export default function LoginPage() {
 
           .subtitle {
             font-size: 16px;
-            color: #888;
+            color: var(--color-text-muted);
             margin: 0 0 32px;
             text-align: center;
           }
@@ -356,19 +356,19 @@ export default function LoginPage() {
             font-size: 24px;
             font-weight: 600;
             margin: 0;
-            color: #e8e8e8;
+            color: var(--color-text);
           }
 
           .step-description {
-            color: #888;
+            color: var(--color-text-muted);
             font-size: 14px;
             margin: -12px 0 0 0;
           }
 
           .back-button {
             background: transparent;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            color: #a78bfa;
+            border: 1px solid var(--color-border);
+            color: var(--color-accent);
             padding: 8px 16px;
             border-radius: 8px;
             cursor: pointer;
@@ -378,15 +378,15 @@ export default function LoginPage() {
           }
 
           .back-button:hover {
-            border-color: #a78bfa;
+            border-color: var(--color-primary);
           }
 
           .input {
             padding: 16px;
             border-radius: 12px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            background: rgba(255, 255, 255, 0.05);
-            color: #e8e8e8;
+            border: 1px solid var(--color-border);
+            background: var(--ct-bg-surface);
+            color: var(--color-text);
             font-size: 16px;
             font-family: inherit;
             transition: border-color 0.2s;
@@ -394,7 +394,7 @@ export default function LoginPage() {
 
           .input:focus {
             outline: none;
-            border-color: #667eea;
+            border-color: var(--color-primary);
           }
 
           .list {
@@ -408,9 +408,9 @@ export default function LoginPage() {
           .list-item {
             padding: 16px;
             border-radius: 12px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            background: rgba(255, 255, 255, 0.05);
-            color: #e8e8e8;
+            border: 1px solid var(--color-border);
+            background: var(--ct-bg-surface);
+            color: var(--color-text);
             font-size: 16px;
             font-family: inherit;
             cursor: pointer;
@@ -419,8 +419,8 @@ export default function LoginPage() {
           }
 
           .list-item:hover {
-            background: rgba(255, 255, 255, 0.1);
-            border-color: #667eea;
+            background: var(--color-bg-warm);
+            border-color: var(--color-primary);
             transform: translateY(-2px);
           }
 
@@ -439,8 +439,8 @@ export default function LoginPage() {
           .primary-badge {
             font-size: 10px;
             text-transform: uppercase;
-            background: rgba(102, 126, 234, 0.2);
-            color: #667eea;
+            background: rgba(232, 93, 4, 0.12);
+            color: var(--color-primary);
             padding: 2px 6px;
             border-radius: 4px;
             font-weight: 600;
@@ -448,18 +448,18 @@ export default function LoginPage() {
 
           .location-address {
             font-size: 13px;
-            color: #888;
+            color: var(--color-text-muted);
           }
 
           .empty {
             text-align: center;
-            color: #888;
+            color: var(--color-text-muted);
             padding: 24px;
           }
 
           .loading {
             text-align: center;
-            color: #888;
+            color: var(--color-text-muted);
             padding: 24px;
           }
 
@@ -472,9 +472,9 @@ export default function LoginPage() {
           .pin-input {
             padding: 20px;
             border-radius: 12px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            background: rgba(255, 255, 255, 0.05);
-            color: #e8e8e8;
+            border: 1px solid var(--color-border);
+            background: var(--ct-bg-surface);
+            color: var(--color-text);
             font-size: 32px;
             font-family: 'SF Mono', monospace;
             text-align: center;
@@ -485,7 +485,7 @@ export default function LoginPage() {
 
           .pin-input:focus {
             outline: none;
-            border-color: #667eea;
+            border-color: var(--color-primary);
           }
 
           .pin-input:disabled {
@@ -497,7 +497,7 @@ export default function LoginPage() {
             padding: 16px 24px;
             border-radius: 12px;
             border: none;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--ct-gradient-primary);
             color: white;
             font-weight: 600;
             font-size: 16px;

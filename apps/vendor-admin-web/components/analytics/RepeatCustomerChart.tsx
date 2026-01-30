@@ -6,7 +6,7 @@ type RepeatCustomerChartProps = {
   loading?: boolean;
 };
 
-const COLORS = ['#667eea', '#a78bfa', '#f093fb'];
+const COLORS = ['#E85D04', '#FFB627', '#FF7B2E'];
 
 /**
  * Repeat customer metrics chart
@@ -53,7 +53,7 @@ export function RepeatCustomerChart({ data, loading }: RepeatCustomerChartProps)
                 return `${name}: ${(percent * 100).toFixed(0)}%`;
               }}
               outerRadius={100}
-              fill="#8884d8"
+              fill="var(--color-primary)"
               dataKey="value"
             >
               {chartData.map((entry, index) => (
@@ -62,10 +62,10 @@ export function RepeatCustomerChart({ data, loading }: RepeatCustomerChartProps)
             </Pie>
             <Tooltip
               contentStyle={{
-                backgroundColor: 'rgba(0, 0, 0, 0.9)',
-                border: '1px solid rgba(255, 255, 255, 0.2)',
+                backgroundColor: '#FFFFFF',
+                border: '1px solid var(--color-border)',
                 borderRadius: '8px',
-                color: '#e8e8e8'
+                color: 'var(--color-text)'
               }}
             />
             <Legend />
@@ -86,8 +86,8 @@ export function RepeatCustomerChart({ data, loading }: RepeatCustomerChartProps)
       <style jsx>{`
         .chart-container {
           width: 100%;
-          background: rgba(255, 255, 255, 0.03);
-          border: 1px solid rgba(255, 255, 255, 0.1);
+          background: var(--ct-bg-surface);
+          border: 1px solid var(--color-border);
           border-radius: 12px;
           padding: 20px;
         }
@@ -102,18 +102,18 @@ export function RepeatCustomerChart({ data, loading }: RepeatCustomerChartProps)
         .chart-header h3 {
           font-size: 18px;
           font-weight: 600;
-          color: #e8e8e8;
+          color: var(--color-text);
           margin: 0;
         }
 
         .scope-label {
           font-size: 12px;
           font-weight: 500;
-          color: #a78bfa;
-          background: rgba(167, 139, 250, 0.1);
+          color: var(--color-accent);
+          background: rgba(255, 182, 39, 0.18);
           padding: 4px 12px;
           border-radius: 4px;
-          border: 1px solid rgba(167, 139, 250, 0.2);
+          border: 1px solid rgba(255, 182, 39, 0.3);
         }
 
         .chart-content {
@@ -129,8 +129,8 @@ export function RepeatCustomerChart({ data, loading }: RepeatCustomerChartProps)
         }
 
         .metric {
-          background: rgba(255, 255, 255, 0.05);
-          border: 1px solid rgba(255, 255, 255, 0.1);
+          background: var(--ct-bg-surface);
+          border: 1px solid var(--color-border);
           border-radius: 8px;
           padding: 16px;
           text-align: center;
@@ -138,14 +138,14 @@ export function RepeatCustomerChart({ data, loading }: RepeatCustomerChartProps)
 
         .metric-label {
           font-size: 12px;
-          color: #888;
+          color: var(--color-text-muted);
           margin-bottom: 8px;
         }
 
         .metric-value {
           font-size: 24px;
           font-weight: 700;
-          color: #e8e8e8;
+          color: var(--color-text);
         }
 
         .chart-loading {
@@ -153,7 +153,7 @@ export function RepeatCustomerChart({ data, loading }: RepeatCustomerChartProps)
           align-items: center;
           justify-content: center;
           height: 300px;
-          color: #888;
+          color: var(--color-text-muted);
           font-size: 14px;
         }
       `}</style>

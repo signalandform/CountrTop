@@ -52,34 +52,34 @@ export default function SupportPage(_props: Props) {
         <style jsx global>{`
           .page {
             min-height: 100vh;
-            background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 50%, #16213e 100%);
-            color: #e8e8e8;
-            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--ct-bg-primary);
+            color: var(--ct-text);
+            font-family: var(--ct-font-body);
           }
 
           .page-header {
             padding: 32px 48px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            border-bottom: 1px solid var(--color-border);
           }
 
           .back-link {
             display: inline-block;
             margin-bottom: 16px;
-            color: #a78bfa;
+            color: var(--color-accent);
             text-decoration: none;
             font-size: 14px;
             transition: color 0.2s;
           }
 
           .back-link:hover {
-            color: #8b5cf6;
+            color: var(--color-primary);
           }
 
           .page-header h1 {
             font-size: 32px;
             font-weight: 700;
             margin: 0;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--ct-gradient-primary);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
@@ -94,8 +94,8 @@ export default function SupportPage(_props: Props) {
           .coming-soon {
             text-align: center;
             padding: 64px 32px;
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: var(--ct-bg-surface);
+            border: 1px solid var(--color-border);
             border-radius: 16px;
           }
 
@@ -108,12 +108,12 @@ export default function SupportPage(_props: Props) {
             font-size: 24px;
             font-weight: 600;
             margin: 0 0 16px;
-            color: #e8e8e8;
+            color: var(--color-text);
           }
 
           .coming-soon p {
             font-size: 16px;
-            color: #888;
+            color: var(--color-text-muted);
             margin: 0;
           }
         `}</style>

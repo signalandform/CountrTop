@@ -70,9 +70,9 @@ export default function VendorSettingsPage({ vendorSlug, vendorName, vendor }: V
       <style jsx>{`
         .page {
           min-height: 100vh;
-          background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 50%, #16213e 100%);
-          color: #e8e8e8;
-          font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+          background: var(--ct-bg-primary);
+          color: var(--ct-text);
+          font-family: var(--ct-font-body);
           padding: 32px;
         }
 
@@ -90,26 +90,26 @@ export default function VendorSettingsPage({ vendorSlug, vendorName, vendor }: V
         }
 
         .back-link {
-          color: #a78bfa;
+          color: var(--color-accent);
           text-decoration: none;
           font-size: 14px;
           transition: color 0.2s;
         }
 
         .back-link:hover {
-          color: #c4b5fd;
+          color: var(--color-primary);
         }
 
         .page-header h1 {
           font-size: 32px;
           font-weight: 700;
           margin: 0 0 8px 0;
-          color: #e8e8e8;
+          color: var(--color-text);
         }
 
         .page-header p {
           font-size: 16px;
-          color: #888;
+          color: var(--color-text-muted);
           margin: 0;
         }
       `}</style>

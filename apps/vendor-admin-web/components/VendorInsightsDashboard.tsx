@@ -182,9 +182,9 @@ export function VendorInsightsDashboard({ vendorSlug, vendorName, vendor, insigh
       <style jsx>{`
         .dashboard-page {
           min-height: 100vh;
-          background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 50%, #16213e 100%);
-          color: #e8e8e8;
-          font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+          background: var(--ct-bg-primary);
+          color: var(--ct-text);
+          font-family: var(--ct-font-body);
         }
 
         .dashboard-header {
@@ -192,7 +192,7 @@ export function VendorInsightsDashboard({ vendorSlug, vendorName, vendor, insigh
           justify-content: space-between;
           align-items: center;
           padding: 32px 48px;
-          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+          border-bottom: 1px solid var(--color-border);
         }
 
         .header-left {
@@ -205,7 +205,7 @@ export function VendorInsightsDashboard({ vendorSlug, vendorName, vendor, insigh
           text-transform: uppercase;
           letter-spacing: 2px;
           font-size: 11px;
-          color: #a78bfa;
+          color: var(--color-accent);
           margin: 0;
         }
 
@@ -213,7 +213,7 @@ export function VendorInsightsDashboard({ vendorSlug, vendorName, vendor, insigh
           font-size: 32px;
           font-weight: 700;
           margin: 0;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          background: var(--ct-gradient-primary);
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
           background-clip: text;
@@ -221,7 +221,7 @@ export function VendorInsightsDashboard({ vendorSlug, vendorName, vendor, insigh
 
         .dashboard-subtitle {
           font-size: 14px;
-          color: #888;
+          color: var(--color-text-muted);
           margin: 0;
         }
 
@@ -241,9 +241,9 @@ export function VendorInsightsDashboard({ vendorSlug, vendorName, vendor, insigh
         .btn-signout {
           padding: 10px 18px;
           border-radius: 10px;
-          border: 1px solid rgba(255, 255, 255, 0.2);
-          background: rgba(255, 255, 255, 0.05);
-          color: #e8e8e8;
+          border: 1px solid var(--color-border);
+          background: var(--color-bg-warm);
+          color: var(--color-text);
           font-weight: 600;
           font-size: 14px;
           cursor: pointer;
@@ -252,8 +252,8 @@ export function VendorInsightsDashboard({ vendorSlug, vendorName, vendor, insigh
         }
 
         .btn-signout:hover {
-          background: rgba(255, 255, 255, 0.1);
-          border-color: rgba(255, 255, 255, 0.3);
+          background: rgba(232, 93, 4, 0.12);
+          border-color: rgba(232, 93, 4, 0.3);
         }
 
         .error-banner {
@@ -279,7 +279,7 @@ export function VendorInsightsDashboard({ vendorSlug, vendorName, vendor, insigh
           font-size: 20px;
           font-weight: 600;
           margin: 0 0 24px;
-          color: #e8e8e8;
+          color: var(--color-text);
         }
 
         .dashboard-grid {
@@ -289,9 +289,8 @@ export function VendorInsightsDashboard({ vendorSlug, vendorName, vendor, insigh
         }
 
         .dashboard-card {
-          background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%);
-          backdrop-filter: blur(10px);
-          border: 1px solid rgba(102, 126, 234, 0.3);
+          background: var(--ct-bg-surface);
+          border: 1px solid var(--color-border);
           border-radius: 16px;
           padding: 28px;
           text-decoration: none;
@@ -302,10 +301,10 @@ export function VendorInsightsDashboard({ vendorSlug, vendorName, vendor, insigh
         }
 
         .dashboard-card:hover {
-          background: linear-gradient(135deg, rgba(102, 126, 234, 0.25) 0%, rgba(118, 75, 162, 0.25) 100%);
-          border-color: rgba(102, 126, 234, 0.6);
+          background: var(--color-bg-warm);
+          border-color: rgba(232, 93, 4, 0.35);
           transform: translateY(-3px);
-          box-shadow: 0 12px 40px rgba(102, 126, 234, 0.2);
+          box-shadow: 0 12px 40px rgba(232, 93, 4, 0.18);
         }
 
         .card-icon {
@@ -317,12 +316,12 @@ export function VendorInsightsDashboard({ vendorSlug, vendorName, vendor, insigh
           font-size: 18px;
           font-weight: 600;
           margin: 0 0 8px;
-          color: #e8e8e8;
+          color: var(--color-text);
         }
 
         .card-description {
           font-size: 14px;
-          color: #888;
+          color: var(--color-text-muted);
           margin: 0;
           line-height: 1.5;
         }
@@ -339,14 +338,14 @@ export function VendorInsightsDashboard({ vendorSlug, vendorName, vendor, insigh
         }
 
         .view-all-link {
-          color: #a78bfa;
+          color: var(--color-accent);
           font-size: 14px;
           text-decoration: none;
           transition: color 0.2s;
         }
 
         .view-all-link:hover {
-          color: #c4b5fd;
+          color: var(--color-primary);
         }
 
         .stats-grid {
@@ -356,8 +355,8 @@ export function VendorInsightsDashboard({ vendorSlug, vendorName, vendor, insigh
         }
 
         .stat-card {
-          background: rgba(255, 255, 255, 0.05);
-          border: 1px solid rgba(255, 255, 255, 0.1);
+          background: var(--ct-bg-surface);
+          border: 1px solid var(--color-border);
           border-radius: 16px;
           padding: 24px;
           display: flex;
@@ -366,8 +365,8 @@ export function VendorInsightsDashboard({ vendorSlug, vendorName, vendor, insigh
         }
 
         .stat-card.accent {
-          background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%);
-          border-color: rgba(102, 126, 234, 0.3);
+          background: rgba(232, 93, 4, 0.12);
+          border-color: rgba(232, 93, 4, 0.3);
         }
 
         .stat-icon {
@@ -377,7 +376,7 @@ export function VendorInsightsDashboard({ vendorSlug, vendorName, vendor, insigh
           display: flex;
           align-items: center;
           justify-content: center;
-          background: rgba(255, 255, 255, 0.05);
+          background: var(--color-bg-warm);
           border-radius: 12px;
         }
 
@@ -389,24 +388,24 @@ export function VendorInsightsDashboard({ vendorSlug, vendorName, vendor, insigh
         .stat-value {
           font-size: 28px;
           font-weight: 700;
-          color: #e8e8e8;
+          color: var(--color-text);
         }
 
         .stat-label {
           font-size: 13px;
-          color: #888;
+          color: var(--color-text-muted);
         }
 
         .items-section {
-          background: rgba(255, 255, 255, 0.03);
-          border: 1px solid rgba(255, 255, 255, 0.08);
+          background: var(--ct-bg-surface);
+          border: 1px solid var(--color-border);
           border-radius: 20px;
           padding: 28px;
         }
 
         .section-subtitle {
           font-size: 13px;
-          color: #888;
+          color: var(--color-text-muted);
         }
 
         .items-list {
@@ -420,13 +419,13 @@ export function VendorInsightsDashboard({ vendorSlug, vendorName, vendor, insigh
           align-items: center;
           gap: 16px;
           padding: 16px;
-          background: rgba(255, 255, 255, 0.03);
+          background: var(--color-bg-warm);
           border-radius: 12px;
           transition: background 0.2s;
         }
 
         .item-row:hover {
-          background: rgba(255, 255, 255, 0.06);
+          background: rgba(232, 93, 4, 0.08);
         }
 
         .item-rank {
@@ -435,7 +434,7 @@ export function VendorInsightsDashboard({ vendorSlug, vendorName, vendor, insigh
           display: flex;
           align-items: center;
           justify-content: center;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          background: var(--ct-gradient-primary);
           border-radius: 8px;
           font-weight: 700;
           font-size: 14px;
@@ -459,14 +458,14 @@ export function VendorInsightsDashboard({ vendorSlug, vendorName, vendor, insigh
         .item-count {
           display: block;
           font-size: 13px;
-          color: #888;
+          color: var(--color-text-muted);
           margin-top: 2px;
         }
 
         .item-bar {
           width: 100px;
           height: 6px;
-          background: rgba(255, 255, 255, 0.1);
+          background: var(--color-border);
           border-radius: 3px;
           overflow: hidden;
           flex-shrink: 0;
@@ -474,7 +473,7 @@ export function VendorInsightsDashboard({ vendorSlug, vendorName, vendor, insigh
 
         .item-bar-fill {
           height: 100%;
-          background: linear-gradient(90deg, #667eea 0%, #a78bfa 100%);
+          background: var(--ct-gradient-primary);
           border-radius: 3px;
           transition: width 0.3s;
         }

@@ -489,34 +489,34 @@ export default function NewVendorPage({ userEmail: _userEmail }: Props) {
         <style jsx global>{`
           .page {
             min-height: 100vh;
-            background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 50%, #16213e 100%);
-            color: #e8e8e8;
-            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--ct-bg-primary);
+            color: var(--ct-text);
+            font-family: var(--ct-font-body);
           }
 
           .page-header {
             padding: 32px 48px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            border-bottom: 1px solid var(--color-border);
           }
 
           .back-link {
             display: inline-block;
             margin-bottom: 16px;
-            color: #a78bfa;
+            color: var(--color-accent);
             text-decoration: none;
             font-size: 14px;
             transition: color 0.2s;
           }
 
           .back-link:hover {
-            color: #8b5cf6;
+            color: var(--color-primary);
           }
 
           .page-header h1 {
             font-size: 32px;
             font-weight: 700;
             margin: 0;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--ct-gradient-primary);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
@@ -535,8 +535,8 @@ export default function NewVendorPage({ userEmail: _userEmail }: Props) {
           }
 
           .form-section {
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: var(--ct-bg-surface);
+            border: 1px solid var(--color-border);
             border-radius: 16px;
             padding: 32px;
           }
@@ -545,8 +545,8 @@ export default function NewVendorPage({ userEmail: _userEmail }: Props) {
             font-size: 20px;
             font-weight: 600;
             margin: 0 0 24px;
-            color: #e8e8e8;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--color-text);
+            border-bottom: 1px solid var(--color-border);
             padding-bottom: 12px;
           }
 
@@ -569,7 +569,7 @@ export default function NewVendorPage({ userEmail: _userEmail }: Props) {
           .form-group label {
             font-size: 14px;
             font-weight: 600;
-            color: #e8e8e8;
+            color: var(--color-text);
           }
 
           .form-group.required label::after {
@@ -580,9 +580,9 @@ export default function NewVendorPage({ userEmail: _userEmail }: Props) {
           .form-input {
             padding: 12px 16px;
             border-radius: 8px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            background: rgba(255, 255, 255, 0.05);
-            color: #e8e8e8;
+            border: 1px solid var(--color-border);
+            background: var(--ct-bg-surface);
+            color: var(--color-text);
             font-size: 14px;
             font-family: inherit;
             transition: border-color 0.2s;
@@ -591,7 +591,7 @@ export default function NewVendorPage({ userEmail: _userEmail }: Props) {
 
           .form-input:focus {
             outline: none;
-            border-color: #667eea;
+            border-color: var(--color-primary);
           }
 
           .form-input:disabled {
@@ -600,12 +600,12 @@ export default function NewVendorPage({ userEmail: _userEmail }: Props) {
           }
 
           .form-input::placeholder {
-            color: #888;
+            color: var(--color-text-muted);
           }
 
           .form-hint {
             font-size: 12px;
-            color: #888;
+            color: var(--color-text-muted);
             margin-top: -4px;
           }
 
@@ -632,15 +632,15 @@ export default function NewVendorPage({ userEmail: _userEmail }: Props) {
             justify-content: flex-end;
             gap: 16px;
             padding-top: 24px;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            border-top: 1px solid var(--color-border);
           }
 
           .btn-cancel {
             padding: 12px 24px;
             border-radius: 8px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            background: rgba(255, 255, 255, 0.05);
-            color: #e8e8e8;
+            border: 1px solid var(--color-border);
+            background: var(--color-bg-warm);
+            color: var(--color-text);
             text-decoration: none;
             font-weight: 600;
             font-size: 14px;
@@ -649,14 +649,14 @@ export default function NewVendorPage({ userEmail: _userEmail }: Props) {
           }
 
           .btn-cancel:hover {
-            background: rgba(255, 255, 255, 0.1);
+            background: rgba(232, 93, 4, 0.12);
           }
 
           .btn-submit {
             padding: 12px 24px;
             border-radius: 8px;
             border: none;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--ct-gradient-primary);
             color: white;
             font-weight: 600;
             font-size: 14px;
@@ -717,13 +717,13 @@ export default function NewVendorPage({ userEmail: _userEmail }: Props) {
           .pos-name {
             font-size: 18px;
             font-weight: 700;
-            color: #e8e8e8;
+            color: var(--color-text);
           }
 
           .btn-show-instructions {
             background: none;
             border: none;
-            color: #a78bfa;
+            color: var(--color-accent);
             font-size: 14px;
             cursor: pointer;
             padding: 8px 0;
@@ -732,7 +732,7 @@ export default function NewVendorPage({ userEmail: _userEmail }: Props) {
           }
 
           .btn-show-instructions:hover {
-            color: #8b5cf6;
+            color: var(--color-primary);
           }
 
           .pos-instructions {
@@ -756,13 +756,13 @@ export default function NewVendorPage({ userEmail: _userEmail }: Props) {
           .pos-instructions li {
             margin-bottom: 8px;
             font-size: 14px;
-            color: #c8c8c8;
+            color: var(--color-text-muted);
             line-height: 1.5;
           }
 
           .docs-link {
             display: inline-block;
-            color: #a78bfa;
+            color: var(--color-accent);
             text-decoration: none;
             font-size: 14px;
             font-weight: 500;

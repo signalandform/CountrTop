@@ -19,9 +19,9 @@ export default function AccessDeniedPage() {
         <style jsx>{`
           .page {
             min-height: 100vh;
-            background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 50%, #16213e 100%);
-            color: #e8e8e8;
-            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+          background: var(--ct-bg-primary);
+          color: var(--ct-text);
+          font-family: var(--ct-font-body);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -43,7 +43,7 @@ export default function AccessDeniedPage() {
 
           .message {
             font-size: 16px;
-            color: #888;
+          color: var(--color-text-muted);
             margin: 0 0 32px;
           }
 
@@ -52,7 +52,7 @@ export default function AccessDeniedPage() {
             padding: 16px 24px;
             border-radius: 12px;
             border: none;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          background: var(--ct-gradient-primary);
             color: white;
             font-weight: 600;
             font-size: 16px;

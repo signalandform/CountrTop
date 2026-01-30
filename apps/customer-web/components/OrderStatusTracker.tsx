@@ -177,16 +177,16 @@ export function OrderStatusTracker({
         .order-id {
           font-weight: 600;
           font-size: 14px;
-          color: var(--theme-accent, #a78bfa);
+          color: var(--theme-accent, var(--color-accent));
         }
 
         .order-time {
           font-size: 12px;
-          color: #888;
+          color: var(--color-text-muted);
         }
 
         .shortcode-badge {
-          background: var(--theme-button, #667eea);
+          background: var(--theme-button, var(--color-primary));
           color: white;
           padding: 6px 12px;
           border-radius: 20px;
@@ -220,14 +220,15 @@ export function OrderStatusTracker({
         }
 
         .status-step.completed .step-icon {
-          background: var(--theme-button, #667eea);
+          background: var(--theme-button, var(--color-primary));
         }
 
         .step-icon {
           width: 44px;
           height: 44px;
           border-radius: 50%;
-          background: rgba(255, 255, 255, 0.1);
+          background: var(--color-bg-warm);
+          border: 1px solid var(--color-border);
           display: flex;
           align-items: center;
           justify-content: center;
@@ -244,7 +245,7 @@ export function OrderStatusTracker({
         .step-label {
           font-size: 12px;
           font-weight: 500;
-          color: #e8e8e8;
+          color: var(--color-text);
         }
 
         .compact .step-label {
@@ -254,7 +255,7 @@ export function OrderStatusTracker({
         .step-line {
           flex: 1;
           height: 2px;
-          background: rgba(255, 255, 255, 0.1);
+          background: var(--color-border);
           margin: 0 8px;
           margin-bottom: 20px;
         }
@@ -271,7 +272,7 @@ export function OrderStatusTracker({
           gap: 10px;
           padding: 16px;
           border-radius: 12px;
-          background: rgba(255, 255, 255, 0.05);
+          background: var(--color-bg-warm);
           margin-bottom: 16px;
         }
 
@@ -281,8 +282,8 @@ export function OrderStatusTracker({
         }
 
         .status-message.status-ready {
-          background: rgba(34, 197, 94, 0.15);
-          border: 1px solid rgba(34, 197, 94, 0.3);
+          background: rgba(16, 185, 129, 0.15);
+          border: 1px solid rgba(16, 185, 129, 0.3);
         }
 
         .status-emoji {
@@ -303,7 +304,7 @@ export function OrderStatusTracker({
         }
 
         .estimated-time {
-          color: #888;
+          color: var(--color-text-muted);
           font-size: 14px;
         }
 
@@ -311,14 +312,14 @@ export function OrderStatusTracker({
         .ready-shortcode {
           text-align: center;
           padding: 20px;
-          background: rgba(34, 197, 94, 0.1);
+          background: rgba(16, 185, 129, 0.12);
           border-radius: 12px;
           margin-bottom: 16px;
         }
 
         .shortcode-label {
           font-size: 12px;
-          color: #888;
+          color: var(--color-text-muted);
           margin-bottom: 8px;
           text-transform: uppercase;
           letter-spacing: 1px;
@@ -327,12 +328,12 @@ export function OrderStatusTracker({
         .shortcode-value {
           font-size: 32px;
           font-weight: 800;
-          color: #22c55e;
+          color: var(--color-success);
         }
 
         /* Items Summary */
         .items-summary {
-          border-top: 1px solid rgba(255, 255, 255, 0.1);
+          border-top: 1px solid var(--color-border);
           padding-top: 16px;
         }
 
@@ -345,23 +346,23 @@ export function OrderStatusTracker({
         }
 
         .item-qty {
-          color: var(--theme-accent, #a78bfa);
+          color: var(--theme-accent, var(--color-accent));
           font-weight: 600;
           min-width: 28px;
         }
 
         .item-name {
           flex: 1;
-          color: #e8e8e8;
+          color: var(--color-text);
         }
 
         .item-price {
-          color: #888;
+          color: var(--color-text-muted);
         }
 
         .items-more {
           font-size: 13px;
-          color: #888;
+          color: var(--color-text-muted);
           padding: 8px 0;
         }
 
@@ -370,12 +371,12 @@ export function OrderStatusTracker({
           justify-content: space-between;
           padding-top: 12px;
           margin-top: 8px;
-          border-top: 1px solid rgba(255, 255, 255, 0.1);
+          border-top: 1px solid var(--color-border);
           font-size: 15px;
         }
 
         .items-total strong {
-          color: var(--theme-accent, #a78bfa);
+          color: var(--theme-accent, var(--color-accent));
         }
       `}</style>
     </div>

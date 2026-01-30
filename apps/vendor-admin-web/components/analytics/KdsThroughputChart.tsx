@@ -41,33 +41,33 @@ export function KdsThroughputChart({ data, loading }: KdsThroughputChartProps) {
     <div className="chart-container">
       <ResponsiveContainer width="100%" height={300}>
         <LineChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.1)" />
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
           <XAxis
             dataKey="timestamp"
-            stroke="#888"
-            tick={{ fill: '#888', fontSize: 12 }}
+            stroke="var(--color-text-muted)"
+            tick={{ fill: 'var(--color-text-muted)', fontSize: 12 }}
           />
           <YAxis
             yAxisId="left"
-            stroke="#888"
-            tick={{ fill: '#888', fontSize: 12 }}
-            label={{ value: 'Tickets', angle: -90, position: 'insideLeft', fill: '#888' }}
+            stroke="var(--color-text-muted)"
+            tick={{ fill: 'var(--color-text-muted)', fontSize: 12 }}
+            label={{ value: 'Tickets', angle: -90, position: 'insideLeft', fill: 'var(--color-text-muted)' }}
           />
           <Tooltip
             contentStyle={{
-              backgroundColor: 'rgba(0, 0, 0, 0.9)',
-              border: '1px solid rgba(255, 255, 255, 0.2)',
+              backgroundColor: '#FFFFFF',
+              border: '1px solid var(--color-border)',
               borderRadius: '8px',
-              color: '#e8e8e8'
+              color: 'var(--color-text)'
             }}
           />
           <Line
             yAxisId="left"
             type="monotone"
             dataKey="count"
-            stroke="#667eea"
+            stroke="var(--color-primary)"
             strokeWidth={2}
-            dot={{ fill: '#667eea', r: 4 }}
+            dot={{ fill: 'var(--color-primary)', r: 4 }}
             name="Tickets"
           />
         </LineChart>
@@ -77,8 +77,8 @@ export function KdsThroughputChart({ data, loading }: KdsThroughputChartProps) {
         .chart-container {
           width: 100%;
           height: 300px;
-          background: rgba(255, 255, 255, 0.03);
-          border: 1px solid rgba(255, 255, 255, 0.1);
+          background: var(--ct-bg-surface);
+          border: 1px solid var(--color-border);
           border-radius: 12px;
           padding: 20px;
         }
@@ -89,7 +89,7 @@ export function KdsThroughputChart({ data, loading }: KdsThroughputChartProps) {
           align-items: center;
           justify-content: center;
           height: 100%;
-          color: #888;
+          color: var(--color-text-muted);
           font-size: 14px;
         }
       `}</style>

@@ -144,10 +144,10 @@ export function DateRangePicker({ value, onChange }: DateRangePickerProps) {
 
         .preset-buttons button {
           padding: 8px 16px;
-          background: rgba(255, 255, 255, 0.05);
-          border: 1px solid rgba(255, 255, 255, 0.1);
+          background: var(--ct-bg-surface);
+          border: 1px solid var(--color-border);
           border-radius: 8px;
-          color: #e8e8e8;
+          color: var(--color-text);
           font-size: 14px;
           font-weight: 500;
           cursor: pointer;
@@ -155,14 +155,14 @@ export function DateRangePicker({ value, onChange }: DateRangePickerProps) {
         }
 
         .preset-buttons button:hover {
-          background: rgba(255, 255, 255, 0.08);
-          border-color: rgba(255, 255, 255, 0.2);
+          background: var(--color-bg-warm);
+          border-color: rgba(232, 93, 4, 0.2);
         }
 
         .preset-buttons button.active {
-          background: rgba(102, 126, 234, 0.2);
-          border-color: #667eea;
-          color: #a78bfa;
+          background: rgba(232, 93, 4, 0.15);
+          border-color: var(--color-primary);
+          color: var(--color-primary);
         }
 
         .custom-range {
@@ -173,20 +173,20 @@ export function DateRangePicker({ value, onChange }: DateRangePickerProps) {
 
         .custom-range input {
           padding: 8px 12px;
-          background: rgba(255, 255, 255, 0.05);
-          border: 1px solid rgba(255, 255, 255, 0.1);
+          background: var(--ct-bg-surface);
+          border: 1px solid var(--color-border);
           border-radius: 8px;
-          color: #e8e8e8;
+          color: var(--color-text);
           font-size: 14px;
         }
 
         .custom-range input:focus {
           outline: none;
-          border-color: #667eea;
+          border-color: var(--color-primary);
         }
 
         .custom-range span {
-          color: #888;
+          color: var(--color-text-muted);
           font-size: 14px;
         }
       `}</style>

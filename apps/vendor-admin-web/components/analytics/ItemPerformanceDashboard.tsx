@@ -92,13 +92,13 @@ export function ItemPerformanceDashboard({ vendorSlug }: ItemPerformanceDashboar
         .dashboard-header h2 {
           font-size: 24px;
           font-weight: 700;
-          color: #e8e8e8;
+          color: var(--color-text);
           margin: 0 0 4px 0;
         }
 
         .dashboard-header .muted {
           font-size: 14px;
-          color: #888;
+          color: var(--color-text-muted);
         }
 
         .error-message {

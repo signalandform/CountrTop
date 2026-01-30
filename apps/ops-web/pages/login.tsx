@@ -239,15 +239,15 @@ export default function LoginPage() {
             display: flex;
             align-items: center;
             justify-content: center;
-            background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 50%, #16213e 100%);
-            color: #e8e8e8;
-            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--ct-bg-primary);
+            color: var(--ct-text);
+            font-family: var(--ct-font-body);
             padding: 24px;
           }
 
           .login-container {
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: var(--ct-bg-surface);
+            border: 1px solid var(--color-border);
             border-radius: 16px;
             padding: 48px;
             text-align: center;
@@ -259,14 +259,14 @@ export default function LoginPage() {
             font-size: 28px;
             font-weight: 700;
             margin: 0 0 8px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--ct-gradient-primary);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
           }
 
           .subtitle {
-            color: #888;
+            color: var(--color-text-muted);
             margin: 0 0 32px;
             font-size: 16px;
           }
@@ -276,7 +276,7 @@ export default function LoginPage() {
             padding: 14px 24px;
             border-radius: 12px;
             border: none;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--ct-gradient-primary);
             color: white;
             font-weight: 600;
             font-size: 16px;
@@ -306,9 +306,9 @@ export default function LoginPage() {
             width: 100%;
             padding: 12px 16px;
             border-radius: 8px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            background: rgba(255, 255, 255, 0.05);
-            color: #e8e8e8;
+            border: 1px solid var(--color-border);
+            background: var(--ct-bg-surface);
+            color: var(--color-text);
             font-size: 16px;
             font-family: inherit;
             transition: border-color 0.2s;
@@ -317,7 +317,7 @@ export default function LoginPage() {
 
           .input-field:focus {
             outline: none;
-            border-color: #667eea;
+            border-color: var(--color-primary);
           }
 
           .input-field:disabled {
@@ -326,7 +326,7 @@ export default function LoginPage() {
           }
 
           .input-field::placeholder {
-            color: #888;
+            color: var(--color-text-muted);
           }
 
           .error-container {

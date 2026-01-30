@@ -219,9 +219,9 @@ export default function LocationsPage({
         <style jsx>{`
           .page {
             min-height: 100vh;
-            background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 50%, #16213e 100%);
-            color: #e8e8e8;
-            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--ct-bg-primary);
+            color: var(--ct-text);
+            font-family: var(--ct-font-body);
             padding: 24px;
           }
 
@@ -235,7 +235,7 @@ export default function LocationsPage({
           }
 
           .back-link {
-            color: #a78bfa;
+            color: var(--color-accent);
             text-decoration: none;
             font-size: 14px;
             display: inline-block;
@@ -243,14 +243,14 @@ export default function LocationsPage({
           }
 
           .back-link:hover {
-            color: #c4b5fd;
+            color: var(--color-primary);
           }
 
           .title {
             font-size: 32px;
             font-weight: 700;
             margin: 0 0 8px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--ct-gradient-primary);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
@@ -258,7 +258,7 @@ export default function LocationsPage({
 
           .subtitle {
             font-size: 16px;
-            color: #888;
+            color: var(--color-text-muted);
             margin: 0;
           }
 
@@ -289,8 +289,8 @@ export default function LocationsPage({
           .empty-state {
             text-align: center;
             padding: 64px 24px;
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: var(--ct-bg-surface);
+            border: 1px solid var(--color-border);
             border-radius: 16px;
           }
 
@@ -305,7 +305,7 @@ export default function LocationsPage({
           }
 
           .empty-state p {
-            color: #888;
+            color: var(--color-text-muted);
             margin: 0;
           }
         `}</style>
@@ -562,8 +562,8 @@ function LocationCard({
 
       <style jsx>{`
         .location-card {
-          background: rgba(255, 255, 255, 0.05);
-          border: 1px solid rgba(255, 255, 255, 0.1);
+          background: var(--ct-bg-surface);
+          border: 1px solid var(--color-border);
           border-radius: 16px;
           padding: 20px;
           transition: background 0.2s;
@@ -591,17 +591,17 @@ function LocationCard({
           font-size: 18px;
           font-weight: 600;
           margin: 0;
-          color: #e8e8e8;
+          color: var(--color-text);
         }
 
         .name-input {
           font-size: 18px;
           font-weight: 600;
-          background: rgba(255, 255, 255, 0.1);
-          border: 1px solid rgba(255, 255, 255, 0.2);
+          background: var(--ct-bg-surface);
+          border: 1px solid var(--color-border);
           border-radius: 8px;
           padding: 8px 12px;
-          color: #e8e8e8;
+          color: var(--color-text);
           font-family: inherit;
         }
 
@@ -619,8 +619,8 @@ function LocationCard({
         }
 
         .badge.primary {
-          background: rgba(102, 126, 234, 0.2);
-          color: #667eea;
+          background: rgba(232, 93, 4, 0.12);
+          color: var(--color-primary);
         }
 
         .badge.inactive {
@@ -634,18 +634,18 @@ function LocationCard({
         }
 
         .edit-btn {
-          background: rgba(255, 255, 255, 0.1);
-          border: 1px solid rgba(255, 255, 255, 0.2);
+          background: var(--color-bg-warm);
+          border: 1px solid var(--color-border);
           border-radius: 8px;
           padding: 8px 16px;
-          color: #e8e8e8;
+          color: var(--color-text);
           font-size: 14px;
           cursor: pointer;
           transition: background 0.2s;
         }
 
         .edit-btn:hover {
-          background: rgba(255, 255, 255, 0.15);
+          background: rgba(232, 93, 4, 0.12);
         }
 
         .card-body {
@@ -660,17 +660,17 @@ function LocationCard({
         }
 
         .label {
-          color: #888;
+          color: var(--color-text-muted);
           min-width: 140px;
         }
 
         .value {
-          color: #e8e8e8;
+          color: var(--color-text);
         }
 
         code.value {
           font-family: monospace;
-          background: rgba(255, 255, 255, 0.1);
+          background: var(--color-bg-warm);
           padding: 2px 8px;
           border-radius: 4px;
           font-size: 12px;
@@ -679,7 +679,7 @@ function LocationCard({
         .edit-section {
           margin-top: 16px;
           padding-top: 16px;
-          border-top: 1px solid rgba(255, 255, 255, 0.1);
+          border-top: 1px solid var(--color-border);
         }
 
         .form-group {
@@ -689,17 +689,17 @@ function LocationCard({
         .form-group label {
           display: block;
           font-size: 14px;
-          color: #888;
+          color: var(--color-text-muted);
           margin-bottom: 8px;
         }
 
         .form-group textarea {
           width: 100%;
-          background: rgba(255, 255, 255, 0.1);
-          border: 1px solid rgba(255, 255, 255, 0.2);
+          background: var(--ct-bg-surface);
+          border: 1px solid var(--color-border);
           border-radius: 8px;
           padding: 12px;
-          color: #e8e8e8;
+          color: var(--color-text);
           font-family: inherit;
           font-size: 14px;
           resize: vertical;
@@ -720,7 +720,7 @@ function LocationCard({
         .settings-group {
           margin-bottom: 20px;
           padding-bottom: 16px;
-          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+          border-bottom: 1px solid var(--color-border);
         }
 
         .settings-group:last-child {
@@ -732,7 +732,7 @@ function LocationCard({
         .settings-group-title {
           font-size: 14px;
           font-weight: 600;
-          color: #e8e8e8;
+          color: var(--color-text);
           margin: 0 0 12px 0;
         }
 
@@ -749,11 +749,11 @@ function LocationCard({
         .form-group input[type="number"],
         .form-group select {
           width: 100%;
-          background: rgba(255, 255, 255, 0.1);
-          border: 1px solid rgba(255, 255, 255, 0.2);
+          background: var(--ct-bg-surface);
+          border: 1px solid var(--color-border);
           border-radius: 8px;
           padding: 10px 12px;
-          color: #e8e8e8;
+          color: var(--color-text);
           font-family: inherit;
           font-size: 14px;
         }
@@ -765,7 +765,7 @@ function LocationCard({
         .form-hint {
           display: block;
           font-size: 12px;
-          color: #666;
+          color: var(--color-text-muted);
           margin-top: 4px;
         }
 
@@ -773,21 +773,21 @@ function LocationCard({
           display: flex;
           gap: 12px;
           padding-top: 16px;
-          border-top: 1px solid rgba(255, 255, 255, 0.1);
+          border-top: 1px solid var(--color-border);
         }
 
         .btn-cancel {
           background: transparent;
-          border: 1px solid rgba(255, 255, 255, 0.2);
+          border: 1px solid var(--color-border);
           border-radius: 8px;
           padding: 10px 20px;
-          color: #888;
+          color: var(--color-text-muted);
           font-size: 14px;
           cursor: pointer;
         }
 
         .btn-save {
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          background: var(--ct-gradient-primary);
           border: none;
           border-radius: 8px;
           padding: 10px 20px;
@@ -803,11 +803,11 @@ function LocationCard({
         }
 
         .btn-toggle {
-          background: rgba(255, 255, 255, 0.1);
-          border: 1px solid rgba(255, 255, 255, 0.2);
+          background: var(--color-bg-warm);
+          border: 1px solid var(--color-border);
           border-radius: 8px;
           padding: 10px 20px;
-          color: #e8e8e8;
+          color: var(--color-text);
           font-size: 14px;
           cursor: pointer;
         }
@@ -819,16 +819,16 @@ function LocationCard({
 
         .btn-primary-set {
           background: transparent;
-          border: 1px solid rgba(102, 126, 234, 0.4);
+          border: 1px solid rgba(232, 93, 4, 0.4);
           border-radius: 8px;
           padding: 10px 20px;
-          color: #667eea;
+          color: var(--color-primary);
           font-size: 14px;
           cursor: pointer;
         }
 
         .btn-primary-set:hover {
-          background: rgba(102, 126, 234, 0.1);
+          background: rgba(232, 93, 4, 0.12);
         }
       `}</style>
     </div>

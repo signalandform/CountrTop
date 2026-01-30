@@ -84,27 +84,27 @@ export function KdsSourceComparison({ data, loading }: KdsSourceComparisonProps)
 
       <ResponsiveContainer width="100%" height={250}>
         <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.1)" />
-          <XAxis dataKey="source" stroke="#888" tick={{ fill: '#888', fontSize: 12 }} />
-          <YAxis stroke="#888" tick={{ fill: '#888', fontSize: 12 }} />
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+          <XAxis dataKey="source" stroke="var(--color-text-muted)" tick={{ fill: 'var(--color-text-muted)', fontSize: 12 }} />
+          <YAxis stroke="var(--color-text-muted)" tick={{ fill: 'var(--color-text-muted)', fontSize: 12 }} />
           <Tooltip
             contentStyle={{
-              backgroundColor: 'rgba(0, 0, 0, 0.9)',
-              border: '1px solid rgba(255, 255, 255, 0.2)',
+              backgroundColor: '#FFFFFF',
+              border: '1px solid var(--color-border)',
               borderRadius: '8px',
-              color: '#e8e8e8'
+              color: 'var(--color-text)'
             }}
           />
           <Legend />
-          <Bar dataKey="count" fill="#667eea" name="Ticket Count" />
-          <Bar dataKey="avgPrepTime" fill="#a78bfa" name="Avg Prep Time (min)" />
+          <Bar dataKey="count" fill="var(--color-primary)" name="Ticket Count" />
+          <Bar dataKey="avgPrepTime" fill="var(--color-accent)" name="Avg Prep Time (min)" />
         </BarChart>
       </ResponsiveContainer>
 
       <style jsx>{`
         .comparison-container {
-          background: rgba(255, 255, 255, 0.03);
-          border: 1px solid rgba(255, 255, 255, 0.1);
+          background: var(--ct-bg-surface);
+          border: 1px solid var(--color-border);
           border-radius: 12px;
           padding: 20px;
         }
@@ -114,7 +114,7 @@ export function KdsSourceComparison({ data, loading }: KdsSourceComparisonProps)
           align-items: center;
           justify-content: center;
           height: 250px;
-          color: #888;
+          color: var(--color-text-muted);
           font-size: 14px;
         }
 
@@ -126,8 +126,8 @@ export function KdsSourceComparison({ data, loading }: KdsSourceComparisonProps)
         }
 
         .comparison-card {
-          background: rgba(255, 255, 255, 0.05);
-          border: 1px solid rgba(255, 255, 255, 0.1);
+          background: var(--ct-bg-surface);
+          border: 1px solid var(--color-border);
           border-radius: 8px;
           padding: 16px;
         }
@@ -135,7 +135,7 @@ export function KdsSourceComparison({ data, loading }: KdsSourceComparisonProps)
         .comparison-label {
           font-size: 12px;
           font-weight: 500;
-          color: #888;
+          color: var(--color-text-muted);
           text-transform: uppercase;
           letter-spacing: 0.5px;
           margin-bottom: 8px;
@@ -144,7 +144,7 @@ export function KdsSourceComparison({ data, loading }: KdsSourceComparisonProps)
         .comparison-value {
           font-size: 32px;
           font-weight: 700;
-          color: #e8e8e8;
+          color: var(--color-text);
           margin-bottom: 12px;
         }
 
@@ -162,13 +162,13 @@ export function KdsSourceComparison({ data, loading }: KdsSourceComparisonProps)
 
         .metric-label {
           font-size: 12px;
-          color: #666;
+          color: var(--color-text-muted);
         }
 
         .metric-value {
           font-size: 14px;
           font-weight: 600;
-          color: #a78bfa;
+          color: var(--color-accent);
         }
       `}</style>
     </div>

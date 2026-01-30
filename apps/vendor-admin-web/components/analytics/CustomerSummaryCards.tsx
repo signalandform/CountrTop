@@ -81,18 +81,18 @@ export function CustomerSummaryCards({ data, loading }: CustomerSummaryCardsProp
         .summary-header h3 {
           font-size: 18px;
           font-weight: 600;
-          color: #e8e8e8;
+          color: var(--color-text);
           margin: 0;
         }
 
         .scope-label {
           font-size: 12px;
           font-weight: 500;
-          color: #a78bfa;
-          background: rgba(167, 139, 250, 0.1);
+          color: var(--color-accent);
+          background: rgba(255, 182, 39, 0.18);
           padding: 4px 12px;
           border-radius: 4px;
-          border: 1px solid rgba(167, 139, 250, 0.2);
+          border: 1px solid rgba(255, 182, 39, 0.3);
         }
 
         .cards-grid {
@@ -102,21 +102,21 @@ export function CustomerSummaryCards({ data, loading }: CustomerSummaryCardsProp
         }
 
         .summary-card {
-          background: rgba(255, 255, 255, 0.05);
-          border: 1px solid rgba(255, 255, 255, 0.1);
+          background: var(--ct-bg-surface);
+          border: 1px solid var(--color-border);
           border-radius: 8px;
           padding: 20px;
         }
 
         .summary-card.accent {
-          background: linear-gradient(135deg, rgba(102, 126, 234, 0.2) 0%, rgba(118, 75, 162, 0.2) 100%);
-          border-color: rgba(102, 126, 234, 0.3);
+          background: rgba(232, 93, 4, 0.12);
+          border-color: rgba(232, 93, 4, 0.3);
         }
 
         .card-label {
           font-size: 12px;
           font-weight: 500;
-          color: #888;
+          color: var(--color-text-muted);
           text-transform: uppercase;
           letter-spacing: 0.5px;
           margin-bottom: 8px;
@@ -125,13 +125,13 @@ export function CustomerSummaryCards({ data, loading }: CustomerSummaryCardsProp
         .card-value {
           font-size: 32px;
           font-weight: 700;
-          color: #e8e8e8;
+          color: var(--color-text);
           margin-bottom: 8px;
         }
 
         .card-meta {
           font-size: 14px;
-          color: #666;
+          color: var(--color-text-muted);
         }
 
         .card-loading {
@@ -139,7 +139,7 @@ export function CustomerSummaryCards({ data, loading }: CustomerSummaryCardsProp
           align-items: center;
           justify-content: center;
           height: 100px;
-          color: #888;
+          color: var(--color-text-muted);
           font-size: 14px;
         }
       `}</style>

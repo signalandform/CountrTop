@@ -413,9 +413,9 @@ export default function WorkspacePage({ vendorSlug, vendorName, vendor }: Worksp
       <style jsx>{`
         .page {
           min-height: 100vh;
-          background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 50%, #16213e 100%);
-          color: #e8e8e8;
-          font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+          background: var(--ct-bg-primary);
+          color: var(--ct-text);
+          font-family: var(--ct-font-body);
           padding: 32px;
         }
 
@@ -433,32 +433,32 @@ export default function WorkspacePage({ vendorSlug, vendorName, vendor }: Worksp
         }
 
         .back-link {
-          color: #a78bfa;
+          color: var(--color-accent);
           text-decoration: none;
           font-size: 14px;
           transition: color 0.2s;
         }
 
         .back-link:hover {
-          color: #c4b5fd;
+          color: var(--color-primary);
         }
 
         .page-header h1 {
           font-size: 32px;
           font-weight: 700;
           margin: 0 0 8px 0;
-          color: #e8e8e8;
+          color: var(--color-text);
         }
 
         .page-header p {
           font-size: 16px;
-          color: #888;
+          color: var(--color-text-muted);
           margin: 0;
         }
 
         .workspace-section {
-          background: rgba(255, 255, 255, 0.05);
-          border: 1px solid rgba(255, 255, 255, 0.1);
+          background: var(--ct-bg-surface);
+          border: 1px solid var(--color-border);
           border-radius: 16px;
           padding: 24px;
         }
@@ -474,14 +474,14 @@ export default function WorkspacePage({ vendorSlug, vendorName, vendor }: Worksp
           font-size: 20px;
           font-weight: 600;
           margin: 0;
-          color: #e8e8e8;
+          color: var(--color-text);
         }
 
         .btn-add-employee {
           padding: 10px 20px;
           border-radius: 8px;
           border: none;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          background: var(--ct-gradient-primary);
           color: white;
           font-weight: 600;
           font-size: 14px;
@@ -523,22 +523,22 @@ export default function WorkspacePage({ vendorSlug, vendorName, vendor }: Worksp
         .form-group label {
           font-size: 14px;
           font-weight: 600;
-          color: #a78bfa;
+          color: var(--color-text);
         }
 
         .form-group input {
           padding: 12px 16px;
           border-radius: 8px;
-          border: 1px solid rgba(255, 255, 255, 0.2);
-          background: rgba(255, 255, 255, 0.05);
-          color: #e8e8e8;
+          border: 1px solid var(--color-border);
+          background: var(--ct-bg-surface);
+          color: var(--color-text);
           font-size: 14px;
           font-family: inherit;
         }
 
         .form-group input:focus {
           outline: none;
-          border-color: #667eea;
+          border-color: var(--color-primary);
         }
 
         .form-group input:disabled {
@@ -548,14 +548,14 @@ export default function WorkspacePage({ vendorSlug, vendorName, vendor }: Worksp
 
         .form-hint {
           font-size: 12px;
-          color: #888;
+          color: var(--color-text-muted);
         }
 
         .btn-submit {
           padding: 12px 24px;
           border-radius: 8px;
           border: none;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          background: var(--ct-gradient-primary);
           color: white;
           font-weight: 600;
           font-size: 14px;
@@ -575,7 +575,7 @@ export default function WorkspacePage({ vendorSlug, vendorName, vendor }: Worksp
         }
 
         .loading, .empty-state {
-          color: #888;
+          color: var(--color-text-muted);
           font-size: 14px;
           text-align: center;
           padding: 40px 20px;
@@ -592,8 +592,8 @@ export default function WorkspacePage({ vendorSlug, vendorName, vendor }: Worksp
           justify-content: space-between;
           align-items: center;
           padding: 16px;
-          background: rgba(255, 255, 255, 0.03);
-          border: 1px solid rgba(255, 255, 255, 0.1);
+          background: var(--ct-bg-surface);
+          border: 1px solid var(--color-border);
           border-radius: 12px;
           transition: all 0.2s;
         }
@@ -611,12 +611,12 @@ export default function WorkspacePage({ vendorSlug, vendorName, vendor }: Worksp
         .employee-name {
           font-size: 16px;
           font-weight: 600;
-          color: #e8e8e8;
+          color: var(--color-text);
         }
 
         .employee-pin {
           font-size: 14px;
-          color: #888;
+          color: var(--color-text-muted);
           font-family: monospace;
         }
 
@@ -646,9 +646,9 @@ export default function WorkspacePage({ vendorSlug, vendorName, vendor }: Worksp
         .edit-input {
           padding: 8px 12px;
           border-radius: 6px;
-          border: 1px solid rgba(255, 255, 255, 0.2);
-          background: rgba(255, 255, 255, 0.05);
-          color: #e8e8e8;
+          border: 1px solid var(--color-border);
+          background: var(--ct-bg-surface);
+          color: var(--color-text);
           font-size: 14px;
           font-family: inherit;
           flex: 1;
@@ -656,7 +656,7 @@ export default function WorkspacePage({ vendorSlug, vendorName, vendor }: Worksp
 
         .edit-input:focus {
           outline: none;
-          border-color: #667eea;
+          border-color: var(--color-primary);
         }
 
         .edit-actions {
@@ -676,21 +676,21 @@ export default function WorkspacePage({ vendorSlug, vendorName, vendor }: Worksp
         }
 
         .btn-toggle {
-          background: rgba(255, 255, 255, 0.1);
-          color: #e8e8e8;
+          background: var(--color-bg-warm);
+          color: var(--color-text);
         }
 
         .btn-toggle:hover:not(:disabled) {
-          background: rgba(255, 255, 255, 0.15);
+          background: rgba(232, 93, 4, 0.12);
         }
 
         .btn-edit {
-          background: rgba(102, 126, 234, 0.2);
-          color: #667eea;
+          background: rgba(232, 93, 4, 0.12);
+          color: var(--color-primary);
         }
 
         .btn-edit:hover:not(:disabled) {
-          background: rgba(102, 126, 234, 0.3);
+          background: rgba(232, 93, 4, 0.2);
         }
 
         .btn-delete {
@@ -703,7 +703,7 @@ export default function WorkspacePage({ vendorSlug, vendorName, vendor }: Worksp
         }
 
         .btn-save {
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          background: var(--ct-gradient-primary);
           color: white;
         }
 
@@ -712,12 +712,12 @@ export default function WorkspacePage({ vendorSlug, vendorName, vendor }: Worksp
         }
 
         .btn-cancel {
-          background: rgba(255, 255, 255, 0.1);
-          color: #e8e8e8;
+          background: var(--color-bg-warm);
+          color: var(--color-text);
         }
 
         .btn-cancel:hover:not(:disabled) {
-          background: rgba(255, 255, 255, 0.15);
+          background: rgba(232, 93, 4, 0.12);
         }
 
         .btn-toggle:disabled, .btn-edit:disabled, .btn-delete:disabled, .btn-save:disabled, .btn-cancel:disabled {

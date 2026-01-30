@@ -399,34 +399,34 @@ export default function VendorDetailPage({ userEmail: _userEmail, vendorSlug }: 
         <style jsx global>{`
           .page {
             min-height: 100vh;
-            background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 50%, #16213e 100%);
-            color: #e8e8e8;
-            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--ct-bg-primary);
+            color: var(--ct-text);
+            font-family: var(--ct-font-body);
           }
 
           .page-header {
             padding: 32px 48px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            border-bottom: 1px solid var(--color-border);
           }
 
           .back-link {
             display: inline-block;
             margin-bottom: 16px;
-            color: #a78bfa;
+            color: var(--color-accent);
             text-decoration: none;
             font-size: 14px;
             transition: color 0.2s;
           }
 
           .back-link:hover {
-            color: #8b5cf6;
+            color: var(--color-primary);
           }
 
           .page-header h1 {
             font-size: 32px;
             font-weight: 700;
             margin: 0;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--ct-gradient-primary);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
@@ -473,14 +473,14 @@ export default function VendorDetailPage({ userEmail: _userEmail, vendorSlug }: 
           .empty-state {
             text-align: center;
             padding: 64px 32px;
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: var(--ct-bg-surface);
+            border: 1px solid var(--color-border);
             border-radius: 16px;
           }
 
           .loading-state p,
           .empty-state p {
-            color: #888;
+            color: var(--color-text-muted);
             margin: 0;
             font-size: 16px;
           }
@@ -492,8 +492,8 @@ export default function VendorDetailPage({ userEmail: _userEmail, vendorSlug }: 
           }
 
           .detail-section {
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: var(--ct-bg-surface);
+            border: 1px solid var(--color-border);
             border-radius: 16px;
             padding: 32px;
           }
@@ -502,8 +502,8 @@ export default function VendorDetailPage({ userEmail: _userEmail, vendorSlug }: 
             font-size: 20px;
             font-weight: 600;
             margin: 0 0 24px;
-            color: #e8e8e8;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--color-text);
+            border-bottom: 1px solid var(--color-border);
             padding-bottom: 12px;
           }
 
@@ -526,23 +526,23 @@ export default function VendorDetailPage({ userEmail: _userEmail, vendorSlug }: 
           .detail-item label {
             font-size: 12px;
             font-weight: 600;
-            color: #888;
+            color: var(--color-text-muted);
             text-transform: uppercase;
             letter-spacing: 0.5px;
           }
 
           .detail-value {
             font-size: 16px;
-            color: #e8e8e8;
+            color: var(--color-text);
           }
 
           .detail-value code {
-            background: rgba(102, 126, 234, 0.2);
+            background: rgba(232, 93, 4, 0.12);
             padding: 4px 8px;
             border-radius: 4px;
             font-family: 'Monaco', 'Menlo', monospace;
             font-size: 14px;
-            color: #a78bfa;
+            color: var(--color-primary);
           }
 
           .status-badge {
@@ -568,7 +568,7 @@ export default function VendorDetailPage({ userEmail: _userEmail, vendorSlug }: 
           .flags-empty {
             text-align: center;
             padding: 32px;
-            color: #888;
+            color: var(--color-text-muted);
           }
 
           .flags-loading p,
@@ -588,14 +588,14 @@ export default function VendorDetailPage({ userEmail: _userEmail, vendorSlug }: 
             justify-content: space-between;
             align-items: center;
             padding: 16px;
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: var(--ct-bg-surface);
+            border: 1px solid var(--color-border);
             border-radius: 8px;
             transition: background 0.2s;
           }
 
           .flag-item:hover {
-            background: rgba(255, 255, 255, 0.05);
+            background: var(--color-bg-warm);
           }
 
           .flag-info {
@@ -608,7 +608,7 @@ export default function VendorDetailPage({ userEmail: _userEmail, vendorSlug }: 
           .flag-key {
             font-size: 14px;
             font-weight: 600;
-            color: #e8e8e8;
+            color: var(--color-text);
             font-family: 'Monaco', 'Menlo', monospace;
           }
 
@@ -622,7 +622,7 @@ export default function VendorDetailPage({ userEmail: _userEmail, vendorSlug }: 
           }
 
           .flag-status.disabled {
-            color: #888;
+            color: var(--color-text-muted);
           }
 
           .toggle-switch {
@@ -665,7 +665,7 @@ export default function VendorDetailPage({ userEmail: _userEmail, vendorSlug }: 
           }
 
           .toggle-switch input:checked + .toggle-slider {
-            background-color: #667eea;
+            background-color: var(--color-primary);
           }
 
           .toggle-switch input:checked + .toggle-slider:before {
@@ -680,15 +680,15 @@ export default function VendorDetailPage({ userEmail: _userEmail, vendorSlug }: 
           .flags-actions {
             margin-top: 24px;
             padding-top: 24px;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            border-top: 1px solid var(--color-border);
           }
 
           .btn-refresh-flags {
             padding: 8px 16px;
             border-radius: 8px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            background: rgba(255, 255, 255, 0.05);
-            color: #e8e8e8;
+            border: 1px solid var(--color-border);
+            background: var(--color-bg-warm);
+            color: var(--color-text);
             font-weight: 600;
             font-size: 14px;
             cursor: pointer;
@@ -697,7 +697,7 @@ export default function VendorDetailPage({ userEmail: _userEmail, vendorSlug }: 
           }
 
           .btn-refresh-flags:hover:not(:disabled) {
-            background: rgba(255, 255, 255, 0.1);
+            background: rgba(232, 93, 4, 0.12);
           }
 
           .btn-refresh-flags:disabled {
@@ -709,7 +709,7 @@ export default function VendorDetailPage({ userEmail: _userEmail, vendorSlug }: 
             display: flex;
             gap: 16px;
             padding-top: 16px;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            border-top: 1px solid var(--color-border);
           }
 
           .btn-primary,
@@ -724,7 +724,7 @@ export default function VendorDetailPage({ userEmail: _userEmail, vendorSlug }: 
           }
 
           .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--ct-gradient-primary);
             color: white;
           }
 
@@ -733,13 +733,13 @@ export default function VendorDetailPage({ userEmail: _userEmail, vendorSlug }: 
           }
 
           .btn-secondary {
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            background: rgba(255, 255, 255, 0.05);
-            color: #e8e8e8;
+            border: 1px solid var(--color-border);
+            background: var(--color-bg-warm);
+            color: var(--color-text);
           }
 
           .btn-secondary:hover {
-            background: rgba(255, 255, 255, 0.1);
+            background: rgba(232, 93, 4, 0.12);
           }
 
           @media (max-width: 768px) {

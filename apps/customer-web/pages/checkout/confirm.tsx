@@ -174,9 +174,9 @@ export default function ConfirmPage({ vendorName }: ConfirmProps) {
         <style jsx>{`
           .page {
             min-height: 100vh;
-            background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 50%, #16213e 100%);
-            color: #e8e8e8;
-            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--ct-bg-primary);
+            color: var(--ct-text);
+            font-family: var(--theme-font, var(--font-body));
           }
 
           .hero {
@@ -184,7 +184,7 @@ export default function ConfirmPage({ vendorName }: ConfirmProps) {
           }
 
           .hero-card {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--ct-gradient-primary);
             border-radius: 24px;
             padding: 32px;
             max-width: 600px;
@@ -218,9 +218,8 @@ export default function ConfirmPage({ vendorName }: ConfirmProps) {
           }
 
           .card {
-            background: rgba(255, 255, 255, 0.05);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: var(--ct-bg-surface);
+            border: 1px solid var(--color-border);
             border-radius: 20px;
             padding: 20px;
           }
@@ -238,7 +237,7 @@ export default function ConfirmPage({ vendorName }: ConfirmProps) {
           }
 
           .muted {
-            color: #888;
+            color: var(--color-text-muted);
             font-size: 13px;
             margin: 0;
           }
@@ -253,7 +252,7 @@ export default function ConfirmPage({ vendorName }: ConfirmProps) {
             padding: 14px 32px;
             border-radius: 12px;
             border: none;
-            background: var(--theme-button, #667eea);
+            background: var(--theme-button, var(--color-primary));
             color: #fff;
             font-weight: 600;
             font-size: 16px;

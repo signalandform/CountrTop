@@ -145,7 +145,7 @@ export default function KdsAnalyticsPage({ vendorSlug, vendorName, locationId, l
       case 'healthy': return '#34c759';
       case 'busy': return '#ff9f0a';
       case 'overloaded': return '#ff3b30';
-      default: return '#888';
+    default: return '#64748B';
     }
   };
 
@@ -330,9 +330,9 @@ export default function KdsAnalyticsPage({ vendorSlug, vendorName, locationId, l
         <style jsx>{`
           .analytics-page {
             min-height: 100vh;
-            background: #0a0a0a;
-            color: #e8e8e8;
-            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--ct-bg-primary);
+            color: var(--ct-text);
+            font-family: var(--ct-font-body);
             padding: 24px;
           }
 
@@ -342,7 +342,7 @@ export default function KdsAnalyticsPage({ vendorSlug, vendorName, locationId, l
             align-items: flex-start;
             margin-bottom: 32px;
             padding-bottom: 24px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            border-bottom: 1px solid var(--color-border);
           }
 
           .header-left {
@@ -352,24 +352,24 @@ export default function KdsAnalyticsPage({ vendorSlug, vendorName, locationId, l
           }
 
           .back-link {
-            color: #667eea;
+            color: var(--color-primary);
             text-decoration: none;
             font-size: 14px;
             padding: 8px 12px;
-            background: rgba(102, 126, 234, 0.1);
+            background: rgba(232, 93, 4, 0.12);
             border-radius: 8px;
             transition: background 0.2s;
           }
 
           .back-link:hover {
-            background: rgba(102, 126, 234, 0.2);
+            background: rgba(232, 93, 4, 0.2);
           }
 
           .title {
             font-size: 28px;
             font-weight: 700;
             margin: 0 0 4px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--ct-gradient-primary);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
@@ -377,7 +377,7 @@ export default function KdsAnalyticsPage({ vendorSlug, vendorName, locationId, l
 
           .subtitle {
             font-size: 14px;
-            color: #888;
+            color: var(--color-text-muted);
             margin: 0;
           }
 
@@ -431,8 +431,8 @@ export default function KdsAnalyticsPage({ vendorSlug, vendorName, locationId, l
           }
 
           .card {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: var(--ct-bg-surface);
+            border: 1px solid var(--color-border);
             border-radius: 16px;
             padding: 24px;
           }
@@ -448,7 +448,7 @@ export default function KdsAnalyticsPage({ vendorSlug, vendorName, locationId, l
             font-size: 18px;
             font-weight: 600;
             margin: 0;
-            color: #e8e8e8;
+            color: var(--color-text);
           }
 
           .health-badge {
@@ -473,13 +473,13 @@ export default function KdsAnalyticsPage({ vendorSlug, vendorName, locationId, l
             display: block;
             font-size: 32px;
             font-weight: 700;
-            color: #e8e8e8;
+            color: var(--color-text);
           }
 
           .metric-label {
             display: block;
             font-size: 12px;
-            color: #888;
+            color: var(--color-text-muted);
             margin-top: 4px;
           }
 
@@ -495,7 +495,7 @@ export default function KdsAnalyticsPage({ vendorSlug, vendorName, locationId, l
             display: block;
             font-size: 64px;
             font-weight: 700;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--ct-gradient-primary);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
@@ -504,7 +504,7 @@ export default function KdsAnalyticsPage({ vendorSlug, vendorName, locationId, l
           .big-label {
             display: block;
             font-size: 14px;
-            color: #888;
+            color: var(--color-text-muted);
             margin-top: 8px;
           }
 
@@ -522,13 +522,13 @@ export default function KdsAnalyticsPage({ vendorSlug, vendorName, locationId, l
             display: block;
             font-size: 24px;
             font-weight: 600;
-            color: #e8e8e8;
+            color: var(--color-text);
           }
 
           .stat-label {
             display: block;
             font-size: 12px;
-            color: #888;
+            color: var(--color-text-muted);
             margin-top: 4px;
           }
 
@@ -543,33 +543,33 @@ export default function KdsAnalyticsPage({ vendorSlug, vendorName, locationId, l
             align-items: center;
             gap: 12px;
             padding: 8px 12px;
-            background: rgba(255, 255, 255, 0.05);
+            background: var(--color-bg-warm);
             border-radius: 8px;
           }
 
           .item-count {
             font-size: 18px;
             font-weight: 700;
-            color: #a78bfa;
+            color: var(--color-accent);
             min-width: 40px;
           }
 
           .item-name {
             font-size: 15px;
-            color: #e8e8e8;
+            color: var(--color-text);
           }
 
           .empty-items {
             text-align: center;
             padding: 32px;
-            color: #888;
+            color: var(--color-text-muted);
             font-size: 14px;
           }
 
           .more-items {
             text-align: center;
             padding: 8px;
-            color: #888;
+            color: var(--color-text-muted);
             font-size: 13px;
           }
 
@@ -597,7 +597,7 @@ export default function KdsAnalyticsPage({ vendorSlug, vendorName, locationId, l
           }
 
           .heatmap-cell.current {
-            border: 2px solid #667eea;
+            border: 2px solid var(--color-primary);
           }
 
           .heatmap-cell.future {
@@ -606,7 +606,7 @@ export default function KdsAnalyticsPage({ vendorSlug, vendorName, locationId, l
 
           .cell-hour {
             font-size: 9px;
-            color: rgba(255, 255, 255, 0.6);
+            color: var(--color-text-muted);
           }
 
           .cell-count {
@@ -622,14 +622,14 @@ export default function KdsAnalyticsPage({ vendorSlug, vendorName, locationId, l
             gap: 8px;
             margin-top: 16px;
             font-size: 11px;
-            color: #888;
+            color: var(--color-text-muted);
           }
 
           .legend-gradient {
             width: 80px;
             height: 8px;
             border-radius: 4px;
-            background: linear-gradient(to right, rgba(102, 126, 234, 0.2), rgba(102, 126, 234, 1));
+            background: linear-gradient(to right, rgba(232, 93, 4, 0.2), rgba(232, 93, 4, 1));
           }
 
           @media (max-width: 900px) {

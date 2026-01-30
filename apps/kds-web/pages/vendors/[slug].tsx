@@ -1199,9 +1199,9 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
         <style jsx>{`
           .page {
             min-height: 100vh;
-            background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 50%, #16213e 100%);
-            color: #e8e8e8;
-            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--ct-bg-primary);
+            color: var(--ct-text);
+            font-family: var(--ct-font-body);
             padding: 24px;
           }
 
@@ -1216,14 +1216,14 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
             align-items: center;
             margin-bottom: 48px;
             padding-bottom: 24px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            border-bottom: 1px solid var(--color-border);
           }
 
           .title {
             font-size: 32px;
             font-weight: 700;
             margin: 0 0 8px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--ct-gradient-primary);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
@@ -1231,7 +1231,7 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
 
           .vendor-slug {
             font-size: 16px;
-            color: #888;
+            color: var(--color-text-muted);
             margin: 0;
             text-transform: uppercase;
             letter-spacing: 1px;
@@ -1306,11 +1306,11 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
             gap: 8px;
             margin-top: 8px;
             padding: 6px 12px;
-            background: rgba(102, 126, 234, 0.15);
-            border: 1px solid rgba(102, 126, 234, 0.3);
+            background: rgba(232, 93, 4, 0.12);
+            border: 1px solid rgba(232, 93, 4, 0.3);
             border-radius: 8px;
             font-size: 14px;
-            color: #667eea;
+            color: var(--color-primary);
             font-weight: 500;
           }
 
@@ -1327,9 +1327,9 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
           .header-button {
             padding: 12px 20px;
             border-radius: 12px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            background: rgba(255, 255, 255, 0.05);
-            color: #e8e8e8;
+            border: 1px solid var(--color-border);
+            background: var(--color-bg-warm);
+            color: var(--color-text);
             font-weight: 600;
             font-size: 14px;
             cursor: pointer;
@@ -1342,13 +1342,13 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
           }
 
           .header-button:hover {
-            background: rgba(255, 255, 255, 0.1);
-            border-color: rgba(255, 255, 255, 0.3);
+            background: rgba(232, 93, 4, 0.12);
+            border-color: rgba(232, 93, 4, 0.3);
           }
 
           .daily-avg {
             font-size: 14px;
-            color: #a78bfa;
+            color: var(--color-accent);
             margin: 4px 0 0 0;
             font-weight: 500;
           }
@@ -1370,8 +1370,8 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
             justify-content: center;
             min-height: 400px;
             text-align: center;
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: var(--ct-bg-surface);
+            border: 1px solid var(--color-border);
             border-radius: 20px;
             padding: 48px;
           }
@@ -1387,13 +1387,13 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
             font-size: 24px;
             font-weight: 700;
             margin: 0 0 12px;
-            color: #e8e8e8;
+            color: var(--color-text);
           }
 
           .loading-state p,
           .empty-state p {
             font-size: 16px;
-            color: #888;
+            color: var(--color-text-muted);
             margin: 0;
           }
 
@@ -1408,8 +1408,8 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
             align-items: center;
             gap: 24px;
             padding: 20px;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: var(--ct-bg-surface);
+            border: 1px solid var(--color-border);
             border-radius: 16px;
             transition: background 0.2s, border-color 0.2s;
             position: relative;
@@ -1425,15 +1425,15 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
             text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
             line-height: 1;
             z-index: 1;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--ct-gradient-primary);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
           }
 
           .ticket-card:hover {
-            background: rgba(255, 255, 255, 0.08);
-            border-color: rgba(255, 255, 255, 0.15);
+            background: var(--color-bg-warm);
+            border-color: rgba(232, 93, 4, 0.25);
           }
 
           .ticket-left {
@@ -1451,7 +1451,7 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
           .pickup-label {
             font-size: 18px;
             font-weight: 600;
-            color: #e8e8e8;
+            color: var(--color-text);
           }
 
           .source-badge {
@@ -1580,20 +1580,20 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
             min-width: 56px;
             height: 44px;
             padding: 0 12px;
-            background: linear-gradient(135deg, rgba(102, 126, 234, 0.3) 0%, rgba(167, 139, 250, 0.3) 100%) !important;
-            border: 2px solid #a78bfa !important;
+            background: rgba(232, 93, 4, 0.18) !important;
+            border: 2px solid var(--color-primary) !important;
             border-radius: 10px;
             font-size: 26px;
             font-weight: 800;
-            color: #e8e8e8;
+            color: var(--color-text);
             font-variant-numeric: tabular-nums;
-            box-shadow: 0 2px 8px rgba(167, 139, 250, 0.2);
+            box-shadow: 0 2px 8px rgba(232, 93, 4, 0.2);
           }
 
           .line-item .item-name,
           .ticket-middle .item-name {
             font-size: 24px;
-            color: #e8e8e8;
+            color: var(--color-text);
             font-weight: 600;
             line-height: 1.3;
           }
@@ -1612,8 +1612,8 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
             border-radius: 6px;
             font-size: 14px;
             font-weight: 500;
-            background: rgba(255, 255, 255, 0.1);
-            color: #c8c8c8;
+            background: var(--color-bg-warm);
+            color: var(--color-text-muted);
           }
 
           .modifier-allergy {
@@ -1638,7 +1638,7 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
 
           .line-items-empty {
             font-size: 14px;
-            color: #888;
+            color: var(--color-text-muted);
           }
 
           /* Staff notes on ticket */
@@ -1700,8 +1700,8 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
             width: 32px;
             height: 32px;
             border: none;
-            background: rgba(255, 255, 255, 0.1);
-            color: #888;
+            background: var(--color-bg-warm);
+            color: var(--color-text-muted);
             font-size: 18px;
             border-radius: 6px;
             cursor: pointer;
@@ -1712,8 +1712,8 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
           }
 
           .ticket-menu-button:hover {
-            background: rgba(255, 255, 255, 0.2);
-            color: #e8e8e8;
+            background: rgba(232, 93, 4, 0.12);
+            color: var(--color-text);
           }
 
           .ticket-menu-dropdown {
@@ -1721,8 +1721,8 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
             top: 100%;
             right: 0;
             margin-top: 4px;
-            background: #1c1c1e;
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: var(--ct-bg-surface);
+            border: 1px solid var(--color-border);
             border-radius: 12px;
             padding: 8px 0;
             min-width: 160px;
@@ -1734,7 +1734,7 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
             padding: 10px 16px;
             border: none;
             background: none;
-            color: #e8e8e8;
+            color: var(--color-text);
             font-size: 14px;
             text-align: left;
             cursor: pointer;
@@ -1744,7 +1744,7 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
           }
 
           .ticket-menu-dropdown button:hover:not(:disabled) {
-            background: rgba(255, 255, 255, 0.1);
+            background: var(--color-bg-warm);
           }
 
           .ticket-menu-dropdown button:disabled {
@@ -1754,7 +1754,7 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
 
           .menu-divider {
             height: 1px;
-            background: rgba(255, 255, 255, 0.1);
+            background: var(--color-border);
             margin: 8px 0;
           }
 
@@ -1766,10 +1766,10 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
           .note-input, .label-input {
             width: 100%;
             padding: 12px 16px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            border: 1px solid var(--color-border);
             border-radius: 8px;
-            background: rgba(255, 255, 255, 0.05);
-            color: #e8e8e8;
+            background: var(--ct-bg-surface);
+            color: var(--color-text);
             font-size: 16px;
             font-family: inherit;
             resize: vertical;
@@ -1777,7 +1777,7 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
 
           .note-input:focus, .label-input:focus {
             outline: none;
-            border-color: #667eea;
+            border-color: var(--color-primary);
           }
 
           .modal-actions {
@@ -1789,25 +1789,25 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
 
           .btn-cancel {
             padding: 10px 20px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            border: 1px solid var(--color-border);
             border-radius: 8px;
             background: none;
-            color: #888;
+            color: var(--color-text-muted);
             font-size: 14px;
             font-weight: 600;
             cursor: pointer;
           }
 
           .btn-cancel:hover {
-            background: rgba(255, 255, 255, 0.1);
-            color: #e8e8e8;
+            background: var(--color-bg-warm);
+            color: var(--color-text);
           }
 
           .btn-save {
             padding: 10px 20px;
             border: none;
             border-radius: 8px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--ct-gradient-primary);
             color: white;
             font-size: 14px;
             font-weight: 600;
@@ -1851,9 +1851,9 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
           }
 
           .modal-content {
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            background: var(--ct-bg-surface);
             border-radius: 16px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--color-border);
             max-width: 800px;
             width: 100%;
             max-height: 90vh;
@@ -1867,20 +1867,20 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
             justify-content: space-between;
             align-items: center;
             padding: 24px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            border-bottom: 1px solid var(--color-border);
           }
 
           .modal-header h2 {
             margin: 0;
             font-size: 24px;
             font-weight: 700;
-            color: #e8e8e8;
+            color: var(--color-text);
           }
 
           .modal-close {
             background: none;
             border: none;
-            color: #888;
+            color: var(--color-text-muted);
             font-size: 32px;
             cursor: pointer;
             padding: 0;
@@ -1894,8 +1894,8 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
           }
 
           .modal-close:hover {
-            background: rgba(255, 255, 255, 0.1);
-            color: #e8e8e8;
+            background: var(--color-bg-warm);
+            color: var(--color-text);
           }
 
           .modal-body {
@@ -1916,14 +1916,14 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
             align-items: center;
             padding: 16px;
             border-radius: 8px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--color-border);
+            background: var(--color-bg-warm);
             transition: all 0.2s;
           }
 
           .completed-ticket-item:hover {
-            background: rgba(255, 255, 255, 0.05);
-            border-color: rgba(255, 255, 255, 0.15);
+            background: rgba(232, 93, 4, 0.08);
+            border-color: rgba(232, 93, 4, 0.25);
           }
 
           .completed-ticket-info {
@@ -1941,7 +1941,7 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
           .completed-ticket-label {
             font-size: 16px;
             font-weight: 600;
-            color: #e8e8e8;
+            color: var(--color-text);
           }
 
           .completed-ticket-source {
@@ -1969,8 +1969,8 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
           .completed-ticket-shortcode {
             font-size: 14px;
             font-weight: 700;
-            color: #a78bfa;
-            background: rgba(167, 139, 250, 0.1);
+            color: var(--color-primary);
+            background: rgba(232, 93, 4, 0.12);
             padding: 4px 8px;
             border-radius: 4px;
           }
@@ -2003,15 +2003,15 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
             padding: 0 8px;
             font-size: 14px;
             font-weight: 700;
-            background: linear-gradient(135deg, rgba(102, 126, 234, 0.2) 0%, rgba(167, 139, 250, 0.2) 100%);
-            border: 1px solid rgba(167, 139, 250, 0.4);
+            background: rgba(232, 93, 4, 0.15);
+            border: 1px solid rgba(232, 93, 4, 0.4);
             border-radius: 6px;
           }
 
           .completed-ticket-details .item-name {
             font-size: 14px;
             font-weight: 500;
-            color: #c8c8c8;
+            color: var(--color-text);
           }
 
           .completed-ticket-details .modifiers-list {
@@ -2030,22 +2030,22 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
           }
 
           .completed-ticket-details .line-items-empty {
-            color: #666;
+            color: var(--color-text-muted);
             font-size: 13px;
             font-style: italic;
           }
 
           .completed-ticket-time {
             font-size: 12px;
-            color: #888;
+            color: var(--color-text-muted);
           }
 
           .recall-ticket-button {
             padding: 10px 20px;
             border-radius: 8px;
-            border: 1px solid rgba(167, 139, 250, 0.3);
-            background: rgba(167, 139, 250, 0.1);
-            color: #a78bfa;
+            border: 1px solid rgba(232, 93, 4, 0.3);
+            background: rgba(232, 93, 4, 0.12);
+            color: var(--color-primary);
             font-weight: 600;
             font-size: 14px;
             cursor: pointer;
@@ -2055,16 +2055,14 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
           }
 
           .recall-ticket-button:hover:not(:disabled) {
-            background: rgba(167, 139, 250, 0.2);
-            border-color: rgba(167, 139, 250, 0.5);
+            background: rgba(232, 93, 4, 0.2);
+            border-color: rgba(232, 93, 4, 0.5);
+            transform: translateY(-1px);
           }
 
           .recall-ticket-button:disabled {
             opacity: 0.5;
             cursor: not-allowed;
-          }
-            border-color: #a78bfa;
-            transform: translateY(-1px);
           }
 
           .age-timer {
@@ -2105,7 +2103,7 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
           .time-clock-pin-input label {
             font-size: 16px;
             font-weight: 600;
-            color: #e8e8e8;
+            color: var(--color-text);
           }
 
           .pin-input-large {
@@ -2116,16 +2114,16 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
             text-align: center;
             letter-spacing: 12px;
             border-radius: 12px;
-            border: 2px solid rgba(255, 255, 255, 0.2);
-            background: rgba(255, 255, 255, 0.05);
-            color: #e8e8e8;
+            border: 2px solid var(--color-border);
+            background: var(--ct-bg-surface);
+            color: var(--color-text);
             font-family: monospace;
             transition: border-color 0.2s;
           }
 
           .pin-input-large:focus {
             outline: none;
-            border-color: #667eea;
+            border-color: var(--color-primary);
           }
 
           .pin-input-large:disabled {
@@ -2220,13 +2218,13 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
           }
 
           .ready-button {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--ct-gradient-primary);
             color: white;
           }
 
           .ready-button:hover:not(:disabled) {
             transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+            box-shadow: 0 4px 12px rgba(232, 93, 4, 0.4);
           }
 
           .complete-button {

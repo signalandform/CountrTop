@@ -132,13 +132,13 @@ export function KdsAnalyticsDashboard({ vendorSlug, timezone }: KdsAnalyticsDash
         .dashboard-header h2 {
           font-size: 24px;
           font-weight: 700;
-          color: #e8e8e8;
+          color: var(--color-text);
           margin: 0 0 4px 0;
         }
 
         .dashboard-header .muted {
           font-size: 14px;
-          color: #888;
+          color: var(--color-text-muted);
         }
 
         .error-message {
@@ -181,7 +181,7 @@ export function KdsAnalyticsDashboard({ vendorSlug, timezone }: KdsAnalyticsDash
         .chart-section h3 {
           font-size: 18px;
           font-weight: 600;
-          color: #e8e8e8;
+          color: var(--color-text);
           margin: 0 0 16px 0;
         }
       `}</style>

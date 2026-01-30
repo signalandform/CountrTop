@@ -85,18 +85,18 @@ export function ItemPerformanceTable({ data, loading, limit = 50 }: ItemPerforma
         .table-header h3 {
           font-size: 18px;
           font-weight: 600;
-          color: #e8e8e8;
+          color: var(--color-text);
           margin: 0;
         }
 
         .scope-label {
           font-size: 12px;
           font-weight: 500;
-          color: #a78bfa;
-          background: rgba(167, 139, 250, 0.1);
+          color: var(--color-accent);
+          background: rgba(255, 182, 39, 0.18);
           padding: 4px 12px;
           border-radius: 4px;
-          border: 1px solid rgba(167, 139, 250, 0.2);
+          border: 1px solid rgba(255, 182, 39, 0.3);
         }
 
         .table-wrapper {
@@ -109,7 +109,7 @@ export function ItemPerformanceTable({ data, loading, limit = 50 }: ItemPerforma
         }
 
         .item-table thead {
-          background: rgba(255, 255, 255, 0.05);
+          background: var(--color-bg-warm);
         }
 
         .item-table th {
@@ -117,10 +117,10 @@ export function ItemPerformanceTable({ data, loading, limit = 50 }: ItemPerforma
           text-align: left;
           font-size: 12px;
           font-weight: 600;
-          color: #888;
+          color: var(--color-text-muted);
           text-transform: uppercase;
           letter-spacing: 0.5px;
-          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+          border-bottom: 1px solid var(--color-border);
         }
 
         .item-table th.text-right {
@@ -128,17 +128,17 @@ export function ItemPerformanceTable({ data, loading, limit = 50 }: ItemPerforma
         }
 
         .item-table tbody tr {
-          border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+          border-bottom: 1px solid var(--color-border);
         }
 
         .item-table tbody tr:hover {
-          background: rgba(255, 255, 255, 0.03);
+          background: var(--color-bg-warm);
         }
 
         .item-table td {
           padding: 12px 16px;
           font-size: 14px;
-          color: #e8e8e8;
+          color: var(--color-text);
         }
 
         .item-table td.text-right {
@@ -147,7 +147,7 @@ export function ItemPerformanceTable({ data, loading, limit = 50 }: ItemPerforma
 
         .item-name {
           font-weight: 500;
-          color: #e8e8e8;
+          color: var(--color-text);
         }
 
         .table-loading,
@@ -156,7 +156,7 @@ export function ItemPerformanceTable({ data, loading, limit = 50 }: ItemPerforma
           align-items: center;
           justify-content: center;
           height: 200px;
-          color: #888;
+          color: var(--color-text-muted);
           font-size: 14px;
         }
 
@@ -164,7 +164,7 @@ export function ItemPerformanceTable({ data, loading, limit = 50 }: ItemPerforma
           margin-top: 16px;
           text-align: center;
           font-size: 12px;
-          color: #666;
+          color: var(--color-text-muted);
         }
       `}</style>
     </div>

@@ -224,7 +224,7 @@ export default function VendorsPage({ userEmail: _userEmail }: Props) {
                           className="pos-badge"
                           style={{
                             background: POS_COLORS[vendor.pos_provider]?.bg || 'rgba(255,255,255,0.1)',
-                            color: POS_COLORS[vendor.pos_provider]?.text || '#e8e8e8'
+                            color: POS_COLORS[vendor.pos_provider]?.text || 'var(--color-text)'
                           }}
                         >
                           {POS_LABELS[vendor.pos_provider] || vendor.pos_provider}
@@ -278,27 +278,27 @@ export default function VendorsPage({ userEmail: _userEmail }: Props) {
         <style jsx global>{`
           .page {
             min-height: 100vh;
-            background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 50%, #16213e 100%);
-            color: #e8e8e8;
-            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--ct-bg-primary);
+            color: var(--ct-text);
+            font-family: var(--ct-font-body);
           }
 
           .page-header {
             padding: 32px 48px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            border-bottom: 1px solid var(--color-border);
           }
 
           .back-link {
             display: inline-block;
             margin-bottom: 16px;
-            color: #a78bfa;
+            color: var(--color-accent);
             text-decoration: none;
             font-size: 14px;
             transition: color 0.2s;
           }
 
           .back-link:hover {
-            color: #8b5cf6;
+            color: var(--color-primary);
           }
 
           .header-content {
@@ -313,7 +313,7 @@ export default function VendorsPage({ userEmail: _userEmail }: Props) {
             font-size: 32px;
             font-weight: 700;
             margin: 0;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--ct-gradient-primary);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
@@ -329,7 +329,7 @@ export default function VendorsPage({ userEmail: _userEmail }: Props) {
             padding: 8px 16px;
             border-radius: 8px;
             border: none;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--ct-gradient-primary);
             color: white;
             text-decoration: none;
             font-weight: 600;
@@ -345,9 +345,9 @@ export default function VendorsPage({ userEmail: _userEmail }: Props) {
           .search-input {
             padding: 8px 16px;
             border-radius: 8px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            background: rgba(255, 255, 255, 0.05);
-            color: #e8e8e8;
+            border: 1px solid var(--color-border);
+            background: var(--ct-bg-surface);
+            color: var(--color-text);
             font-size: 14px;
             font-family: inherit;
             width: 250px;
@@ -356,19 +356,19 @@ export default function VendorsPage({ userEmail: _userEmail }: Props) {
 
           .search-input:focus {
             outline: none;
-            border-color: #667eea;
+            border-color: var(--color-primary);
           }
 
           .search-input::placeholder {
-            color: #888;
+            color: var(--color-text-muted);
           }
 
           .btn-refresh {
             padding: 8px 16px;
             border-radius: 8px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            background: rgba(255, 255, 255, 0.05);
-            color: #e8e8e8;
+            border: 1px solid var(--color-border);
+            background: var(--color-bg-warm);
+            color: var(--color-text);
             font-weight: 600;
             font-size: 14px;
             cursor: pointer;
@@ -377,7 +377,7 @@ export default function VendorsPage({ userEmail: _userEmail }: Props) {
           }
 
           .btn-refresh:hover:not(:disabled) {
-            background: rgba(255, 255, 255, 0.1);
+            background: rgba(232, 93, 4, 0.12);
           }
 
           .btn-refresh:disabled {
@@ -426,21 +426,21 @@ export default function VendorsPage({ userEmail: _userEmail }: Props) {
           .empty-state {
             text-align: center;
             padding: 64px 32px;
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: var(--ct-bg-surface);
+            border: 1px solid var(--color-border);
             border-radius: 16px;
           }
 
           .loading-state p,
           .empty-state p {
-            color: #888;
+            color: var(--color-text-muted);
             margin: 0;
             font-size: 16px;
           }
 
           .vendors-table-container {
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: var(--ct-bg-surface);
+            border: 1px solid var(--color-border);
             border-radius: 16px;
             overflow: hidden;
           }
@@ -451,7 +451,7 @@ export default function VendorsPage({ userEmail: _userEmail }: Props) {
           }
 
           .vendors-table thead {
-            background: rgba(255, 255, 255, 0.05);
+            background: var(--color-bg-warm);
           }
 
           .vendors-table th {
@@ -459,18 +459,18 @@ export default function VendorsPage({ userEmail: _userEmail }: Props) {
             text-align: left;
             font-weight: 600;
             font-size: 14px;
-            color: #e8e8e8;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--color-text);
+            border-bottom: 1px solid var(--color-border);
           }
 
           .vendors-table td {
             padding: 16px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            border-bottom: 1px solid var(--color-border);
             font-size: 14px;
           }
 
           .vendors-table tbody tr:hover {
-            background: rgba(255, 255, 255, 0.05);
+            background: var(--color-bg-warm);
           }
 
           .vendors-table tbody tr:last-child td {
@@ -479,12 +479,12 @@ export default function VendorsPage({ userEmail: _userEmail }: Props) {
 
           .slug-code,
           .location-code {
-            background: rgba(102, 126, 234, 0.2);
+            background: rgba(232, 93, 4, 0.12);
             padding: 4px 8px;
             border-radius: 4px;
             font-family: 'Monaco', 'Menlo', monospace;
             font-size: 12px;
-            color: #a78bfa;
+            color: var(--color-primary);
           }
 
           .status-badge {
@@ -507,7 +507,7 @@ export default function VendorsPage({ userEmail: _userEmail }: Props) {
           }
 
           .text-muted {
-            color: #888;
+            color: var(--color-text-muted);
           }
 
           .action-buttons {
@@ -518,9 +518,9 @@ export default function VendorsPage({ userEmail: _userEmail }: Props) {
           .btn-link {
             padding: 6px 12px;
             border-radius: 6px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            background: rgba(255, 255, 255, 0.05);
-            color: #e8e8e8;
+            border: 1px solid var(--color-border);
+            background: var(--color-bg-warm);
+            color: var(--color-text);
             text-decoration: none;
             font-size: 12px;
             font-weight: 600;
@@ -529,15 +529,15 @@ export default function VendorsPage({ userEmail: _userEmail }: Props) {
           }
 
           .btn-link:hover {
-            background: rgba(255, 255, 255, 0.1);
+            background: rgba(232, 93, 4, 0.12);
           }
 
           .search-results-info {
             padding: 16px;
             text-align: center;
-            color: #888;
+            color: var(--color-text-muted);
             font-size: 14px;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            border-top: 1px solid var(--color-border);
           }
 
           /* POS Filter Tabs */
@@ -546,15 +546,15 @@ export default function VendorsPage({ userEmail: _userEmail }: Props) {
             gap: 8px;
             margin-top: 24px;
             padding-top: 16px;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            border-top: 1px solid var(--color-border);
           }
 
           .pos-tab {
             padding: 8px 16px;
             border-radius: 8px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            background: rgba(255, 255, 255, 0.05);
-            color: #888;
+            border: 1px solid var(--color-border);
+            background: var(--ct-bg-surface);
+            color: var(--color-text-muted);
             font-size: 14px;
             font-weight: 500;
             cursor: pointer;
@@ -566,14 +566,14 @@ export default function VendorsPage({ userEmail: _userEmail }: Props) {
           }
 
           .pos-tab:hover {
-            background: rgba(255, 255, 255, 0.1);
-            color: #e8e8e8;
+            background: var(--color-bg-warm);
+            color: var(--color-text);
           }
 
           .pos-tab.active {
-            background: rgba(102, 126, 234, 0.2);
-            border-color: #667eea;
-            color: #a78bfa;
+            background: rgba(232, 93, 4, 0.15);
+            border-color: var(--color-primary);
+            color: var(--color-primary);
           }
 
           .pos-tab.pos-square.active {

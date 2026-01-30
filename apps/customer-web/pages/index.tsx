@@ -529,9 +529,9 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
   // ---------------------------------------------------------------------------
   // Theme Configuration
   // ---------------------------------------------------------------------------
-  const primaryColor = vendor?.primaryColor || '#667eea';
-  const accentColor = vendor?.accentColor || '#764ba2';
-  const fontFamily = vendor?.fontFamily || 'SF Pro Display';
+  const primaryColor = vendor?.primaryColor || '#E85D04';
+  const accentColor = vendor?.accentColor || '#FFB627';
+  const fontFamily = vendor?.fontFamily || 'DM Sans';
   const logoUrl = vendor?.logoUrl;
 
   // Build dynamic theme style variables (solid colors, no gradients)
@@ -559,7 +559,7 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
       <Head>
         <title>{`${vendorName} · CountrTop`}</title>
         {/* Load Google Fonts if using a non-system font */}
-        {fontFamily && !['SF Pro Display', 'system-ui'].includes(fontFamily) && (
+        {fontFamily && !['SF Pro Display', 'system-ui', 'DM Sans', 'Anybody'].includes(fontFamily) && (
           <link
             href={`https://fonts.googleapis.com/css2?family=${encodeURIComponent(fontFamily)}:wght@400;500;600;700&display=swap`}
             rel="stylesheet"
@@ -992,9 +992,9 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
       <style jsx global>{`
           .page {
             min-height: 100vh;
-            background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 50%, #16213e 100%);
-            color: #e8e8e8;
-            font-family: var(--theme-font, 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif);
+            background: var(--ct-bg-primary);
+            color: var(--ct-text);
+            font-family: var(--theme-font, var(--font-body));
           }
 
           .page-content {
@@ -1022,14 +1022,14 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
             border-radius: 16px;
             object-fit: cover;
             margin-bottom: 16px;
-            border: 2px solid rgba(255, 255, 255, 0.1);
+            border: 2px solid var(--color-border);
           }
 
           .eyebrow {
             text-transform: uppercase;
             letter-spacing: 3px;
             font-size: 11px;
-            color: var(--theme-accent, #a78bfa);
+            color: var(--theme-accent, var(--color-accent));
             margin: 0 0 8px;
           }
 
@@ -1037,7 +1037,7 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
             font-size: 36px;
             font-weight: 700;
             margin: 0 0 8px;
-            background: var(--theme-button, #667eea);
+            background: var(--theme-button, var(--color-primary));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
@@ -1045,7 +1045,7 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
 
           .subtitle {
             font-size: 16px;
-            color: #888;
+            color: var(--color-text-muted);
             margin: 0 0 16px;
           }
 
@@ -1056,7 +1056,9 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
           }
 
           .badge {
-            background: rgba(255, 255, 255, 0.2);
+            background: var(--color-bg-warm);
+            border: 1px solid var(--color-border);
+            color: var(--color-text-muted);
             padding: 6px 12px;
             border-radius: 20px;
             font-size: 12px;
@@ -1080,29 +1082,29 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            color: var(--theme-accent, #a78bfa);
+            color: var(--theme-accent, var(--color-accent));
           }
 
           .info-content {
             font-size: 14px;
             line-height: 1.6;
-            color: #e8e8e8;
+            color: var(--color-text);
             white-space: pre-line;
           }
 
           .vendor-address-link {
             text-decoration: none;
-            color: var(--theme-accent, #a78bfa);
+            color: var(--theme-accent, var(--color-accent));
             transition: color 0.2s;
           }
 
           .vendor-address-link:hover {
-            color: var(--theme-accent, #8b5cf6);
+            color: var(--theme-accent, var(--color-primary));
             text-decoration: underline;
           }
 
           .phone-link {
-            color: var(--theme-accent, #a78bfa);
+            color: var(--theme-accent, var(--color-accent));
             text-decoration: none;
           }
 
@@ -1189,25 +1191,25 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
           }
 
           .location-option {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.15);
+            background: var(--ct-bg-surface);
+            border: 1px solid var(--color-border);
             border-radius: 12px;
             padding: 14px 16px;
             text-align: left;
             cursor: pointer;
             transition: all 0.2s;
-            color: #e8e8e8;
+            color: var(--color-text);
             font-family: inherit;
           }
 
           .location-option:hover {
-            background: rgba(255, 255, 255, 0.08);
-            border-color: rgba(255, 255, 255, 0.25);
+            background: var(--color-bg-warm);
+            border-color: rgba(232, 93, 4, 0.25);
           }
 
           .location-option.selected {
-            background: rgba(102, 126, 234, 0.15);
-            border-color: var(--theme-button, #667eea);
+            background: rgba(232, 93, 4, 0.12);
+            border-color: var(--theme-button, var(--color-primary));
           }
 
           .location-option-name {
@@ -1221,8 +1223,8 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
           .location-option .primary-badge {
             font-size: 10px;
             text-transform: uppercase;
-            background: rgba(102, 126, 234, 0.25);
-            color: var(--theme-button, #667eea);
+            background: rgba(232, 93, 4, 0.18);
+            color: var(--theme-button, var(--color-primary));
             padding: 2px 6px;
             border-radius: 4px;
             font-weight: 600;
@@ -1230,7 +1232,7 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
 
           .location-option-address {
             font-size: 13px;
-            color: #888;
+            color: var(--color-text-muted);
             margin-top: 4px;
           }
 
@@ -1279,22 +1281,22 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
             display: flex;
             gap: 8px;
             font-size: 13px;
-            color: #e8e8e8;
+            color: var(--color-text);
           }
 
           .order-item .item-quantity {
             font-weight: 600;
-            color: var(--theme-accent, #a78bfa);
+            color: var(--theme-accent, var(--color-accent));
             min-width: 24px;
           }
 
           .order-item .item-name {
-            color: #e8e8e8;
+            color: var(--color-text);
           }
 
           .order-item-more {
             font-size: 12px;
-            color: #888;
+            color: var(--color-text-muted);
             margin-top: 4px;
           }
 
@@ -1303,7 +1305,7 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
             gap: 8px;
             align-items: flex-start;
             font-size: 13px;
-            color: #e8e8e8;
+            color: var(--color-text);
             margin: 12px 0;
             cursor: pointer;
           }
@@ -1315,15 +1317,14 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
 
           .no-account-label {
             font-size: 12px;
-            color: #888;
+            color: var(--color-text-muted);
             margin: 8px 0;
             text-align: center;
           }
 
           .card {
-            background: rgba(255, 255, 255, 0.05);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: var(--ct-bg-surface);
+            border: 1px solid var(--color-border);
             border-radius: 20px;
             padding: 20px;
           }
@@ -1341,7 +1342,7 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
           }
 
           .muted {
-            color: #888;
+            color: var(--color-text-muted);
             font-size: 13px;
             margin: 0;
           }
@@ -1375,9 +1376,9 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
             align-items: center;
             gap: 16px;
             padding: 24px;
-            background: rgba(255, 255, 255, 0.03);
+            background: var(--color-bg-warm);
             border-radius: 16px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--color-border);
             margin-top: 12px;
           }
 
@@ -1399,14 +1400,14 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
           .tracking-message {
             font-size: 18px;
             font-weight: 600;
-            color: #e8e8e8;
+            color: var(--color-text);
             text-align: center;
           }
 
           .tracking-shortcode-label {
             font-size: 14px;
             font-weight: 500;
-            color: #888;
+            color: var(--color-text-muted);
             text-transform: uppercase;
             letter-spacing: 1px;
             margin-top: 8px;
@@ -1416,7 +1417,7 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
             font-size: 72px;
             font-weight: 900;
             text-align: center;
-            background: var(--theme-button, #667eea);
+            background: var(--theme-button, var(--color-primary));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
@@ -1440,13 +1441,13 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
           }
 
           .progress-dot.active {
-            background: var(--theme-button, #667eea);
-            box-shadow: 0 0 8px rgba(102, 126, 234, 0.5);
+            background: var(--theme-button, var(--color-primary));
+            box-shadow: 0 0 8px rgba(232, 93, 4, 0.4);
             transform: scale(1.2);
           }
 
           .points {
-            background: var(--theme-button, #667eea);
+            background: var(--theme-button, var(--color-primary));
             padding: 8px 16px;
             border-radius: 20px;
             font-weight: 700;
@@ -1462,16 +1463,16 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
           .btn-auth {
             padding: 14px;
             border-radius: 12px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            background: rgba(255, 255, 255, 0.05);
-            color: #fff;
+            border: 1px solid var(--color-border);
+            background: var(--ct-bg-surface);
+            color: var(--color-text);
             font-weight: 600;
             cursor: pointer;
             transition: background 0.2s;
           }
 
           .btn-auth:hover {
-            background: rgba(255, 255, 255, 0.1);
+            background: var(--color-bg-warm);
           }
 
           .btn-primary {
@@ -1479,7 +1480,7 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
             padding: 12px;
             border-radius: 12px;
             border: none;
-            background: var(--theme-button, #667eea);
+            background: var(--theme-button, var(--color-primary));
             color: #fff;
             font-weight: 600;
             cursor: pointer;
@@ -1497,16 +1498,16 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
           .btn-secondary {
             padding: 8px 16px;
             border-radius: 20px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            border: 1px solid var(--color-border);
             background: transparent;
-            color: #e8e8e8;
+            color: var(--color-text);
             font-size: 13px;
             cursor: pointer;
             transition: background 0.2s;
           }
 
           .btn-secondary:hover {
-            background: rgba(255, 255, 255, 0.1);
+            background: var(--color-bg-warm);
           }
 
           .btn-secondary:disabled {
@@ -1525,7 +1526,7 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
             justify-content: space-between;
             align-items: center;
             padding: 12px;
-            background: rgba(255, 255, 255, 0.03);
+            background: var(--color-bg-warm);
             border-radius: 12px;
           }
 
@@ -1538,21 +1539,21 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
             width: 32px;
             height: 32px;
             border-radius: 8px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            border: 1px solid var(--color-border);
             background: transparent;
-            color: #e8e8e8;
+            color: var(--color-text);
             font-size: 18px;
             cursor: pointer;
           }
 
           .cart-actions button:hover {
-            background: rgba(255, 255, 255, 0.1);
+            background: var(--color-bg-warm);
           }
 
           .cart-footer {
             margin-top: 16px;
             padding-top: 16px;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            border-top: 1px solid var(--color-border);
           }
 
           .cart-total {
@@ -1567,7 +1568,7 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
             padding: 16px;
             border-radius: 14px;
             border: none;
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            background: var(--ct-gradient-primary);
             color: #fff;
             font-weight: 700;
             font-size: 15px;
@@ -1648,7 +1649,7 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
 
           .price {
             font-weight: 700;
-            color: var(--theme-accent, #a78bfa);
+            color: var(--theme-accent, var(--color-accent));
           }
 
           .history-header {
@@ -1660,7 +1661,7 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
             justify-content: space-between;
             align-items: center;
             padding: 14px;
-            background: rgba(255, 255, 255, 0.03);
+            background: var(--color-bg-warm);
             border-radius: 12px;
             margin-top: 12px;
           }

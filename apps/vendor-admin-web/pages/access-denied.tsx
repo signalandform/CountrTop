@@ -41,14 +41,14 @@ export default function AccessDeniedPage() {
             display: flex;
             align-items: center;
             justify-content: center;
-            background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 50%, #16213e 100%);
-            color: #e8e8e8;
-            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+          background: var(--ct-bg-primary);
+          color: var(--ct-text);
+          font-family: var(--ct-font-body);
             padding: 24px;
           }
 
           .access-denied-container {
-            background: rgba(255, 255, 255, 0.03);
+          background: var(--ct-bg-surface);
             border: 1px solid rgba(239, 68, 68, 0.3);
             border-radius: 16px;
             padding: 48px;
@@ -67,11 +67,11 @@ export default function AccessDeniedPage() {
           p {
             margin: 0 0 12px;
             font-size: 16px;
-            color: #ccc;
+          color: var(--color-text-muted);
           }
 
           .muted {
-            color: #888;
+          color: var(--color-text-muted);
             font-size: 14px;
           }
 
@@ -79,9 +79,9 @@ export default function AccessDeniedPage() {
             margin-top: 24px;
             padding: 12px 24px;
             border-radius: 12px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            background: rgba(255, 255, 255, 0.05);
-            color: #e8e8e8;
+          border: 1px solid var(--color-border);
+          background: var(--color-bg-warm);
+          color: var(--color-text);
             font-weight: 600;
             font-size: 14px;
             cursor: pointer;
@@ -90,7 +90,7 @@ export default function AccessDeniedPage() {
           }
 
           .btn-signout:hover {
-            background: rgba(255, 255, 255, 0.1);
+          background: rgba(232, 93, 4, 0.12);
           }
         `}</style>
       </main>

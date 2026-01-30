@@ -25,13 +25,13 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
 
   // Theming state
   const [logoUrl, setLogoUrl] = useState(vendor.logoUrl || '');
-  const [primaryColor, setPrimaryColor] = useState(vendor.primaryColor || '#667eea');
-  const [accentColor, setAccentColor] = useState(vendor.accentColor || '#a78bfa');
-  const [fontFamily, setFontFamily] = useState(vendor.fontFamily || 'SF Pro Display');
+  const [primaryColor, setPrimaryColor] = useState(vendor.primaryColor || '#E85D04');
+  const [accentColor, setAccentColor] = useState(vendor.accentColor || '#FFB627');
+  const [fontFamily, setFontFamily] = useState(vendor.fontFamily || 'DM Sans');
 
   // Google Font URL for preview (memoized to avoid re-renders)
   const googleFontUrl = useMemo(() => {
-    if (!fontFamily || fontFamily === 'SF Pro Display' || fontFamily === 'system-ui') {
+    if (!fontFamily || ['SF Pro Display', 'system-ui', 'DM Sans', 'Anybody'].includes(fontFamily)) {
       return null;
     }
     return `https://fonts.googleapis.com/css2?family=${encodeURIComponent(fontFamily)}:wght@400;500;600;700&display=swap`;
@@ -255,7 +255,7 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
                     }}
                     className="form-input color-text"
                     disabled={saving}
-                    placeholder="#667eea"
+                    placeholder="#E85D04"
                   />
                 </div>
                 <small className="form-hint">Color for buttons and CTAs</small>
@@ -283,7 +283,7 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
                     }}
                     className="form-input color-text"
                     disabled={saving}
-                    placeholder="#a78bfa"
+                    placeholder="#FFB627"
                   />
                 </div>
                 <small className="form-hint">Color for text highlights and badges</small>
@@ -298,7 +298,8 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
                   className="form-input"
                   disabled={saving}
                 >
-                  <option value="SF Pro Display">SF Pro Display (Default)</option>
+                  <option value="DM Sans">DM Sans (Default)</option>
+                  <option value="Anybody">Anybody (Display)</option>
                   <option value="Inter">Inter</option>
                   <option value="Poppins">Poppins</option>
                   <option value="Roboto">Roboto</option>
@@ -306,6 +307,7 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
                   <option value="Montserrat">Montserrat</option>
                   <option value="Lato">Lato</option>
                   <option value="Playfair Display">Playfair Display</option>
+                  <option value="SF Pro Display">SF Pro Display</option>
                 </select>
                 <small className="form-hint">Font for customer-facing text</small>
               </div>
@@ -317,7 +319,7 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
               <div 
                 className="preview-box"
                 style={{
-                  background: '#0c0c0c',
+                  background: '#FFF8F0',
                   fontFamily: `'${fontFamily}', -apple-system, BlinkMacSystemFont, sans-serif`
                 }}
               >
@@ -627,34 +629,34 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
       <style jsx global>{`
         .page {
           min-height: 100vh;
-          background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 50%, #16213e 100%);
-          color: #e8e8e8;
-          font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+          background: var(--ct-bg-primary);
+          color: var(--ct-text);
+          font-family: var(--ct-font-body);
         }
 
         .page-header {
           padding: 32px 48px;
-          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+          border-bottom: 1px solid var(--color-border);
         }
 
         .back-link {
           display: inline-block;
           margin-bottom: 16px;
-          color: #a78bfa;
+          color: var(--color-accent);
           text-decoration: none;
           font-size: 14px;
           transition: color 0.2s;
         }
 
         .back-link:hover {
-          color: #c4b5fd;
+          color: var(--color-primary);
         }
 
         .page-header h1 {
           font-size: 32px;
           font-weight: 700;
           margin: 0 0 4px;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          background: var(--ct-gradient-primary);
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
           background-clip: text;
@@ -662,7 +664,7 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
 
         .page-subtitle {
           font-size: 14px;
-          color: #888;
+          color: var(--color-text-muted);
           margin: 0;
         }
 
@@ -679,27 +681,27 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
         }
 
         .form-section {
-          background: rgba(255, 255, 255, 0.03);
-          border: 1px solid rgba(255, 255, 255, 0.1);
+          background: var(--ct-bg-surface);
+          border: 1px solid var(--color-border);
           border-radius: 16px;
           padding: 32px;
         }
 
         .form-section.highlight {
-          background: rgba(102, 126, 234, 0.05);
-          border-color: rgba(102, 126, 234, 0.2);
+          background: rgba(232, 93, 4, 0.08);
+          border-color: rgba(232, 93, 4, 0.25);
         }
 
         .form-section h2 {
           font-size: 20px;
           font-weight: 600;
           margin: 0 0 8px;
-          color: #e8e8e8;
+          color: var(--color-text);
         }
 
         .section-description {
           font-size: 14px;
-          color: #888;
+          color: var(--color-text-muted);
           margin: 0 0 24px;
         }
 
@@ -722,15 +724,15 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
         .form-group label {
           font-size: 14px;
           font-weight: 600;
-          color: #e8e8e8;
+          color: var(--color-text);
         }
 
         .form-input {
           padding: 12px 16px;
           border-radius: 8px;
-          border: 1px solid rgba(255, 255, 255, 0.2);
-          background: rgba(255, 255, 255, 0.05);
-          color: #e8e8e8;
+          border: 1px solid var(--color-border);
+          background: var(--ct-bg-surface);
+          color: var(--color-text);
           font-size: 14px;
           font-family: inherit;
           transition: border-color 0.2s;
@@ -739,7 +741,7 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
 
         .form-input:focus {
           outline: none;
-          border-color: #667eea;
+          border-color: var(--color-primary);
         }
 
         .form-input:disabled {
@@ -748,7 +750,7 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
         }
 
         .form-input::placeholder {
-          color: #666;
+          color: var(--color-text-muted);
         }
 
         textarea.form-input {
@@ -758,7 +760,7 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
 
         .form-hint {
           font-size: 12px;
-          color: #666;
+          color: var(--color-text-muted);
         }
 
         /* Color inputs */
@@ -772,7 +774,7 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
           width: 48px;
           height: 48px;
           padding: 0;
-          border: 2px solid rgba(255, 255, 255, 0.2);
+          border: 2px solid var(--color-border);
           border-radius: 10px;
           cursor: pointer;
           background: transparent;
@@ -797,7 +799,7 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
         .preview-container {
           margin-top: 24px;
           padding-top: 24px;
-          border-top: 1px solid rgba(255, 255, 255, 0.1);
+          border-top: 1px solid var(--color-border);
         }
 
         .preview-label {
@@ -805,7 +807,7 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
           font-weight: 600;
           text-transform: uppercase;
           letter-spacing: 1px;
-          color: #888;
+          color: var(--color-text-muted);
           margin-bottom: 16px;
         }
 
@@ -813,7 +815,7 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
           padding: 32px;
           border-radius: 16px;
           text-align: center;
-          color: white;
+          color: var(--color-text);
         }
 
         .preview-logo {
@@ -832,7 +834,7 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
 
         .preview-subtitle {
           font-size: 16px;
-          color: #888;
+          color: var(--color-text-muted);
           margin-bottom: 12px;
         }
 
@@ -865,15 +867,15 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
           gap: 16px;
           padding: 16px;
           border-radius: 12px;
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          background: rgba(255, 255, 255, 0.03);
+          border: 1px solid var(--color-border);
+          background: var(--ct-bg-surface);
           cursor: pointer;
           transition: all 0.2s;
         }
 
         .flag-card:hover {
-          background: rgba(255, 255, 255, 0.06);
-          border-color: rgba(255, 255, 255, 0.2);
+          background: var(--color-bg-warm);
+          border-color: rgba(232, 93, 4, 0.2);
         }
 
         .flag-card input[type="checkbox"] {
@@ -897,13 +899,13 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
           display: block;
           font-size: 14px;
           font-weight: 600;
-          color: #e8e8e8;
+          color: var(--color-text);
         }
 
         .flag-description {
           display: block;
           font-size: 12px;
-          color: #888;
+          color: var(--color-text-muted);
           margin-top: 2px;
         }
 
@@ -917,8 +919,8 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
         .location-card {
           padding: 20px;
           border-radius: 12px;
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          background: rgba(255, 255, 255, 0.03);
+          border: 1px solid var(--color-border);
+          background: var(--ct-bg-surface);
         }
 
         .location-header {
@@ -931,7 +933,7 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
         .location-name {
           font-size: 16px;
           font-weight: 600;
-          color: #e8e8e8;
+          color: var(--color-text);
         }
 
         .pin-badge {
@@ -942,19 +944,19 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
         }
 
         .pin-badge.set {
-          background: rgba(74, 222, 128, 0.2);
-          color: #4ade80;
+          background: rgba(16, 185, 129, 0.18);
+          color: var(--color-success);
         }
 
         .pin-badge.unset {
-          background: rgba(255, 255, 255, 0.1);
-          color: #888;
+          background: var(--color-bg-warm);
+          color: var(--color-text-muted);
         }
 
         .location-id {
           font-size: 12px;
           font-family: monospace;
-          color: #666;
+          color: var(--color-text-muted);
           margin-bottom: 16px;
         }
 
@@ -967,9 +969,9 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
           flex: 1;
           padding: 12px 16px;
           border-radius: 8px;
-          border: 1px solid rgba(255, 255, 255, 0.2);
-          background: rgba(255, 255, 255, 0.05);
-          color: #e8e8e8;
+          border: 1px solid var(--color-border);
+          background: var(--ct-bg-surface);
+          color: var(--color-text);
           font-size: 18px;
           font-family: monospace;
           text-align: center;
@@ -978,7 +980,7 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
 
         .pin-input:focus {
           outline: none;
-          border-color: #667eea;
+          border-color: var(--color-primary);
         }
 
         .pin-input.error {
@@ -989,7 +991,7 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
           padding: 12px 20px;
           border-radius: 8px;
           border: none;
-          background: #667eea;
+          background: var(--color-primary);
           color: white;
           font-weight: 600;
           font-size: 14px;
@@ -999,7 +1001,7 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
         }
 
         .btn-pin:hover:not(:disabled) {
-          background: #5568d3;
+          background: var(--color-primary-dark);
         }
 
         .btn-pin:disabled {
@@ -1033,15 +1035,15 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
           justify-content: flex-end;
           gap: 16px;
           padding-top: 24px;
-          border-top: 1px solid rgba(255, 255, 255, 0.1);
+          border-top: 1px solid var(--color-border);
         }
 
         .btn-cancel {
           padding: 14px 28px;
           border-radius: 10px;
-          border: 1px solid rgba(255, 255, 255, 0.2);
-          background: rgba(255, 255, 255, 0.05);
-          color: #e8e8e8;
+          border: 1px solid var(--color-border);
+          background: var(--color-bg-warm);
+          color: var(--color-text);
           text-decoration: none;
           font-weight: 600;
           font-size: 14px;
@@ -1050,14 +1052,14 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
         }
 
         .btn-cancel:hover {
-          background: rgba(255, 255, 255, 0.1);
+          background: rgba(232, 93, 4, 0.12);
         }
 
         .btn-submit {
           padding: 14px 32px;
           border-radius: 10px;
           border: none;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          background: var(--ct-gradient-primary);
           color: white;
           font-weight: 600;
           font-size: 15px;
@@ -1071,7 +1073,7 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
 
         .btn-submit:hover:not(:disabled) {
           transform: translateY(-2px);
-          box-shadow: 0 8px 24px rgba(102, 126, 234, 0.3);
+          box-shadow: 0 8px 24px rgba(232, 93, 4, 0.3);
         }
 
         .btn-submit:disabled {
@@ -1094,7 +1096,7 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
         }
 
         .muted {
-          color: #888;
+          color: var(--color-text-muted);
           font-size: 14px;
         }
 

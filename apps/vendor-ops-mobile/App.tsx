@@ -3,7 +3,7 @@ import { SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } fr
 import { StatusBar } from 'expo-status-bar';
 
 import { OpsOrder, validateEnvProduction, vendorOpsMobileEnvSchema } from '@countrtop/models';
-import { ErrorBoundary } from '@countrtop/ui';
+import { ErrorBoundary, brandTheme } from '@countrtop/ui';
 
 // Validate environment variables on startup (warn in development, fail in production)
 if (__DEV__) {
@@ -32,6 +32,7 @@ const resolveApiBaseUrl = () => process.env.EXPO_PUBLIC_API_BASE_URL ?? 'http://
 const vendorSlug = process.env.EXPO_PUBLIC_VENDOR_SLUG ?? 'sunset';
 
 export default function VendorOpsApp() {
+  const { colors, spacing } = brandTheme;
   const [orders, setOrders] = useState<OrderTicket[]>([]);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [orderStatus, setOrderStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
@@ -107,76 +108,77 @@ export default function VendorOpsApp() {
         // Example: Sentry.captureException(error, { contexts: { react: errorInfo } });
       }}
     >
-      <SafeAreaView style={styles.container}>
-        <StatusBar style="light" />
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+        <StatusBar style="dark" />
         <View style={styles.header}>
-          <Text style={styles.title}>CountrTop Vendor Ops</Text>
-          <Text style={styles.subtitle}>Order queue + mark ready</Text>
+          <Text style={[styles.title, { color: colors.text }]}>CountrTop Vendor Ops</Text>
+          <Text style={[styles.subtitle, { color: colors.textMuted }]}>Order queue + mark ready</Text>
         </View>
-        <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.card}>
+        <ScrollView contentContainerStyle={[styles.scrollContent, { padding: spacing.lg }]}>
+        <View style={[styles.card, { backgroundColor: colors.backgroundWarm, borderColor: colors.border }]}>
           <View style={styles.cardHeader}>
-            <Text style={styles.cardTitle}>Order queue</Text>
-            <TouchableOpacity style={styles.refreshButton} onPress={loadOrders}>
-              <Text style={styles.refreshButtonText}>Refresh</Text>
+            <Text style={[styles.cardTitle, { color: colors.text }]}>Order queue</Text>
+            <TouchableOpacity style={[styles.refreshButton, { backgroundColor: colors.background, borderColor: colors.border }]} onPress={loadOrders}>
+              <Text style={[styles.refreshButtonText, { color: colors.text }]}>Refresh</Text>
             </TouchableOpacity>
           </View>
-          {orderStatus === 'loading' && <Text style={styles.helperText}>Loading orders…</Text>}
-          {orderStatus === 'error' && <Text style={styles.helperText}>{orderError}</Text>}
+          {orderStatus === 'loading' && <Text style={[styles.helperText, { color: colors.textMuted }]}>Loading orders…</Text>}
+          {orderStatus === 'error' && <Text style={[styles.helperText, { color: colors.textMuted }]}>{orderError}</Text>}
           {orderError && orderStatus !== 'error' && (
-            <Text style={[styles.helperText, styles.errorText]}>{orderError}</Text>
+            <Text style={[styles.helperText, { color: colors.textMuted }, styles.errorText]}>{orderError}</Text>
           )}
           {orders.map((order) => (
             <TouchableOpacity
               key={order.id}
               style={[
                 styles.orderRow,
-                selectedOrder?.id === order.id && { borderColor: '#38bdf8', borderWidth: 1 }
+                { backgroundColor: colors.background, borderColor: colors.border },
+                selectedOrder?.id === order.id && { borderColor: colors.primary, borderWidth: 1 }
               ]}
               onPress={() => setSelectedOrderId(order.id)}
             >
               <View style={{ flex: 1 }}>
-                <Text style={styles.orderId}>#{order.id}</Text>
-                <Text style={styles.orderMeta}>
+                <Text style={[styles.orderId, { color: colors.text }]}>#{order.id}</Text>
+                <Text style={[styles.orderMeta, { color: colors.textMuted }]}>
                   {order.items.length} items • {formatCurrency(order.total)}
                 </Text>
               </View>
-              <View style={styles.statusPill}>
+              <View style={[styles.statusPill, { backgroundColor: colors.accent }]}>
                 <Text style={styles.statusPillText}>{order.status.toUpperCase()}</Text>
               </View>
             </TouchableOpacity>
           ))}
           {orderStatus === 'ready' && orders.length === 0 && (
-            <Text style={styles.helperText}>No active orders.</Text>
+            <Text style={[styles.helperText, { color: colors.textMuted }]}>No active orders.</Text>
           )}
         </View>
 
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Order detail</Text>
+        <View style={[styles.card, { backgroundColor: colors.backgroundWarm, borderColor: colors.border }]}>
+          <Text style={[styles.cardTitle, { color: colors.text }]}>Order detail</Text>
           {selectedOrder ? (
             <>
-              <Text style={styles.orderId}>Order #{selectedOrder.squareOrderId.slice(-6)}</Text>
-              <Text style={styles.orderMeta}>
+              <Text style={[styles.orderId, { color: colors.text }]}>Order #{selectedOrder.squareOrderId.slice(-6)}</Text>
+              <Text style={[styles.orderMeta, { color: colors.textMuted }]}>
                 Placed {new Date(selectedOrder.placedAt).toLocaleTimeString()}
               </Text>
               <View style={{ marginTop: 12 }}>
                 {selectedOrder.items.map((item, index) => (
                   <View key={`${item.name}-${index}`} style={styles.itemRow}>
-                    <Text style={styles.itemName}>
+                    <Text style={[styles.itemName, { color: colors.text }]}>
                       {item.quantity} × {item.name}
                     </Text>
-                    <Text style={styles.itemPrice}>{formatCurrency(item.price * item.quantity)}</Text>
+                    <Text style={[styles.itemPrice, { color: colors.textMuted }]}>{formatCurrency(item.price * item.quantity)}</Text>
                   </View>
                 ))}
               </View>
-              <Text style={[styles.orderMeta, { marginTop: 12 }]}>
+              <Text style={[styles.orderMeta, { color: colors.textMuted, marginTop: 12 }]}>
                 Total {formatCurrency(selectedOrder.total)}
               </Text>
-              <Text style={[styles.orderMeta, { marginTop: 4 }]}>
-                Status: <Text style={{ fontWeight: '600' }}>{selectedOrder.status}</Text>
+              <Text style={[styles.orderMeta, { color: colors.textMuted, marginTop: 4 }]}>
+                Status: <Text style={{ fontWeight: '600', color: colors.text }}>{selectedOrder.status}</Text>
               </Text>
               <TouchableOpacity
-                style={[styles.primaryButton, { marginTop: 16 }]}
+                style={[styles.primaryButton, { backgroundColor: colors.primary, marginTop: 16 }]}
                 disabled={selectedOrder.status === 'ready'}
                 onPress={() => markReady(selectedOrder.id)}
               >
@@ -186,7 +188,7 @@ export default function VendorOpsApp() {
               </TouchableOpacity>
             </>
           ) : (
-            <Text style={styles.helperText}>Select an order to review details.</Text>
+            <Text style={[styles.helperText, { color: colors.textMuted }]}>Select an order to review details.</Text>
           )}
         </View>
       </ScrollView>
@@ -198,7 +200,7 @@ export default function VendorOpsApp() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0f172a'
+    backgroundColor: '#FEFDFB'
   },
   header: {
     paddingHorizontal: 24,
@@ -206,29 +208,27 @@ const styles = StyleSheet.create({
     paddingBottom: 8
   },
   title: {
-    color: '#fff',
     fontSize: 26,
     fontWeight: '700'
   },
   subtitle: {
-    color: '#94a3b8'
+    fontSize: 14
   },
   scrollContent: {
-    padding: 24,
     paddingBottom: 120,
     gap: 16
   },
   card: {
-    backgroundColor: '#111827',
+    backgroundColor: '#FFF8F0',
     borderRadius: 16,
     padding: 20,
-    shadowColor: '#000',
-    shadowOpacity: 0.3,
+    borderWidth: 1,
+    shadowColor: '#0F0F1A',
+    shadowOpacity: 0.08,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 6 }
   },
   cardTitle: {
-    color: '#fff',
     fontSize: 16,
     fontWeight: '600',
     marginBottom: 12
@@ -243,38 +243,33 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     paddingHorizontal: 12,
     paddingVertical: 6,
-    backgroundColor: '#1f2937'
+    borderWidth: 1
   },
   refreshButtonText: {
-    color: '#e2e8f0',
     fontSize: 12,
     fontWeight: '600'
   },
   helperText: {
-    color: '#94a3b8',
     marginTop: 8
   },
   errorText: {
-    color: '#fecaca'
+    color: '#DC2626'
   },
   orderRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1f2937',
     padding: 12,
     borderRadius: 12,
-    marginBottom: 12
+    marginBottom: 12,
+    borderWidth: 1
   },
   orderId: {
-    color: '#f8fafc',
     fontWeight: '700'
   },
   orderMeta: {
-    color: '#cbd5f5',
     fontSize: 13
   },
   statusPill: {
-    backgroundColor: '#0ea5e9',
     borderRadius: 999,
     paddingHorizontal: 12,
     paddingVertical: 4
@@ -290,19 +285,18 @@ const styles = StyleSheet.create({
     paddingVertical: 6
   },
   itemName: {
-    color: '#fff'
+    fontSize: 14
   },
   itemPrice: {
-    color: '#cbd5f5'
+    fontSize: 14
   },
   primaryButton: {
-    backgroundColor: '#38bdf8',
     borderRadius: 999,
     paddingHorizontal: 20,
     paddingVertical: 12
   },
   primaryButtonText: {
-    color: '#0f172a',
+    color: '#fff',
     fontWeight: '700',
     textAlign: 'center'
   }

@@ -7,19 +7,9 @@ type StatCardProps = {
 };
 
 export const StatCard: React.FC<StatCardProps> = ({ label, value, helperText }) => (
-  <div
-    style={{
-      border: '1px solid #e5e7eb',
-      borderRadius: 12,
-      padding: 16,
-      display: 'flex',
-      flexDirection: 'column',
-      gap: 4,
-      background: '#f9fafb'
-    }}
-  >
-    <span style={{ color: '#6b7280', fontSize: 12 }}>{label}</span>
-    <strong style={{ fontSize: 22 }}>{value}</strong>
-    {helperText ? <span style={{ color: '#9ca3af', fontSize: 12 }}>{helperText}</span> : null}
+  <div className="ct-stat-card">
+    <span className="ct-stat-label">{label}</span>
+    <strong className="ct-stat-value">{value}</strong>
+    {helperText ? <span className="ct-stat-helper">{helperText}</span> : null}
   </div>
 );

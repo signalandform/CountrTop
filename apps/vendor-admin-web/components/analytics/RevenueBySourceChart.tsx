@@ -90,19 +90,19 @@ export function RevenueBySourceChart({ data, loading }: RevenueBySourceChartProp
 
       <ResponsiveContainer width="100%" height={250}>
         <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.1)" />
-          <XAxis dataKey="source" stroke="#888" tick={{ fill: '#888', fontSize: 12 }} />
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+          <XAxis dataKey="source" stroke="var(--color-text-muted)" tick={{ fill: 'var(--color-text-muted)', fontSize: 12 }} />
           <YAxis
-            stroke="#888"
-            tick={{ fill: '#888', fontSize: 12 }}
+            stroke="var(--color-text-muted)"
+            tick={{ fill: 'var(--color-text-muted)', fontSize: 12 }}
             tickFormatter={(value) => `$${value.toFixed(0)}`}
           />
           <Tooltip
             contentStyle={{
-              backgroundColor: 'rgba(0, 0, 0, 0.9)',
-              border: '1px solid rgba(255, 255, 255, 0.2)',
+              backgroundColor: '#FFFFFF',
+              border: '1px solid var(--color-border)',
               borderRadius: '8px',
-              color: '#e8e8e8'
+              color: 'var(--color-text)'
             }}
             formatter={(value: number | undefined) => {
               if (value === undefined || value === null) return 'N/A';
@@ -110,14 +110,14 @@ export function RevenueBySourceChart({ data, loading }: RevenueBySourceChartProp
             }}
           />
           <Legend />
-          <Bar dataKey="revenue" fill="#667eea" name="Revenue ($)" />
+          <Bar dataKey="revenue" fill="var(--color-primary)" name="Revenue ($)" />
         </BarChart>
       </ResponsiveContainer>
 
       <style jsx>{`
         .comparison-container {
-          background: rgba(255, 255, 255, 0.03);
-          border: 1px solid rgba(255, 255, 255, 0.1);
+          background: var(--ct-bg-surface);
+          border: 1px solid var(--color-border);
           border-radius: 12px;
           padding: 20px;
         }
@@ -127,7 +127,7 @@ export function RevenueBySourceChart({ data, loading }: RevenueBySourceChartProp
           align-items: center;
           justify-content: center;
           height: 250px;
-          color: #888;
+          color: var(--color-text-muted);
           font-size: 14px;
         }
 
@@ -139,21 +139,21 @@ export function RevenueBySourceChart({ data, loading }: RevenueBySourceChartProp
         }
 
         .comparison-card {
-          background: rgba(255, 255, 255, 0.05);
-          border: 1px solid rgba(255, 255, 255, 0.1);
+          background: var(--ct-bg-surface);
+          border: 1px solid var(--color-border);
           border-radius: 8px;
           padding: 16px;
         }
 
         .comparison-card.accent {
-          background: linear-gradient(135deg, rgba(102, 126, 234, 0.2) 0%, rgba(118, 75, 162, 0.2) 100%);
-          border-color: rgba(102, 126, 234, 0.3);
+          background: rgba(232, 93, 4, 0.12);
+          border-color: rgba(232, 93, 4, 0.3);
         }
 
         .comparison-label {
           font-size: 12px;
           font-weight: 500;
-          color: #888;
+          color: var(--color-text-muted);
           text-transform: uppercase;
           letter-spacing: 0.5px;
           margin-bottom: 8px;
@@ -162,7 +162,7 @@ export function RevenueBySourceChart({ data, loading }: RevenueBySourceChartProp
         .comparison-value {
           font-size: 32px;
           font-weight: 700;
-          color: #e8e8e8;
+          color: var(--color-text);
           margin-bottom: 12px;
         }
 
@@ -180,13 +180,13 @@ export function RevenueBySourceChart({ data, loading }: RevenueBySourceChartProp
 
         .metric-label {
           font-size: 12px;
-          color: #666;
+          color: var(--color-text-muted);
         }
 
         .metric-value {
           font-size: 14px;
           font-weight: 600;
-          color: #a78bfa;
+          color: var(--color-accent);
         }
       `}</style>
     </div>

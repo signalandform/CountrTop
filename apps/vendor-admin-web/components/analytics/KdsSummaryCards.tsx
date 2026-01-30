@@ -76,8 +76,8 @@ export function KdsSummaryCards({ summary, loading }: KdsSummaryCardsProps) {
         }
 
         .stat-card {
-          background: rgba(255, 255, 255, 0.03);
-          border: 1px solid rgba(255, 255, 255, 0.1);
+          background: var(--ct-bg-surface);
+          border: 1px solid var(--color-border);
           border-radius: 12px;
           padding: 20px;
           display: flex;
@@ -93,7 +93,7 @@ export function KdsSummaryCards({ summary, loading }: KdsSummaryCardsProps) {
         .stat-label {
           font-size: 12px;
           font-weight: 500;
-          color: #888;
+          color: var(--color-text-muted);
           text-transform: uppercase;
           letter-spacing: 0.5px;
         }
@@ -101,13 +101,13 @@ export function KdsSummaryCards({ summary, loading }: KdsSummaryCardsProps) {
         .stat-value {
           font-size: 24px;
           font-weight: 700;
-          color: #e8e8e8;
+          color: var(--color-text);
           line-height: 1.2;
         }
 
         .stat-helper {
           font-size: 12px;
-          color: #666;
+          color: var(--color-text-muted);
           margin-top: 4px;
         }
       `}</style>

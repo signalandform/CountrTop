@@ -46,35 +46,35 @@ export function CustomerLtvChart({ data, loading, limit = 20 }: CustomerLtvChart
       </div>
       <ResponsiveContainer width="100%" height={400}>
         <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 80 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.1)" />
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
           <XAxis
             dataKey="userId"
-            stroke="#888"
-            tick={{ fill: '#888', fontSize: 12 }}
+            stroke="var(--color-text-muted)"
+            tick={{ fill: 'var(--color-text-muted)', fontSize: 12 }}
             angle={-45}
             textAnchor="end"
             height={100}
           />
           <YAxis
             yAxisId="left"
-            stroke="#888"
-            tick={{ fill: '#888', fontSize: 12 }}
-            label={{ value: 'Revenue ($)', angle: -90, position: 'insideLeft', fill: '#888' }}
+            stroke="var(--color-text-muted)"
+            tick={{ fill: 'var(--color-text-muted)', fontSize: 12 }}
+            label={{ value: 'Revenue ($)', angle: -90, position: 'insideLeft', fill: 'var(--color-text-muted)' }}
             tickFormatter={(value) => `$${value.toFixed(0)}`}
           />
           <YAxis
             yAxisId="right"
             orientation="right"
-            stroke="#888"
-            tick={{ fill: '#888', fontSize: 12 }}
-            label={{ value: 'Orders', angle: 90, position: 'insideRight', fill: '#888' }}
+            stroke="var(--color-text-muted)"
+            tick={{ fill: 'var(--color-text-muted)', fontSize: 12 }}
+            label={{ value: 'Orders', angle: 90, position: 'insideRight', fill: 'var(--color-text-muted)' }}
           />
           <Tooltip
             contentStyle={{
-              backgroundColor: 'rgba(0, 0, 0, 0.9)',
-              border: '1px solid rgba(255, 255, 255, 0.2)',
+              backgroundColor: '#FFFFFF',
+              border: '1px solid var(--color-border)',
               borderRadius: '8px',
-              color: '#e8e8e8'
+              color: 'var(--color-text)'
             }}
             formatter={(value: number | undefined, name: string | undefined) => {
               if (value === undefined || value === null) return 'N/A';
@@ -88,13 +88,13 @@ export function CustomerLtvChart({ data, loading, limit = 20 }: CustomerLtvChart
           <Bar
             yAxisId="left"
             dataKey="totalRevenue"
-            fill="#667eea"
+            fill="var(--color-primary)"
             name="Total Revenue ($)"
           />
           <Bar
             yAxisId="right"
             dataKey="orderCount"
-            fill="#a78bfa"
+            fill="var(--color-accent)"
             name="Order Count"
           />
         </BarChart>
@@ -108,8 +108,8 @@ export function CustomerLtvChart({ data, loading, limit = 20 }: CustomerLtvChart
       <style jsx>{`
         .chart-container {
           width: 100%;
-          background: rgba(255, 255, 255, 0.03);
-          border: 1px solid rgba(255, 255, 255, 0.1);
+          background: var(--ct-bg-surface);
+          border: 1px solid var(--color-border);
           border-radius: 12px;
           padding: 20px;
         }
@@ -124,18 +124,18 @@ export function CustomerLtvChart({ data, loading, limit = 20 }: CustomerLtvChart
         .chart-header h3 {
           font-size: 18px;
           font-weight: 600;
-          color: #e8e8e8;
+          color: var(--color-text);
           margin: 0;
         }
 
         .scope-label {
           font-size: 12px;
           font-weight: 500;
-          color: #a78bfa;
-          background: rgba(167, 139, 250, 0.1);
+          color: var(--color-accent);
+          background: rgba(255, 182, 39, 0.18);
           padding: 4px 12px;
           border-radius: 4px;
-          border: 1px solid rgba(167, 139, 250, 0.2);
+          border: 1px solid rgba(255, 182, 39, 0.3);
         }
 
         .chart-loading,
@@ -144,7 +144,7 @@ export function CustomerLtvChart({ data, loading, limit = 20 }: CustomerLtvChart
           align-items: center;
           justify-content: center;
           height: 400px;
-          color: #888;
+          color: var(--color-text-muted);
           font-size: 14px;
         }
 
@@ -152,7 +152,7 @@ export function CustomerLtvChart({ data, loading, limit = 20 }: CustomerLtvChart
           margin-top: 12px;
           text-align: center;
           font-size: 12px;
-          color: #666;
+          color: var(--color-text-muted);
         }
       `}</style>
     </div>
