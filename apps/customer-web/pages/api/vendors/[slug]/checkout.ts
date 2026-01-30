@@ -20,6 +20,7 @@ type CheckoutItem = {
 type CheckoutRequest = {
   items: CheckoutItem[];
   userId?: string | null;
+  locationId?: string | null;
 };
 
 type CheckoutResponse =
@@ -76,7 +77,20 @@ async function handler(req: NextApiRequest, res: NextApiResponse<CheckoutRespons
   }
 
   try {
-    const locationId = vendor.squareLocationId;
+    let locationId = vendor.squareLocationId;
+    if (body.locationId) {
+      const locations = await dataClient.listVendorLocations(vendor.id);
+      const matched = locations.find(
+        (loc) => loc.squareLocationId === body.locationId || loc.externalLocationId === body.locationId
+      );
+      if (!matched) {
+        return res.status(400).json({ ok: false, error: 'Invalid pickup location' });
+      }
+      if (matched.onlineOrderingEnabled === false) {
+        return res.status(400).json({ ok: false, error: 'Online ordering is disabled for this location' });
+      }
+      locationId = matched.squareLocationId || matched.externalLocationId || locationId;
+    }
     if (!locationId || locationId === 'SQUARE_LOCATION_DEMO') {
       return res.status(400).json({ ok: false, error: 'Vendor Square location id not configured' });
     }

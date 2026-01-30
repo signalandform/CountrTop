@@ -7,6 +7,7 @@ import { resolveVendorSlugFromHost, type Database } from '@countrtop/data';
 import { CartItem, MenuItem, OrderHistoryEntry, Vendor } from '@countrtop/models';
 import { useAuth } from '@countrtop/ui';
 import { getServerDataClient } from '../lib/dataClient';
+import { getHoursStatus } from '../lib/hours';
 import { getBrowserSupabaseClient } from '../lib/supabaseBrowser';
 import { OrderStatusTracker, OrderStatusState } from '../components/OrderStatusTracker';
 
@@ -21,6 +22,11 @@ type LocationOption = {
   isPrimary: boolean;
   address?: string;
   pickupInstructions?: string | null;
+  phone?: string | null;
+  timezone?: string | null;
+  onlineOrderingEnabled?: boolean;
+  onlineOrderingLeadTimeMinutes?: number | null;
+  onlineOrderingHoursJson?: Record<string, unknown> | null;
 };
 
 type Props = {
@@ -84,10 +90,9 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req }) => 
       
       const { data: locationRows } = await supabase
         .from('vendor_locations')
-        .select('id, square_location_id, name, is_primary, address_line1, city, state, pickup_instructions')
+        .select('id, square_location_id, name, is_primary, address_line1, city, state, pickup_instructions, phone, timezone, online_ordering_enabled, online_ordering_lead_time_minutes, online_ordering_hours_json')
         .eq('vendor_id', rawVendor.id)
         .eq('is_active', true)
-        .eq('online_ordering_enabled', true)
         .order('is_primary', { ascending: false })
         .order('name', { ascending: true });
 
@@ -98,7 +103,12 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req }) => 
           name: loc.name,
           isPrimary: loc.is_primary,
           address: [loc.address_line1, loc.city, loc.state].filter(Boolean).join(', ') || undefined,
-          pickupInstructions: loc.pickup_instructions
+          pickupInstructions: loc.pickup_instructions,
+          phone: loc.phone ?? null,
+          timezone: loc.timezone ?? null,
+          onlineOrderingEnabled: loc.online_ordering_enabled,
+          onlineOrderingLeadTimeMinutes: loc.online_ordering_lead_time_minutes ?? null,
+          onlineOrderingHoursJson: loc.online_ordering_hours_json ?? null
         }));
       }
     }
@@ -111,7 +121,12 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req }) => 
         name: rawVendor.displayName,
         isPrimary: true,
         address: [rawVendor.addressLine1, rawVendor.city, rawVendor.state].filter(Boolean).join(', ') || undefined,
-        pickupInstructions: rawVendor.pickupInstructions ?? null
+        pickupInstructions: rawVendor.pickupInstructions ?? null,
+        phone: rawVendor.phone ?? null,
+        timezone: rawVendor.timezone ?? null,
+        onlineOrderingEnabled: true,
+        onlineOrderingLeadTimeMinutes: 15,
+        onlineOrderingHoursJson: null
       }];
     }
   }
@@ -140,6 +155,18 @@ const friendlyError = (err: unknown, fallback: string): string => {
   }
   return typeof err === 'string' && err.trim() ? err : fallback;
 };
+
+const buildMapsUrl = (query: string): string => {
+  const trimmed = query.trim();
+  if (!trimmed) return 'https://www.google.com/maps';
+  const isIOS = typeof window !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent);
+  return isIOS
+    ? `https://maps.apple.com/?q=${encodeURIComponent(trimmed)}`
+    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(trimmed)}`;
+};
+
+const normalizePhone = (phone: string): string =>
+  phone.replace(/[^\d+]/g, '').trim();
 
 // Simple fetch wrapper with error handling
 async function apiFetch<T>(url: string): Promise<{ ok: true; data: T } | { ok: false; error: string }> {
@@ -420,6 +447,10 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
   // Cart actions
   // ---------------------------------------------------------------------------
   const addToCart = (item: MenuItem) => {
+    if (!canOrder) {
+      setNotice({ type: 'warning', message: 'Ordering is currently unavailable.' });
+      return;
+    }
     setCart((prev) => {
       const existing = prev.find((i) => i.id === item.id);
       if (existing) {
@@ -436,7 +467,7 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
   };
 
   const handleCheckout = async () => {
-    if (!vendorSlug || cart.length === 0 || checkingOut || !pickupConfirmed) return;
+    if (!vendorSlug || cart.length === 0 || checkingOut || !pickupConfirmed || !canOrder) return;
     setCheckoutError(null);
     setCheckingOut(true);
 
@@ -446,6 +477,7 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userId: user?.id ?? null,
+          locationId: selectedLocation?.squareLocationId,
           items: cart.map((i) => ({
             id: i.id,
             name: i.name,
@@ -473,7 +505,12 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
           squareOrderId: data.squareOrderId,
           items: cart.map((i) => ({ id: i.id, name: i.name, quantity: i.quantity, price: i.price })),
           total: cartTotal,
-          currency: cartCurrency
+          currency: cartCurrency,
+          pickupLocationName: selectedLocation?.name ?? vendorName,
+          pickupAddress: locationAddress,
+          pickupInstructions: selectedLocation?.pickupInstructions ?? vendor?.pickupInstructions ?? null,
+          contactPhone: contactPhone || null,
+          leadTimeMinutes: pickupEtaMinutes ?? null
         })
       );
       window.location.href = data.checkoutUrl;
@@ -552,6 +589,75 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
   }, [primaryColor, accentColor, fontFamily]);
 
   // ---------------------------------------------------------------------------
+  // Storefront readiness + hours
+  // ---------------------------------------------------------------------------
+  const vendorAddress = useMemo(
+    () =>
+      vendor
+        ? [vendor.addressLine1, vendor.city, vendor.state, vendor.postalCode].filter(Boolean).join(', ')
+        : '',
+    [vendor]
+  );
+
+  const locationAddress = selectedLocation?.address || vendorAddress;
+  const contactPhone = selectedLocation?.phone || vendor?.phone || '';
+  const mapsQuery = locationAddress || `${vendorName} ${selectedLocation?.name ?? ''}`.trim();
+  const mapsUrl = buildMapsUrl(mapsQuery);
+
+  const hoursStatus = useMemo(
+    () => getHoursStatus(
+      selectedLocation?.onlineOrderingHoursJson,
+      selectedLocation?.timezone ?? vendor?.timezone ?? undefined
+    ),
+    [selectedLocation?.onlineOrderingHoursJson, selectedLocation?.timezone, vendor?.timezone]
+  );
+
+  const onlineOrderingEnabled = selectedLocation?.onlineOrderingEnabled ?? true;
+  const pickupEtaMinutes = selectedLocation?.onlineOrderingLeadTimeMinutes ?? 15;
+
+  type StorefrontState = 'ordering' | 'not_accepting' | 'closed' | 'menu_syncing' | 'network_error';
+  const storefrontState: StorefrontState = useMemo(() => {
+    if (menuError && menu.length === 0) return 'network_error';
+    if (!onlineOrderingEnabled || vendor?.status === 'inactive') return 'not_accepting';
+    if (hoursStatus?.isOpen === false) return 'closed';
+    if (menuLoading && menu.length === 0) return 'menu_syncing';
+    if (!menuLoading && menu.length === 0) return 'menu_syncing';
+    return 'ordering';
+  }, [menuError, menu.length, onlineOrderingEnabled, vendor?.status, hoursStatus?.isOpen, menuLoading]);
+
+  const canOrder = storefrontState === 'ordering';
+  const storefrontBadge =
+    storefrontState === 'ordering'
+      ? 'Ordering available'
+      : storefrontState === 'not_accepting'
+        ? 'Not accepting orders'
+        : storefrontState === 'closed'
+          ? 'Closed'
+          : storefrontState === 'menu_syncing'
+            ? 'Menu syncing'
+            : 'Network issue';
+
+  const storefrontMessage =
+    storefrontState === 'ordering'
+      ? 'Ordering is available. Add items below to place a pickup order.'
+      : storefrontState === 'not_accepting'
+        ? 'Online ordering is currently paused. You can still contact the restaurant or visit in person.'
+        : storefrontState === 'closed'
+          ? hoursStatus?.nextOpenLabel ?? 'We are currently closed. Please check back during business hours.'
+          : storefrontState === 'menu_syncing'
+            ? 'We are syncing the latest menu from the POS. Please check back shortly.'
+            : menuError ?? 'We are having trouble loading the menu. Please try again.';
+
+  const storefrontActionLabel =
+    storefrontState === 'network_error' || storefrontState === 'menu_syncing' ? 'Refresh menu' : '';
+
+  const hoursDetail =
+    hoursStatus?.openUntilLabel ??
+    hoursStatus?.nextOpenLabel ??
+    hoursStatus?.hoursSummary ??
+    'Hours unavailable';
+
+  // ---------------------------------------------------------------------------
   // Render
   // ---------------------------------------------------------------------------
   return (
@@ -580,6 +686,11 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
               <div className="badges">
                 <span className="badge">Square checkout</span>
                 <span className="badge">Pickup only</span>
+                {(hoursStatus?.isOpen === true || hoursStatus?.isOpen === false) && (
+                  <span className={`badge badge-status ${hoursStatus.isOpen ? 'open' : 'closed'}`}>
+                    {hoursStatus.isOpen ? 'Open now' : 'Closed'}
+                  </span>
+                )}
               </div>
             </div>
           </header>
@@ -612,6 +723,9 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
                     <div className="location-option-name">
                       {loc.name}
                       {loc.isPrimary && <span className="primary-badge">Primary</span>}
+                      {loc.onlineOrderingEnabled === false && (
+                        <span className="ordering-paused">Ordering paused</span>
+                      )}
                     </div>
                     {loc.address && <div className="location-option-address">{loc.address}</div>}
                   </button>
@@ -653,6 +767,51 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
               )}
             </section>
           )}
+
+          {/* Storefront Readiness Gate */}
+          <section className="card readiness-gate">
+            <div className="gate-header">
+              <div>
+                <h2>Storefront Status</h2>
+                <p className="muted">
+                  {vendorName}{selectedLocation?.name ? ` · ${selectedLocation.name}` : ''}
+                </p>
+              </div>
+              <span className={`status-pill status-${storefrontState}`}>{storefrontBadge}</span>
+            </div>
+            <p className="gate-message">{storefrontMessage}</p>
+            <div className="gate-details">
+              <div className="detail-item">
+                <div className="detail-label">Hours</div>
+                <div className="detail-value">{hoursDetail}</div>
+              </div>
+              <div className="detail-item">
+                <div className="detail-label">Contact</div>
+                <div className="detail-value">
+                  {contactPhone ? (
+                    <a href={`tel:${normalizePhone(contactPhone)}`} className="detail-link">
+                      {contactPhone}
+                    </a>
+                  ) : (
+                    <span className="muted">Contact the restaurant directly</span>
+                  )}
+                </div>
+              </div>
+              <div className="detail-item">
+                <div className="detail-label">Map</div>
+                <div className="detail-value">
+                  <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className="detail-link">
+                    Open in Maps
+                  </a>
+                </div>
+              </div>
+            </div>
+            {storefrontActionLabel && (
+              <button type="button" onClick={loadMenu} className="btn-secondary gate-action">
+                {storefrontActionLabel}
+              </button>
+            )}
+          </section>
 
           {/* Account */}
           <section className="card account">
@@ -897,7 +1056,9 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
               <span className="muted">{cart.length} items</span>
             </div>
             {cart.length === 0 ? (
-              <p className="muted">Add items to start your order.</p>
+              <p className="muted">
+                {canOrder ? 'Add items to start your order.' : 'Ordering is currently unavailable.'}
+              </p>
             ) : (
               <div className="cart-items">
                 {cart.map((item) => (
@@ -921,7 +1082,12 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
                 <span>Total</span>
                 <strong>{formatCurrency(cartTotal, cartCurrency)}</strong>
               </div>
-              {vendor && vendor.addressLine1 && (
+              {canOrder && (
+                <div className="pickup-eta">
+                  Pickup ETA: ~{pickupEtaMinutes} min
+                </div>
+              )}
+              {locationAddress && (
                 <label className="pickup-confirmation">
                   <input
                     type="checkbox"
@@ -929,19 +1095,14 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
                     onChange={(e) => setPickupConfirmed(e.target.checked)}
                   />
                   <span>
-                    I confirm I&apos;m picking up at: {vendor.displayName} - {[
-                      vendor.addressLine1,
-                      vendor.city,
-                      vendor.state,
-                      vendor.postalCode
-                    ].filter(Boolean).join(', ')}
+                    I confirm I&apos;m picking up at: {selectedLocation?.name ?? vendorName} - {locationAddress}
                   </span>
                 </label>
               )}
               <p className="no-account-label">No account needed — Square Checkout</p>
               <button
                 onClick={handleCheckout}
-                disabled={cart.length === 0 || checkingOut || !pickupConfirmed}
+                disabled={cart.length === 0 || checkingOut || !pickupConfirmed || !canOrder}
                 className="btn-checkout"
               >
                 {checkingOut ? 'Processing…' : 'Checkout with Square'}
@@ -976,12 +1137,11 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
                     </div>
                     <p className="muted">{item.description ?? 'Fresh and delicious.'}</p>
                   </div>
-                  <button onClick={() => addToCart(item)} className="btn-primary">
-                    Add to cart
+                  <button onClick={() => addToCart(item)} className="btn-primary" disabled={!canOrder}>
+                    {canOrder ? 'Add to cart' : 'Ordering unavailable'}
                   </button>
                 </div>
               ))}
-              {!menuLoading && menu.length === 0 && <p className="muted">No menu items yet.</p>}
             </div>
           </section>
         </div>
@@ -1062,6 +1222,112 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
             padding: 6px 12px;
             border-radius: 20px;
             font-size: 12px;
+          }
+
+          .badge-status.open {
+            background: rgba(16, 185, 129, 0.15);
+            border-color: rgba(16, 185, 129, 0.35);
+            color: #0f766e;
+          }
+
+          .badge-status.closed {
+            background: rgba(239, 68, 68, 0.12);
+            border-color: rgba(239, 68, 68, 0.35);
+            color: #b91c1c;
+          }
+
+          .ordering-paused {
+            margin-left: 8px;
+            font-size: 11px;
+            color: #f59e0b;
+            background: rgba(245, 158, 11, 0.15);
+            padding: 2px 6px;
+            border-radius: 10px;
+          }
+
+          .readiness-gate {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+          }
+
+          .gate-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 16px;
+          }
+
+          .status-pill {
+            padding: 6px 12px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 600;
+            border: 1px solid var(--color-border);
+            background: var(--color-bg-warm);
+            color: var(--color-text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          }
+
+          .status-ordering {
+            background: rgba(16, 185, 129, 0.15);
+            border-color: rgba(16, 185, 129, 0.35);
+            color: #0f766e;
+          }
+
+          .status-closed,
+          .status-not_accepting,
+          .status-network_error {
+            background: rgba(239, 68, 68, 0.12);
+            border-color: rgba(239, 68, 68, 0.3);
+            color: #b91c1c;
+          }
+
+          .status-menu_syncing {
+            background: rgba(59, 130, 246, 0.12);
+            border-color: rgba(59, 130, 246, 0.35);
+            color: #1d4ed8;
+          }
+
+          .gate-message {
+            font-size: 14px;
+            color: var(--color-text);
+            margin: 0;
+          }
+
+          .gate-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+          }
+
+          .detail-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            font-size: 13px;
+          }
+
+          .detail-label {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            color: var(--color-text-muted);
+          }
+
+          .detail-link {
+            color: var(--theme-accent, var(--color-accent));
+            text-decoration: none;
+          }
+
+          .detail-link:hover {
+            text-decoration: underline;
+          }
+
+          .gate-action {
+            align-self: flex-start;
           }
 
           .vendor-info {
@@ -1492,6 +1758,12 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
             opacity: 0.9;
           }
 
+          .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+          }
+
           .btn-primary:active {
             transform: scale(0.98);
           }
@@ -1561,6 +1833,12 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
             display: flex;
             justify-content: space-between;
             font-size: 16px;
+            margin-bottom: 12px;
+          }
+
+          .pickup-eta {
+            font-size: 13px;
+            color: var(--color-text-muted);
             margin-bottom: 12px;
           }
 

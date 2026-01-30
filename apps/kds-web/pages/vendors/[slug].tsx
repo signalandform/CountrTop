@@ -15,7 +15,8 @@ import {
   applyOptimisticUpdateToCache,
   getOfflineQueue,
   type Ticket,
-  type OfflineAction
+  type OfflineAction,
+  type SyncResult
 } from '../../lib/offline';
 import { createTicketsSubscription, type TicketChangeEvent } from '../../lib/realtime';
 
@@ -206,6 +207,8 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
   const [isOffline, setIsOffline] = useState(!isOnline());
   const [queuedActionsCount, setQueuedActionsCount] = useState(0);
   const [syncing, setSyncing] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
+  const [syncNotice, setSyncNotice] = useState<string | null>(null);
   const [locationId] = useState<string>(initialLocationId);
   const [useRealtime, setUseRealtime] = useState(true);
   const [realtimeStatus, setRealtimeStatus] = useState<'SUBSCRIBED' | 'CHANNEL_ERROR' | 'TIMED_OUT' | 'CLOSED' | 'UNKNOWN'>('UNKNOWN');
@@ -258,7 +261,7 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
     return () => clearInterval(interval);
   }, [vendorSlug, locationId]);
 
-  const fetchTickets = async (useCache = false) => {
+  const fetchTickets = async (useCache = false): Promise<Ticket[] | null> => {
     try {
       setLoading(true);
       setError(null);
@@ -275,7 +278,7 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
               // Silent fail - we have cache
             });
           }
-          return;
+          return cached;
         }
       }
 
@@ -287,12 +290,14 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
         setTickets(data.tickets);
         // Save to cache
         saveTicketsToCache(vendorSlug, data.tickets);
+        return data.tickets;
       } else {
         setError(data.error);
         // Fall back to cache if available
         const cached = loadTicketsFromCache(vendorSlug);
         if (cached) {
           setTickets(cached);
+          return cached;
         }
       }
     } catch (err) {
@@ -301,10 +306,12 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
       const cached = loadTicketsFromCache(vendorSlug);
       if (cached) {
         setTickets(cached);
+        return cached;
       }
     } finally {
       setLoading(false);
     }
+    return null;
   };
 
   // Sync offline queue when coming back online
@@ -315,8 +322,11 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
     if (queue.length === 0) return;
 
     setSyncing(true);
+    setSyncError(null);
+    setSyncNotice(null);
+    const beforeTickets = tickets;
     try {
-      await syncOfflineQueue(vendorSlug, async (action: OfflineAction) => {
+      const result: SyncResult = await syncOfflineQueue(vendorSlug, async (action: OfflineAction) => {
         try {
           const response = await fetch(`/api/vendors/${vendorSlug}/tickets/${action.ticketId}/status${locationId ? `?locationId=${locationId}` : ''}`, {
             method: 'POST',
@@ -336,16 +346,30 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
       });
 
       // Refresh tickets after sync
-      await fetchTickets();
+      const updatedTickets = await fetchTickets();
+      if (result.failedIds.length > 0) {
+        const count = result.failedIds.length;
+        setSyncError(`${count} queued action${count === 1 ? '' : 's'} failed to sync.`);
+      }
+      if (updatedTickets && beforeTickets.length > 0) {
+        const changed = updatedTickets.some((ticket) => {
+          const previous = beforeTickets.find((prev) => prev.ticket.id === ticket.ticket.id);
+          return previous && previous.ticket.status !== ticket.ticket.status;
+        }) || updatedTickets.length !== beforeTickets.length;
+        if (changed) {
+          setSyncNotice('Queue updated after sync.');
+        }
+      }
     } catch (err) {
       console.error('Failed to sync queue:', err);
+      setSyncError('Sync failed. Please retry.');
     } finally {
       setSyncing(false);
       // Update queued actions count
       setQueuedActionsCount(getOfflineQueue(vendorSlug).length);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [vendorSlug, syncing]);
+  }, [vendorSlug, syncing, tickets, locationId]);
 
   // Online/offline event listeners
   useEffect(() => {
@@ -371,6 +395,12 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
       window.removeEventListener('offline', handleOffline);
     };
   }, [syncQueue]);
+
+  useEffect(() => {
+    if (!syncNotice) return;
+    const timeout = setTimeout(() => setSyncNotice(null), 6000);
+    return () => clearTimeout(timeout);
+  }, [syncNotice]);
 
   // Handle realtime events
   // Refetch all tickets to ensure we have full data (including order details)
@@ -833,6 +863,14 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
                   <span>Syncing...</span>
                 </div>
               )}
+              {!isOffline && queuedActionsCount > 0 && !syncing && (
+                <div className="queue-indicator">
+                  <span>{queuedActionsCount} queued</span>
+                  <button type="button" onClick={syncQueue} className="queue-action">
+                    Sync now
+                  </button>
+                </div>
+              )}
             </div>
             <div className="header-actions">
               <a href={`/vendors/${vendorSlug}/analytics?locationId=${locationId}`} className="header-button">
@@ -849,6 +887,21 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
               </button>
             </div>
           </header>
+
+          {syncError && (
+            <div className="sync-error-banner">
+              <span>{syncError}</span>
+              <button type="button" onClick={syncQueue} className="retry-button">
+                Retry
+              </button>
+            </div>
+          )}
+
+          {syncNotice && (
+            <div className="sync-notice">
+              {syncNotice}
+            </div>
+          )}
 
           {error && (
             <div className="error-message">
@@ -1278,6 +1331,68 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
             border-radius: 8px;
             font-size: 14px;
             color: #34c759;
+            font-weight: 500;
+          }
+
+          .queue-indicator {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 8px;
+            padding: 6px 12px;
+            background: rgba(255, 159, 10, 0.12);
+            border: 1px solid rgba(255, 159, 10, 0.3);
+            border-radius: 8px;
+            font-size: 14px;
+            color: #ff9f0a;
+            font-weight: 500;
+          }
+
+          .queue-action {
+            background: transparent;
+            border: 1px solid rgba(255, 159, 10, 0.5);
+            color: #ff9f0a;
+            padding: 4px 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+          }
+
+          .sync-error-banner {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            background: rgba(239, 68, 68, 0.12);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 12px;
+            padding: 10px 14px;
+            margin-bottom: 16px;
+            color: #ef4444;
+            font-size: 14px;
+            font-weight: 600;
+          }
+
+          .retry-button {
+            background: #ef4444;
+            border: none;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+          }
+
+          .sync-notice {
+            background: rgba(59, 130, 246, 0.12);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 12px;
+            padding: 10px 14px;
+            margin-bottom: 16px;
+            color: #2563eb;
+            font-size: 14px;
             font-weight: 500;
           }
 

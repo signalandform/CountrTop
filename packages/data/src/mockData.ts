@@ -478,6 +478,38 @@ export class MockDataClient implements DataClient {
     return;
   }
 
+  async createPairingToken(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _vendorId: string,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _locationId: string | null = null,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _expiresInMinutes = 60
+  ): Promise<{ token: string; tokenId: string; createdAt: string; expiresAt: string; locationId?: string | null }> {
+    const createdAt = new Date().toISOString();
+    return {
+      token: 'MOCKTOKEN',
+      tokenId: 'mock-token',
+      createdAt,
+      expiresAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+      locationId: _locationId
+    };
+  }
+
+  async listPairingTokens(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _vendorId: string
+  ): Promise<import('@countrtop/models').PairingToken[]> {
+    return [];
+  }
+
+  async consumePairingToken(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _token: string
+  ): Promise<{ vendorId: string; locationId?: string | null } | null> {
+    return null;
+  }
+
   // Employees & Time Tracking
   async listEmployees(
     // eslint-disable-next-line @typescript-eslint/no-unused-vars

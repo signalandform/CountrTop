@@ -38,6 +38,24 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
   const [pinSaving, setPinSaving] = useState<Record<string, boolean>>({});
   const [pinErrors, setPinErrors] = useState<Record<string, string>>({});
 
+  // KDS Pairing tokens state
+  const [pairingTokens, setPairingTokens] = useState<Array<{
+    id: string;
+    locationId?: string | null;
+    expiresAt: string;
+    createdAt: string;
+  }>>([]);
+  const [pairingLoading, setPairingLoading] = useState(true);
+  const [pairingError, setPairingError] = useState<string | null>(null);
+  const [pairingLocationId, setPairingLocationId] = useState('');
+  const [pairingCreating, setPairingCreating] = useState(false);
+  const [generatedToken, setGeneratedToken] = useState<{
+    token: string;
+    expiresAt: string;
+    locationId?: string | null;
+  } | null>(null);
+  const [copySuccess, setCopySuccess] = useState(false);
+
   // Fetch feature flags on mount
   useEffect(() => {
     const fetchFlags = async () => {
@@ -72,6 +90,28 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
       }
     };
     fetchLocations();
+  }, [vendorSlug]);
+
+  useEffect(() => {
+    const fetchPairingTokens = async () => {
+      setPairingLoading(true);
+      setPairingError(null);
+      try {
+        const response = await fetch(`/api/vendors/${vendorSlug}/pairing-tokens`);
+        const data = await response.json();
+        if (data.success) {
+          setPairingTokens(data.data);
+        } else {
+          setPairingError(data.error || 'Failed to load pairing tokens');
+        }
+      } catch (err) {
+        console.error('Failed to fetch pairing tokens:', err);
+        setPairingError('Failed to load pairing tokens');
+      } finally {
+        setPairingLoading(false);
+      }
+    };
+    fetchPairingTokens();
   }, [vendorSlug]);
 
   const handleFeatureFlagChange = async (featureKey: string, enabled: boolean) => {
@@ -141,6 +181,80 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
       setPinSaving(prev => ({ ...prev, [locationId]: false }));
     }
   };
+
+  const handleCreatePairingToken = async () => {
+    setPairingCreating(true);
+    setPairingError(null);
+    setCopySuccess(false);
+    try {
+      const response = await fetch(`/api/vendors/${vendorSlug}/pairing-tokens`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          locationId: pairingLocationId || null
+        })
+      });
+      const data = await response.json();
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to create pairing token');
+      }
+      setGeneratedToken({
+        token: data.data.token,
+        expiresAt: data.data.expiresAt,
+        locationId: data.data.locationId ?? null
+      });
+      setPairingTokens((prev) => [
+        {
+          id: data.data.tokenId,
+          locationId: data.data.locationId ?? null,
+          expiresAt: data.data.expiresAt,
+          createdAt: data.data.createdAt
+        },
+        ...prev
+      ]);
+    } catch (err) {
+      console.error('Failed to create pairing token:', err);
+      setPairingError(err instanceof Error ? err.message : 'Failed to create pairing token');
+    } finally {
+      setPairingCreating(false);
+    }
+  };
+
+  const handleRevokePairingToken = async (tokenId: string) => {
+    setPairingError(null);
+    try {
+      const response = await fetch(`/api/vendors/${vendorSlug}/pairing-tokens?tokenId=${encodeURIComponent(tokenId)}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+      const data = await response.json();
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to revoke token');
+      }
+      setPairingTokens((prev) => prev.filter((token) => token.id !== tokenId));
+    } catch (err) {
+      console.error('Failed to revoke pairing token:', err);
+      setPairingError(err instanceof Error ? err.message : 'Failed to revoke pairing token');
+    }
+  };
+
+  const handleCopyLink = async (link: string) => {
+    try {
+      await navigator.clipboard.writeText(link);
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy pairing link:', err);
+    }
+  };
+
+  const pairingUrl = generatedToken
+    ? `https://kds.countrtop.com/pair?token=${generatedToken.token}`
+    : '';
+  const generatedLocationName = generatedToken?.locationId
+    ? locations.find((loc) => loc.locationId === generatedToken.locationId)?.locationName
+    : null;
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -443,6 +557,86 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
                 ))}
               </div>
             )}
+          </div>
+
+          {/* KDS Device Pairing */}
+          <div className="form-section">
+            <h2>📱 KDS Device Pairing</h2>
+            <p className="section-description">Generate a QR code to pair a KDS device in seconds</p>
+
+            {pairingError && <div className="error-banner">{pairingError}</div>}
+
+            <div className="pairing-controls">
+              <div className="pairing-field">
+                <label>Location (optional)</label>
+                <select
+                  value={pairingLocationId}
+                  onChange={(e) => setPairingLocationId(e.target.value)}
+                  className="input"
+                >
+                  <option value="">Any location</option>
+                  {locations.map((location) => (
+                    <option key={location.locationId} value={location.locationId}>
+                      {location.locationName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <button type="button" onClick={handleCreatePairingToken} className="btn-submit" disabled={pairingCreating}>
+                {pairingCreating ? 'Generating…' : 'Generate QR'}
+              </button>
+            </div>
+
+            {generatedToken && (
+              <div className="pairing-card">
+                <div className="pairing-qr">
+                  <img
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(pairingUrl)}`}
+                    alt="KDS pairing QR code"
+                  />
+                </div>
+                <div className="pairing-info">
+                  <div className="pairing-label">Pairing link</div>
+                  <div className="pairing-link">{pairingUrl}</div>
+                  <div className="pairing-meta">
+                    {generatedLocationName ? `Location: ${generatedLocationName}` : 'Location: Any'}
+                  </div>
+                  <div className="pairing-meta">
+                    Expires {new Date(generatedToken.expiresAt).toLocaleString()}
+                  </div>
+                  <button type="button" className="btn-secondary" onClick={() => handleCopyLink(pairingUrl)}>
+                    {copySuccess ? 'Copied!' : 'Copy link'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <div className="pairing-list">
+              <div className="pairing-list-header">Active tokens</div>
+              {pairingLoading ? (
+                <p className="muted">Loading tokens...</p>
+              ) : pairingTokens.length === 0 ? (
+                <p className="muted">No active pairing tokens.</p>
+              ) : (
+                pairingTokens.map((token) => (
+                  <div key={token.id} className="pairing-list-item">
+                    <div>
+                      <div className="pairing-meta">
+                        {token.locationId
+                          ? `Location: ${locations.find((loc) => loc.locationId === token.locationId)?.locationName ?? token.locationId}`
+                          : 'Location: Any'}
+                      </div>
+                      <div className="pairing-meta">
+                        Expires {new Date(token.expiresAt).toLocaleString()}
+                      </div>
+                    </div>
+                    <button type="button" className="btn-secondary" onClick={() => handleRevokePairingToken(token.id)}>
+                      Revoke
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
 
           {/* Error Banner */}
@@ -947,6 +1141,96 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
           font-size: 14px;
         }
 
+        .btn-secondary {
+          padding: 10px 16px;
+          border-radius: 12px;
+          border: 1px solid var(--color-border);
+          background: transparent;
+          color: var(--color-text);
+          font-weight: 600;
+          cursor: pointer;
+        }
+
+        .pairing-controls {
+          display: flex;
+          align-items: flex-end;
+          gap: 16px;
+          flex-wrap: wrap;
+          margin-bottom: 16px;
+        }
+
+        .pairing-field {
+          flex: 1;
+          min-width: 220px;
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
+
+        .pairing-card {
+          display: flex;
+          gap: 20px;
+          border: 1px solid var(--color-border);
+          border-radius: 16px;
+          padding: 16px;
+          background: var(--ct-bg-surface);
+          margin-bottom: 16px;
+        }
+
+        .pairing-qr img {
+          width: 180px;
+          height: 180px;
+          border-radius: 12px;
+          border: 1px solid var(--color-border);
+          background: white;
+        }
+
+        .pairing-info {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+
+        .pairing-label {
+          font-size: 12px;
+          text-transform: uppercase;
+          letter-spacing: 0.4px;
+          color: var(--color-text-muted);
+        }
+
+        .pairing-link {
+          font-size: 13px;
+          word-break: break-all;
+        }
+
+        .pairing-meta {
+          font-size: 13px;
+          color: var(--color-text-muted);
+        }
+
+        .pairing-list {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+
+        .pairing-list-header {
+          font-size: 12px;
+          text-transform: uppercase;
+          letter-spacing: 0.4px;
+          color: var(--color-text-muted);
+        }
+
+        .pairing-list-item {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 12px 16px;
+          border: 1px solid var(--color-border);
+          border-radius: 12px;
+          background: var(--ct-bg-surface);
+        }
+
         @media (max-width: 768px) {
           .page-header {
             padding: 24px;
@@ -977,6 +1261,16 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
           .flags-grid,
           .locations-grid {
             grid-template-columns: 1fr;
+          }
+
+          .pairing-card {
+            flex-direction: column;
+            align-items: flex-start;
+          }
+
+          .pairing-qr img {
+            width: 160px;
+            height: 160px;
           }
         }
       `}</style>

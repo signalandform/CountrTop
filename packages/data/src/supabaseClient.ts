@@ -18,6 +18,7 @@ import {
   KdsSourceMetrics,
   LoyaltyLedgerEntry,
   OrderSnapshot,
+  PairingToken,
   PushDevice,
   RevenueBySource,
   RevenuePoint,
@@ -399,6 +400,28 @@ export type Database = {
           updated_at?: string;
         };
         Update: Partial<Database['public']['Tables']['vendor_location_pins']['Insert']>;
+        Relationships: [];
+      };
+      kds_pairing_tokens: {
+        Row: {
+          id: string;
+          vendor_id: string;
+          location_id: string | null;
+          token_hash: string;
+          expires_at: string;
+          used_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          vendor_id: string;
+          location_id?: string | null;
+          token_hash: string;
+          expires_at: string;
+          used_at?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['kds_pairing_tokens']['Insert']>;
         Relationships: [];
       };
       employees: {
@@ -2662,6 +2685,105 @@ export class SupabaseDataClient implements DataClient {
       logQueryPerformance('setLocationPin', startTime, true);
     } catch (error) {
       logQueryPerformance('setLocationPin', startTime, false, error);
+      throw error;
+    }
+  }
+
+  // ============================================================================
+  // KDS Pairing Tokens
+  // ============================================================================
+
+  async createPairingToken(
+    vendorId: string,
+    locationId: string | null = null,
+    expiresInMinutes = 60
+  ): Promise<{ token: string; tokenId: string; createdAt: string; expiresAt: string; locationId?: string | null }> {
+    const startTime = Date.now();
+    try {
+      const token = randomUUID().replace(/-/g, '').slice(0, 8).toUpperCase();
+      const tokenHash = createHash('sha256').update(token).digest('hex');
+      const expiresAt = new Date(Date.now() + expiresInMinutes * 60 * 1000).toISOString();
+
+      const { data, error } = await this.client
+        .from('kds_pairing_tokens')
+        .insert({
+          vendor_id: vendorId,
+          location_id: locationId,
+          token_hash: tokenHash,
+          expires_at: expiresAt,
+          created_at: new Date().toISOString()
+        })
+        .select('id, created_at')
+        .single();
+
+      if (error) throw error;
+      logQueryPerformance('createPairingToken', startTime, true);
+      return {
+        token,
+        tokenId: data.id,
+        createdAt: data.created_at,
+        expiresAt,
+        locationId
+      };
+    } catch (error) {
+      logQueryPerformance('createPairingToken', startTime, false, error);
+      throw error;
+    }
+  }
+
+  async listPairingTokens(vendorId: string): Promise<PairingToken[]> {
+    const startTime = Date.now();
+    try {
+      const now = new Date().toISOString();
+      const { data, error } = await this.client
+        .from('kds_pairing_tokens')
+        .select('*')
+        .eq('vendor_id', vendorId)
+        .is('used_at', null)
+        .gt('expires_at', now)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+
+      const tokens = ((data || []) as Database['public']['Tables']['kds_pairing_tokens']['Row'][]).map((row) => ({
+        id: row.id,
+        vendorId: row.vendor_id,
+        locationId: row.location_id,
+        tokenHash: row.token_hash,
+        expiresAt: row.expires_at,
+        usedAt: row.used_at,
+        createdAt: row.created_at
+      }));
+
+      logQueryPerformance('listPairingTokens', startTime, true);
+      return tokens;
+    } catch (error) {
+      logQueryPerformance('listPairingTokens', startTime, false, error);
+      throw error;
+    }
+  }
+
+  async consumePairingToken(token: string): Promise<{ vendorId: string; locationId?: string | null } | null> {
+    const startTime = Date.now();
+    try {
+      const tokenHash = createHash('sha256').update(token).digest('hex');
+      const now = new Date().toISOString();
+      const { data, error } = await this.client
+        .from('kds_pairing_tokens')
+        .update({ used_at: now })
+        .eq('token_hash', tokenHash)
+        .is('used_at', null)
+        .gt('expires_at', now)
+        .select('vendor_id, location_id')
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) {
+        return null;
+      }
+
+      logQueryPerformance('consumePairingToken', startTime, true);
+      return { vendorId: data.vendor_id, locationId: data.location_id };
+    } catch (error) {
+      logQueryPerformance('consumePairingToken', startTime, false, error);
       throw error;
     }
   }

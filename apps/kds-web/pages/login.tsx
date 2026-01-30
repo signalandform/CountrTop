@@ -1,6 +1,13 @@
 import Head from 'next/head';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
+
+import {
+  addRecentVendor,
+  clearRecentVendors,
+  getRecentVendors,
+  type RecentVendor
+} from '../lib/recents';
 
 type Vendor = {
   slug: string;
@@ -21,7 +28,15 @@ export default function LoginPage() {
   const router = useRouter();
   const [step, setStep] = useState<Step>('vendor');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [vendorsLoading, setVendorsLoading] = useState(false);
+  const [error, setError] = useState<{
+    title: string;
+    message: string;
+    primaryLabel: string;
+    onPrimary: () => void;
+    secondaryLabel?: string;
+    onSecondary?: () => void;
+  } | null>(null);
 
   // Vendor selection
   const [vendors, setVendors] = useState<Vendor[]>([]);
@@ -35,6 +50,7 @@ export default function LoginPage() {
   // PIN entry
   const [pin, setPin] = useState('');
   const [authenticating, setAuthenticating] = useState(false);
+  const [recentVendors, setRecentVendors] = useState<RecentVendor[]>([]);
 
   // Check for existing session
   useEffect(() => {
@@ -58,48 +74,117 @@ export default function LoginPage() {
   }, [router]);
 
   // Fetch vendors on mount
-  useEffect(() => {
-    const fetchVendors = async () => {
-      try {
-        const response = await fetch('/api/kds/vendors');
-        const data = await response.json();
-        if (data.success) {
-          setVendors(data.data);
-        } else {
-          setError('Failed to load vendors');
-        }
-      } catch (err) {
-        setError('Failed to load vendors');
-        console.error(err);
-      }
-    };
-    fetchVendors();
+  const refreshRecents = useCallback(() => {
+    setRecentVendors(getRecentVendors());
   }, []);
 
+  useEffect(() => {
+    refreshRecents();
+  }, [refreshRecents]);
+
+  const fetchVendors = useCallback(async () => {
+    setVendorsLoading(true);
+    setError(null);
+    try {
+      const response = await fetch('/api/kds/vendors');
+      const data = await response.json();
+      if (data.success) {
+        setVendors(data.data);
+      } else {
+        setError({
+          title: 'Unable to load vendors',
+          message: data.error || 'Please check your connection and try again.',
+          primaryLabel: 'Try again',
+          onPrimary: () => fetchVendors()
+        });
+      }
+    } catch (err) {
+      setError({
+        title: 'Unable to load vendors',
+        message: 'Please check your connection and try again.',
+        primaryLabel: 'Try again',
+        onPrimary: () => fetchVendors()
+      });
+      console.error(err);
+    } finally {
+      setVendorsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchVendors();
+  }, [fetchVendors]);
+
+  const handleBack = useCallback(() => {
+    if (step === 'location') {
+      setStep('vendor');
+      setSelectedVendor(null);
+      setLocations([]);
+    } else if (step === 'pin') {
+      setStep('location');
+      setSelectedLocation(null);
+      setPin('');
+    }
+    setError(null);
+  }, [step]);
+
   // Fetch locations when vendor selected
+  const fetchLocations = useCallback(async () => {
+    if (!selectedVendor) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(`/api/kds/vendors/${selectedVendor.slug}/locations`);
+      const data = await response.json();
+      if (data.success) {
+        setLocations(data.data);
+        if (data.data.length === 0) {
+          setError({
+            title: 'No locations available',
+            message: 'This vendor has no active locations. KDS may be disabled.',
+            primaryLabel: 'Back',
+            onPrimary: () => handleBack()
+          });
+        }
+      } else {
+        if (response.status === 404) {
+          setError({
+            title: 'Vendor not found',
+            message: 'We could not find that vendor. Please select another.',
+            primaryLabel: 'Back',
+            onPrimary: () => handleBack()
+          });
+        } else {
+          setError({
+            title: 'Unable to load locations',
+            message: data.error || 'Please try again.',
+            primaryLabel: 'Try again',
+            onPrimary: () => fetchLocations(),
+            secondaryLabel: 'Back',
+            onSecondary: () => handleBack()
+          });
+        }
+      }
+    } catch (err) {
+      setError({
+        title: 'Unable to load locations',
+        message: 'Please check your connection and try again.',
+        primaryLabel: 'Try again',
+        onPrimary: () => fetchLocations(),
+        secondaryLabel: 'Back',
+        onSecondary: () => handleBack()
+      });
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedVendor, handleBack]);
+
   useEffect(() => {
     if (selectedVendor && step === 'location') {
-      const fetchLocations = async () => {
-        setLoading(true);
-        setError(null);
-        try {
-          const response = await fetch(`/api/kds/vendors/${selectedVendor.slug}/locations`);
-          const data = await response.json();
-          if (data.success) {
-            setLocations(data.data);
-          } else {
-            setError(data.error || 'Failed to load locations');
-          }
-        } catch (err) {
-          setError('Failed to load locations');
-          console.error(err);
-        } finally {
-          setLoading(false);
-        }
-      };
       fetchLocations();
     }
-  }, [selectedVendor, step]);
+  }, [selectedVendor, step, fetchLocations]);
 
   const handleVendorSelect = (vendor: Vendor) => {
     setSelectedVendor(vendor);
@@ -116,6 +201,12 @@ export default function LoginPage() {
   const handlePinSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedVendor || !selectedLocation || pin.length !== 4) {
+      setError({
+        title: 'PIN required',
+        message: 'Enter the 4-digit location PIN to continue.',
+        primaryLabel: 'Ok',
+        onPrimary: () => setError(null)
+      });
       return;
     }
 
@@ -138,7 +229,36 @@ export default function LoginPage() {
       const data = await response.json();
 
       if (!data.success) {
-        setError(data.error || 'Invalid PIN');
+        if (response.status === 401 || /invalid pin/i.test(data.error || '')) {
+          setError({
+            title: 'Invalid PIN',
+            message: 'That PIN is incorrect. Please try again.',
+            primaryLabel: 'Try again',
+            onPrimary: () => setError(null),
+            secondaryLabel: 'Back',
+            onSecondary: () => handleBack()
+          });
+          setAuthenticating(false);
+          return;
+        }
+        if (response.status === 403 || /unauthorized/i.test(data.error || '')) {
+          setError({
+            title: 'Unauthorized',
+            message: data.error || 'You are not authorized to access this KDS.',
+            primaryLabel: 'Back',
+            onPrimary: () => handleBack()
+          });
+          setAuthenticating(false);
+          return;
+        }
+        setError({
+          title: 'Authentication failed',
+          message: data.error || 'Unable to sign in. Please try again.',
+          primaryLabel: 'Try again',
+          onPrimary: () => setError(null),
+          secondaryLabel: 'Back',
+          onSecondary: () => handleBack()
+        });
         setAuthenticating(false);
         return;
       }
@@ -155,25 +275,21 @@ export default function LoginPage() {
       document.cookie = `kds_session=${sessionDataBase64}; path=/; max-age=${maxAge}; SameSite=Lax`;
 
       // Redirect to vendor page
+      addRecentVendor({ slug: selectedVendor.slug, name: selectedVendor.displayName });
+      refreshRecents();
       router.push(`/vendors/${selectedVendor.slug}?locationId=${selectedLocation.id}`);
     } catch (err) {
-      setError('Authentication failed');
+      setError({
+        title: 'Authentication failed',
+        message: 'Please check your connection and try again.',
+        primaryLabel: 'Try again',
+        onPrimary: () => setError(null),
+        secondaryLabel: 'Back',
+        onSecondary: () => handleBack()
+      });
       setAuthenticating(false);
       console.error(err);
     }
-  };
-
-  const handleBack = () => {
-    if (step === 'location') {
-      setStep('vendor');
-      setSelectedVendor(null);
-      setLocations([]);
-    } else if (step === 'pin') {
-      setStep('location');
-      setSelectedLocation(null);
-      setPin('');
-    }
-    setError(null);
   };
 
   const filteredVendors = vendors.filter(v =>
@@ -192,14 +308,55 @@ export default function LoginPage() {
           <p className="subtitle">Kitchen Display System</p>
 
           {error && (
-            <div className="error-banner">
-              {error}
+            <div className="error-panel">
+              <h2>{error.title}</h2>
+              <p>{error.message}</p>
+              <div className="error-actions">
+                <button type="button" onClick={error.onPrimary} className="button">
+                  {error.primaryLabel}
+                </button>
+                {error.secondaryLabel && error.onSecondary && (
+                  <button type="button" onClick={error.onSecondary} className="button button-secondary">
+                    {error.secondaryLabel}
+                  </button>
+                )}
+              </div>
             </div>
           )}
 
           {step === 'vendor' && (
             <div className="step">
               <h2>Select Vendor</h2>
+              {recentVendors.length > 0 && (
+                <div className="recents">
+                  <div className="recents-header">
+                    <span>Recent vendors</span>
+                    <button type="button" onClick={() => { clearRecentVendors(); refreshRecents(); }} className="link-button">
+                      Clear recents
+                    </button>
+                  </div>
+                  <div className="recents-list">
+                    {recentVendors.map((vendor) => (
+                      <button
+                        key={vendor.slug}
+                        type="button"
+                        className="recent-item"
+                        onClick={() => {
+                          const match = vendors.find(v => v.slug === vendor.slug);
+                          if (match) {
+                            handleVendorSelect(match);
+                          } else {
+                            setVendorSearch(vendor.slug);
+                          }
+                        }}
+                      >
+                        <span className="recent-name">{vendor.name ?? vendor.slug}</span>
+                        <span className="recent-slug">/{vendor.slug}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
               <input
                 type="text"
                 placeholder="Search vendors..."
@@ -208,24 +365,28 @@ export default function LoginPage() {
                 className="input"
                 autoFocus
               />
-              <div className="list">
-                {filteredVendors.map((vendor) => (
-                  <button
-                    key={vendor.slug}
-                    type="button"
-                    onClick={() => handleVendorSelect(vendor)}
-                    className="list-item"
-                  >
-                    {vendor.displayName}
-                  </button>
-                ))}
-                {filteredVendors.length === 0 && vendors.length > 0 && (
-                  <p className="empty">No vendors found</p>
-                )}
-                {vendors.length === 0 && !loading && (
-                  <p className="empty">No vendors available</p>
-                )}
-              </div>
+              {vendorsLoading ? (
+                <p className="loading">Loading vendors...</p>
+              ) : (
+                <div className="list">
+                  {filteredVendors.map((vendor) => (
+                    <button
+                      key={vendor.slug}
+                      type="button"
+                      onClick={() => handleVendorSelect(vendor)}
+                      className="list-item"
+                    >
+                      {vendor.displayName}
+                    </button>
+                  ))}
+                  {filteredVendors.length === 0 && vendors.length > 0 && (
+                    <p className="empty">No vendors found</p>
+                  )}
+                  {vendors.length === 0 && !vendorsLoading && (
+                    <p className="empty">No vendors available</p>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
@@ -336,14 +497,94 @@ export default function LoginPage() {
             text-align: center;
           }
 
-          .error-banner {
-            background: rgba(239, 68, 68, 0.2);
-            border: 1px solid rgba(239, 68, 68, 0.3);
-            color: #fca5a5;
-            padding: 12px 16px;
+          .error-panel {
+            border: 1px solid rgba(239, 68, 68, 0.4);
+            background: rgba(239, 68, 68, 0.08);
             border-radius: 12px;
+            padding: 16px;
             margin-bottom: 24px;
+          }
+
+          .error-panel h2 {
+            font-size: 16px;
+            margin: 0 0 6px;
+            color: #ef4444;
+          }
+
+          .error-panel p {
             font-size: 14px;
+            margin: 0 0 12px;
+            color: var(--color-text);
+          }
+
+          .error-actions {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+          }
+
+          .button-secondary {
+            background: transparent;
+            border: 1px solid var(--color-border);
+            color: var(--color-text);
+          }
+
+          .recents {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 12px;
+          }
+
+          .recents-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            color: var(--color-text-muted);
+          }
+
+          .link-button {
+            background: none;
+            border: none;
+            color: var(--color-primary);
+            font-size: 12px;
+            cursor: pointer;
+            padding: 0;
+          }
+
+          .recents-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+          }
+
+          .recent-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid var(--color-border);
+            border-radius: 12px;
+            padding: 10px 12px;
+            background: var(--ct-bg-surface);
+            cursor: pointer;
+            font-size: 14px;
+            color: var(--color-text);
+          }
+
+          .recent-item:hover {
+            background: var(--color-bg-warm);
+          }
+
+          .recent-name {
+            font-weight: 600;
+          }
+
+          .recent-slug {
+            color: var(--color-text-muted);
+            font-size: 12px;
           }
 
           .step {

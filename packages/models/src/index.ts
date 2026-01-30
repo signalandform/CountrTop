@@ -90,6 +90,16 @@ export type VendorLocation = {
   updatedAt: string;
 };
 
+export type PairingToken = {
+  id: string;
+  vendorId: string;
+  locationId?: string | null;
+  tokenHash: string;
+  expiresAt: string;
+  usedAt?: string | null;
+  createdAt: string;
+};
+
 export type Employee = {
   id: string;
   vendorId: string;

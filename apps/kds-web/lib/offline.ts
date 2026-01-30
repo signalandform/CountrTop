@@ -58,6 +58,11 @@ export type OfflineAction = {
   attempts: number;
 };
 
+export type SyncResult = {
+  syncedIds: string[];
+  failedIds: string[];
+};
+
 type CachedTickets = {
   savedAt: string;
   tickets: Ticket[];
@@ -204,17 +209,18 @@ export function clearOfflineQueue(vendorSlug: string): void {
 export async function syncOfflineQueue(
   vendorSlug: string,
   onActionSync: (action: OfflineAction) => Promise<boolean>
-): Promise<string[]> {
+): Promise<SyncResult> {
   if (!isOnline()) {
-    return [];
+    return { syncedIds: [], failedIds: [] };
   }
 
   const queue = getOfflineQueue(vendorSlug);
   if (queue.length === 0) {
-    return [];
+    return { syncedIds: [], failedIds: [] };
   }
 
   const syncedIds: string[] = [];
+  const failedIds: string[] = [];
   const errors: Array<{ actionId: string; error: Error }> = [];
 
   // Process queue sequentially to avoid race conditions
@@ -227,6 +233,7 @@ export async function syncOfflineQueue(
       } else {
         // Increment attempts for retry later
         incrementActionAttempts(vendorSlug, action.id);
+        failedIds.push(action.id);
         // Don't retry if too many attempts (prevent infinite queue)
         if (action.attempts >= 5) {
           console.warn(`Action ${action.id} failed after ${action.attempts} attempts, removing from queue`);
@@ -237,6 +244,7 @@ export async function syncOfflineQueue(
       const err = error instanceof Error ? error : new Error(String(error));
       errors.push({ actionId: action.id, error: err });
       incrementActionAttempts(vendorSlug, action.id);
+      failedIds.push(action.id);
       
       // Remove if too many attempts
       if (action.attempts >= 5) {
@@ -249,7 +257,7 @@ export async function syncOfflineQueue(
     console.error('Some actions failed to sync:', errors);
   }
 
-  return syncedIds;
+  return { syncedIds, failedIds };
 }
 
 /**

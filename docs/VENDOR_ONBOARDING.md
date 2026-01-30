@@ -19,7 +19,7 @@ Welcome to CountrTop! This guide will help you set up your restaurant on our pla
 
 ### What You'll Need
 
-- An active POS system (Square, Toast, or Clover)
+- An active POS system (Square supported now; Toast/Clover coming soon)
 - A business email address
 - Your restaurant's logo (recommended: 500x500px PNG)
 - Your brand colors (hex codes)
@@ -34,7 +34,7 @@ Welcome to CountrTop! This guide will help you set up your restaurant on our pla
 
 ## Connecting Your POS System
 
-CountrTop integrates with major POS systems to automatically sync your menu and orders.
+CountrTop integrates with major POS systems to automatically sync your menu and orders. Square is supported now; Toast and Clover are coming soon.
 
 ### Square
 
@@ -49,19 +49,13 @@ CountrTop integrates with major POS systems to automatically sync your menu and 
 - Read locations
 - Create payment links
 
-### Toast
+### Toast (Coming soon)
 
-1. Contact your Toast rep to enable the CountrTop integration
-2. They will provide you with:
-   - Restaurant GUID
-   - API credentials
-3. Enter these in your CountrTop settings
+Toast integration is on our roadmap. We will update this guide as soon as it is available.
 
-### Clover
+### Clover (Coming soon)
 
-1. Install the CountrTop app from the Clover App Market
-2. Authorize the connection
-3. Your menu will sync automatically
+Clover integration is on our roadmap. We will update this guide as soon as it is available.
 
 ---
 
@@ -73,7 +67,7 @@ Your customers will order from `yourname.countrtop.com`
 
 Your menu is automatically synced from your POS system. To make changes:
 
-1. Update items in your POS (Square/Toast/Clover)
+1. Update items in your POS (Square now; Toast/Clover coming soon)
 2. Changes sync to CountrTop within 5 minutes
 3. Hidden items in your POS won't appear on your storefront
 
@@ -168,7 +162,7 @@ If you have multiple locations:
    - Address
    - Phone
    - Pickup instructions
-   - POS location ID (from Square/Toast/Clover)
+   - POS location ID (from Square now; Toast/Clover coming soon)
 
 ### Location Settings
 

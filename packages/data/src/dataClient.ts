@@ -162,6 +162,15 @@ export interface DataClient {
   getLocationPins(vendorId: string): Promise<Record<string, boolean>>; // locationId -> hasPin
   setLocationPin(vendorId: string, locationId: string, pin: string): Promise<void>; // pin is plain text, will be hashed
 
+  // KDS Pairing Tokens (QR pairing)
+  createPairingToken(
+    vendorId: string,
+    locationId?: string | null,
+    expiresInMinutes?: number
+  ): Promise<{ token: string; tokenId: string; createdAt: string; expiresAt: string; locationId?: string | null }>;
+  listPairingTokens(vendorId: string): Promise<import('@countrtop/models').PairingToken[]>;
+  consumePairingToken(token: string): Promise<{ vendorId: string; locationId?: string | null } | null>;
+
   // Employees & Time Tracking
   listEmployees(vendorId: string): Promise<import('@countrtop/models').Employee[]>;
   createEmployee(vendorId: string, name: string, pin: string): Promise<import('@countrtop/models').Employee>;
