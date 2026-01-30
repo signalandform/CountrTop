@@ -1,7 +1,7 @@
 import Head from 'next/head';
 import type { GetServerSideProps } from 'next';
-import Link from 'next/link';
 import { useState, useEffect } from 'react';
+import { OpsAdminLayout } from '../../components/OpsAdminLayout';
 
 import { requireOpsAdmin } from '../../lib/auth';
 
@@ -57,8 +57,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async (context) => 
   };
 };
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export default function VendorDetailPage({ userEmail: _userEmail, vendorSlug }: Props) {
+export default function VendorDetailPage({ userEmail, vendorSlug }: Props) {
   const [vendor, setVendor] = useState<Vendor | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -174,11 +173,11 @@ export default function VendorDetailPage({ userEmail: _userEmail, vendorSlug }: 
       <Head>
         <title>{vendor ? `${vendor.display_name} – Vendor Details` : 'Vendor Details – CountrTop Ops'}</title>
       </Head>
-      <main className="page">
-        <header className="page-header">
-          <Link href="/vendors" className="back-link">← Back to Vendors</Link>
-          <h1>{vendor ? vendor.display_name : 'Vendor Details'}</h1>
-        </header>
+      <OpsAdminLayout userEmail={userEmail}>
+        <main className="page">
+          <header className="page-header">
+            <h1>{vendor ? vendor.display_name : 'Vendor Details'}</h1>
+          </header>
 
         <div className="page-content">
           {error && (
@@ -396,7 +395,7 @@ export default function VendorDetailPage({ userEmail: _userEmail, vendorSlug }: 
           )}
         </div>
 
-        <style jsx global>{`
+          <style jsx global>{`
           .page {
             min-height: 100vh;
             background: var(--ct-bg-primary);
@@ -407,19 +406,6 @@ export default function VendorDetailPage({ userEmail: _userEmail, vendorSlug }: 
           .page-header {
             padding: 32px 48px;
             border-bottom: 1px solid var(--color-border);
-          }
-
-          .back-link {
-            display: inline-block;
-            margin-bottom: 16px;
-            color: var(--color-accent);
-            text-decoration: none;
-            font-size: 14px;
-            transition: color 0.2s;
-          }
-
-          .back-link:hover {
-            color: var(--color-primary);
           }
 
           .page-header h1 {
@@ -763,8 +749,9 @@ export default function VendorDetailPage({ userEmail: _userEmail, vendorSlug }: 
               flex-direction: column;
             }
           }
-        `}</style>
-      </main>
+          `}</style>
+        </main>
+      </OpsAdminLayout>
     </>
   );
 }

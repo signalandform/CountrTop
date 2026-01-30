@@ -2,6 +2,7 @@ import Head from 'next/head';
 import type { GetServerSideProps } from 'next';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
+import { OpsAdminLayout } from '../components/OpsAdminLayout';
 
 import { requireOpsAdmin } from '../lib/auth';
 
@@ -63,8 +64,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async (context) => 
   };
 };
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export default function VendorsPage({ userEmail: _userEmail }: Props) {
+export default function VendorsPage({ userEmail }: Props) {
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -129,10 +129,10 @@ export default function VendorsPage({ userEmail: _userEmail }: Props) {
       <Head>
         <title>Vendor Management – CountrTop Ops</title>
       </Head>
-      <main className="page">
-        <header className="page-header">
-          <Link href="/" className="back-link">← Back to Dashboard</Link>
-          <div className="header-content">
+      <OpsAdminLayout userEmail={userEmail}>
+        <main className="page">
+          <header className="page-header">
+            <div className="header-content">
             <h1>Vendor Management</h1>
             <div className="header-actions">
               <Link href="/vendors/new" className="btn-new-vendor">
@@ -152,7 +152,7 @@ export default function VendorsPage({ userEmail: _userEmail }: Props) {
           </div>
           
           {/* POS Filter Tabs */}
-          <div className="pos-filter-tabs">
+            <div className="pos-filter-tabs">
             <button
               className={`pos-tab ${posFilter === 'all' ? 'active' : ''}`}
               onClick={() => setPosFilter('all')}
@@ -177,8 +177,8 @@ export default function VendorsPage({ userEmail: _userEmail }: Props) {
             >
               <span className="pos-icon">🍞</span> Toast ({posCounts.toast || 0})
             </button>
-          </div>
-        </header>
+            </div>
+          </header>
 
         <div className="page-content">
           {error && (
@@ -275,7 +275,7 @@ export default function VendorsPage({ userEmail: _userEmail }: Props) {
           )}
         </div>
 
-        <style jsx global>{`
+          <style jsx global>{`
           .page {
             min-height: 100vh;
             background: var(--ct-bg-primary);
@@ -286,19 +286,6 @@ export default function VendorsPage({ userEmail: _userEmail }: Props) {
           .page-header {
             padding: 32px 48px;
             border-bottom: 1px solid var(--color-border);
-          }
-
-          .back-link {
-            display: inline-block;
-            margin-bottom: 16px;
-            color: var(--color-accent);
-            text-decoration: none;
-            font-size: 14px;
-            transition: color 0.2s;
-          }
-
-          .back-link:hover {
-            color: var(--color-primary);
           }
 
           .header-content {
@@ -633,8 +620,9 @@ export default function VendorsPage({ userEmail: _userEmail }: Props) {
               min-width: 800px;
             }
           }
-        `}</style>
-      </main>
+          `}</style>
+        </main>
+      </OpsAdminLayout>
     </>
   );
 }
