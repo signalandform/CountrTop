@@ -54,6 +54,9 @@
    --ct-card-padding: 20px;
    --ct-card-border-radius: 20px;
    --ct-card-gap: 20px;
+  --ct-card-border: rgba(26, 26, 46, 0.12);
+  --ct-card-shadow: 0 10px 30px rgba(15, 15, 26, 0.1);
+  --ct-card-shadow-hover: 0 16px 40px rgba(15, 15, 26, 0.14);
  
    --ct-button-min-height: 44px;
    --ct-button-padding: 12px 20px;
@@ -127,15 +130,16 @@
  /* Card Base */
  .ct-card {
    background: var(--ct-bg-surface);
-   border: 1px solid var(--ct-border);
+  border: 1px solid var(--ct-card-border);
    border-radius: var(--ct-card-border-radius);
    padding: var(--ct-card-padding);
-   box-shadow: var(--ct-shadow-soft);
+  box-shadow: var(--ct-card-shadow);
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
  }
  
  .ct-card:hover {
-   border-color: rgba(232, 93, 4, 0.2);
-   box-shadow: var(--ct-shadow);
+  border-color: rgba(232, 93, 4, 0.22);
+  box-shadow: var(--ct-card-shadow-hover);
  }
  
  /* Button Base */
@@ -212,12 +216,12 @@
  
  /* Section */
  .ct-section {
-   border: 1px solid var(--ct-border);
+  border: 1px solid var(--ct-card-border);
    border-radius: 16px;
    padding: 20px;
    margin-bottom: 16px;
    background: var(--ct-bg-surface);
-   box-shadow: var(--ct-shadow-soft);
+  box-shadow: var(--ct-card-shadow);
  }
  
  .ct-section-header {
@@ -238,14 +242,14 @@
  
  /* Stat card */
  .ct-stat-card {
-   border: 1px solid var(--ct-border);
+  border: 1px solid var(--ct-card-border);
    border-radius: 16px;
    padding: 16px;
    display: flex;
    flex-direction: column;
    gap: 4px;
-   background: var(--ct-bg-surface);
-   box-shadow: var(--ct-shadow-soft);
+  background: var(--ct-bg-surface);
+  box-shadow: var(--ct-card-shadow);
  }
  
  .ct-stat-label {
@@ -286,8 +290,9 @@
 
 .card {
   background: var(--ct-bg-surface) !important;
-  border: 1px solid var(--color-border) !important;
-  box-shadow: var(--ct-shadow-soft);
+  border: 1px solid var(--ct-card-border) !important;
+  border-radius: var(--ct-card-border-radius);
+  box-shadow: var(--ct-card-shadow);
 }
 
 .btn-primary {
