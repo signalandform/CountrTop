@@ -1,4 +1,5 @@
 import { useRouter } from 'next/router';
+import { VendorAdminLayout } from '../VendorAdminLayout';
 
 type AnalyticsLayoutProps = {
   vendorSlug: string;
@@ -35,7 +36,7 @@ export function AnalyticsLayout({ vendorSlug, vendorName, children, currentTab }
   };
 
   return (
-    <div className="page">
+    <VendorAdminLayout vendorSlug={vendorSlug} vendorName={vendorName}>
       <div className="page-content">
         <div className="header">
           <div className="header-content">
@@ -43,9 +44,6 @@ export function AnalyticsLayout({ vendorSlug, vendorName, children, currentTab }
             <h1 className="title">{vendorName}</h1>
             <p className="subtitle">Performance insights and trends</p>
           </div>
-          <a href={`/vendors/${vendorSlug}`} className="back-link">
-            ← Back to Dashboard
-          </a>
         </div>
 
         {/* Navigation Tabs */}
@@ -71,30 +69,15 @@ export function AnalyticsLayout({ vendorSlug, vendorName, children, currentTab }
       </div>
 
       <style jsx>{`
-        .page {
-          min-height: 100vh;
-          background: var(--ct-bg-primary);
-          color: var(--ct-text);
-          font-family: var(--ct-font-body);
-          padding: 0 24px 48px;
-        }
-
         .page-content {
           width: 100%;
-        }
-
-        @media (min-width: 1000px) {
-          .page-content {
-            max-width: 80vw;
-            margin: 0 auto;
-          }
         }
 
         .header {
           display: flex;
           justify-content: space-between;
           align-items: flex-start;
-          padding: 48px 0 32px;
+          padding: 16px 0 24px;
           flex-wrap: wrap;
           gap: 20px;
           position: relative;
@@ -102,18 +85,6 @@ export function AnalyticsLayout({ vendorSlug, vendorName, children, currentTab }
 
         .header-content {
           max-width: 500px;
-        }
-
-        .back-link {
-          color: var(--color-accent);
-          text-decoration: none;
-          font-size: 14px;
-          transition: color 0.2s;
-          align-self: flex-start;
-        }
-
-        .back-link:hover {
-          color: var(--color-primary);
         }
 
         .eyebrow {
@@ -194,7 +165,7 @@ export function AnalyticsLayout({ vendorSlug, vendorName, children, currentTab }
           width: 100%;
         }
       `}</style>
-    </div>
+    </VendorAdminLayout>
   );
 }
 

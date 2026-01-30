@@ -2,6 +2,7 @@ import type { GetServerSideProps } from 'next';
 import { useState, useEffect } from 'react';
 import { requireVendorAdmin } from '../../../lib/auth';
 import { getServerDataClient } from '../../../lib/dataClient';
+import { VendorAdminLayout } from '../../../components/VendorAdminLayout';
 import type { Vendor } from '@countrtop/models';
 import type { Employee } from '@countrtop/models';
 
@@ -243,26 +244,24 @@ export default function WorkspacePage({ vendorSlug, vendorName, vendor }: Worksp
 
   if (!vendor) {
     return (
-      <main className="page">
-        <div className="container">
-          <p>Vendor not found</p>
-        </div>
-      </main>
+      <VendorAdminLayout vendorSlug={vendorSlug} vendorName={vendorName}>
+        <main className="page">
+          <div className="container">
+            <p>Vendor not found</p>
+          </div>
+        </main>
+      </VendorAdminLayout>
     );
   }
 
   return (
-    <main className="page">
-      <div className="container">
-        <header className="page-header">
-          <div className="header-top">
-            <a href={`/vendors/${vendorSlug}`} className="back-link">
-              ← Back to Dashboard
-            </a>
-          </div>
-          <h1>{vendorName}</h1>
-          <p>Workspace</p>
-        </header>
+    <VendorAdminLayout vendorSlug={vendorSlug} vendorName={vendorName}>
+      <main className="page">
+        <div className="container">
+          <header className="page-header">
+            <h1>{vendorName}</h1>
+            <p>Workspace</p>
+          </header>
 
         <section className="workspace-section">
           <div className="section-header">
@@ -410,7 +409,7 @@ export default function WorkspacePage({ vendorSlug, vendorName, vendor }: Worksp
         </section>
       </div>
 
-      <style jsx>{`
+        <style jsx>{`
         .page {
           min-height: 100vh;
           background: var(--ct-bg-primary);
@@ -747,7 +746,8 @@ export default function WorkspacePage({ vendorSlug, vendorName, vendor }: Worksp
             justify-content: flex-end;
           }
         }
-      `}</style>
-    </main>
+        `}</style>
+      </main>
+    </VendorAdminLayout>
   );
 }

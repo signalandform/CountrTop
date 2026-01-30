@@ -8,6 +8,7 @@ import type { Database } from '@countrtop/data';
 
 import { requireVendorAdmin } from '../../../lib/auth';
 import { getServerDataClient } from '../../../lib/dataClient';
+import { VendorAdminLayout } from '../../../components/VendorAdminLayout';
 
 type LocationsPageProps = {
   vendorSlug: string;
@@ -175,17 +176,15 @@ export default function LocationsPage({
       <Head>
         <title>Locations · {vendorName}</title>
       </Head>
-      <main className="page">
-        <div className="container">
-          <header className="header">
-            <div className="header-left">
-              <a href={`/vendors/${vendorSlug}`} className="back-link">
-                ← Back to Dashboard
-              </a>
-              <h1 className="title">Locations</h1>
-              <p className="subtitle">{vendorName} · Manage your locations</p>
-            </div>
-          </header>
+      <VendorAdminLayout vendorSlug={vendorSlug} vendorName={vendorName}>
+        <main className="page">
+          <div className="container">
+            <header className="header">
+              <div className="header-left">
+                <h1 className="title">Locations</h1>
+                <p className="subtitle">{vendorName} · Manage your locations</p>
+              </div>
+            </header>
 
           {error && <div className="error-banner">{error}</div>}
           {saveError && <div className="error-banner">{saveError}</div>}
@@ -214,9 +213,9 @@ export default function LocationsPage({
               ))
             )}
           </section>
-        </div>
+          </div>
 
-        <style jsx>{`
+          <style jsx>{`
           .page {
             min-height: 100vh;
             background: var(--ct-bg-primary);
@@ -308,8 +307,9 @@ export default function LocationsPage({
             color: var(--color-text-muted);
             margin: 0;
           }
-        `}</style>
-      </main>
+          `}</style>
+        </main>
+      </VendorAdminLayout>
     </>
   );
 }

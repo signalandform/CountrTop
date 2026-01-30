@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { OrderSnapshot } from '@countrtop/models';
 import { getServerDataClient } from '../../../lib/dataClient';
 import { requireVendorAdmin } from '../../../lib/auth';
+import { VendorAdminLayout } from '../../../components/VendorAdminLayout';
 
 type Props = {
   vendorSlug: string;
@@ -151,18 +152,15 @@ export default function VendorOrdersPage({ vendorSlug, vendorName, orders: initi
       <Head>
         <title>{`Orders – ${vendorName}`}</title>
       </Head>
-      <main className="page">
-        {/* Header */}
-        <header className="header">
-          <div className="header-content">
-            <p className="eyebrow">CountrTop Admin</p>
-            <h1 className="title">{vendorName} Orders</h1>
-            <p className="subtitle">Recent order snapshots</p>
-          </div>
-          <a href={`/vendors/${vendorSlug}`} className="back-link">
-            ← Back to Dashboard
-          </a>
-        </header>
+      <VendorAdminLayout vendorSlug={vendorSlug} vendorName={vendorName}>
+        <main className="page">
+          <header className="header">
+            <div className="header-content">
+              <p className="eyebrow">CountrTop Admin</p>
+              <h1 className="title">{vendorName} Orders</h1>
+              <p className="subtitle">Recent order snapshots</p>
+            </div>
+          </header>
 
         {statusMessage && <div className="error-banner">{statusMessage}</div>}
 
@@ -562,7 +560,8 @@ export default function VendorOrdersPage({ vendorSlug, vendorName, orders: initi
             font-weight: 600;
           }
         `}</style>
-      </main>
+        </main>
+      </VendorAdminLayout>
     </>
   );
 }
