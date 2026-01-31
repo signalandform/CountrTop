@@ -353,15 +353,6 @@ function storeHoursJsonToArray(json: Record<string, unknown> | undefined): strin
   return out;
 }
 
-function storeHoursArrayToJson(arr: string[]): Record<string, string> | null {
-  const out: Record<string, string> = {};
-  arr.forEach((val, i) => {
-    const trimmed = val.trim();
-    if (trimmed) out[String(i)] = trimmed;
-  });
-  return Object.keys(out).length ? out : null;
-}
-
 function storeHoursToJson(
   storeHoursByDay: string[],
   closedByDay: boolean[]
