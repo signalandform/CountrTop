@@ -122,6 +122,14 @@ export function VendorAdminLayout({
         isActive: isPrefix(`${basePath}/support`)
       },
       {
+        id: 'kds',
+        label: 'KDS',
+        href: 'https://kds.countrtop.com',
+        icon: '🖥️',
+        isExternal: true,
+        isActive: () => false
+      },
+      {
         id: 'store',
         label: 'View Store',
         href: `https://${vendorSlug}.countrtop.com`,
