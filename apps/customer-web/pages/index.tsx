@@ -7,7 +7,7 @@ import { resolveVendorSlugFromHost, type Database } from '@countrtop/data';
 import { CartItem, MenuItem, OrderHistoryEntry, Vendor } from '@countrtop/models';
 import { useAuth } from '@countrtop/ui';
 import { getServerDataClient } from '../lib/dataClient';
-import { getHoursStatus } from '../lib/hours';
+import { getHoursByDay, getHoursStatus } from '../lib/hours';
 import { getBrowserSupabaseClient } from '../lib/supabaseBrowser';
 import { OrderStatusTracker, OrderStatusState } from '../components/OrderStatusTracker';
 
@@ -613,6 +613,15 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
     [selectedLocation?.onlineOrderingHoursJson, selectedLocation?.timezone, vendor?.timezone]
   );
 
+  const hoursByDay = useMemo(
+    () =>
+      getHoursByDay(
+        selectedLocation?.onlineOrderingHoursJson ?? null,
+        selectedLocation?.timezone ?? vendor?.timezone ?? undefined
+      ),
+    [selectedLocation?.onlineOrderingHoursJson, selectedLocation?.timezone, vendor?.timezone]
+  );
+
   const onlineOrderingEnabled = selectedLocation?.onlineOrderingEnabled ?? true;
   const pickupEtaMinutes = selectedLocation?.onlineOrderingLeadTimeMinutes ?? 15;
 
@@ -651,12 +660,6 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
 
   const storefrontActionLabel =
     storefrontState === 'network_error' || storefrontState === 'menu_syncing' ? 'Refresh menu' : '';
-
-  const hoursDetail =
-    hoursStatus?.openUntilLabel ??
-    hoursStatus?.nextOpenLabel ??
-    hoursStatus?.hoursSummary ??
-    'Hours unavailable';
 
   // ---------------------------------------------------------------------------
   // Render
@@ -776,9 +779,20 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
               <p className="gate-message">{storefrontMessage}</p>
             </div>
             <div className="gate-details">
-              <div className="detail-item">
+              <div className="detail-item detail-item-hours">
                 <div className="detail-label">Hours</div>
-                <div className="detail-value">{hoursDetail}</div>
+                <div className="hours-list">
+                  {hoursByDay.map((row) => (
+                    <div
+                      key={row.dayLabel}
+                      className={`hours-row ${row.isToday ? 'hours-row--today' : ''}`}
+                      data-today={row.isToday || undefined}
+                    >
+                      <span className="hours-row-day">{row.dayLabel}</span>
+                      <span className="hours-row-display">{row.display}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
               <div className="detail-item">
                 <div className="detail-label">Contact</div>
@@ -1337,6 +1351,43 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
             text-transform: uppercase;
             letter-spacing: 0.4px;
             color: var(--color-text-muted);
+          }
+
+          .detail-item-hours {
+            grid-column: 1 / -1;
+          }
+
+          .hours-list {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            font-size: 13px;
+          }
+
+          .hours-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 4px 8px;
+            margin: 0 -8px;
+            border-radius: 6px;
+          }
+
+          .hours-row--today {
+            background: var(--theme-accent, rgba(59, 130, 246, 0.15));
+            font-weight: 600;
+          }
+
+          .hours-row-day {
+            color: var(--color-text);
+          }
+
+          .hours-row-display {
+            color: var(--color-text-muted);
+          }
+
+          .hours-row--today .hours-row-display {
+            color: var(--color-text);
           }
 
           .detail-link {

@@ -531,29 +531,48 @@ function LocationCard({
               )}
             </div>
 
-            {/* Store hours (for customer storefront). Format: 9am-5pm or 9:00 AM-5:00 PM; empty = closed */}
+            {/* Store hours (for customer storefront). Check Closed or enter hours (e.g. 9:00 AM–5:00 PM) */}
             <div className="settings-group">
               <h4 className="settings-group-title">🕐 Store hours (for customer storefront)</h4>
               <small className="form-hint" style={{ display: 'block', marginBottom: 12 }}>
-                e.g. 9:00 AM–5:00 PM or leave blank for closed
+                Check Closed or enter hours (e.g. 9:00 AM–5:00 PM)
               </small>
-              {WEEKDAY_LABELS.map((label, i) => (
-                <div key={i} className="form-group" style={{ marginBottom: 8 }}>
-                  <label>{label}</label>
-                  <input
-                    type="text"
-                    value={storeHoursByDay[i] ?? ''}
-                    onChange={(e) => {
-                      const next = [...storeHoursByDay];
-                      next[i] = e.target.value;
-                      setStoreHoursByDay(next);
-                    }}
-                    placeholder="9:00 AM–5:00 PM or leave blank for closed"
-                    className="input-small"
-                    style={{ width: '100%', maxWidth: 280 }}
-                  />
-                </div>
-              ))}
+              {WEEKDAY_LABELS.map((label, i) => {
+                const isClosed = (storeHoursByDay[i] ?? '') === '';
+                return (
+                  <div key={i} className="form-group" style={{ marginBottom: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                      <label style={{ minWidth: 90, marginBottom: 0 }}>{label}</label>
+                      <label className="checkbox-group" style={{ marginBottom: 0 }}>
+                        <input
+                          type="checkbox"
+                          checked={isClosed}
+                          onChange={(e) => {
+                            const next = [...storeHoursByDay];
+                            next[i] = e.target.checked ? '' : (storeHoursByDay[i] ?? '');
+                            setStoreHoursByDay(next);
+                          }}
+                        />
+                        Closed
+                      </label>
+                      {!isClosed && (
+                        <input
+                          type="text"
+                          value={storeHoursByDay[i] ?? ''}
+                          onChange={(e) => {
+                            const next = [...storeHoursByDay];
+                            next[i] = e.target.value;
+                            setStoreHoursByDay(next);
+                          }}
+                          placeholder="9:00 AM–5:00 PM"
+                          className="input-small"
+                          style={{ width: '100%', maxWidth: 280, flex: 1 }}
+                        />
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
 
             {/* KDS Settings */}

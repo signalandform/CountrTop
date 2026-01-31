@@ -13,6 +13,12 @@ export type HoursStatus = {
   nextOpenLabel?: string;
 };
 
+export type HoursByDayRow = {
+  dayLabel: string;
+  display: string;
+  isToday: boolean;
+};
+
 const DAY_ALIASES: Record<string, number> = {
   sun: 0,
   sunday: 0,
@@ -259,4 +265,25 @@ export const getHoursStatus = (raw: RawHours, timeZone?: string): HoursStatus | 
     hoursSummary,
     nextOpenLabel
   };
+};
+
+export const getHoursByDay = (raw: RawHours, timeZone?: string): HoursByDayRow[] => {
+  const intervals = parseHoursJson(raw);
+  const now = getZonedParts(new Date(), timeZone);
+  const todayIndex = now.weekdayIndex;
+
+  return WEEKDAY_LABELS.map((dayLabel, i) => {
+    const dayIntervals = intervals.filter((interval) => interval.day === i);
+    const display =
+      dayIntervals.length > 0
+        ? dayIntervals
+            .map((iv) => `${formatMinutes(iv.openMinutes)}–${formatMinutes(iv.closeMinutes)}`)
+            .join(', ')
+        : 'Closed';
+    return {
+      dayLabel,
+      display,
+      isToday: i === todayIndex
+    };
+  });
 };
