@@ -202,4 +202,19 @@ export interface DataClient {
     vendorId: string,
     data: Partial<Omit<import('@countrtop/models').VendorBilling, 'vendorId' | 'createdAt' | 'updatedAt'>>
   ): Promise<import('@countrtop/models').VendorBilling>;
+
+  // Support tickets
+  createSupportTicket(input: {
+    vendorId: string;
+    subject: string;
+    message: string;
+    submittedBy?: string | null;
+  }): Promise<import('@countrtop/models').SupportTicket>;
+  listSupportTicketsForVendor(vendorId: string): Promise<import('@countrtop/models').SupportTicket[]>;
+  listSupportTickets(options?: { vendorId?: string; status?: string }): Promise<import('@countrtop/models').SupportTicket[]>;
+  getSupportTicket(id: string): Promise<import('@countrtop/models').SupportTicket | null>;
+  updateSupportTicket(
+    id: string,
+    updates: { status?: import('@countrtop/models').SupportTicketStatus; opsReply?: string }
+  ): Promise<import('@countrtop/models').SupportTicket>;
 }

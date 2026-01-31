@@ -1,5 +1,15 @@
 import { DataClient, LoyaltyLedgerEntryInput, OrderSnapshotInput, PushDeviceInput } from './dataClient';
-import { KitchenTicket, KitchenTicketWithOrder, LoyaltyLedgerEntry, OrderSnapshot, PushDevice, User, Vendor } from './models';
+import {
+  KitchenTicket,
+  KitchenTicketWithOrder,
+  LoyaltyLedgerEntry,
+  OrderSnapshot,
+  PushDevice,
+  SupportTicket,
+  SupportTicketStatus,
+  User,
+  Vendor
+} from './models';
 
 export type MockDataSeed = {
   vendors?: Vendor[];
@@ -7,6 +17,7 @@ export type MockDataSeed = {
   users?: User[];
   loyaltyLedger?: LoyaltyLedgerEntry[];
   pushDevices?: PushDevice[];
+  supportTickets?: SupportTicket[];
 };
 
 export class MockDataClient implements DataClient {
@@ -15,6 +26,7 @@ export class MockDataClient implements DataClient {
   private users: User[];
   private loyaltyLedger: LoyaltyLedgerEntry[];
   private pushDevices: PushDevice[];
+  private supportTickets: SupportTicket[];
 
   constructor(seed: MockDataSeed = {}) {
     this.vendors = [...(seed.vendors ?? defaultMockVendors)];
@@ -22,6 +34,7 @@ export class MockDataClient implements DataClient {
     this.users = [...(seed.users ?? defaultMockUsers)];
     this.loyaltyLedger = [...(seed.loyaltyLedger ?? defaultMockLoyaltyLedger)];
     this.pushDevices = [...(seed.pushDevices ?? defaultMockPushDevices)];
+    this.supportTickets = [...(seed.supportTickets ?? [])];
   }
 
   async signInWithProvider(provider: User['provider'], idToken: string): Promise<User> {
@@ -658,6 +671,66 @@ export class MockDataClient implements DataClient {
       createdAt: now,
       updatedAt: now
     };
+  }
+
+  async createSupportTicket(input: {
+    vendorId: string;
+    subject: string;
+    message: string;
+    submittedBy?: string | null;
+  }): Promise<SupportTicket> {
+    const now = new Date().toISOString();
+    const ticket: SupportTicket = {
+      id: this.createId('st'),
+      vendorId: input.vendorId,
+      subject: input.subject.trim(),
+      message: input.message.trim(),
+      status: 'open',
+      submittedBy: input.submittedBy ?? null,
+      createdAt: now,
+      updatedAt: now,
+      opsReply: null,
+      opsRepliedAt: null
+    };
+    this.supportTickets.push(ticket);
+    return ticket;
+  }
+
+  async listSupportTicketsForVendor(vendorId: string): Promise<SupportTicket[]> {
+    return this.supportTickets
+      .filter((t) => t.vendorId === vendorId)
+      .sort((a, b) => (b.createdAt > a.createdAt ? 1 : -1));
+  }
+
+  async listSupportTickets(options?: { vendorId?: string; status?: string }): Promise<SupportTicket[]> {
+    let list = [...this.supportTickets];
+    if (options?.vendorId) list = list.filter((t) => t.vendorId === options.vendorId);
+    if (options?.status) list = list.filter((t) => t.status === options.status);
+    return list.sort((a, b) => (b.createdAt > a.createdAt ? 1 : -1));
+  }
+
+  async getSupportTicket(id: string): Promise<SupportTicket | null> {
+    return this.supportTickets.find((t) => t.id === id) ?? null;
+  }
+
+  async updateSupportTicket(
+    id: string,
+    updates: { status?: SupportTicketStatus; opsReply?: string }
+  ): Promise<SupportTicket> {
+    const idx = this.supportTickets.findIndex((t) => t.id === id);
+    if (idx < 0) throw new Error(`Support ticket ${id} not found`);
+    const now = new Date().toISOString();
+    const existing = this.supportTickets[idx];
+    const next: SupportTicket = {
+      ...existing,
+      updatedAt: now,
+      status: updates.status ?? existing.status,
+      opsReply: updates.opsReply !== undefined ? updates.opsReply : existing.opsReply,
+      opsRepliedAt:
+        updates.opsReply !== undefined ? now : existing.opsRepliedAt
+    };
+    this.supportTickets[idx] = next;
+    return next;
   }
 
   private createId(prefix: string) {

@@ -210,6 +210,23 @@ export type VendorBilling = {
   updatedAt: string;
 };
 
+/** Support ticket status */
+export type SupportTicketStatus = 'open' | 'in_progress' | 'closed';
+
+/** Support ticket (vendor -> ops) */
+export type SupportTicket = {
+  id: string;
+  vendorId: string;
+  subject: string;
+  message: string;
+  status: SupportTicketStatus;
+  submittedBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+  opsReply: string | null;
+  opsRepliedAt: string | null;
+};
+
 // Menu and Catalog Types
 export type MenuItem = {
   id: string;

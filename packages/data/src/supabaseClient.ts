@@ -23,6 +23,8 @@ import {
   RevenueBySource,
   RevenuePoint,
   SquareOrder,
+  SupportTicket,
+  SupportTicketStatus,
   User,
   Vendor,
   VendorBilling,
@@ -439,6 +441,34 @@ export type Database = {
           updated_at?: string;
         };
         Update: Partial<Database['public']['Tables']['vendor_billing']['Insert']>;
+        Relationships: [];
+      };
+      support_tickets: {
+        Row: {
+          id: string;
+          vendor_id: string;
+          subject: string;
+          message: string;
+          status: string;
+          submitted_by: string | null;
+          created_at: string;
+          updated_at: string;
+          ops_reply: string | null;
+          ops_replied_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          vendor_id: string;
+          subject: string;
+          message: string;
+          status?: string;
+          submitted_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          ops_reply?: string | null;
+          ops_replied_at?: string | null;
+        };
+        Update: Partial<Database['public']['Tables']['support_tickets']['Insert']>;
         Relationships: [];
       };
       vendor_location_pins: {
@@ -2870,6 +2900,152 @@ export class SupabaseDataClient implements DataClient {
   }
 
   /**
+   * Creates a support ticket (vendor admin)
+   */
+  async createSupportTicket(input: {
+    vendorId: string;
+    subject: string;
+    message: string;
+    submittedBy?: string | null;
+  }): Promise<SupportTicket> {
+    const startTime = Date.now();
+    try {
+      const payload: Database['public']['Tables']['support_tickets']['Insert'] = {
+        vendor_id: input.vendorId,
+        subject: input.subject.trim(),
+        message: input.message.trim(),
+        status: 'open',
+        submitted_by: input.submittedBy ?? null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+
+      const { data, error } = await this.client
+        .from('support_tickets')
+        .insert(payload)
+        .select()
+        .single();
+
+      if (error) throw error;
+      const row = data as Database['public']['Tables']['support_tickets']['Row'];
+      logQueryPerformance('createSupportTicket', startTime, true);
+      return mapSupportTicketFromRow(row);
+    } catch (error) {
+      logQueryPerformance('createSupportTicket', startTime, false, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Lists support tickets for a vendor (vendor admin)
+   */
+  async listSupportTicketsForVendor(vendorId: string): Promise<SupportTicket[]> {
+    const startTime = Date.now();
+    try {
+      const { data, error } = await this.client
+        .from('support_tickets')
+        .select('*')
+        .eq('vendor_id', vendorId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      const rows = (data || []) as Database['public']['Tables']['support_tickets']['Row'][];
+      logQueryPerformance('listSupportTicketsForVendor', startTime, true);
+      return rows.map(mapSupportTicketFromRow);
+    } catch (error) {
+      logQueryPerformance('listSupportTicketsForVendor', startTime, false, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Lists support tickets (ops; optional filters)
+   */
+  async listSupportTickets(options?: { vendorId?: string; status?: string }): Promise<SupportTicket[]> {
+    const startTime = Date.now();
+    try {
+      let q = this.client
+        .from('support_tickets')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (options?.vendorId) q = q.eq('vendor_id', options.vendorId);
+      if (options?.status) q = q.eq('status', options.status);
+
+      const { data, error } = await q;
+
+      if (error) throw error;
+      const rows = (data || []) as Database['public']['Tables']['support_tickets']['Row'][];
+      logQueryPerformance('listSupportTickets', startTime, true);
+      return rows.map(mapSupportTicketFromRow);
+    } catch (error) {
+      logQueryPerformance('listSupportTickets', startTime, false, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Gets a single support ticket by id
+   */
+  async getSupportTicket(id: string): Promise<SupportTicket | null> {
+    const startTime = Date.now();
+    try {
+      const { data, error } = await this.client
+        .from('support_tickets')
+        .select('*')
+        .eq('id', id)
+        .maybeSingle();
+
+      if (error) throw error;
+      if (!data) {
+        logQueryPerformance('getSupportTicket', startTime, true);
+        return null;
+      }
+      const row = data as Database['public']['Tables']['support_tickets']['Row'];
+      logQueryPerformance('getSupportTicket', startTime, true);
+      return mapSupportTicketFromRow(row);
+    } catch (error) {
+      logQueryPerformance('getSupportTicket', startTime, false, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Updates a support ticket (ops: status and/or ops reply)
+   */
+  async updateSupportTicket(
+    id: string,
+    updates: { status?: SupportTicketStatus; opsReply?: string }
+  ): Promise<SupportTicket> {
+    const startTime = Date.now();
+    try {
+      const payload: Database['public']['Tables']['support_tickets']['Update'] = {
+        updated_at: new Date().toISOString()
+      };
+      if (updates.status !== undefined) payload.status = updates.status;
+      if (updates.opsReply !== undefined) {
+        payload.ops_reply = updates.opsReply;
+        payload.ops_replied_at = new Date().toISOString();
+      }
+
+      const { data, error } = await this.client
+        .from('support_tickets')
+        .update(payload)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      const row = data as Database['public']['Tables']['support_tickets']['Row'];
+      logQueryPerformance('updateSupportTicket', startTime, true);
+      return mapSupportTicketFromRow(row);
+    } catch (error) {
+      logQueryPerformance('updateSupportTicket', startTime, false, error);
+      throw error;
+    }
+  }
+
+  /**
    * Gets all location PINs for a vendor (returns locationId -> hasPin mapping)
    */
   async getLocationPins(vendorId: string): Promise<Record<string, boolean>> {
@@ -3615,6 +3791,21 @@ export const mapKitchenTicketFromRow = (
   customLabel: row.custom_label ?? undefined,
   priorityOrder: row.priority_order ?? 0
 });
+
+function mapSupportTicketFromRow(row: Database['public']['Tables']['support_tickets']['Row']): SupportTicket {
+  return {
+    id: row.id,
+    vendorId: row.vendor_id,
+    subject: row.subject,
+    message: row.message,
+    status: row.status as SupportTicketStatus,
+    submittedBy: row.submitted_by ?? null,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    opsReply: row.ops_reply ?? null,
+    opsRepliedAt: row.ops_replied_at ?? null
+  };
+}
 
 export const toKitchenTicketInsert = (
   ticket: Partial<KitchenTicket> & { squareOrderId: string; locationId: string; source: 'countrtop_online' | 'square_pos'; status: KitchenTicketStatus }
