@@ -132,12 +132,12 @@ export function OrderStatusTracker({
       {/* Completed CTA: feedback, review link, contact */}
       {status === 'completed' && completedCta && (
         <div className="completed-cta">
-          <div className="cta-row">
-            <span className="cta-label">How was your food?</span>
+          <div className="cta-feedback">
+            <div className="cta-label">How was your food?</div>
             {completedCta.feedbackRating ? (
-              <span className="cta-feedback-thanks">
+              <p className="cta-feedback-thanks">
                 Thanks for your feedback! {completedCta.feedbackRating === 'thumbs_up' ? '👍' : '👎'}
-              </span>
+              </p>
             ) : (
               <div className="cta-thumbs">
                 <button
@@ -161,24 +161,33 @@ export function OrderStatusTracker({
           </div>
           <div className="cta-actions">
             {completedCta.reviewUrl && (
-              <a
-                href={completedCta.reviewUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="cta-button cta-review"
-              >
-                Leave us a review
-              </a>
+              <div className="cta-action-item">
+                <div className="cta-label">Review</div>
+                <a
+                  href={completedCta.reviewUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="cta-link cta-link-review"
+                >
+                  Leave us a review
+                </a>
+              </div>
             )}
             {completedCta.contactPhone ? (
-              <div className="cta-contact-wrap">
-                <span className="cta-contact-label">Contact for help</span>
-                <a href={`tel:${completedCta.contactPhone.replace(/\D/g, '')}`} className="cta-button cta-contact">
+              <div className="cta-action-item">
+                <div className="cta-label">Contact for help</div>
+                <a
+                  href={`tel:${completedCta.contactPhone.replace(/\D/g, '')}`}
+                  className="cta-link cta-link-contact"
+                >
                   {completedCta.contactPhone}
                 </a>
               </div>
             ) : (
-              <span className="cta-muted">Contact the restaurant directly for help</span>
+              <div className="cta-action-item">
+                <div className="cta-label">Contact</div>
+                <span className="cta-muted">Contact the restaurant directly</span>
+              </div>
             )}
           </div>
         </div>
@@ -401,44 +410,35 @@ export function OrderStatusTracker({
         .completed-cta {
           display: flex;
           flex-direction: column;
-          gap: 12px;
+          gap: 16px;
           margin-bottom: 16px;
-          padding-top: 4px;
+          padding-top: 16px;
+          border-top: 1px solid var(--ct-card-border);
         }
 
         .compact .completed-cta {
           margin-bottom: 0;
+          padding-top: 12px;
         }
 
-        .cta-actions {
-          display: flex;
-          flex-direction: row;
-          flex-wrap: wrap;
-          gap: 12px;
-          align-items: flex-start;
-        }
-
-        @media (max-width: 640px) {
-          .cta-actions {
-            flex-direction: column;
-          }
-        }
-
-        .cta-row {
+        .cta-feedback {
           display: flex;
           flex-direction: column;
           gap: 8px;
         }
 
         .cta-label {
-          font-size: 13px;
-          font-weight: 600;
-          color: var(--color-text);
+          font-size: 11px;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.4px;
+          color: var(--color-text-muted);
         }
 
         .cta-feedback-thanks {
           font-size: 14px;
-          color: var(--color-text-muted);
+          color: var(--color-text);
+          margin: 0;
         }
 
         .cta-thumbs {
@@ -465,50 +465,49 @@ export function OrderStatusTracker({
           border-color: rgba(232, 93, 4, 0.25);
         }
 
-        .cta-button {
-          display: inline-block;
-          padding: 10px 16px;
-          border-radius: 10px;
-          font-size: 14px;
-          font-weight: 600;
-          text-decoration: none;
-          text-align: center;
-          transition: opacity 0.2s;
-          border: 1px solid var(--ct-card-border);
-          background: var(--ct-bg-surface-warm);
-          color: var(--ct-text);
+        .cta-actions {
+          display: flex;
+          flex-direction: row;
+          flex-wrap: wrap;
+          gap: 20px;
+          align-items: flex-start;
         }
 
-        .cta-button:hover {
-          opacity: 0.9;
+        @media (max-width: 640px) {
+          .cta-actions {
+            flex-direction: column;
+            gap: 16px;
+          }
         }
 
-        .cta-review {
-          background: var(--theme-button, var(--color-primary));
-          border-color: rgba(232, 93, 4, 0.4);
-          color: #fff;
-        }
-
-        .cta-contact-wrap {
+        .cta-action-item {
           display: flex;
           flex-direction: column;
           gap: 4px;
+          min-width: 0;
         }
 
-        .cta-contact-label {
-          font-size: 11px;
-          font-weight: 700;
-          text-transform: uppercase;
-          letter-spacing: 0.4px;
-          color: var(--color-text-muted);
+        .cta-link {
+          font-size: 14px;
+          font-weight: 500;
+          text-decoration: none;
+          transition: opacity 0.2s;
         }
 
-        .cta-contact {
+        .cta-link:hover {
+          opacity: 0.85;
+        }
+
+        .cta-link-review {
+          color: var(--theme-button, var(--color-primary));
+        }
+
+        .cta-link-contact {
           color: var(--theme-accent, var(--color-accent));
         }
 
         .cta-muted {
-          font-size: 13px;
+          font-size: 14px;
           color: var(--color-text-muted);
         }
 
