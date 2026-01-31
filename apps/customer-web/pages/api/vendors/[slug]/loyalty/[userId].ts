@@ -1,6 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
+import type { BillingPlanId } from '@countrtop/models';
 
 import { getServerDataClient } from '../../../../../lib/dataClient';
+
+function canUseLoyalty(planId: BillingPlanId): boolean {
+  return planId === 'starter' || planId === 'pro';
+}
 
 type LoyaltyResponse =
   | {
@@ -32,6 +37,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
   const vendor = await dataClient.getVendorBySlug(slug);
   if (!vendor) {
     return res.status(404).json({ ok: false, error: 'Vendor not found' });
+  }
+
+  // Free-tier (Beta/Trial) vendors don't have loyalty; return success with zero balance so customer sign-in flow never fails
+  const billing = await dataClient.getVendorBilling(vendor.id);
+  const planId: BillingPlanId = (billing?.planId as BillingPlanId) ?? 'beta';
+  if (!canUseLoyalty(planId)) {
+    return res.status(200).json({
+      ok: true,
+      balance: 0,
+      entries: []
+    });
   }
 
   try {

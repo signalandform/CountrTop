@@ -418,6 +418,7 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
         setLoyalty(loyaltyResult.data.balance ?? 0);
         setLoyaltyRedemptionRules(loyaltyResult.data.redemptionRules ?? null);
       } else {
+        setLoyalty(0);
         setLoyaltyRedemptionRules(null);
       }
 
