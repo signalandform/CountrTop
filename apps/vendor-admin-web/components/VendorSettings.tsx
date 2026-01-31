@@ -11,8 +11,14 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
   const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  // Default theme colors (used for reset)
+  const DEFAULT_PRIMARY_COLOR = '#E85D04';
+  const DEFAULT_ACCENT_COLOR = '#FFB627';
+
   // Theming state
   const [logoUrl, setLogoUrl] = useState(vendor.logoUrl || '');
+  const [primaryColor, setPrimaryColor] = useState(vendor.primaryColor || DEFAULT_PRIMARY_COLOR);
+  const [accentColor, setAccentColor] = useState(vendor.accentColor || DEFAULT_ACCENT_COLOR);
   const [reviewUrl, setReviewUrl] = useState(vendor.reviewUrl || '');
 
   // Feature flags state
@@ -258,6 +264,8 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
         credentials: 'include',
         body: JSON.stringify({
           logoUrl: logoUrl || null,
+          primaryColor: primaryColor || null,
+          accentColor: accentColor || null,
           reviewUrl: reviewUrl.trim() || null
         })
       });
@@ -284,8 +292,23 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
         <form onSubmit={handleSave} className="vendor-form">
           {/* Branding Section */}
           <div className="form-section highlight">
-            <h2>🎨 Branding & Theme</h2>
-            <p className="section-description">Customize the appearance of your customer-facing pages</p>
+            <div className="form-section-header-row">
+              <div>
+                <h2>🎨 Branding & Theme</h2>
+                <p className="section-description">Customize the appearance of your customer-facing pages</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setPrimaryColor(DEFAULT_PRIMARY_COLOR);
+                  setAccentColor(DEFAULT_ACCENT_COLOR);
+                }}
+                className="btn-secondary btn-reset-default"
+                disabled={saving}
+              >
+                Reset to default
+              </button>
+            </div>
 
             <div className="form-grid">
               <div className="form-group full-width">
@@ -300,6 +323,62 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
                   placeholder="https://example.com/logo.png"
                 />
                 <small className="form-hint">Square image recommended (200×200px or larger)</small>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="primaryColor">Button Color</label>
+                <div className="color-input-row">
+                  <input
+                    id="primaryColor"
+                    type="color"
+                    value={primaryColor}
+                    onChange={(e) => setPrimaryColor(e.target.value)}
+                    className="color-picker"
+                    disabled={saving}
+                  />
+                  <input
+                    type="text"
+                    value={primaryColor}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (/^#[0-9A-Fa-f]{0,6}$/.test(val)) {
+                        setPrimaryColor(val);
+                      }
+                    }}
+                    className="form-input color-text"
+                    disabled={saving}
+                    placeholder="#E85D04"
+                  />
+                </div>
+                <small className="form-hint">Color for buttons and CTAs</small>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="accentColor">Accent Color</label>
+                <div className="color-input-row">
+                  <input
+                    id="accentColor"
+                    type="color"
+                    value={accentColor}
+                    onChange={(e) => setAccentColor(e.target.value)}
+                    className="color-picker"
+                    disabled={saving}
+                  />
+                  <input
+                    type="text"
+                    value={accentColor}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (/^#[0-9A-Fa-f]{0,6}$/.test(val)) {
+                        setAccentColor(val);
+                      }
+                    }}
+                    className="form-input color-text"
+                    disabled={saving}
+                    placeholder="#FFB627"
+                  />
+                </div>
+                <small className="form-hint">Color for text highlights and badges</small>
               </div>
             </div>
           </div>
@@ -627,6 +706,23 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
         .form-section.highlight {
           background: rgba(232, 93, 4, 0.08);
           border-color: rgba(232, 93, 4, 0.25);
+        }
+
+        .form-section-header-row {
+          display: flex;
+          flex-wrap: wrap;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 16px;
+          margin-bottom: 24px;
+        }
+
+        .form-section-header-row .section-description {
+          margin-bottom: 0;
+        }
+
+        .btn-reset-default {
+          flex-shrink: 0;
         }
 
         .form-section h2 {
