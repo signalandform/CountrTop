@@ -68,6 +68,11 @@ class QueryCache {
 
 const queryCache = new QueryCache();
 
+/** Invalidate cached vendor by slug so the next getVendorBySlug fetches fresh data. Call after updating vendor settings. */
+export function invalidateVendorCacheBySlug(slug: string): void {
+  queryCache.delete(`vendor:slug:${slug}`);
+}
+
 // Performance logging helper
 // Use lazy loading to avoid pulling in Square SDK in Edge Runtime (middleware)
 let loggerModule: { getLogger?: () => { info: (msg: string, data?: unknown) => void; warn: (msg: string, data?: unknown) => void; error: (msg: string, error?: unknown, data?: unknown) => void } } | null | false = null;

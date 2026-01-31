@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { requireVendorAdminApi } from '../../../../lib/auth';
 import { createClient } from '@supabase/supabase-js';
 
-import type { Database } from '@countrtop/data';
+import { type Database, invalidateVendorCacheBySlug } from '@countrtop/data';
 
 type UpdateSettingsResponse = 
   | { success: true }
@@ -115,6 +115,8 @@ export default async function handler(
     if (accentColor !== undefined) updateData.accent_color = accentColor || null;
     if (fontFamily !== undefined) updateData.font_family = fontFamily || null;
     if (reviewUrl !== undefined) updateData.review_url = reviewUrl ?? null;
+    // Ensure reviewUrl is applied when present in body (handles any body parsing quirks)
+    if (req.body && 'reviewUrl' in req.body) updateData.review_url = req.body.reviewUrl ?? null;
 
     // Do not allow updating square_location_id or admin_user_id through this endpoint
     // These are protected fields
@@ -125,11 +127,13 @@ export default async function handler(
       .eq('slug', vendorSlug);
 
     if (updateError) {
-      return res.status(500).json({ 
-        success: false, 
-        error: `Failed to update vendor: ${updateError.message}` 
+      return res.status(500).json({
+        success: false,
+        error: `Failed to update vendor: ${updateError.message}`
       });
     }
+
+    invalidateVendorCacheBySlug(vendorSlug);
 
     // Keep location pickup instructions in sync when settings update the default.
     if (pickupInstructions !== undefined) {
