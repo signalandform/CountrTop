@@ -62,6 +62,7 @@ export default function Home() {
             <a href="#features">Features</a>
             <a href="#how-it-works">How It Works</a>
             <a href="#pricing">Pricing</a>
+            <a href="https://admin.countrtop.com" target="_blank" rel="noopener noreferrer">Vendor sign in</a>
             <a href="#contact" className="btn-nav">Get Started</a>
           </div>
         </div>
@@ -127,7 +128,6 @@ export default function Home() {
                 <div className="mockup-logo">🍕 Sal&apos;s Pizza</div>
                 <div className="mockup-cart">🛒 2</div>
               </div>
-              <div className="mockup-hero-img" />
               <div className="mockup-items">
                 <div className="mockup-item">
                   <div className="item-img" />
@@ -215,7 +215,7 @@ export default function Home() {
               <span className="win-icon">📺</span>
               <div className="win-content">
                 <h4>Built-In Kitchen Display System</h4>
-                <p>KDS shows all orders—online and in-store POS—in one unified queue. Ticket flow New→Ready→Complete, order recall, and customer notifications when orders are ready. Replaces paper tickets entirely.</p>
+                <p>KDS shows all orders—online and in-store POS—in one unified queue. Ticket flow New → In Progress → Ready → Complete, order recall, and customer notifications when orders are ready. Replaces paper tickets entirely.</p>
               </div>
             </div>
             <div className="win-item">
@@ -255,7 +255,7 @@ export default function Home() {
               <h3>Kitchen Display System</h3>
               <p>Real-time order management for your kitchen. See orders as they come in, track progress, and never miss a ticket.</p>
               <ul className="feature-list">
-                <li>Ticket flow: New → Ready → Complete with one tap</li>
+                <li>Ticket flow: New → In Progress → Ready → Complete with one tap</li>
                 <li>Order recall from completed</li>
                 <li>Employee clock in/out</li>
                 <li>Customer notifications when order is ready</li>
@@ -409,7 +409,7 @@ export default function Home() {
               </div>
               <p className="pricing-description">Free while we&apos;re in beta. Lock in your spot and help shape the product.</p>
               <ul className="pricing-features">
-                <li><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" fill="#10B981"/></svg>KDS single screen: ticket flow New→Ready→Complete, order recall</li>
+                <li><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" fill="#10B981"/></svg>KDS single screen: ticket flow New → In Progress → Ready → Complete, order recall</li>
                 <li><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" fill="#10B981"/></svg>Employee clock in/out</li>
                 <li><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" fill="#10B981"/></svg>Customer notifications when order is ready</li>
                 <li><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" fill="#10B981"/></svg>Basic analytics, single location, employee timesheets</li>
@@ -537,6 +537,7 @@ export default function Home() {
               </div>
               <div className="footer-col">
                 <h4>Company</h4>
+                <a href="https://admin.countrtop.com" target="_blank" rel="noopener noreferrer">Vendor sign in</a>
                 <a href="mailto:hello@countrtop.com">Contact</a>
               </div>
             </div>
@@ -819,12 +820,6 @@ export default function Home() {
           border-radius: 100px;
           font-size: 0.75rem;
           font-weight: 600;
-        }
-        .mockup-hero-img {
-          height: 100px;
-          background: linear-gradient(135deg, #FFE4B5 0%, #FFDAB9 100%);
-          border-radius: 12px;
-          margin-bottom: 1rem;
         }
         .mockup-items {
           display: flex;
