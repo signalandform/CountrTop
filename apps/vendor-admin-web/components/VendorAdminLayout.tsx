@@ -89,6 +89,20 @@ export function VendorAdminLayout({
         isActive: isPrefix(`${basePath}/workspace`)
       },
       {
+        id: 'billing',
+        label: 'Billing',
+        href: `${basePath}/billing`,
+        icon: '💳',
+        isActive: isPrefix(`${basePath}/billing`)
+      },
+      {
+        id: 'support',
+        label: 'Support',
+        href: `${basePath}/support`,
+        icon: '📧',
+        isActive: isPrefix(`${basePath}/support`)
+      },
+      {
         id: 'store',
         label: 'View Store',
         href: `https://${vendorSlug}.countrtop.com`,

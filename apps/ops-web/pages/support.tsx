@@ -41,10 +41,12 @@ export default function SupportPage({ userEmail }: Props) {
             <h1>Support Inbox</h1>
           </header>
           <div className="page-content">
+            <h2 className="tickets-subheading">Support tickets (from vendors)</h2>
+            <p className="tickets-empty">No tickets yet.</p>
             <div className="coming-soon">
               <div className="coming-soon-icon">📧</div>
               <h2>Coming Soon</h2>
-              <p>Support request management will be available here.</p>
+              <p>Vendor support tickets will appear here. Vendors can submit tickets from their admin Support page.</p>
             </div>
           </div>
 
@@ -75,6 +77,19 @@ export default function SupportPage({ userEmail }: Props) {
             max-width: 1200px;
             margin: 0 auto;
             padding: 48px;
+          }
+
+          .tickets-subheading {
+            font-size: 18px;
+            font-weight: 600;
+            margin: 0 0 8px;
+            color: var(--color-text);
+          }
+
+          .tickets-empty {
+            font-size: 14px;
+            color: var(--color-text-muted);
+            margin: 0 0 32px;
           }
 
           .coming-soon {
