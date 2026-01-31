@@ -22,24 +22,24 @@ CountrTop is a **commission-free online ordering platform** for independent rest
 ├── apps
 │   ├── customer-web        # Customer ordering storefront (Next.js)
 │   ├── customer-mobile     # iOS WebView shell + push notifications (Expo)
-│   ├── vendor-admin-web    # Vendor dashboard: analytics, settings, branding (Next.js)
+│   ├── vendor-admin-web    # Vendor dashboard: analytics, settings, locations (Next.js)
 │   ├── vendor-ops-mobile   # Order queue + "Mark Ready" tablet app (Expo)
-│   ├── kds-web             # Kitchen Display System - Universal order queue (Next.js PWA)
+│   ├── kds-web             # Kitchen Display System - universal order queue (Next.js PWA)
 │   ├── ops-web             # Internal operations dashboard (Next.js)
 │   └── marketing-web       # Marketing site & lead capture at countrtop.com (Next.js)
 ├── packages
-│   ├── api-client          # REST helpers, Square API client, logging
-│   ├── data                # Supabase client + data layer
+│   ├── api-client          # REST helpers, Square API client, circuit breaker, logging
+│   ├── data                # Supabase client, data layer, vendor cache, analytics
 │   ├── email               # Email templates and sending (Resend)
 │   ├── functions           # Shared serverless function utilities
-│   ├── models              # Shared TypeScript types
+│   ├── models              # Shared TypeScript types and env schemas
 │   ├── monitoring          # Error tracking (Sentry)
 │   ├── pos-adapters        # POS integrations (Square, Toast, Clover)
-│   └── ui                  # Shared UI primitives
+│   └── ui                  # Shared UI primitives, theme, ErrorBoundary
 ├── supabase
 │   └── migrations          # Database migrations
 ├── docs                    # Documentation
-├── scripts                 # Utility scripts
+├── scripts                 # Utility scripts (poll Square, backfill, etc.)
 ├── pnpm-workspace.yaml
 ├── package.json
 └── tsconfig.json
@@ -67,52 +67,57 @@ Build commands follow the same pattern: `pnpm build:customer-web`, `pnpm build:v
 ## Apps Overview
 
 ### Customer Web (`customer-web`)
-Customer-facing ordering application with:
-- Vendor theming (colors, logo)
-- Menu browsing and cart
-- Square checkout integration
-- Order tracking with real-time status updates
-- Email confirmations
+Customer-facing ordering application:
+
+- **Storefront** – Vendor logo (right-aligned with heading), theming (logo, colors), open/closed badge, multi-location selector when applicable
+- **Store info** – Full-week store hours with current day highlighted; single maps link (full address as label); pickup instructions card; contact-for-help (phone) in gate
+- **Ordering** – Menu browsing, cart, Square checkout, pickup confirmation, loyalty points display
+- **Order tracking** – Real-time status (placed → preparing → ready → completed), shortcode, estimated wait; post-completion CTAs: feedback (thumbs up/down), review link, contact-for-help (horizontal on desktop, stacked on mobile)
+- **Auth** – Sign in with Apple (and other providers when configured); account card with points
+- **Email** – Order confirmation and ready-for-pickup via Resend
 
 ### Vendor Admin (`vendor-admin-web`)
-Vendor dashboard for:
-- **Analytics**: Revenue, orders, peak hours, customer insights
-- **Settings**: Business info, hours, pickup instructions
-- **Branding**: Custom colors and logo
-- **Locations**: Multi-location management with KDS settings
+Vendor dashboard:
+
+- **Settings** – Logo URL; custom colors (button + accent) with reset-to-default; Review Link (customer review URL after order, e.g. Google/Yelp); Feature flags; Location PINs (KDS access); KDS pairing tokens (QR code to pair devices)
+- **Locations** – Multi-location management; per-location store hours (day-by-day with Closed checkbox), online ordering toggle and lead time, KDS queue settings (limits, auto-bump, sound, display mode)
+- **Analytics** – Revenue series and by source, AOV, KDS summary/throughput/prep time/heatmap/source, customer summary and LTV, repeat customers, item performance
+- **Orders** – Order list and status
+- **Workspace** – Employees and time tracking (when enabled)
 
 ### KDS (`kds-web`)
-Kitchen Display System that shows **all** orders (online + in-store POS):
-- Real-time updates via Supabase subscriptions
-- Ticket workflow: New → In Progress → Ready → Completed
-- Recall completed tickets
-- Sound alerts and auto-bump settings
-- PWA installable on iPad
-- Offline support
+Kitchen Display System for **all** orders (online + in-store POS):
+
+- Real-time queue via Supabase subscriptions
+- Ticket workflow: New → In Progress → Ready → Completed; recall completed
+- Sound alerts, auto-bump, configurable limits and display mode (grid/list)
+- Pairing via QR code (tokens from vendor admin)
+- PWA installable on iPad; offline support
 
 ### Ops Dashboard (`ops-web`)
-Internal operations dashboard for:
+Internal operations:
+
 - Vendor management and onboarding
-- Feature flags
+- Feature flags per vendor
 - System health monitoring
 - Support tools
 
 ### Marketing Web (`marketing-web`)
-Public marketing site at `countrtop.com`:
-- Landing page with features, pricing, and how-it-works
-- Lead capture form (waitlist signups)
-- Stored in Supabase `marketing_leads` table
+Public site at `countrtop.com`:
+
+- Landing page (features, pricing, how-it-works)
+- Lead capture (waitlist); leads stored in Supabase `marketing_leads`
 
 ---
 
 ## Core Principles
 
-- **Zero Commission**: Vendors keep 100% of their revenue
-- **Tenant-Lite**: Vendor resolved from subdomain on every request
-- **Data Isolation**: All data is vendor-scoped with RLS policies
-- **POS Canonical**: POS (Square/Toast/Clover) is source of truth for catalog and orders
-- **Universal KDS**: Shows all orders, not just online—replaces paper tickets entirely
-- **Simplicity**: Prefer deletion over abstraction
+- **Zero Commission** – Vendors keep 100% of their revenue
+- **Tenant-Lite** – Vendor resolved from subdomain on every request
+- **Data Isolation** – All data vendor-scoped with RLS policies
+- **POS Canonical** – POS (Square/Toast/Clover) is source of truth for catalog and orders
+- **Universal KDS** – Single queue for all orders; replaces paper tickets
+- **Simplicity** – Prefer deletion over abstraction
 
 ---
 
@@ -154,13 +159,11 @@ RESEND_API_KEY=                   # Admin notification on new leads (optional)
 
 ## POS Integrations
 
-CountrTop integrates with multiple POS systems:
-
-| POS | Status | Features |
-|-----|--------|----------|
-| **Square** | ✅ Production | Catalog sync, checkout, webhooks, order polling |
-| **Toast** | 🔧 In Progress | Catalog sync, order webhooks |
-| **Clover** | 🔧 In Progress | Catalog sync, order webhooks |
+| POS     | Status        | Features                                      |
+|---------|---------------|-----------------------------------------------|
+| **Square** | Production  | Catalog sync, checkout, webhooks, order polling |
+| **Toast**  | In progress | Catalog sync, order webhooks                  |
+| **Clover**  | In progress | Catalog sync, order webhooks                  |
 
 See `docs/SQUARE_SETUP.md`, `docs/TOAST_SETUP.md`, and `docs/CLOVER_SETUP.md` for integration guides.
 
@@ -168,7 +171,7 @@ See `docs/SQUARE_SETUP.md`, `docs/TOAST_SETUP.md`, and `docs/CLOVER_SETUP.md` fo
 
 ## Documentation
 
-Additional documentation in `docs/`:
+Additional docs in `docs/`:
 
 - **ENV_SETUP.md** – Environment variable reference
 - **VENDOR_ONBOARDING.md** – Vendor setup guide
@@ -177,31 +180,35 @@ Additional documentation in `docs/`:
 - **CRON_SETUP.md** – Square polling cron job setup
 - **CONNECTION_POOLING.md** – Supabase connection pooling
 - **INDEXES.md** – Database index documentation
+- **TOAST_SETUP.md** – Toast POS integration
+- **CLOVER_SETUP.md** – Clover POS integration
 
 ---
 
 ## Deployment
 
-All apps deploy to Vercel:
+Apps deploy to Vercel:
 
-| App | Domain |
-|-----|--------|
-| customer-web | `{vendor}.countrtop.com` |
-| vendor-admin-web | `admin.countrtop.com` |
-| kds-web | `kds.countrtop.com` |
-| ops-web | `ops.countrtop.com` |
-| marketing-web | `countrtop.com` |
+| App              | Domain                |
+|------------------|------------------------|
+| customer-web     | `{vendor}.countrtop.com` |
+| vendor-admin-web | `admin.countrtop.com`   |
+| kds-web          | `kds.countrtop.com`    |
+| ops-web          | `ops.countrtop.com`    |
+| marketing-web    | `countrtop.com`        |
 
 ---
 
 ## CI/CD
 
 GitHub Actions runs on every push:
+
 - ESLint (`pnpm lint`)
 - TypeScript type checking
 - Build verification
 
 Run locally before pushing:
+
 ```bash
 pnpm lint
 pnpm build
