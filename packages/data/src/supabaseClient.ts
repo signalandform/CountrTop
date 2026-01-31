@@ -3215,6 +3215,38 @@ export class SupabaseDataClient implements DataClient {
     }
   }
 
+  async listActiveTimeEntries(vendorId: string): Promise<import('@countrtop/models').TimeEntry[]> {
+    const startTime = Date.now();
+    try {
+      const { data, error } = await this.client
+        .from('time_entries')
+        .select('*')
+        .eq('vendor_id', vendorId)
+        .is('clock_out_at', null)
+        .order('clock_in_at', { ascending: false });
+
+      if (error) throw error;
+
+      const timeEntries = ((data || []) as Database['public']['Tables']['time_entries']['Row'][]).map((row) => ({
+        id: row.id,
+        vendorId: row.vendor_id,
+        employeeId: row.employee_id,
+        clockInAt: row.clock_in_at,
+        clockOutAt: row.clock_out_at,
+        locationId: row.location_id,
+        notes: row.notes,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at
+      }));
+
+      logQueryPerformance('listActiveTimeEntries', startTime, true);
+      return timeEntries;
+    } catch (error) {
+      logQueryPerformance('listActiveTimeEntries', startTime, false, error);
+      throw error;
+    }
+  }
+
   async listTimeEntries(vendorId: string, employeeId: string | null, startDate: Date, endDate: Date): Promise<import('@countrtop/models').TimeEntry[]> {
     const startTime = Date.now();
     try {

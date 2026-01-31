@@ -616,6 +616,13 @@ export class MockDataClient implements DataClient {
     return null;
   }
 
+  async listActiveTimeEntries(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _vendorId: string
+  ): Promise<import('@countrtop/models').TimeEntry[]> {
+    return [];
+  }
+
   async listTimeEntries(
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     _vendorId: string,
