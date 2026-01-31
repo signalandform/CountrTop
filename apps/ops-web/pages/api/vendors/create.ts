@@ -21,9 +21,6 @@ type CreateVendorRequest = {
   pickup_instructions?: string | null;
   kds_active_limit_total?: number | null;
   kds_active_limit_ct?: number | null;
-  /** Optional: create vendor admin login (Supabase Auth user linked to this vendor) */
-  admin_email?: string | null;
-  admin_password?: string | null;
 };
 
 type CreateVendorResponse =
@@ -126,31 +123,7 @@ export default async function handler(
     // Generate vendor ID
     const vendorId = `vendor_${body.slug}_${Date.now()}`;
 
-    // Optional: create vendor admin Auth user
-    let adminUserId: string | null = null;
-    const hasAdminEmail = typeof body.admin_email === 'string' && body.admin_email.trim().length > 0;
-    const hasAdminPassword = typeof body.admin_password === 'string' && body.admin_password.length >= 8;
-    if (hasAdminEmail && hasAdminPassword) {
-      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-        email: body.admin_email!.trim(),
-        password: body.admin_password!,
-        email_confirm: true
-      });
-      if (authError) {
-        return res.status(400).json({
-          success: false,
-          error: `Failed to create admin user: ${authError.message}`
-        });
-      }
-      if (authData?.user?.id) adminUserId = authData.user.id;
-    } else if (hasAdminEmail || (typeof body.admin_password === 'string' && body.admin_password.length > 0)) {
-      return res.status(400).json({
-        success: false,
-        error: 'Both admin_email and admin_password are required for vendor admin login; password must be at least 8 characters'
-      });
-    }
-
-    // Insert new vendor (with admin_user_id if we created an admin user)
+    // Insert new vendor
     const { data: vendor, error } = await supabase
       .from('vendors')
       .insert({
@@ -161,7 +134,6 @@ export default async function handler(
         square_location_id: body.square_location_id,
         square_credential_ref: body.square_credential_ref || null,
         status: body.status || 'active',
-        admin_user_id: adminUserId,
         address_line1: body.address_line1 || null,
         address_line2: body.address_line2 || null,
         city: body.city || null,
@@ -181,6 +153,22 @@ export default async function handler(
       return res.status(500).json({
         success: false,
         error: `Failed to create vendor: ${error.message}`
+      });
+    }
+
+    // Populate vendor_billing with default plan so plan-gated features have a row
+    const { error: billingError } = await supabase
+      .from('vendor_billing')
+      .insert({
+        vendor_id: vendor.id,
+        plan_id: 'beta'
+      });
+
+    if (billingError) {
+      console.error('Error creating vendor billing:', billingError);
+      return res.status(500).json({
+        success: false,
+        error: `Failed to create vendor billing: ${billingError.message}`
       });
     }
 

@@ -18,17 +18,12 @@ import {
   KdsSourceMetrics,
   LoyaltyLedgerEntry,
   OrderSnapshot,
-  PairingToken,
   PushDevice,
   RevenueBySource,
   RevenuePoint,
   SquareOrder,
-  SupportTicket,
-  SupportTicketStatus,
   User,
   Vendor,
-  VendorBilling,
-  VendorLoyaltySettings,
   VendorLocation,
   VendorStatus
 } from './models';
@@ -71,11 +66,6 @@ class QueryCache {
 }
 
 const queryCache = new QueryCache();
-
-/** Invalidate cached vendor by slug so the next getVendorBySlug fetches fresh data. Call after updating vendor settings. */
-export function invalidateVendorCacheBySlug(slug: string): void {
-  queryCache.delete(`vendor:slug:${slug}`);
-}
 
 // Performance logging helper
 // Use lazy loading to avoid pulling in Square SDK in Edge Runtime (middleware)
@@ -187,7 +177,6 @@ export type Database = {
           primary_color: string | null;
           accent_color: string | null;
           font_family: string | null;
-          review_url: string | null;
         };
         Insert: {
           id?: string;
@@ -212,7 +201,6 @@ export type Database = {
           primary_color?: string | null;
           accent_color?: string | null;
           font_family?: string | null;
-          review_url?: string | null;
         };
         Update: Partial<Database['public']['Tables']['vendors']['Insert']>;
         Relationships: [];
@@ -231,7 +219,6 @@ export type Database = {
           updated_at: string | null;
           customer_display_name: string | null;
           pickup_label: string | null;
-          customer_feedback_rating: string | null;
         };
         Insert: {
           id?: string;
@@ -246,7 +233,6 @@ export type Database = {
           updated_at?: string | null;
           customer_display_name?: string | null;
           pickup_label?: string | null;
-          customer_feedback_rating?: string | null;
         };
         Update: Partial<Database['public']['Tables']['order_snapshots']['Insert']>;
         Relationships: [];
@@ -395,98 +381,6 @@ export type Database = {
         Update: Partial<Database['public']['Tables']['vendor_feature_flags']['Insert']>;
         Relationships: [];
       };
-      vendor_loyalty_settings: {
-        Row: {
-          id: string;
-          vendor_id: string;
-          cents_per_point: number;
-          min_points_to_redeem: number;
-          max_points_per_order: number;
-          created_at: string;
-          updated_at: string;
-        };
-        Insert: {
-          id?: string;
-          vendor_id: string;
-          cents_per_point?: number;
-          min_points_to_redeem?: number;
-          max_points_per_order?: number;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Update: Partial<Database['public']['Tables']['vendor_loyalty_settings']['Insert']>;
-        Relationships: [];
-      };
-      vendor_billing: {
-        Row: {
-          id: string;
-          vendor_id: string;
-          stripe_customer_id: string | null;
-          stripe_subscription_id: string | null;
-          plan_id: string;
-          status: string;
-          current_period_end: string | null;
-          created_at: string;
-          updated_at: string;
-        };
-        Insert: {
-          id?: string;
-          vendor_id: string;
-          stripe_customer_id?: string | null;
-          stripe_subscription_id?: string | null;
-          plan_id?: string;
-          status?: string;
-          current_period_end?: string | null;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Update: Partial<Database['public']['Tables']['vendor_billing']['Insert']>;
-        Relationships: [];
-      };
-      support_tickets: {
-        Row: {
-          id: string;
-          vendor_id: string;
-          subject: string;
-          message: string;
-          status: string;
-          submitted_by: string | null;
-          created_at: string;
-          updated_at: string;
-          ops_reply: string | null;
-          ops_replied_at: string | null;
-        };
-        Insert: {
-          id?: string;
-          vendor_id: string;
-          subject: string;
-          message: string;
-          status?: string;
-          submitted_by?: string | null;
-          created_at?: string;
-          updated_at?: string;
-          ops_reply?: string | null;
-          ops_replied_at?: string | null;
-        };
-        Update: Partial<Database['public']['Tables']['support_tickets']['Insert']>;
-        Relationships: [];
-      };
-      vendor_email_unsubscribes: {
-        Row: {
-          id: string;
-          vendor_id: string;
-          email: string;
-          created_at: string;
-        };
-        Insert: {
-          id?: string;
-          vendor_id: string;
-          email: string;
-          created_at?: string;
-        };
-        Update: Partial<Database['public']['Tables']['vendor_email_unsubscribes']['Insert']>;
-        Relationships: [];
-      };
       vendor_location_pins: {
         Row: {
           id: string;
@@ -507,26 +401,24 @@ export type Database = {
         Update: Partial<Database['public']['Tables']['vendor_location_pins']['Insert']>;
         Relationships: [];
       };
-      kds_pairing_tokens: {
+      vendor_billing: {
         Row: {
-          id: string;
           vendor_id: string;
-          location_id: string | null;
-          token_hash: string;
-          expires_at: string;
-          used_at: string | null;
+          plan_id: string;
+          stripe_customer_id: string | null;
+          stripe_subscription_id: string | null;
           created_at: string;
+          updated_at: string;
         };
         Insert: {
-          id?: string;
           vendor_id: string;
-          location_id?: string | null;
-          token_hash: string;
-          expires_at: string;
-          used_at?: string | null;
+          plan_id?: string;
+          stripe_customer_id?: string | null;
+          stripe_subscription_id?: string | null;
           created_at?: string;
+          updated_at?: string;
         };
-        Update: Partial<Database['public']['Tables']['kds_pairing_tokens']['Insert']>;
+        Update: Partial<Database['public']['Tables']['vendor_billing']['Insert']>;
         Relationships: [];
       };
       employees: {
@@ -678,7 +570,7 @@ export class SupabaseDataClient implements DataClient {
       // Field limiting: only select needed columns (including theming fields)
       const { data, error } = await this.client
         .from('vendors')
-        .select('id,slug,display_name,square_location_id,square_credential_ref,status,address_line1,address_line2,city,state,postal_code,phone,timezone,pickup_instructions,kds_active_limit_total,kds_active_limit_ct,logo_url,primary_color,accent_color,font_family,review_url')
+        .select('id,slug,display_name,square_location_id,square_credential_ref,status,address_line1,address_line2,city,state,postal_code,phone,timezone,pickup_instructions,kds_active_limit_total,kds_active_limit_ct,logo_url,primary_color,accent_color,font_family')
         .eq('slug', slug)
         .maybeSingle();
       if (error) throw error;
@@ -702,7 +594,7 @@ export class SupabaseDataClient implements DataClient {
       // Field limiting: only select needed columns (including theming fields)
       const { data, error } = await this.client
         .from('vendors')
-        .select('id,slug,display_name,square_location_id,square_credential_ref,status,address_line1,address_line2,city,state,postal_code,phone,timezone,pickup_instructions,kds_active_limit_total,kds_active_limit_ct,logo_url,primary_color,accent_color,font_family,review_url')
+        .select('id,slug,display_name,square_location_id,square_credential_ref,status,address_line1,address_line2,city,state,postal_code,phone,timezone,pickup_instructions,kds_active_limit_total,kds_active_limit_ct,logo_url,primary_color,accent_color,font_family')
         .eq('id', vendorId)
         .maybeSingle();
       if (error) throw error;
@@ -726,7 +618,7 @@ export class SupabaseDataClient implements DataClient {
       // Field limiting: only select needed columns (including theming fields)
       const { data, error } = await this.client
         .from('vendors')
-        .select('id,slug,display_name,square_location_id,square_credential_ref,status,address_line1,address_line2,city,state,postal_code,phone,timezone,pickup_instructions,kds_active_limit_total,kds_active_limit_ct,logo_url,primary_color,accent_color,font_family,review_url')
+        .select('id,slug,display_name,square_location_id,square_credential_ref,status,address_line1,address_line2,city,state,postal_code,phone,timezone,pickup_instructions,kds_active_limit_total,kds_active_limit_ct,logo_url,primary_color,accent_color,font_family')
         .eq('square_location_id', locationId)
         .maybeSingle();
       if (error) throw error;
@@ -926,7 +818,7 @@ export class SupabaseDataClient implements DataClient {
       const { data, error } = await this.client
         .from('order_snapshots')
         .insert(toOrderSnapshotInsert(withId))
-        .select('id,vendor_id,user_id,square_order_id,placed_at,snapshot_json,fulfillment_status,ready_at,completed_at,updated_at,customer_display_name,pickup_label,customer_feedback_rating')
+        .select('id,vendor_id,user_id,square_order_id,placed_at,snapshot_json,fulfillment_status,ready_at,completed_at,updated_at,customer_display_name,pickup_label')
         .single();
       if (error) throw error;
       const result = mapOrderSnapshotFromRow(data as Database['public']['Tables']['order_snapshots']['Row']);
@@ -953,7 +845,7 @@ export class SupabaseDataClient implements DataClient {
       // Field limiting: select only needed columns
       const { data, error } = await this.client
         .from('order_snapshots')
-        .select('id,vendor_id,user_id,square_order_id,placed_at,snapshot_json,fulfillment_status,ready_at,completed_at,updated_at,customer_display_name,pickup_label,customer_feedback_rating')
+        .select('id,vendor_id,user_id,square_order_id,placed_at,snapshot_json,fulfillment_status,ready_at,completed_at,updated_at,customer_display_name,pickup_label')
         .eq('id', orderId)
         .maybeSingle();
       if (error) throw error;
@@ -982,7 +874,7 @@ export class SupabaseDataClient implements DataClient {
       // Field limiting: select only needed columns
       const { data, error } = await this.client
         .from('order_snapshots')
-        .select('id,vendor_id,user_id,square_order_id,placed_at,snapshot_json,fulfillment_status,ready_at,completed_at,updated_at,customer_display_name,pickup_label,customer_feedback_rating')
+        .select('id,vendor_id,user_id,square_order_id,placed_at,snapshot_json,fulfillment_status,ready_at,completed_at,updated_at,customer_display_name,pickup_label')
         .eq('vendor_id', vendorId)
         .eq('square_order_id', squareOrderId)
         .maybeSingle();
@@ -1009,7 +901,7 @@ export class SupabaseDataClient implements DataClient {
       // Field limiting: select only needed columns
       const { data, error } = await this.client
         .from('order_snapshots')
-        .select('id,vendor_id,user_id,square_order_id,placed_at,snapshot_json,fulfillment_status,ready_at,completed_at,updated_at,customer_display_name,pickup_label,customer_feedback_rating')
+        .select('id,vendor_id,user_id,square_order_id,placed_at,snapshot_json,fulfillment_status,ready_at,completed_at,updated_at,customer_display_name,pickup_label')
         .eq('vendor_id', vendorId)
         .eq('user_id', userId)
         .order('placed_at', { ascending: false });
@@ -1036,7 +928,7 @@ export class SupabaseDataClient implements DataClient {
       // Field limiting: select only needed columns
       const { data, error } = await this.client
         .from('order_snapshots')
-        .select('id,vendor_id,user_id,square_order_id,placed_at,snapshot_json,fulfillment_status,ready_at,completed_at,updated_at,customer_display_name,pickup_label,customer_feedback_rating')
+        .select('id,vendor_id,user_id,square_order_id,placed_at,snapshot_json,fulfillment_status,ready_at,completed_at,updated_at,customer_display_name,pickup_label')
         .eq('vendor_id', vendorId)
         .order('placed_at', { ascending: false });
       if (error) throw error;
@@ -1089,7 +981,7 @@ export class SupabaseDataClient implements DataClient {
         .update(updatePayload)
         .eq('id', orderId)
         .eq('vendor_id', vendorId)
-        .select('id,vendor_id,user_id,square_order_id,placed_at,snapshot_json,fulfillment_status,ready_at,completed_at,updated_at,customer_display_name,pickup_label,customer_feedback_rating')
+        .select('id,vendor_id,user_id,square_order_id,placed_at,snapshot_json,fulfillment_status,ready_at,completed_at,updated_at,customer_display_name,pickup_label')
         .single();
       if (error) throw error;
 
@@ -1106,33 +998,6 @@ export class SupabaseDataClient implements DataClient {
       return result;
     } catch (error) {
       logQueryPerformance('updateOrderSnapshotStatus', startTime, false, error);
-      throw error;
-    }
-  }
-
-  async updateOrderSnapshotFeedback(
-    snapshotId: string,
-    rating: 'thumbs_up' | 'thumbs_down'
-  ): Promise<OrderSnapshot> {
-    const startTime = Date.now();
-    try {
-      const { data, error } = await this.client
-        .from('order_snapshots')
-        .update({ customer_feedback_rating: rating })
-        .eq('id', snapshotId)
-        .select('id,vendor_id,user_id,square_order_id,placed_at,snapshot_json,fulfillment_status,ready_at,completed_at,updated_at,customer_display_name,pickup_label,customer_feedback_rating')
-        .single();
-      if (error) throw error;
-      const result = mapOrderSnapshotFromRow(data as Database['public']['Tables']['order_snapshots']['Row']);
-      queryCache.delete(`order:${snapshotId}`);
-      queryCache.delete(`orders:vendor:${result.vendorId}`);
-      if (result.userId) {
-        queryCache.delete(`orders:user:${result.vendorId}:${result.userId}`);
-      }
-      logQueryPerformance('updateOrderSnapshotFeedback', startTime, true);
-      return result;
-    } catch (error) {
-      logQueryPerformance('updateOrderSnapshotFeedback', startTime, false, error);
       throw error;
     }
   }
@@ -2760,349 +2625,6 @@ export class SupabaseDataClient implements DataClient {
     }
   }
 
-  /** Default loyalty redemption rules when no row exists */
-  private static readonly DEFAULT_LOYALTY_SETTINGS: Omit<VendorLoyaltySettings, 'vendorId'> = {
-    centsPerPoint: 1,
-    minPointsToRedeem: 100,
-    maxPointsPerOrder: 500
-  };
-
-  /**
-   * Gets loyalty redemption settings for a vendor; returns defaults when no row exists
-   */
-  async getVendorLoyaltySettings(vendorId: string): Promise<VendorLoyaltySettings> {
-    const startTime = Date.now();
-    try {
-      const { data, error } = await this.client
-        .from('vendor_loyalty_settings')
-        .select('vendor_id, cents_per_point, min_points_to_redeem, max_points_per_order')
-        .eq('vendor_id', vendorId)
-        .maybeSingle();
-
-      if (error) throw error;
-
-      if (!data) {
-        logQueryPerformance('getVendorLoyaltySettings', startTime, true);
-        return {
-          vendorId,
-          ...SupabaseDataClient.DEFAULT_LOYALTY_SETTINGS
-        };
-      }
-
-      const row = data as Database['public']['Tables']['vendor_loyalty_settings']['Row'];
-      logQueryPerformance('getVendorLoyaltySettings', startTime, true);
-      return {
-        vendorId: row.vendor_id,
-        centsPerPoint: row.cents_per_point,
-        minPointsToRedeem: row.min_points_to_redeem,
-        maxPointsPerOrder: row.max_points_per_order
-      };
-    } catch (error) {
-      logQueryPerformance('getVendorLoyaltySettings', startTime, false, error);
-      throw error;
-    }
-  }
-
-  /**
-   * Upserts loyalty redemption settings for a vendor
-   */
-  async setVendorLoyaltySettings(
-    vendorId: string,
-    settings: { centsPerPoint: number; minPointsToRedeem: number; maxPointsPerOrder: number }
-  ): Promise<VendorLoyaltySettings> {
-    const startTime = Date.now();
-    try {
-      const { error } = await this.client
-        .from('vendor_loyalty_settings')
-        .upsert(
-          {
-            vendor_id: vendorId,
-            cents_per_point: settings.centsPerPoint,
-            min_points_to_redeem: settings.minPointsToRedeem,
-            max_points_per_order: settings.maxPointsPerOrder,
-            updated_at: new Date().toISOString()
-          },
-          { onConflict: 'vendor_id' }
-        );
-
-      if (error) throw error;
-
-      logQueryPerformance('setVendorLoyaltySettings', startTime, true);
-      return { vendorId, ...settings };
-    } catch (error) {
-      logQueryPerformance('setVendorLoyaltySettings', startTime, false, error);
-      throw error;
-    }
-  }
-
-  /**
-   * Gets billing record for a vendor (Stripe customer + subscription state)
-   */
-  async getVendorBilling(vendorId: string): Promise<VendorBilling | null> {
-    const startTime = Date.now();
-    try {
-      const { data, error } = await this.client
-        .from('vendor_billing')
-        .select('vendor_id, stripe_customer_id, stripe_subscription_id, plan_id, status, current_period_end, created_at, updated_at')
-        .eq('vendor_id', vendorId)
-        .maybeSingle();
-
-      if (error) throw error;
-      if (!data) {
-        logQueryPerformance('getVendorBilling', startTime, true);
-        return null;
-      }
-
-      const row = data as Database['public']['Tables']['vendor_billing']['Row'];
-      logQueryPerformance('getVendorBilling', startTime, true);
-      return {
-        vendorId: row.vendor_id,
-        stripeCustomerId: row.stripe_customer_id,
-        stripeSubscriptionId: row.stripe_subscription_id,
-        planId: row.plan_id as VendorBilling['planId'],
-        status: row.status,
-        currentPeriodEnd: row.current_period_end,
-        createdAt: row.created_at,
-        updatedAt: row.updated_at
-      };
-    } catch (error) {
-      logQueryPerformance('getVendorBilling', startTime, false, error);
-      throw error;
-    }
-  }
-
-  /**
-   * Upserts vendor billing record (create or update Stripe customer/subscription refs)
-   */
-  async upsertVendorBilling(
-    vendorId: string,
-    data: Partial<Omit<VendorBilling, 'vendorId' | 'createdAt' | 'updatedAt'>>
-  ): Promise<VendorBilling> {
-    const startTime = Date.now();
-    try {
-      const payload: Database['public']['Tables']['vendor_billing']['Insert'] = {
-        vendor_id: vendorId,
-        stripe_customer_id: data.stripeCustomerId ?? null,
-        stripe_subscription_id: data.stripeSubscriptionId ?? null,
-        plan_id: data.planId ?? 'beta',
-        status: data.status ?? 'active',
-        current_period_end: data.currentPeriodEnd ?? null,
-        updated_at: new Date().toISOString()
-      };
-
-      const { data: row, error } = await this.client
-        .from('vendor_billing')
-        .upsert(payload, { onConflict: 'vendor_id', ignoreDuplicates: false })
-        .select('vendor_id, stripe_customer_id, stripe_subscription_id, plan_id, status, current_period_end, created_at, updated_at')
-        .single();
-
-      if (error) throw error;
-      const r = row as Database['public']['Tables']['vendor_billing']['Row'];
-      logQueryPerformance('upsertVendorBilling', startTime, true);
-      return {
-        vendorId: r.vendor_id,
-        stripeCustomerId: r.stripe_customer_id,
-        stripeSubscriptionId: r.stripe_subscription_id,
-        planId: r.plan_id as VendorBilling['planId'],
-        status: r.status,
-        currentPeriodEnd: r.current_period_end,
-        createdAt: r.created_at,
-        updatedAt: r.updated_at
-      };
-    } catch (error) {
-      logQueryPerformance('upsertVendorBilling', startTime, false, error);
-      throw error;
-    }
-  }
-
-  /**
-   * Creates a support ticket (vendor admin)
-   */
-  async createSupportTicket(input: {
-    vendorId: string;
-    subject: string;
-    message: string;
-    submittedBy?: string | null;
-  }): Promise<SupportTicket> {
-    const startTime = Date.now();
-    try {
-      const payload: Database['public']['Tables']['support_tickets']['Insert'] = {
-        vendor_id: input.vendorId,
-        subject: input.subject.trim(),
-        message: input.message.trim(),
-        status: 'open',
-        submitted_by: input.submittedBy ?? null,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      };
-
-      const { data, error } = await this.client
-        .from('support_tickets')
-        .insert(payload)
-        .select()
-        .single();
-
-      if (error) throw error;
-      const row = data as Database['public']['Tables']['support_tickets']['Row'];
-      logQueryPerformance('createSupportTicket', startTime, true);
-      return mapSupportTicketFromRow(row);
-    } catch (error) {
-      logQueryPerformance('createSupportTicket', startTime, false, error);
-      throw error;
-    }
-  }
-
-  /**
-   * Lists support tickets for a vendor (vendor admin)
-   */
-  async listSupportTicketsForVendor(vendorId: string): Promise<SupportTicket[]> {
-    const startTime = Date.now();
-    try {
-      const { data, error } = await this.client
-        .from('support_tickets')
-        .select('*')
-        .eq('vendor_id', vendorId)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      const rows = (data || []) as Database['public']['Tables']['support_tickets']['Row'][];
-      logQueryPerformance('listSupportTicketsForVendor', startTime, true);
-      return rows.map(mapSupportTicketFromRow);
-    } catch (error) {
-      logQueryPerformance('listSupportTicketsForVendor', startTime, false, error);
-      throw error;
-    }
-  }
-
-  /**
-   * Lists support tickets (ops; optional filters)
-   */
-  async listSupportTickets(options?: { vendorId?: string; status?: string }): Promise<SupportTicket[]> {
-    const startTime = Date.now();
-    try {
-      let q = this.client
-        .from('support_tickets')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (options?.vendorId) q = q.eq('vendor_id', options.vendorId);
-      if (options?.status) q = q.eq('status', options.status);
-
-      const { data, error } = await q;
-
-      if (error) throw error;
-      const rows = (data || []) as Database['public']['Tables']['support_tickets']['Row'][];
-      logQueryPerformance('listSupportTickets', startTime, true);
-      return rows.map(mapSupportTicketFromRow);
-    } catch (error) {
-      logQueryPerformance('listSupportTickets', startTime, false, error);
-      throw error;
-    }
-  }
-
-  /**
-   * Gets a single support ticket by id
-   */
-  async getSupportTicket(id: string): Promise<SupportTicket | null> {
-    const startTime = Date.now();
-    try {
-      const { data, error } = await this.client
-        .from('support_tickets')
-        .select('*')
-        .eq('id', id)
-        .maybeSingle();
-
-      if (error) throw error;
-      if (!data) {
-        logQueryPerformance('getSupportTicket', startTime, true);
-        return null;
-      }
-      const row = data as Database['public']['Tables']['support_tickets']['Row'];
-      logQueryPerformance('getSupportTicket', startTime, true);
-      return mapSupportTicketFromRow(row);
-    } catch (error) {
-      logQueryPerformance('getSupportTicket', startTime, false, error);
-      throw error;
-    }
-  }
-
-  /**
-   * Updates a support ticket (ops: status and/or ops reply)
-   */
-  async updateSupportTicket(
-    id: string,
-    updates: { status?: SupportTicketStatus; opsReply?: string }
-  ): Promise<SupportTicket> {
-    const startTime = Date.now();
-    try {
-      const payload: Database['public']['Tables']['support_tickets']['Update'] = {
-        updated_at: new Date().toISOString()
-      };
-      if (updates.status !== undefined) payload.status = updates.status;
-      if (updates.opsReply !== undefined) {
-        payload.ops_reply = updates.opsReply;
-        payload.ops_replied_at = new Date().toISOString();
-      }
-
-      const { data, error } = await this.client
-        .from('support_tickets')
-        .update(payload)
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) throw error;
-      const row = data as Database['public']['Tables']['support_tickets']['Row'];
-      logQueryPerformance('updateSupportTicket', startTime, true);
-      return mapSupportTicketFromRow(row);
-    } catch (error) {
-      logQueryPerformance('updateSupportTicket', startTime, false, error);
-      throw error;
-    }
-  }
-
-  /**
-   * Lists emails that have unsubscribed from a vendor's promotional emails (CRM)
-   */
-  async listVendorEmailUnsubscribes(vendorId: string): Promise<string[]> {
-    const startTime = Date.now();
-    try {
-      const { data, error } = await this.client
-        .from('vendor_email_unsubscribes')
-        .select('email')
-        .eq('vendor_id', vendorId);
-
-      if (error) throw error;
-      const emails = (data ?? []).map((row: { email: string }) => row.email);
-      logQueryPerformance('listVendorEmailUnsubscribes', startTime, true);
-      return emails;
-    } catch (error) {
-      logQueryPerformance('listVendorEmailUnsubscribes', startTime, false, error);
-      throw error;
-    }
-  }
-
-  /**
-   * Records an unsubscribe for a vendor + email (idempotent; duplicate insert is ignored via UNIQUE)
-   */
-  async recordVendorEmailUnsubscribe(vendorId: string, email: string): Promise<void> {
-    const startTime = Date.now();
-    try {
-      const { error } = await this.client
-        .from('vendor_email_unsubscribes')
-        .upsert(
-          { vendor_id: vendorId, email: email.trim().toLowerCase() },
-          { onConflict: 'vendor_id,email', ignoreDuplicates: true }
-        );
-
-      if (error) throw error;
-      logQueryPerformance('recordVendorEmailUnsubscribe', startTime, true);
-    } catch (error) {
-      logQueryPerformance('recordVendorEmailUnsubscribe', startTime, false, error);
-      throw error;
-    }
-  }
-
   /**
    * Gets all location PINs for a vendor (returns locationId -> hasPin mapping)
    */
@@ -3160,105 +2682,6 @@ export class SupabaseDataClient implements DataClient {
       logQueryPerformance('setLocationPin', startTime, true);
     } catch (error) {
       logQueryPerformance('setLocationPin', startTime, false, error);
-      throw error;
-    }
-  }
-
-  // ============================================================================
-  // KDS Pairing Tokens
-  // ============================================================================
-
-  async createPairingToken(
-    vendorId: string,
-    locationId: string | null = null,
-    expiresInMinutes = 60
-  ): Promise<{ token: string; tokenId: string; createdAt: string; expiresAt: string; locationId?: string | null }> {
-    const startTime = Date.now();
-    try {
-      const token = randomUUID().replace(/-/g, '').slice(0, 8).toUpperCase();
-      const tokenHash = createHash('sha256').update(token).digest('hex');
-      const expiresAt = new Date(Date.now() + expiresInMinutes * 60 * 1000).toISOString();
-
-      const { data, error } = await this.client
-        .from('kds_pairing_tokens')
-        .insert({
-          vendor_id: vendorId,
-          location_id: locationId,
-          token_hash: tokenHash,
-          expires_at: expiresAt,
-          created_at: new Date().toISOString()
-        })
-        .select('id, created_at')
-        .single();
-
-      if (error) throw error;
-      logQueryPerformance('createPairingToken', startTime, true);
-      return {
-        token,
-        tokenId: data.id,
-        createdAt: data.created_at,
-        expiresAt,
-        locationId
-      };
-    } catch (error) {
-      logQueryPerformance('createPairingToken', startTime, false, error);
-      throw error;
-    }
-  }
-
-  async listPairingTokens(vendorId: string): Promise<PairingToken[]> {
-    const startTime = Date.now();
-    try {
-      const now = new Date().toISOString();
-      const { data, error } = await this.client
-        .from('kds_pairing_tokens')
-        .select('*')
-        .eq('vendor_id', vendorId)
-        .is('used_at', null)
-        .gt('expires_at', now)
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-
-      const tokens = ((data || []) as Database['public']['Tables']['kds_pairing_tokens']['Row'][]).map((row) => ({
-        id: row.id,
-        vendorId: row.vendor_id,
-        locationId: row.location_id,
-        tokenHash: row.token_hash,
-        expiresAt: row.expires_at,
-        usedAt: row.used_at,
-        createdAt: row.created_at
-      }));
-
-      logQueryPerformance('listPairingTokens', startTime, true);
-      return tokens;
-    } catch (error) {
-      logQueryPerformance('listPairingTokens', startTime, false, error);
-      throw error;
-    }
-  }
-
-  async consumePairingToken(token: string): Promise<{ vendorId: string; locationId?: string | null } | null> {
-    const startTime = Date.now();
-    try {
-      const tokenHash = createHash('sha256').update(token).digest('hex');
-      const now = new Date().toISOString();
-      const { data, error } = await this.client
-        .from('kds_pairing_tokens')
-        .update({ used_at: now })
-        .eq('token_hash', tokenHash)
-        .is('used_at', null)
-        .gt('expires_at', now)
-        .select('vendor_id, location_id')
-        .maybeSingle();
-      if (error) throw error;
-      if (!data) {
-        return null;
-      }
-
-      logQueryPerformance('consumePairingToken', startTime, true);
-      return { vendorId: data.vendor_id, locationId: data.location_id };
-    } catch (error) {
-      logQueryPerformance('consumePairingToken', startTime, false, error);
       throw error;
     }
   }
@@ -3556,38 +2979,6 @@ export class SupabaseDataClient implements DataClient {
     }
   }
 
-  async listActiveTimeEntries(vendorId: string): Promise<import('@countrtop/models').TimeEntry[]> {
-    const startTime = Date.now();
-    try {
-      const { data, error } = await this.client
-        .from('time_entries')
-        .select('*')
-        .eq('vendor_id', vendorId)
-        .is('clock_out_at', null)
-        .order('clock_in_at', { ascending: false });
-
-      if (error) throw error;
-
-      const timeEntries = ((data || []) as Database['public']['Tables']['time_entries']['Row'][]).map((row) => ({
-        id: row.id,
-        vendorId: row.vendor_id,
-        employeeId: row.employee_id,
-        clockInAt: row.clock_in_at,
-        clockOutAt: row.clock_out_at,
-        locationId: row.location_id,
-        notes: row.notes,
-        createdAt: row.created_at,
-        updatedAt: row.updated_at
-      }));
-
-      logQueryPerformance('listActiveTimeEntries', startTime, true);
-      return timeEntries;
-    } catch (error) {
-      logQueryPerformance('listActiveTimeEntries', startTime, false, error);
-      throw error;
-    }
-  }
-
   async listTimeEntries(vendorId: string, employeeId: string | null, startDate: Date, endDate: Date): Promise<import('@countrtop/models').TimeEntry[]> {
     const startTime = Date.now();
     try {
@@ -3650,7 +3041,6 @@ const mapVendorFromRow = (row: Database['public']['Tables']['vendors']['Row']): 
   primaryColor: row.primary_color ?? undefined,
   accentColor: row.accent_color ?? undefined,
   fontFamily: row.font_family ?? undefined,
-  reviewUrl: row.review_url ?? undefined,
 });
 
 const mapVendorLocationFromRow = (row: Database['public']['Tables']['vendor_locations']['Row']): VendorLocation => ({
@@ -3699,11 +3089,7 @@ const mapOrderSnapshotFromRow = (
   completedAt: row.completed_at ?? undefined,
   updatedAt: row.updated_at ?? undefined,
   customerDisplayName: row.customer_display_name ?? undefined,
-  pickupLabel: row.pickup_label ?? undefined,
-  customerFeedbackRating:
-    row.customer_feedback_rating === 'thumbs_up' || row.customer_feedback_rating === 'thumbs_down'
-      ? row.customer_feedback_rating
-      : undefined,
+  pickupLabel: row.pickup_label ?? undefined
 });
 
 const mapLoyaltyLedgerFromRow = (
@@ -3742,8 +3128,7 @@ const toOrderSnapshotInsert = (
   completed_at: order.completedAt ?? null,
   // omit updated_at so DB default/trigger populates it
   customer_display_name: order.customerDisplayName ?? null,
-  pickup_label: order.pickupLabel ?? null,
-  customer_feedback_rating: order.customerFeedbackRating ?? null
+  pickup_label: order.pickupLabel ?? null
 });
 
 const toLoyaltyLedgerInsert = (
@@ -3849,21 +3234,6 @@ export const mapKitchenTicketFromRow = (
   customLabel: row.custom_label ?? undefined,
   priorityOrder: row.priority_order ?? 0
 });
-
-function mapSupportTicketFromRow(row: Database['public']['Tables']['support_tickets']['Row']): SupportTicket {
-  return {
-    id: row.id,
-    vendorId: row.vendor_id,
-    subject: row.subject,
-    message: row.message,
-    status: row.status as SupportTicketStatus,
-    submittedBy: row.submitted_by ?? null,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-    opsReply: row.ops_reply ?? null,
-    opsRepliedAt: row.ops_replied_at ?? null
-  };
-}
 
 export const toKitchenTicketInsert = (
   ticket: Partial<KitchenTicket> & { squareOrderId: string; locationId: string; source: 'countrtop_online' | 'square_pos'; status: KitchenTicketStatus }
