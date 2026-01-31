@@ -160,6 +160,7 @@ export class MockDataClient implements DataClient {
     }
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- mock returns empty list
   async listPairingTokens(_vendorId: string): Promise<PairingTokenListItem[]> {
     return [];
   }
@@ -180,6 +181,7 @@ export class MockDataClient implements DataClient {
     };
   }
 
+  /* eslint-disable-next-line @typescript-eslint/no-unused-vars -- mock always returns null */
   async consumePairingToken(_token: string): Promise<ConsumePairingTokenResult | null> {
     return null;
   }

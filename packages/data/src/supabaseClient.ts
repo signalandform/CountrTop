@@ -1079,7 +1079,6 @@ export class SupabaseDataClient implements DataClient {
       const plainToken = randomUUID().replace(/-/g, '') + randomUUID().replace(/-/g, '');
       const tokenHash = createHash('sha256').update(plainToken).digest('hex');
       const expiresAt = new Date(Date.now() + expiresInMinutes * 60 * 1000).toISOString();
-      const createdAt = new Date().toISOString();
       const { data, error } = await this.client
         .from('kds_pairing_tokens')
         .insert({
