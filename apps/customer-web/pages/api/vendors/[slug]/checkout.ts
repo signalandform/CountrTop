@@ -146,7 +146,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<CheckoutRespons
       referenceId: string;
       lineItems: { catalogObjectId: string; quantity: string }[];
       metadata?: Record<string, string>;
-      discounts?: { uid: string; name: string; type: string; amountMoney: { amount: number; currency: string }; scope: string }[];
+      discounts?: { uid: string; name: string; type: string; amountMoney: { amount: bigint; currency: string }; scope: string }[];
     } = {
       locationId,
       referenceId: orderReferenceId,
@@ -162,7 +162,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<CheckoutRespons
           uid: `ct_loyalty_${orderReferenceId}`,
           name: 'Loyalty points',
           type: 'FIXED_AMOUNT',
-          amountMoney: { amount: discountCents, currency },
+          amountMoney: { amount: BigInt(discountCents), currency },
           scope: 'ORDER'
         }
       ];
