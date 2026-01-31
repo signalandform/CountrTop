@@ -39,9 +39,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     return res.status(404).json({ ok: false, error: 'Vendor not found' });
   }
 
-  // Free-tier (Beta/Trial) vendors don't have loyalty; return success with zero balance so customer sign-in flow never fails
-  const billing = await dataClient.getVendorBilling(vendor.id);
-  const planId: BillingPlanId = (billing?.planId as BillingPlanId) ?? 'beta';
+  // Free-tier (Beta/Trial) vendors don't have loyalty; return success with zero balance so customer sign-in flow never fails.
+  // If billing fetch throws (e.g. table missing, RLS), treat as free tier so we never 500 and break sign-in.
+  let planId: BillingPlanId = 'beta';
+  try {
+    const billing = await dataClient.getVendorBilling(vendor.id);
+    planId = (billing?.planId as BillingPlanId) ?? 'beta';
+  } catch {
+    // Assume free tier on any billing error
+  }
   if (!canUseLoyalty(planId)) {
     return res.status(200).json({
       ok: true,
