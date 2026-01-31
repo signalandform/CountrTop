@@ -1,6 +1,6 @@
 import Head from 'next/head';
 import type { GetServerSideProps } from 'next';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 
 import type { Vendor, VendorLocation } from '@countrtop/models';
 import { createClient } from '@supabase/supabase-js';
@@ -97,6 +97,7 @@ export const getServerSideProps: GetServerSideProps<LocationsPageProps> = async 
         kdsSoundAlertsEnabled: (row as Record<string, unknown>).kds_sound_alerts_enabled as boolean | undefined,
         kdsDisplayMode: ((row as Record<string, unknown>).kds_display_mode as 'grid' | 'list' | undefined) ?? 'grid',
         onlineOrderingLeadTimeMinutes: (row as Record<string, unknown>).online_ordering_lead_time_minutes as number | undefined,
+        onlineOrderingHoursJson: (row as Record<string, unknown>).online_ordering_hours_json as Record<string, unknown> | undefined ?? undefined,
         createdAt: row.created_at,
         updatedAt: row.updated_at
       }));
@@ -332,6 +333,35 @@ export default function LocationsPage({
   );
 }
 
+// Store hours: customer storefront expects object keyed by day ("0"-"6" = Sun-Sat), value "9am-5pm" or "9:00 AM-5:00 PM"; empty = closed.
+const WEEKDAY_LABELS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+function storeHoursJsonToArray(json: Record<string, unknown> | undefined): string[] {
+  const out: string[] = ['', '', '', '', '', '', ''];
+  if (!json || typeof json !== 'object') return out;
+  const dayNames = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+  for (let i = 0; i < 7; i++) {
+    const v = json[String(i)] ?? json[dayNames[i]];
+    if (typeof v === 'string' && v.trim()) out[i] = v.trim();
+    else if (typeof v === 'object' && v !== null) {
+      const o = v as Record<string, unknown>;
+      const open = String(o.open ?? o.start ?? '').trim();
+      const close = String(o.close ?? o.end ?? '').trim();
+      if (open && close) out[i] = `${open}-${close}`;
+    }
+  }
+  return out;
+}
+
+function storeHoursArrayToJson(arr: string[]): Record<string, string> | null {
+  const out: Record<string, string> = {};
+  arr.forEach((val, i) => {
+    const trimmed = val.trim();
+    if (trimmed) out[String(i)] = trimmed;
+  });
+  return Object.keys(out).length ? out : null;
+}
+
 // LocationCard component
 type LocationCardProps = {
   location: VendorLocation;
@@ -370,6 +400,15 @@ function LocationCard({
     location.onlineOrderingLeadTimeMinutes?.toString() || '15'
   );
 
+  // Store hours (for customer storefront): 7 days, index 0 = Sunday
+  const [storeHoursByDay, setStoreHoursByDay] = useState<string[]>(() =>
+    storeHoursJsonToArray(location.onlineOrderingHoursJson)
+  );
+
+  useEffect(() => {
+    if (!isEditing) setStoreHoursByDay(storeHoursJsonToArray(location.onlineOrderingHoursJson));
+  }, [location.id, location.onlineOrderingHoursJson, isEditing]);
+
   const handleSaveClick = () => {
     onSave({
       name,
@@ -381,6 +420,7 @@ function LocationCard({
       kdsSoundAlertsEnabled,
       kdsDisplayMode,
       onlineOrderingLeadTimeMinutes: onlineOrderingLeadTimeMinutes ? parseInt(onlineOrderingLeadTimeMinutes, 10) : 15,
+      onlineOrderingHoursJson: storeHoursArrayToJson(storeHoursByDay) ?? undefined,
     });
   };
 
@@ -433,6 +473,14 @@ function LocationCard({
             <span className="value">{location.phone}</span>
           </div>
         )}
+        <div className="info-row">
+          <span className="label">Store hours:</span>
+          <span className="value">
+            {location.onlineOrderingHoursJson && Object.keys(location.onlineOrderingHoursJson).length > 0
+              ? 'Configured'
+              : 'Not set'}
+          </span>
+        </div>
 
         {isEditing && (
           <div className="edit-section">
@@ -481,6 +529,31 @@ function LocationCard({
                   </div>
                 </div>
               )}
+            </div>
+
+            {/* Store hours (for customer storefront). Format: 9am-5pm or 9:00 AM-5:00 PM; empty = closed */}
+            <div className="settings-group">
+              <h4 className="settings-group-title">🕐 Store hours (for customer storefront)</h4>
+              <small className="form-hint" style={{ display: 'block', marginBottom: 12 }}>
+                e.g. 9:00 AM–5:00 PM or leave blank for closed
+              </small>
+              {WEEKDAY_LABELS.map((label, i) => (
+                <div key={i} className="form-group" style={{ marginBottom: 8 }}>
+                  <label>{label}</label>
+                  <input
+                    type="text"
+                    value={storeHoursByDay[i] ?? ''}
+                    onChange={(e) => {
+                      const next = [...storeHoursByDay];
+                      next[i] = e.target.value;
+                      setStoreHoursByDay(next);
+                    }}
+                    placeholder="9:00 AM–5:00 PM or leave blank for closed"
+                    className="input-small"
+                    style={{ width: '100%', maxWidth: 280 }}
+                  />
+                </div>
+              ))}
             </div>
 
             {/* KDS Settings */}

@@ -80,6 +80,7 @@ export default async function handler(
         kdsDisplayMode,
         // Online ordering settings
         onlineOrderingLeadTimeMinutes,
+        onlineOrderingHoursJson,
       } = req.body;
 
       const updates: Parameters<typeof dataClient.updateVendorLocation>[1] = {};
@@ -104,6 +105,7 @@ export default async function handler(
       if (kdsDisplayMode !== undefined) updates.kdsDisplayMode = kdsDisplayMode;
       // Online ordering settings  
       if (onlineOrderingLeadTimeMinutes !== undefined) updates.onlineOrderingLeadTimeMinutes = onlineOrderingLeadTimeMinutes;
+      if (onlineOrderingHoursJson !== undefined) updates.onlineOrderingHoursJson = onlineOrderingHoursJson ?? null;
 
       const updatedLocation = await dataClient.updateVendorLocation(locationId, updates);
       return res.status(200).json({ ok: true, location: updatedLocation });

@@ -770,16 +770,10 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
 
           {/* Storefront Readiness Gate */}
           <section className="card readiness-gate">
-            <div className="gate-header">
-              <div>
-                <h2>Storefront Status</h2>
-                <p className="muted">
-                  {vendorName}{selectedLocation?.name ? ` · ${selectedLocation.name}` : ''}
-                </p>
-              </div>
+            <div className="gate-top">
               <span className={`status-pill status-${storefrontState}`}>{storefrontBadge}</span>
+              <p className="gate-message">{storefrontMessage}</p>
             </div>
-            <p className="gate-message">{storefrontMessage}</p>
             <div className="gate-details">
               <div className="detail-item">
                 <div className="detail-label">Hours</div>
@@ -1251,11 +1245,11 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
             gap: 16px;
           }
 
-          .gate-header {
+          .gate-top {
             display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            gap: 16px;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
           }
 
           .status-pill {
