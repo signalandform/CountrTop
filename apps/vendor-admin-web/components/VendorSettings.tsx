@@ -927,7 +927,7 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
             )}
 
             {showAddEmployee && (
-              <form onSubmit={handleAddEmployee} className="add-employee-form">
+              <div className="add-employee-form">
                 <div className="form-grid">
                   <div className="form-group">
                     <label htmlFor="new-employee-name">Name</label>
@@ -940,6 +940,7 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
                       required
                       disabled={employeesSaving}
                       className="form-input"
+                      onKeyDown={(e) => e.key === 'Enter' && handleAddEmployee(e as unknown as React.FormEvent)}
                     />
                   </div>
                   <div className="form-group">
@@ -959,14 +960,21 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
                       required
                       disabled={employeesSaving}
                       className="form-input"
+                      onKeyDown={(e) => e.key === 'Enter' && handleAddEmployee(e as unknown as React.FormEvent)}
                     />
                     <small className="form-hint">Employee uses this PIN to clock in/out on KDS</small>
                   </div>
                 </div>
-                <button type="submit" className="btn-submit" disabled={employeesSaving} style={{ marginTop: 8 }}>
+                <button
+                  type="button"
+                  className="btn-submit"
+                  disabled={employeesSaving}
+                  style={{ marginTop: 8 }}
+                  onClick={(e) => handleAddEmployee(e as unknown as React.FormEvent)}
+                >
                   {employeesSaving ? 'Creating...' : 'Create Employee'}
                 </button>
-              </form>
+              </div>
             )}
 
             {employeesLoading ? (
