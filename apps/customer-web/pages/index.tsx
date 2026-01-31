@@ -680,22 +680,26 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
         <div className="page-content">
           {/* Hero */}
           <header className="hero-header">
-            <div className="hero-content">
-              {logoUrl && (
-                <img src={logoUrl} alt={vendorName} className="vendor-logo" />
-              )}
-              <p className="eyebrow">CountrTop</p>
-              <h1 className="title">{vendorName}</h1>
-              <p className="subtitle">Order fast, earn points, get notified when ready.</p>
-              <div className="badges">
-                <span className="badge">Square checkout</span>
-                <span className="badge">Pickup only</span>
-                {(hoursStatus?.isOpen === true || hoursStatus?.isOpen === false) && (
-                  <span className={`badge badge-status ${hoursStatus.isOpen ? 'open' : 'closed'}`}>
-                    {hoursStatus.isOpen ? 'Open now' : 'Closed'}
-                  </span>
-                )}
+            <div className="hero-inner">
+              <div className="hero-content">
+                <p className="eyebrow">CountrTop</p>
+                <h1 className="title">{vendorName}</h1>
+                <p className="subtitle">Order fast, earn points, get notified when ready.</p>
+                <div className="badges">
+                  <span className="badge">Square checkout</span>
+                  <span className="badge">Pickup only</span>
+                  {(hoursStatus?.isOpen === true || hoursStatus?.isOpen === false) && (
+                    <span className={`badge badge-status ${hoursStatus.isOpen ? 'open' : 'closed'}`}>
+                      {hoursStatus.isOpen ? 'Open now' : 'Closed'}
+                    </span>
+                  )}
+                </div>
               </div>
+              {logoUrl && (
+                <div className="hero-logo-wrap">
+                  <img src={logoUrl} alt={vendorName} className="vendor-logo" />
+                </div>
+              )}
             </div>
           </header>
 
@@ -738,37 +742,15 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
             </section>
           )}
 
-          {/* Vendor Info */}
-          {vendor && (selectedLocation?.address || selectedLocation?.pickupInstructions) && (
+          {/* Vendor Info (pickup instructions only) */}
+          {vendor && selectedLocation?.pickupInstructions && (
             <section className="card vendor-info">
-              {selectedLocation?.address && (
-                <div className="vendor-address">
-                  <div className="info-label">📍 {selectedLocation?.name || 'Location'}</div>
-                  {(() => {
-                    const fullAddress = selectedLocation.address || '';
-                    const isIOS = typeof window !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent);
-                    const mapsUrl = isIOS
-                      ? `https://maps.apple.com/?q=${encodeURIComponent(fullAddress)}`
-                      : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fullAddress)}`;
-                    return (
-                      <a
-                        href={mapsUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="info-content vendor-address-link"
-                      >
-                        {fullAddress}
-                      </a>
-                    );
-                  })()}
+              <div className="vendor-pickup">
+                <div className="card-header">
+                  <h2>Pickup Instructions</h2>
                 </div>
-              )}
-              {selectedLocation?.pickupInstructions && (
-                <div className="vendor-pickup">
-                  <div className="info-label">Pickup Instructions</div>
-                  <div className="info-content">{selectedLocation.pickupInstructions}</div>
-                </div>
-              )}
+                <div className="info-content">{selectedLocation.pickupInstructions}</div>
+              </div>
             </section>
           )}
 
@@ -799,7 +781,7 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
                   <div className="detail-label">Map</div>
                   <div className="detail-value">
                     <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className="detail-link">
-                      Open in Maps
+                      {locationAddress || 'Open in Maps'}
                     </a>
                   </div>
                 </div>
@@ -1210,8 +1192,25 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
             padding: 48px 24px 32px;
           }
 
+          .hero-inner {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 24px;
+          }
+
+          @media (max-width: 640px) {
+            .hero-inner {
+              flex-direction: column;
+            }
+          }
+
           .hero-content {
             max-width: 500px;
+          }
+
+          .hero-logo-wrap {
+            flex-shrink: 0;
           }
 
           .vendor-logo {
@@ -1219,7 +1218,6 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
             height: 80px;
             border-radius: 16px;
             object-fit: cover;
-            margin-bottom: 16px;
             border: 2px solid var(--color-border);
           }
 
@@ -1350,6 +1348,15 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
             display: flex;
             flex-direction: column;
             gap: 12px;
+            align-items: flex-end;
+          }
+
+          .gate-details-right .detail-item {
+            align-items: flex-end;
+          }
+
+          .gate-details-right .detail-value {
+            text-align: right;
           }
 
           .detail-item {

@@ -159,26 +159,28 @@ export function OrderStatusTracker({
               </div>
             )}
           </div>
-          {completedCta.reviewUrl && (
-            <a
-              href={completedCta.reviewUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="cta-button cta-review"
-            >
-              Leave us a review
-            </a>
-          )}
-          {completedCta.contactPhone ? (
-            <div className="cta-contact-wrap">
-              <span className="cta-contact-label">Contact for help</span>
-              <a href={`tel:${completedCta.contactPhone.replace(/\D/g, '')}`} className="cta-button cta-contact">
-                {completedCta.contactPhone}
+          <div className="cta-actions">
+            {completedCta.reviewUrl && (
+              <a
+                href={completedCta.reviewUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="cta-button cta-review"
+              >
+                Leave us a review
               </a>
-            </div>
-          ) : (
-            <span className="cta-muted">Contact the restaurant directly for help</span>
-          )}
+            )}
+            {completedCta.contactPhone ? (
+              <div className="cta-contact-wrap">
+                <span className="cta-contact-label">Contact for help</span>
+                <a href={`tel:${completedCta.contactPhone.replace(/\D/g, '')}`} className="cta-button cta-contact">
+                  {completedCta.contactPhone}
+                </a>
+              </div>
+            ) : (
+              <span className="cta-muted">Contact the restaurant directly for help</span>
+            )}
+          </div>
         </div>
       )}
 
@@ -406,6 +408,20 @@ export function OrderStatusTracker({
 
         .compact .completed-cta {
           margin-bottom: 0;
+        }
+
+        .cta-actions {
+          display: flex;
+          flex-direction: row;
+          flex-wrap: wrap;
+          gap: 12px;
+          align-items: flex-start;
+        }
+
+        @media (max-width: 640px) {
+          .cta-actions {
+            flex-direction: column;
+          }
         }
 
         .cta-row {
