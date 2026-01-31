@@ -126,6 +126,30 @@ export default async function handler(
     // Generate vendor ID
     const vendorId = `vendor_${body.slug}_${Date.now()}`;
 
+    // Optional: create vendor admin Auth user
+    let adminUserId: string | null = null;
+    const hasAdminEmail = typeof body.admin_email === 'string' && body.admin_email.trim().length > 0;
+    const hasAdminPassword = typeof body.admin_password === 'string' && body.admin_password.length >= 8;
+    if (hasAdminEmail && hasAdminPassword) {
+      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+        email: body.admin_email!.trim(),
+        password: body.admin_password!,
+        email_confirm: true
+      });
+      if (authError) {
+        return res.status(400).json({
+          success: false,
+          error: `Failed to create admin user: ${authError.message}`
+        });
+      }
+      if (authData?.user?.id) adminUserId = authData.user.id;
+    } else if (hasAdminEmail || (typeof body.admin_password === 'string' && body.admin_password.length > 0)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Both admin_email and admin_password are required for vendor admin login; password must be at least 8 characters'
+      });
+    }
+
     // Insert new vendor (with admin_user_id if we created an admin user)
     const { data: vendor, error } = await supabase
       .from('vendors')
