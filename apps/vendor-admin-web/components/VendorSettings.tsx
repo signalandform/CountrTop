@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
-import { Vendor, Employee } from '@countrtop/models';
+import { Vendor, Employee, BillingPlanId } from '@countrtop/models';
+import { canUseCustomBranding, canUseLoyalty } from '../lib/planCapabilities';
 
 type Props = {
   vendor: Vendor;
   vendorSlug: string;
+  planId: BillingPlanId;
 };
 
-export function VendorSettings({ vendor, vendorSlug }: Props) {
+export function VendorSettings({ vendor, vendorSlug, planId }: Props) {
   const [saving, setSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -67,8 +69,12 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
   const [editName, setEditName] = useState('');
   const [editPin, setEditPin] = useState('');
 
-  // Fetch loyalty redemption settings on mount
+  // Fetch loyalty redemption settings on mount (only when plan includes loyalty)
   useEffect(() => {
+    if (!canUseLoyalty(planId)) {
+      setLoyaltySettingsLoading(false);
+      return;
+    }
     const fetchLoyaltySettings = async () => {
       try {
         const response = await fetch(`/api/vendors/${vendorSlug}/loyalty-settings`);
@@ -87,7 +93,7 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
       }
     };
     fetchLoyaltySettings();
-  }, [vendorSlug]);
+  }, [vendorSlug, planId]);
 
   // Fetch locations and PIN status on mount
   useEffect(() => {
@@ -461,98 +467,99 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
     <main className="page">
       <div className="page-content">
         <form onSubmit={handleSave} className="vendor-form">
-          {/* Branding Section */}
-          <div className="form-section highlight">
-            <div className="form-section-header-row">
-              <div>
-                <h2>🎨 Branding & Theme</h2>
-                <p className="section-description">Customize the appearance of your customer-facing pages</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setPrimaryColor(DEFAULT_PRIMARY_COLOR);
-                  setAccentColor(DEFAULT_ACCENT_COLOR);
-                }}
-                className="btn-secondary btn-reset-default"
-                disabled={saving}
-              >
-                Reset to default
-              </button>
-            </div>
-
-            <div className="form-grid">
-              <div className="form-group full-width">
-                <label htmlFor="logoUrl">Logo URL</label>
-                <input
-                  id="logoUrl"
-                  type="url"
-                  value={logoUrl}
-                  onChange={(e) => setLogoUrl(e.target.value)}
-                  className="form-input"
+          {canUseCustomBranding(planId) && (
+            <div className="form-section highlight">
+              <div className="form-section-header-row">
+                <div>
+                  <h2>🎨 Branding & Theme</h2>
+                  <p className="section-description">Customize the appearance of your customer-facing pages</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPrimaryColor(DEFAULT_PRIMARY_COLOR);
+                    setAccentColor(DEFAULT_ACCENT_COLOR);
+                  }}
+                  className="btn-secondary btn-reset-default"
                   disabled={saving}
-                  placeholder="https://example.com/logo.png"
-                />
-                <small className="form-hint">Square image recommended (200×200px or larger)</small>
+                >
+                  Reset to default
+                </button>
               </div>
 
-              <div className="form-group">
-                <label htmlFor="primaryColor">Button Color</label>
-                <div className="color-input-row">
+              <div className="form-grid">
+                <div className="form-group full-width">
+                  <label htmlFor="logoUrl">Logo URL</label>
                   <input
-                    id="primaryColor"
-                    type="color"
-                    value={primaryColor}
-                    onChange={(e) => setPrimaryColor(e.target.value)}
-                    className="color-picker"
+                    id="logoUrl"
+                    type="url"
+                    value={logoUrl}
+                    onChange={(e) => setLogoUrl(e.target.value)}
+                    className="form-input"
                     disabled={saving}
+                    placeholder="https://example.com/logo.png"
                   />
-                  <input
-                    type="text"
-                    value={primaryColor}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      if (/^#[0-9A-Fa-f]{0,6}$/.test(val)) {
-                        setPrimaryColor(val);
-                      }
-                    }}
-                    className="form-input color-text"
-                    disabled={saving}
-                    placeholder="#E85D04"
-                  />
+                  <small className="form-hint">Square image recommended (200×200px or larger)</small>
                 </div>
-                <small className="form-hint">Color for buttons and CTAs</small>
-              </div>
 
-              <div className="form-group">
-                <label htmlFor="accentColor">Accent Color</label>
-                <div className="color-input-row">
-                  <input
-                    id="accentColor"
-                    type="color"
-                    value={accentColor}
-                    onChange={(e) => setAccentColor(e.target.value)}
-                    className="color-picker"
-                    disabled={saving}
-                  />
-                  <input
-                    type="text"
-                    value={accentColor}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      if (/^#[0-9A-Fa-f]{0,6}$/.test(val)) {
-                        setAccentColor(val);
-                      }
-                    }}
-                    className="form-input color-text"
-                    disabled={saving}
-                    placeholder="#FFB627"
-                  />
+                <div className="form-group">
+                  <label htmlFor="primaryColor">Button Color</label>
+                  <div className="color-input-row">
+                    <input
+                      id="primaryColor"
+                      type="color"
+                      value={primaryColor}
+                      onChange={(e) => setPrimaryColor(e.target.value)}
+                      className="color-picker"
+                      disabled={saving}
+                    />
+                    <input
+                      type="text"
+                      value={primaryColor}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (/^#[0-9A-Fa-f]{0,6}$/.test(val)) {
+                          setPrimaryColor(val);
+                        }
+                      }}
+                      className="form-input color-text"
+                      disabled={saving}
+                      placeholder="#E85D04"
+                    />
+                  </div>
+                  <small className="form-hint">Color for buttons and CTAs</small>
                 </div>
-                <small className="form-hint">Color for text highlights and badges</small>
+
+                <div className="form-group">
+                  <label htmlFor="accentColor">Accent Color</label>
+                  <div className="color-input-row">
+                    <input
+                      id="accentColor"
+                      type="color"
+                      value={accentColor}
+                      onChange={(e) => setAccentColor(e.target.value)}
+                      className="color-picker"
+                      disabled={saving}
+                    />
+                    <input
+                      type="text"
+                      value={accentColor}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (/^#[0-9A-Fa-f]{0,6}$/.test(val)) {
+                          setAccentColor(val);
+                        }
+                      }}
+                      className="form-input color-text"
+                      disabled={saving}
+                      placeholder="#FFB627"
+                    />
+                  </div>
+                  <small className="form-hint">Color for text highlights and badges</small>
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           {/* Customer Review Link */}
           <div className="form-section">
@@ -575,80 +582,81 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
             </div>
           </div>
 
-          {/* Loyalty Settings Section */}
-          <div className="form-section">
-            <h2>⭐ Loyalty Settings</h2>
-            <p className="section-description">Configure points and redemption rules for your loyalty program</p>
+          {canUseLoyalty(planId) && (
+            <div className="form-section">
+              <h2>⭐ Loyalty Settings</h2>
+              <p className="section-description">Configure points and redemption rules for your loyalty program</p>
 
-            {loyaltySettingsLoading ? (
-              <p className="muted">Loading...</p>
-            ) : (
-              <div className="loyalty-redemption-settings">
-                <p className="section-description" style={{ marginTop: 0, marginBottom: 16 }}>
-                  Redemption rules (e.g. 100 pts = $1 when cents per point = 1)
-                </p>
-                <div className="loyalty-settings-fields">
-                  <div className="form-group">
-                    <label>Cents per point</label>
-                    <input
-                      type="number"
-                      min={0}
-                      step={1}
-                      value={loyaltySettings.centsPerPoint}
-                      onChange={(e) =>
-                        setLoyaltySettings(prev => ({
-                          ...prev,
-                          centsPerPoint: Math.max(0, parseInt(e.target.value, 10) || 0)
-                        }))
-                      }
-                      className="form-input"
-                    />
+              {loyaltySettingsLoading ? (
+                <p className="muted">Loading...</p>
+              ) : (
+                <div className="loyalty-redemption-settings">
+                  <p className="section-description" style={{ marginTop: 0, marginBottom: 16 }}>
+                    Redemption rules (e.g. 100 pts = $1 when cents per point = 1)
+                  </p>
+                  <div className="loyalty-settings-fields">
+                    <div className="form-group">
+                      <label>Cents per point</label>
+                      <input
+                        type="number"
+                        min={0}
+                        step={1}
+                        value={loyaltySettings.centsPerPoint}
+                        onChange={(e) =>
+                          setLoyaltySettings(prev => ({
+                            ...prev,
+                            centsPerPoint: Math.max(0, parseInt(e.target.value, 10) || 0)
+                          }))
+                        }
+                        className="form-input"
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Min points to redeem</label>
+                      <input
+                        type="number"
+                        min={0}
+                        step={1}
+                        value={loyaltySettings.minPointsToRedeem}
+                        onChange={(e) =>
+                          setLoyaltySettings(prev => ({
+                            ...prev,
+                            minPointsToRedeem: Math.max(0, parseInt(e.target.value, 10) || 0)
+                          }))
+                        }
+                        className="form-input"
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Max points per order</label>
+                      <input
+                        type="number"
+                        min={0}
+                        step={1}
+                        value={loyaltySettings.maxPointsPerOrder}
+                        onChange={(e) =>
+                          setLoyaltySettings(prev => ({
+                            ...prev,
+                            maxPointsPerOrder: Math.max(0, parseInt(e.target.value, 10) || 0)
+                          }))
+                        }
+                        className="form-input"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleSaveLoyaltySettings}
+                      disabled={loyaltySettingsSaving}
+                      className="btn-secondary"
+                      style={{ alignSelf: 'flex-start' }}
+                    >
+                      {loyaltySettingsSaving ? 'Saving…' : 'Save redemption rules'}
+                    </button>
                   </div>
-                  <div className="form-group">
-                    <label>Min points to redeem</label>
-                    <input
-                      type="number"
-                      min={0}
-                      step={1}
-                      value={loyaltySettings.minPointsToRedeem}
-                      onChange={(e) =>
-                        setLoyaltySettings(prev => ({
-                          ...prev,
-                          minPointsToRedeem: Math.max(0, parseInt(e.target.value, 10) || 0)
-                        }))
-                      }
-                      className="form-input"
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label>Max points per order</label>
-                    <input
-                      type="number"
-                      min={0}
-                      step={1}
-                      value={loyaltySettings.maxPointsPerOrder}
-                      onChange={(e) =>
-                        setLoyaltySettings(prev => ({
-                          ...prev,
-                          maxPointsPerOrder: Math.max(0, parseInt(e.target.value, 10) || 0)
-                        }))
-                      }
-                      className="form-input"
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleSaveLoyaltySettings}
-                    disabled={loyaltySettingsSaving}
-                    className="btn-secondary"
-                    style={{ alignSelf: 'flex-start' }}
-                  >
-                    {loyaltySettingsSaving ? 'Saving…' : 'Save redemption rules'}
-                  </button>
                 </div>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          )}
 
           {/* KDS Location PINs Section */}
           <div className="form-section">

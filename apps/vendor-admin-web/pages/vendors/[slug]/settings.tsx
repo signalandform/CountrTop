@@ -3,12 +3,13 @@ import { requireVendorAdmin } from '../../../lib/auth';
 import { getServerDataClient } from '../../../lib/dataClient';
 import { VendorSettings } from '../../../components/VendorSettings';
 import { VendorAdminLayout } from '../../../components/VendorAdminLayout';
-import type { Vendor } from '@countrtop/models';
+import type { Vendor, BillingPlanId } from '@countrtop/models';
 
 type VendorSettingsPageProps = {
   vendorSlug: string;
   vendorName: string;
   vendor: Vendor | null;
+  planId: BillingPlanId;
 };
 
 export const getServerSideProps: GetServerSideProps<VendorSettingsPageProps> = async (context) => {
@@ -25,24 +26,28 @@ export const getServerSideProps: GetServerSideProps<VendorSettingsPageProps> = a
       props: {
         vendorSlug: slug ?? 'unknown',
         vendorName: 'Access Denied',
-        vendor: null
+        vendor: null,
+        planId: 'beta' as BillingPlanId
       }
     };
   }
 
   const dataClient = getServerDataClient();
   const vendor = slug ? await dataClient.getVendorBySlug(slug) : null;
+  const billing = vendor ? await dataClient.getVendorBilling(vendor.id) : null;
+  const planId: BillingPlanId = (billing?.planId as BillingPlanId) ?? 'beta';
 
   return {
     props: {
       vendorSlug: slug ?? 'unknown',
       vendorName: vendor?.displayName ?? 'Unknown Vendor',
-      vendor: vendor ?? null
+      vendor: vendor ?? null,
+      planId
     }
   };
 };
 
-export default function VendorSettingsPage({ vendorSlug, vendorName, vendor }: VendorSettingsPageProps) {
+export default function VendorSettingsPage({ vendorSlug, vendorName, vendor, planId }: VendorSettingsPageProps) {
   if (!vendor) {
     return (
       <VendorAdminLayout vendorSlug={vendorSlug} vendorName={vendorName}>
@@ -59,7 +64,7 @@ export default function VendorSettingsPage({ vendorSlug, vendorName, vendor }: V
     <VendorAdminLayout vendorSlug={vendorSlug} vendorName={vendorName}>
       <main className="page">
         <div className="container">
-          <VendorSettings vendor={vendor} vendorSlug={vendorSlug} />
+          <VendorSettings vendor={vendor} vendorSlug={vendorSlug} planId={planId} />
         </div>
 
         <style jsx>{`
