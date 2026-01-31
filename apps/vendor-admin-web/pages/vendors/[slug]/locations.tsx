@@ -2,19 +2,22 @@ import Head from 'next/head';
 import type { GetServerSideProps } from 'next';
 import { useState, useCallback, useEffect } from 'react';
 
-import type { Vendor, VendorLocation } from '@countrtop/models';
+import type { Vendor, VendorLocation, BillingPlanId } from '@countrtop/models';
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from '@countrtop/data';
 
 import { requireVendorAdmin } from '../../../lib/auth';
 import { getServerDataClient } from '../../../lib/dataClient';
 import { VendorAdminLayout } from '../../../components/VendorAdminLayout';
+import { canUseMultipleLocations } from '../../../lib/planCapabilities';
 
 type LocationsPageProps = {
   vendorSlug: string;
   vendorName: string;
   vendor: Vendor | null;
   locations: VendorLocation[];
+  planId: BillingPlanId;
+  canAddMoreLocations: boolean;
   error?: string | null;
 };
 
@@ -33,6 +36,8 @@ export const getServerSideProps: GetServerSideProps<LocationsPageProps> = async 
         vendorName: 'Access Denied',
         vendor: null,
         locations: [],
+        planId: 'beta' as BillingPlanId,
+        canAddMoreLocations: true,
         error: authResult.error ?? 'Access denied'
       }
     };
@@ -48,10 +53,15 @@ export const getServerSideProps: GetServerSideProps<LocationsPageProps> = async 
         vendorName: 'Unknown',
         vendor: null,
         locations: [],
+        planId: 'beta' as BillingPlanId,
+        canAddMoreLocations: true,
         error: 'Vendor not found'
       }
     };
   }
+
+  const billing = await dataClient.getVendorBilling(vendor.id);
+  const planId: BillingPlanId = (billing?.planId as BillingPlanId) ?? 'beta';
 
   // Fetch locations using service role
   const supabaseUrl = process.env.SUPABASE_URL;
@@ -104,20 +114,268 @@ export const getServerSideProps: GetServerSideProps<LocationsPageProps> = async 
     }
   }
 
+  const canAddMoreLocations = locations.length === 0 || canUseMultipleLocations(planId);
+
   return {
     props: {
       vendorSlug: slug ?? 'unknown',
       vendorName: vendor.displayName,
       vendor,
-      locations
+      locations,
+      planId,
+      canAddMoreLocations
     }
   };
 };
 
+type AddLocationFormProps = {
+  initialSquareLocationId: string;
+  initialName: string;
+  initialAddressLine1: string;
+  initialCity: string;
+  initialState: string;
+  initialPostalCode: string;
+  initialPhone: string;
+  onSubmit: (payload: {
+    squareLocationId: string;
+    name: string;
+    addressLine1?: string;
+    city?: string;
+    state?: string;
+    postalCode?: string;
+    phone?: string;
+  }) => Promise<void>;
+  onCancel?: () => void;
+  creating: boolean;
+  error: string | null;
+  submitLabel: string;
+  showCancelButton: boolean;
+};
+
+function AddLocationForm({
+  initialSquareLocationId,
+  initialName,
+  initialAddressLine1,
+  initialCity,
+  initialState,
+  initialPostalCode,
+  initialPhone,
+  onSubmit,
+  onCancel,
+  creating,
+  error,
+  submitLabel,
+  showCancelButton
+}: AddLocationFormProps) {
+  const [squareLocationId, setSquareLocationId] = useState(initialSquareLocationId);
+  const [name, setName] = useState(initialName);
+  const [addressLine1, setAddressLine1] = useState(initialAddressLine1);
+  const [city, setCity] = useState(initialCity);
+  const [state, setState] = useState(initialState);
+  const [postalCode, setPostalCode] = useState(initialPostalCode);
+  const [phone, setPhone] = useState(initialPhone);
+
+  const canSubmit = (squareLocationId?.trim() ?? '') !== '' && (name?.trim() ?? '') !== '';
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!canSubmit || creating) return;
+    onSubmit({
+      squareLocationId: squareLocationId.trim(),
+      name: name.trim(),
+      addressLine1: addressLine1.trim() || undefined,
+      city: city.trim() || undefined,
+      state: state.trim() || undefined,
+      postalCode: postalCode.trim() || undefined,
+      phone: phone.trim() || undefined
+    });
+  };
+
+  return (
+    <form className="add-location-form" onSubmit={handleSubmit}>
+      <div className="form-group">
+        <label htmlFor="add-loc-square-id">Square Location ID</label>
+        <input
+          id="add-loc-square-id"
+          type="text"
+          value={squareLocationId}
+          onChange={(e) => setSquareLocationId(e.target.value)}
+          placeholder="e.g. LXXXXXX"
+          disabled={creating}
+        />
+        <small className="form-hint">Find this in Square Dashboard → Locations → Location details</small>
+      </div>
+      <div className="form-group">
+        <label htmlFor="add-loc-name">Location name</label>
+        <input
+          id="add-loc-name"
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="e.g. Main Street"
+          required
+          disabled={creating}
+        />
+      </div>
+      <div className="form-group">
+        <label htmlFor="add-loc-address">Address line 1</label>
+        <input
+          id="add-loc-address"
+          type="text"
+          value={addressLine1}
+          onChange={(e) => setAddressLine1(e.target.value)}
+          placeholder="Optional"
+          disabled={creating}
+        />
+      </div>
+      <div className="form-row two-col">
+        <div className="form-group">
+          <label htmlFor="add-loc-city">City</label>
+          <input
+            id="add-loc-city"
+            type="text"
+            value={city}
+            onChange={(e) => setCity(e.target.value)}
+            placeholder="Optional"
+            disabled={creating}
+          />
+        </div>
+        <div className="form-group">
+          <label htmlFor="add-loc-state">State</label>
+          <input
+            id="add-loc-state"
+            type="text"
+            value={state}
+            onChange={(e) => setState(e.target.value)}
+            placeholder="Optional"
+            disabled={creating}
+          />
+        </div>
+      </div>
+      <div className="form-row two-col">
+        <div className="form-group">
+          <label htmlFor="add-loc-postal">Postal code</label>
+          <input
+            id="add-loc-postal"
+            type="text"
+            value={postalCode}
+            onChange={(e) => setPostalCode(e.target.value)}
+            placeholder="Optional"
+            disabled={creating}
+          />
+        </div>
+        <div className="form-group">
+          <label htmlFor="add-loc-phone">Phone</label>
+          <input
+            id="add-loc-phone"
+            type="text"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            placeholder="Optional"
+            disabled={creating}
+          />
+        </div>
+      </div>
+      <div className="add-location-form-actions">
+        {showCancelButton && (
+          <button type="button" className="btn-cancel" onClick={onCancel} disabled={creating}>
+            Cancel
+          </button>
+        )}
+        <button type="submit" className="btn-save" disabled={!canSubmit || creating}>
+          {creating ? 'Saving...' : submitLabel}
+        </button>
+      </div>
+      <style jsx>{`
+        .add-location-form {
+          text-align: left;
+          margin-top: 24px;
+          max-width: 480px;
+          margin-left: auto;
+          margin-right: auto;
+        }
+        .add-location-form .form-group {
+          margin-bottom: 16px;
+        }
+        .add-location-form .form-group label {
+          display: block;
+          font-size: 14px;
+          color: var(--color-text-muted);
+          margin-bottom: 8px;
+        }
+        .add-location-form .form-group input {
+          width: 100%;
+          background: var(--ct-bg-surface);
+          border: 1px solid var(--color-border);
+          border-radius: 8px;
+          padding: 10px 12px;
+          color: var(--color-text);
+          font-family: inherit;
+          font-size: 14px;
+        }
+        .add-location-form .form-group input:disabled {
+          opacity: 0.7;
+        }
+        .add-location-form .form-hint {
+          display: block;
+          font-size: 12px;
+          color: var(--color-text-muted);
+          margin-top: 4px;
+        }
+        .add-location-form .form-row.two-col {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 16px;
+        }
+        .add-location-form-actions {
+          display: flex;
+          gap: 12px;
+          margin-top: 24px;
+        }
+        .add-location-form-actions .btn-cancel {
+          background: transparent;
+          border: 1px solid var(--color-border);
+          border-radius: 8px;
+          padding: 10px 20px;
+          color: var(--color-text-muted);
+          font-size: 14px;
+          cursor: pointer;
+        }
+        .add-location-form-actions .btn-cancel:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+        .add-location-form-actions .btn-save {
+          background: var(--ct-gradient-primary);
+          border: none;
+          border-radius: 8px;
+          padding: 10px 20px;
+          color: #fff;
+          font-size: 14px;
+          font-weight: 600;
+          cursor: pointer;
+        }
+        .add-location-form-actions .btn-save:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+        @media (max-width: 768px) {
+          .add-location-form .form-row.two-col {
+            grid-template-columns: 1fr;
+          }
+        }
+      `}</style>
+    </form>
+  );
+}
+
 export default function LocationsPage({ 
   vendorSlug, 
   vendorName, 
+  vendor,
   locations: initialLocations,
+  planId,
+  canAddMoreLocations,
   error 
 }: LocationsPageProps) {
   const [locations, setLocations] = useState(initialLocations);
@@ -125,6 +383,9 @@ export default function LocationsPage({
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
 
   const handleSave = useCallback(async (locationId: string, updates: Partial<VendorLocation>) => {
     setSaving(true);
@@ -172,6 +433,47 @@ export default function LocationsPage({
     await handleSave(locationId, { isPrimary: true });
   }, [locations, handleSave]);
 
+  const handleCreateLocation = useCallback(async (payload: {
+    squareLocationId: string;
+    name: string;
+    addressLine1?: string;
+    city?: string;
+    state?: string;
+    postalCode?: string;
+    phone?: string;
+  }) => {
+    setCreating(true);
+    setCreateError(null);
+    try {
+      const response = await fetch(`/api/vendors/${vendorSlug}/locations`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          squareLocationId: payload.squareLocationId.trim(),
+          name: payload.name.trim(),
+          isPrimary: locations.length === 0,
+          isActive: true,
+          addressLine1: payload.addressLine1?.trim() || undefined,
+          city: payload.city?.trim() || undefined,
+          state: payload.state?.trim() || undefined,
+          postalCode: payload.postalCode?.trim() || undefined,
+          phone: payload.phone?.trim() || undefined
+        })
+      });
+      const data = await response.json();
+      if (!data.ok) {
+        throw new Error(data.error || 'Failed to add location');
+      }
+      setLocations(prev => [...prev, data.location as VendorLocation]);
+      setShowAddForm(false);
+    } catch (err) {
+      setCreateError(err instanceof Error ? err.message : 'Failed to add location');
+    } finally {
+      setCreating(false);
+    }
+  }, [vendorSlug, locations.length]);
+
   return (
     <>
       <Head>
@@ -190,28 +492,89 @@ export default function LocationsPage({
           {error && <div className="error-banner">{error}</div>}
           {saveError && <div className="error-banner">{saveError}</div>}
           {saveSuccess && <div className="success-banner">✓ Saved successfully</div>}
+          {createError && <div className="error-banner">{createError}</div>}
 
           <section className="locations-list">
             {locations.length === 0 ? (
               <div className="empty-state">
                 <div className="empty-icon">📍</div>
-                <h2>No Locations</h2>
-                <p>Add your first location to get started.</p>
+                <h2>Activate your location</h2>
+                <p>Add your first location to start taking orders and using KDS.</p>
+                <AddLocationForm
+                  key="activate"
+                  initialSquareLocationId={vendor?.squareLocationId ?? ''}
+                  initialName={vendor?.displayName ?? ''}
+                  initialAddressLine1={vendor?.addressLine1 ?? ''}
+                  initialCity={vendor?.city ?? ''}
+                  initialState={vendor?.state ?? ''}
+                  initialPostalCode={vendor?.postalCode ?? ''}
+                  initialPhone={vendor?.phone ?? ''}
+                  onSubmit={handleCreateLocation}
+                  creating={creating}
+                  error={createError}
+                  submitLabel="Activate location"
+                  showCancelButton={false}
+                />
               </div>
             ) : (
-              locations.map(location => (
-                <LocationCard
-                  key={location.id}
-                  location={location}
-                  isEditing={editingId === location.id}
-                  saving={saving}
-                  onEdit={() => setEditingId(location.id)}
-                  onCancel={() => setEditingId(null)}
-                  onSave={(updates) => handleSave(location.id, updates)}
-                  onToggleActive={() => handleToggleActive(location.id, location.isActive)}
-                  onSetPrimary={() => handleSetPrimary(location.id)}
-                />
-              ))
+              <>
+                {canAddMoreLocations ? (
+                  <>
+                    {!showAddForm ? (
+                      <button
+                        type="button"
+                        className="add-location-btn"
+                        onClick={() => {
+                          setCreateError(null);
+                          setShowAddForm(true);
+                        }}
+                      >
+                        Add location
+                      </button>
+                    ) : (
+                      <div className="add-location-form-wrap">
+                        <AddLocationForm
+                          key="add"
+                          initialSquareLocationId=""
+                          initialName=""
+                          initialAddressLine1=""
+                          initialCity=""
+                          initialState=""
+                          initialPostalCode=""
+                          initialPhone=""
+                          onSubmit={handleCreateLocation}
+                          onCancel={() => {
+                            setShowAddForm(false);
+                            setCreateError(null);
+                          }}
+                          creating={creating}
+                          error={createError}
+                          submitLabel="Add location"
+                          showCancelButton={true}
+                        />
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="upgrade-cta">
+                    <p>Upgrade to Pro to add more locations.</p>
+                    <a href={`/vendors/${vendorSlug}/billing`} className="upgrade-link">Go to Billing</a>
+                  </div>
+                )}
+                {locations.map(location => (
+                  <LocationCard
+                    key={location.id}
+                    location={location}
+                    isEditing={editingId === location.id}
+                    saving={saving}
+                    onEdit={() => setEditingId(location.id)}
+                    onCancel={() => setEditingId(null)}
+                    onSave={(updates) => handleSave(location.id, updates)}
+                    onToggleActive={() => handleToggleActive(location.id, location.isActive)}
+                    onSetPrimary={() => handleSetPrimary(location.id)}
+                  />
+                ))}
+              </>
             )}
           </section>
           </div>
@@ -307,6 +670,46 @@ export default function LocationsPage({
           .empty-state p {
             color: var(--color-text-muted);
             margin: 0;
+          }
+
+          .add-location-btn {
+            background: var(--ct-gradient-primary);
+            border: none;
+            border-radius: 8px;
+            padding: 10px 20px;
+            color: #fff;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+          }
+          .add-location-btn:hover {
+            opacity: 0.9;
+          }
+          .add-location-form-wrap {
+            background: var(--ct-bg-surface);
+            border: 1px solid var(--color-border);
+            border-radius: 16px;
+            padding: 20px;
+          }
+          .upgrade-cta {
+            background: var(--ct-bg-surface);
+            border: 1px solid var(--color-border);
+            border-radius: 16px;
+            padding: 20px;
+          }
+          .upgrade-cta p {
+            margin: 0 0 12px 0;
+            color: var(--color-text-muted);
+            font-size: 14px;
+          }
+          .upgrade-link {
+            color: var(--color-accent);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 600;
+          }
+          .upgrade-link:hover {
+            text-decoration: underline;
           }
 
           @media (max-width: 768px) {

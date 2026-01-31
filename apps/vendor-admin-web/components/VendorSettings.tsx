@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Vendor, Employee, BillingPlanId } from '@countrtop/models';
 import { canUseCustomBranding, canUseLoyalty } from '../lib/planCapabilities';
+import { getBrowserSupabaseClient } from '../lib/supabaseBrowser';
 
 type Props = {
   vendor: Vendor;
@@ -69,6 +70,16 @@ export function VendorSettings({ vendor, vendorSlug, planId }: Props) {
   const [editName, setEditName] = useState('');
   const [editPin, setEditPin] = useState('');
 
+  // Account / Security (password, reset link)
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [changePwdSubmitting, setChangePwdSubmitting] = useState(false);
+  const [changePwdError, setChangePwdError] = useState<string | null>(null);
+  const [changePwdSuccess, setChangePwdSuccess] = useState(false);
+  const [resetLinkSent, setResetLinkSent] = useState(false);
+
   // Fetch loyalty redemption settings on mount (only when plan includes loyalty)
   useEffect(() => {
     if (!canUseLoyalty(planId)) {
@@ -94,6 +105,43 @@ export function VendorSettings({ vendor, vendorSlug, planId }: Props) {
     };
     fetchLoyaltySettings();
   }, [vendorSlug, planId]);
+
+  // Load current user email for Account section
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const client = getBrowserSupabaseClient();
+    if (!client) return;
+    client.auth.getSession().then(({ data: { session } }) => {
+      setUserEmail(session?.user?.email ?? null);
+    });
+  }, []);
+
+  // Load MFA factors on mount
+  const loadMfaFactors = async () => {
+    const client = getBrowserSupabaseClient();
+    if (!client) {
+      setMfaFactorsLoading(false);
+      return;
+    }
+    setMfaFactorsLoading(true);
+    try {
+      const { data, error } = await client.auth.mfa.listFactors();
+      if (error) {
+        setMfaFactors([]);
+      } else {
+        const totp = (data as { totp?: Array<{ id: string; friendly_name?: string; factor_type: string }> })?.totp ?? [];
+        setMfaFactors(totp.map((f) => ({ id: f.id, friendly_name: f.friendly_name, factor_type: f.factor_type ?? 'totp' })));
+      }
+    } catch {
+      setMfaFactors([]);
+    } finally {
+      setMfaFactorsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadMfaFactors();
+  }, []);
 
   // Fetch locations and PIN status on mount
   useEffect(() => {
@@ -460,6 +508,137 @@ export function VendorSettings({ vendor, vendorSlug, planId }: Props) {
       setErrorMessage(err instanceof Error ? err.message : 'Failed to save settings');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const client = getBrowserSupabaseClient();
+    if (!client || !userEmail) return;
+    setChangePwdError(null);
+    setChangePwdSuccess(false);
+    if (newPassword.length < 8) {
+      setChangePwdError('New password must be at least 8 characters.');
+      return;
+    }
+    if (newPassword !== confirmNewPassword) {
+      setChangePwdError('New passwords do not match.');
+      return;
+    }
+    setChangePwdSubmitting(true);
+    try {
+      const { error: signInError } = await client.auth.signInWithPassword({ email: userEmail, password: currentPassword });
+      if (signInError) {
+        setChangePwdError(signInError.message);
+        setChangePwdSubmitting(false);
+        return;
+      }
+      const { error: updateError } = await client.auth.updateUser({ password: newPassword });
+      if (updateError) {
+        setChangePwdError(updateError.message);
+        setChangePwdSubmitting(false);
+        return;
+      }
+      setChangePwdSuccess(true);
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmNewPassword('');
+      setTimeout(() => setChangePwdSuccess(false), 5000);
+    } catch (err) {
+      setChangePwdError(err instanceof Error ? err.message : 'Failed to change password');
+    } finally {
+      setChangePwdSubmitting(false);
+    }
+  };
+
+  const handleSendResetLink = async () => {
+    const client = getBrowserSupabaseClient();
+    if (!client || !userEmail) return;
+    setChangePwdError(null);
+    try {
+      const { error } = await client.auth.resetPasswordForEmail(userEmail, {
+        redirectTo: `${typeof window !== 'undefined' ? window.location.origin : ''}/reset-password`
+      });
+      if (error) {
+        setChangePwdError(error.message);
+        return;
+      }
+      setResetLinkSent(true);
+      setTimeout(() => setResetLinkSent(false), 5000);
+    } catch (err) {
+      setChangePwdError(err instanceof Error ? err.message : 'Failed to send reset link');
+    }
+  };
+
+  const handleMfaEnrollStart = async () => {
+    const client = getBrowserSupabaseClient();
+    if (!client) return;
+    setMfaVerifyError(null);
+    setMfaEnrollData(null);
+    setMfaEnrolling(true);
+    try {
+      const { data, error } = await client.auth.mfa.enroll({
+        factorType: 'totp',
+        friendlyName: 'Vendor Admin'
+      });
+      if (error) {
+        setChangePwdError(error.message);
+        setMfaEnrolling(false);
+        return;
+      }
+      const totp = (data as { id: string; totp?: { qr_code: string; secret: string } })?.totp;
+      if (data?.id && totp?.qr_code) {
+        setMfaEnrollData({ factorId: data.id, qrCode: totp.qr_code, secret: totp.secret ?? '' });
+      }
+    } catch (err) {
+      setChangePwdError(err instanceof Error ? err.message : 'Failed to start 2FA setup');
+    } finally {
+      setMfaEnrolling(false);
+    }
+  };
+
+  const handleMfaVerify = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const client = getBrowserSupabaseClient();
+    if (!client || !mfaEnrollData) return;
+    setMfaVerifyError(null);
+    const code = mfaVerifyCode.trim().replace(/\s/g, '');
+    if (!code) {
+      setMfaVerifyError('Enter the code from your authenticator app.');
+      return;
+    }
+    try {
+      const { error } = await client.auth.mfa.challengeAndVerify({
+        factorId: mfaEnrollData.factorId,
+        code
+      });
+      if (error) {
+        setMfaVerifyError(error.message);
+        return;
+      }
+      setMfaEnrollData(null);
+      setMfaVerifyCode('');
+      loadMfaFactors();
+    } catch (err) {
+      setMfaVerifyError(err instanceof Error ? err.message : 'Failed to verify');
+    }
+  };
+
+  const handleMfaUnenroll = async (factorId: string) => {
+    const client = getBrowserSupabaseClient();
+    if (!client) return;
+    setMfaUnenrolling(factorId);
+    try {
+      const { error } = await client.auth.mfa.unenroll({ factorId });
+      if (error) {
+        setChangePwdError(error.message);
+      } else {
+        loadMfaFactors();
+      }
+    } catch (err) {
+      setChangePwdError(err instanceof Error ? err.message : 'Failed to disable 2FA');
+    } finally {
+      setMfaUnenrolling(null);
     }
   };
 
@@ -938,6 +1117,151 @@ export function VendorSettings({ vendor, vendorSlug, planId }: Props) {
             )}
           </div>
 
+          {/* Account & Security */}
+          <div className="form-section">
+            <h2>Account & Security</h2>
+            <p className="section-description">Change your password or request a password reset link</p>
+            {userEmail && (
+              <p className="account-email">Signed in as <strong>{userEmail}</strong></p>
+            )}
+            {changePwdError && (
+              <div className="account-error">{changePwdError}</div>
+            )}
+            {changePwdSuccess && (
+              <div className="account-success">Password updated successfully.</div>
+            )}
+            {resetLinkSent && (
+              <div className="account-success">Password reset link sent to your email.</div>
+            )}
+            <form onSubmit={handleChangePassword} className="account-password-form">
+              <div className="form-grid account-form-grid">
+                <div className="form-group">
+                  <label htmlFor="currentPassword">Current password</label>
+                  <input
+                    id="currentPassword"
+                    type="password"
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    className="form-input"
+                    required
+                    disabled={changePwdSubmitting}
+                    autoComplete="current-password"
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="newPassword">New password</label>
+                  <input
+                    id="newPassword"
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className="form-input"
+                    required
+                    minLength={8}
+                    disabled={changePwdSubmitting}
+                    autoComplete="new-password"
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="confirmNewPassword">Confirm new password</label>
+                  <input
+                    id="confirmNewPassword"
+                    type="password"
+                    value={confirmNewPassword}
+                    onChange={(e) => setConfirmNewPassword(e.target.value)}
+                    className="form-input"
+                    required
+                    minLength={8}
+                    disabled={changePwdSubmitting}
+                    autoComplete="new-password"
+                  />
+                </div>
+              </div>
+              <div className="account-actions">
+                <button type="submit" className="btn-secondary" disabled={changePwdSubmitting}>
+                  {changePwdSubmitting ? 'Updating…' : 'Change password'}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSendResetLink}
+                  className="btn-secondary"
+                  disabled={resetLinkSent}
+                >
+                  {resetLinkSent ? 'Link sent' : 'Email me a password reset link'}
+                </button>
+              </div>
+            </form>
+
+            <div className="mfa-section">
+              <h3 className="mfa-heading">Two-factor authentication</h3>
+              <p className="section-description" style={{ marginTop: 0 }}>
+                Add an extra layer of security by requiring a code from your authenticator app when signing in.
+              </p>
+              {mfaFactorsLoading ? (
+                <p className="muted">Loading…</p>
+              ) : mfaFactors.length > 0 ? (
+                <div className="mfa-enabled">
+                  <p className="mfa-status">Two-factor authentication is enabled.</p>
+                  <ul className="mfa-factors-list">
+                    {mfaFactors.map((f) => (
+                      <li key={f.id} className="mfa-factor-item">
+                        <span>{f.friendly_name ?? f.factor_type ?? 'Authenticator'}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleMfaUnenroll(f.id)}
+                          className="btn-secondary btn-small"
+                          disabled={mfaUnenrolling === f.id}
+                        >
+                          {mfaUnenrolling === f.id ? 'Disabling…' : 'Disable'}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : mfaEnrollData ? (
+                <div className="mfa-enroll-step">
+                  <p>Scan the QR code with your authenticator app (e.g. Google Authenticator, Authy), then enter the code below.</p>
+                  <div className="mfa-qr-wrap">
+                    <img src={mfaEnrollData.qrCode} alt="QR code for authenticator" width={200} height={200} />
+                  </div>
+                  <p className="muted">Or enter this secret manually: <code>{mfaEnrollData.secret}</code></p>
+                  <form onSubmit={handleMfaVerify} className="mfa-verify-form">
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      autoComplete="one-time-code"
+                      placeholder="000000"
+                      value={mfaVerifyCode}
+                      onChange={(e) => setMfaVerifyCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                      className="form-input mfa-code-input"
+                      maxLength={6}
+                    />
+                    {mfaVerifyError && <div className="account-error">{mfaVerifyError}</div>}
+                    <div className="account-actions">
+                      <button type="submit" className="btn-secondary">Verify and enable</button>
+                      <button
+                        type="button"
+                        onClick={() => { setMfaEnrollData(null); setMfaVerifyCode(''); setMfaVerifyError(null); }}
+                        className="btn-secondary"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleMfaEnrollStart}
+                  className="btn-secondary"
+                  disabled={mfaEnrolling}
+                >
+                  {mfaEnrolling ? 'Setting up…' : 'Enable two-factor authentication'}
+                </button>
+              )}
+            </div>
+          </div>
+
           {/* Error Banner */}
           {saveStatus === 'error' && (
             <div className="error-banner">
@@ -1030,6 +1354,106 @@ export function VendorSettings({ vendor, vendorSlug, planId }: Props) {
         .form-section.highlight {
           background: rgba(232, 93, 4, 0.08);
           border-color: rgba(232, 93, 4, 0.25);
+        }
+
+        .account-email {
+          margin: 0 0 16px;
+          font-size: 14px;
+          color: var(--color-text-muted);
+        }
+
+        .account-error {
+          margin-bottom: 16px;
+          padding: 12px 16px;
+          background: rgba(239, 68, 68, 0.1);
+          border: 1px solid rgba(239, 68, 68, 0.3);
+          border-radius: 8px;
+          color: #fca5a5;
+          font-size: 14px;
+        }
+
+        .account-success {
+          margin-bottom: 16px;
+          padding: 12px 16px;
+          background: rgba(34, 197, 94, 0.1);
+          border: 1px solid rgba(34, 197, 94, 0.3);
+          border-radius: 8px;
+          color: #86efac;
+          font-size: 14px;
+        }
+
+        .account-password-form .account-form-grid {
+          max-width: 400px;
+        }
+
+        .account-actions {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 12px;
+          margin-top: 16px;
+        }
+
+        .mfa-section {
+          margin-top: 32px;
+          padding-top: 24px;
+          border-top: 1px solid var(--color-border);
+        }
+
+        .mfa-heading {
+          font-size: 16px;
+          font-weight: 600;
+          margin: 0 0 8px;
+        }
+
+        .mfa-status {
+          margin: 0 0 12px;
+          font-size: 14px;
+        }
+
+        .mfa-factors-list {
+          list-style: none;
+          margin: 0;
+          padding: 0;
+        }
+
+        .mfa-factor-item {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 12px 0;
+          border-bottom: 1px solid var(--color-border);
+        }
+
+        .mfa-factor-item:last-child {
+          border-bottom: none;
+        }
+
+        .mfa-enroll-step {
+          max-width: 400px;
+        }
+
+        .mfa-enroll-step p {
+          margin: 0 0 12px;
+          font-size: 14px;
+        }
+
+        .mfa-qr-wrap {
+          margin: 16px 0;
+        }
+
+        .mfa-qr-wrap img {
+          display: block;
+        }
+
+        .mfa-verify-form {
+          margin-top: 16px;
+        }
+
+        .mfa-code-input {
+          max-width: 140px;
+          font-family: ui-monospace, monospace;
+          letter-spacing: 0.2em;
+          text-align: center;
         }
 
         .form-section-header-row {
