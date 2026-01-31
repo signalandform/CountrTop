@@ -24,8 +24,9 @@ type SetLocationPinResponse =
 
 /**
  * GET /api/vendors/[slug]/location-pins
- * 
- * Returns all Square locations for the vendor with their PIN status.
+ *
+ * Returns locations with PIN status. Uses vendor_locations (same as KDS) first,
+ * then Square API, then vendor primary location so PINs set here work for KDS login.
  */
 async function handleGet(
   req: NextApiRequest,
@@ -47,18 +48,25 @@ async function handleGet(
       return res.status(404).json({ success: false, error: 'Vendor not found' });
     }
 
-    // Get Square locations
+    const locationPins = await dataClient.getLocationPins(vendor.id);
+
+    // Prefer vendor_locations (same list as KDS) so PINs match KDS location IDs
+    const vendorLocations = await dataClient.listVendorLocations(vendor.id, false);
+    if (vendorLocations.length > 0) {
+      const locationPinInfo: LocationPinInfo[] = vendorLocations.map(loc => {
+        const locationId = loc.externalLocationId ?? loc.squareLocationId;
+        return {
+          locationId,
+          locationName: loc.name ?? 'Unnamed Location',
+          hasPin: locationPins[locationId] === true
+        };
+      });
+      return res.status(200).json({ success: true, data: locationPinInfo });
+    }
+
+    // No vendor_locations: fall back to Square API or single primary location
     let locations: Array<{ id: string; name: string }> = [];
     try {
-      // Debug: Check if token is available (don't log the actual token)
-      const hasToken = !!process.env.SQUARE_ACCESS_TOKEN || 
-        (vendor.squareCredentialRef && !!process.env[`SQUARE_ACCESS_TOKEN_${vendor.squareCredentialRef.toUpperCase().replace(/[^A-Z0-9_]/g, '_')}`]);
-      console.log('Square token check:', { 
-        hasToken, 
-        hasSquareCredentialRef: !!vendor.squareCredentialRef,
-        squareEnvironment: process.env.SQUARE_ENVIRONMENT || 'sandbox'
-      });
-
       const square = squareClientForVendor(vendor);
       const { result } = await square.locationsApi.listLocations();
       
@@ -77,33 +85,29 @@ async function handleGet(
           }));
       }
     } catch (error) {
-      // If Square token is not configured, return empty list
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      console.error('Error fetching Square locations:', {
-        error: errorMessage,
-        errorType: error instanceof Error ? error.constructor.name : typeof error,
-        vendorId: vendor.id,
-        vendorSlug: vendor.slug,
-        squareCredentialRef: vendor.squareCredentialRef
-      });
-      
-      if (errorMessage.includes('Square access token not configured')) {
-        return res.status(200).json({ success: true, data: [] });
+      const msg = error instanceof Error ? error.message : String(error);
+      if (!msg.includes('Square access token not configured')) {
+        console.error('Error fetching Square locations:', error);
       }
-      
-      // For other errors, still return empty list but log the error
-      return res.status(200).json({ success: true, data: [] });
     }
 
-    // Get PIN status for all locations
-    const locationPins = await dataClient.getLocationPins(vendor.id);
+    if (locations.length > 0) {
+      const locationPinInfo: LocationPinInfo[] = locations.map(loc => ({
+        locationId: loc.id,
+        locationName: loc.name,
+        hasPin: locationPins[loc.id] === true
+      }));
+      return res.status(200).json({ success: true, data: locationPinInfo });
+    }
 
-    const locationPinInfo: LocationPinInfo[] = locations.map(loc => ({
-      locationId: loc.id,
-      locationName: loc.name,
-      hasPin: locationPins[loc.id] === true
-    }));
-
+    // Fallback: single primary location so admin can set PIN (matches KDS fallback)
+    const locationPinInfo: LocationPinInfo[] = vendor.squareLocationId
+      ? [{
+          locationId: vendor.squareLocationId,
+          locationName: vendor.displayName ?? 'Primary Location',
+          hasPin: locationPins[vendor.squareLocationId] === true
+        }]
+      : [];
     return res.status(200).json({ success: true, data: locationPinInfo });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);

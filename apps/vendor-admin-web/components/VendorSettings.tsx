@@ -350,7 +350,15 @@ export function VendorSettings({ vendor, vendorSlug, planId }: Props) {
         body: JSON.stringify({ locationId, pin })
       });
 
-      const data = await response.json();
+      let data: { success?: boolean; error?: string } = {};
+      try {
+        data = await response.json();
+      } catch {
+        data = { success: false, error: 'Invalid response from server' };
+      }
+      if (!response.ok) {
+        throw new Error(data.error || `Failed to set PIN (${response.status})`);
+      }
       if (data.success) {
         setLocations(prev =>
           prev.map(loc => loc.locationId === locationId ? { ...loc, hasPin: true } : loc)
