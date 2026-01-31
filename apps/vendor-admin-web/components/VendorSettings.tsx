@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Vendor } from '@countrtop/models';
+import { Vendor, Employee } from '@countrtop/models';
 
 type Props = {
   vendor: Vendor;
@@ -59,6 +59,18 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
     locationId?: string | null;
   } | null>(null);
   const [copySuccess, setCopySuccess] = useState(false);
+
+  // Employees (add/edit/delete)
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [employeesLoading, setEmployeesLoading] = useState(true);
+  const [employeesError, setEmployeesError] = useState<string | null>(null);
+  const [showAddEmployee, setShowAddEmployee] = useState(false);
+  const [newEmployeeName, setNewEmployeeName] = useState('');
+  const [newEmployeePin, setNewEmployeePin] = useState('');
+  const [employeesSaving, setEmployeesSaving] = useState(false);
+  const [editingEmployee, setEditingEmployee] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editPin, setEditPin] = useState('');
 
   // Fetch feature flags on mount
   useEffect(() => {
@@ -138,6 +150,158 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
       }
     };
     fetchPairingTokens();
+  }, [vendorSlug]);
+
+  const fetchEmployees = async () => {
+    setEmployeesLoading(true);
+    setEmployeesError(null);
+    try {
+      const response = await fetch(`/api/vendors/${vendorSlug}/employees`, { credentials: 'include' });
+      const data = await response.json();
+      if (data.success) {
+        setEmployees(
+          data.data.map((emp: { id: string; name: string; pin: string; isActive: boolean }) => ({
+            id: emp.id,
+            vendorId: vendor.id,
+            name: emp.name,
+            pin: emp.pin,
+            isActive: emp.isActive,
+            createdAt: '',
+            updatedAt: ''
+          }))
+        );
+      } else {
+        setEmployeesError(data.error || 'Failed to load employees');
+      }
+    } catch (err) {
+      setEmployeesError(err instanceof Error ? err.message : 'Failed to load employees');
+    } finally {
+      setEmployeesLoading(false);
+    }
+  };
+
+  const handleAddEmployee = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newEmployeeName.trim() || !newEmployeePin.trim()) {
+      setEmployeesError('Name and PIN are required');
+      return;
+    }
+    if (!/^\d{3}$/.test(newEmployeePin)) {
+      setEmployeesError('PIN must be exactly 3 digits');
+      return;
+    }
+    setEmployeesSaving(true);
+    setEmployeesError(null);
+    try {
+      const response = await fetch(`/api/vendors/${vendorSlug}/employees`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ name: newEmployeeName.trim(), pin: newEmployeePin.trim() })
+      });
+      const data = await response.json();
+      if (data.success) {
+        setNewEmployeeName('');
+        setNewEmployeePin('');
+        setShowAddEmployee(false);
+        await fetchEmployees();
+      } else {
+        setEmployeesError(data.error || 'Failed to create employee');
+      }
+    } catch (err) {
+      setEmployeesError(err instanceof Error ? err.message : 'Failed to create employee');
+    } finally {
+      setEmployeesSaving(false);
+    }
+  };
+
+  const handleUpdateEmployee = async (employeeId: string) => {
+    if (!editName.trim() || !editPin.trim()) {
+      setEmployeesError('Name and PIN are required');
+      return;
+    }
+    if (!/^\d{3}$/.test(editPin)) {
+      setEmployeesError('PIN must be exactly 3 digits');
+      return;
+    }
+    setEmployeesSaving(true);
+    setEmployeesError(null);
+    try {
+      const response = await fetch(`/api/vendors/${vendorSlug}/employees?employeeId=${employeeId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ name: editName.trim(), pin: editPin.trim() })
+      });
+      const data = await response.json();
+      if (data.success) {
+        setEditingEmployee(null);
+        setEditName('');
+        setEditPin('');
+        await fetchEmployees();
+      } else {
+        setEmployeesError(data.error || 'Failed to update employee');
+      }
+    } catch (err) {
+      setEmployeesError(err instanceof Error ? err.message : 'Failed to update employee');
+    } finally {
+      setEmployeesSaving(false);
+    }
+  };
+
+  const handleDeleteEmployee = async (employeeId: string) => {
+    if (!confirm('Are you sure you want to delete this employee? This action cannot be undone.')) return;
+    setEmployeesSaving(true);
+    setEmployeesError(null);
+    try {
+      const response = await fetch(`/api/vendors/${vendorSlug}/employees?employeeId=${employeeId}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+      const data = await response.json();
+      if (data.success) await fetchEmployees();
+      else setEmployeesError(data.error || 'Failed to delete employee');
+    } catch (err) {
+      setEmployeesError(err instanceof Error ? err.message : 'Failed to delete employee');
+    } finally {
+      setEmployeesSaving(false);
+    }
+  };
+
+  const handleToggleActive = async (employeeId: string, isActive: boolean) => {
+    setEmployeesSaving(true);
+    setEmployeesError(null);
+    try {
+      const response = await fetch(`/api/vendors/${vendorSlug}/employees?employeeId=${employeeId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ isActive: !isActive })
+      });
+      const data = await response.json();
+      if (data.success) await fetchEmployees();
+      else setEmployeesError(data.error || 'Failed to update employee');
+    } catch (err) {
+      setEmployeesError(err instanceof Error ? err.message : 'Failed to update employee');
+    } finally {
+      setEmployeesSaving(false);
+    }
+  };
+
+  const startEdit = (employee: Employee) => {
+    setEditingEmployee(employee.id);
+    setEditName(employee.name);
+    setEditPin(employee.pin);
+  };
+
+  const cancelEdit = () => {
+    setEditingEmployee(null);
+    setEditName('');
+    setEditPin('');
+  };
+
+  useEffect(() => {
+    fetchEmployees();
   }, [vendorSlug]);
 
   const handleFeatureFlagChange = async (featureKey: string, enabled: boolean) => {
@@ -737,6 +901,144 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
                 ))
               )}
             </div>
+          </div>
+
+          {/* Employees Section */}
+          <div className="form-section">
+            <div className="employees-section-header">
+              <div>
+                <h2>👥 Employees</h2>
+                <p className="section-description">Add and manage employees who can clock in/out on the KDS</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAddEmployee(!showAddEmployee)}
+                className="btn-secondary"
+                disabled={employeesSaving}
+              >
+                {showAddEmployee ? 'Cancel' : '+ Add Employee'}
+              </button>
+            </div>
+
+            {employeesError && (
+              <div className="error-banner" style={{ marginBottom: 16 }}>
+                <p>{employeesError}</p>
+              </div>
+            )}
+
+            {showAddEmployee && (
+              <form onSubmit={handleAddEmployee} className="add-employee-form">
+                <div className="form-grid">
+                  <div className="form-group">
+                    <label htmlFor="new-employee-name">Name</label>
+                    <input
+                      id="new-employee-name"
+                      type="text"
+                      value={newEmployeeName}
+                      onChange={(e) => setNewEmployeeName(e.target.value)}
+                      placeholder="Employee name"
+                      required
+                      disabled={employeesSaving}
+                      className="form-input"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="new-employee-pin">3-Digit PIN</label>
+                    <input
+                      id="new-employee-pin"
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]{3}"
+                      maxLength={3}
+                      value={newEmployeePin}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/\D/g, '').slice(0, 3);
+                        setNewEmployeePin(value);
+                      }}
+                      placeholder="000"
+                      required
+                      disabled={employeesSaving}
+                      className="form-input"
+                    />
+                    <small className="form-hint">Employee uses this PIN to clock in/out on KDS</small>
+                  </div>
+                </div>
+                <button type="submit" className="btn-submit" disabled={employeesSaving} style={{ marginTop: 8 }}>
+                  {employeesSaving ? 'Creating...' : 'Create Employee'}
+                </button>
+              </form>
+            )}
+
+            {employeesLoading ? (
+              <p className="muted">Loading employees...</p>
+            ) : employees.length === 0 ? (
+              <p className="muted">No employees yet. Add your first employee to get started.</p>
+            ) : (
+              <div className="employees-list">
+                {employees.map((employee) => (
+                  <div key={employee.id} className={`employee-item ${!employee.isActive ? 'inactive' : ''}`}>
+                    {editingEmployee === employee.id ? (
+                      <div className="employee-edit-form">
+                        <input
+                          type="text"
+                          value={editName}
+                          onChange={(e) => setEditName(e.target.value)}
+                          placeholder="Name"
+                          className="form-input edit-input"
+                          disabled={employeesSaving}
+                        />
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          pattern="[0-9]{3}"
+                          maxLength={3}
+                          value={editPin}
+                          onChange={(e) => {
+                            const value = e.target.value.replace(/\D/g, '').slice(0, 3);
+                            setEditPin(value);
+                          }}
+                          placeholder="PIN"
+                          className="form-input edit-input"
+                          disabled={employeesSaving}
+                        />
+                        <div className="edit-actions">
+                          <button type="button" onClick={() => handleUpdateEmployee(employee.id)} className="btn-submit btn-small" disabled={employeesSaving}>
+                            Save
+                          </button>
+                          <button type="button" onClick={cancelEdit} className="btn-secondary btn-small" disabled={employeesSaving}>
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="employee-info">
+                          <div className="employee-name">{employee.name}</div>
+                          <div className="employee-pin">PIN: {employee.pin}</div>
+                          {!employee.isActive && <span className="inactive-badge">Inactive</span>}
+                        </div>
+                        <div className="employee-actions">
+                          <button
+                            type="button"
+                            onClick={() => handleToggleActive(employee.id, employee.isActive)}
+                            className={`btn-secondary btn-small ${employee.isActive ? 'btn-deactivate' : 'btn-activate'}`}
+                            disabled={employeesSaving}
+                          >
+                            {employee.isActive ? 'Deactivate' : 'Activate'}
+                          </button>
+                          <button type="button" onClick={() => startEdit(employee)} className="btn-secondary btn-small" disabled={employeesSaving}>
+                            Edit
+                          </button>
+                          <button type="button" onClick={() => handleDeleteEmployee(employee.id)} className="btn-delete-small" disabled={employeesSaving}>
+                            Delete
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Error Banner */}
@@ -1358,6 +1660,130 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
           background: var(--ct-bg-surface);
         }
 
+        /* Employees section */
+        .employees-section-header {
+          display: flex;
+          flex-wrap: wrap;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 16px;
+          margin-bottom: 24px;
+        }
+
+        .employees-section-header .section-description {
+          margin-bottom: 0;
+        }
+
+        .add-employee-form {
+          display: flex;
+          flex-wrap: wrap;
+          align-items: flex-end;
+          gap: 16px;
+          padding: 20px;
+          background: rgba(255, 255, 255, 0.03);
+          border-radius: 12px;
+          margin-bottom: 24px;
+        }
+
+        .employees-list {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+
+        .employee-item {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 16px;
+          background: var(--ct-bg-surface);
+          border: 1px solid var(--color-border);
+          border-radius: 12px;
+        }
+
+        .employee-item.inactive {
+          opacity: 0.6;
+        }
+
+        .employee-info {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+
+        .employee-name {
+          font-size: 16px;
+          font-weight: 600;
+          color: var(--color-text);
+        }
+
+        .employee-pin {
+          font-size: 14px;
+          color: var(--color-text-muted);
+          font-family: monospace;
+        }
+
+        .inactive-badge {
+          display: inline-block;
+          padding: 4px 8px;
+          background: rgba(255, 159, 10, 0.2);
+          color: #ff9f0a;
+          border-radius: 4px;
+          font-size: 12px;
+          font-weight: 600;
+          margin-top: 4px;
+        }
+
+        .employee-actions {
+          display: flex;
+          gap: 8px;
+        }
+
+        .employee-edit-form {
+          display: flex;
+          gap: 8px;
+          align-items: center;
+          flex: 1;
+          flex-wrap: wrap;
+        }
+
+        .employee-edit-form .edit-input {
+          padding: 8px 12px;
+          flex: 1;
+          min-width: 100px;
+        }
+
+        .edit-actions {
+          display: flex;
+          gap: 8px;
+        }
+
+        .btn-small {
+          padding: 8px 16px;
+          font-size: 13px;
+        }
+
+        .btn-delete-small {
+          padding: 8px 16px;
+          border-radius: 6px;
+          border: none;
+          font-weight: 600;
+          font-size: 13px;
+          cursor: pointer;
+          font-family: inherit;
+          background: rgba(255, 59, 48, 0.2);
+          color: #ff3b30;
+        }
+
+        .btn-delete-small:hover:not(:disabled) {
+          background: rgba(255, 59, 48, 0.3);
+        }
+
+        .btn-delete-small:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
         @media (max-width: 768px) {
           .page-header {
             padding: 24px;
@@ -1398,6 +1824,27 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
           .pairing-qr img {
             width: 160px;
             height: 160px;
+          }
+
+          .employee-item {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 12px;
+          }
+
+          .employee-actions {
+            width: 100%;
+            justify-content: flex-end;
+          }
+
+          .employee-edit-form {
+            flex-direction: column;
+            width: 100%;
+          }
+
+          .edit-actions {
+            width: 100%;
+            justify-content: flex-end;
           }
         }
       `}</style>

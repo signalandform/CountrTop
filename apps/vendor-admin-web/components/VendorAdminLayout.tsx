@@ -82,15 +82,8 @@ export function VendorAdminLayout({
         isActive: isPrefix(`${basePath}/settings`)
       },
       {
-        id: 'workspace',
-        label: 'Team',
-        href: `${basePath}/workspace`,
-        icon: '👥',
-        isActive: isPrefix(`${basePath}/workspace`)
-      },
-      {
         id: 'reports',
-        label: 'Reports',
+        label: 'Time Sheet',
         href: `${basePath}/reports`,
         icon: '📋',
         isActive: isPrefix(`${basePath}/reports`)
