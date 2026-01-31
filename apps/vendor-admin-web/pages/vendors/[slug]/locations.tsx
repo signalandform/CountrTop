@@ -508,7 +508,6 @@ export default function LocationsPage({
                   initialPhone={vendor?.phone ?? ''}
                   onSubmit={handleCreateLocation}
                   creating={creating}
-                  error={createError}
                   submitLabel="Activate location"
                   showCancelButton={false}
                 />

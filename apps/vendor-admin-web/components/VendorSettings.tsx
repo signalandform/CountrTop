@@ -80,6 +80,15 @@ export function VendorSettings({ vendor, vendorSlug, planId }: Props) {
   const [changePwdSuccess, setChangePwdSuccess] = useState(false);
   const [resetLinkSent, setResetLinkSent] = useState(false);
 
+  // MFA (2FA) state
+  const [mfaFactorsLoading, setMfaFactorsLoading] = useState(true);
+  const [mfaFactors, setMfaFactors] = useState<Array<{ id: string; friendly_name?: string; factor_type: string }>>([]);
+  const [mfaEnrollData, setMfaEnrollData] = useState<{ factorId: string; qrCode: string; secret: string } | null>(null);
+  const [mfaVerifyCode, setMfaVerifyCode] = useState('');
+  const [mfaVerifyError, setMfaVerifyError] = useState<string | null>(null);
+  const [mfaEnrolling, setMfaEnrolling] = useState(false);
+  const [mfaUnenrolling, setMfaUnenrolling] = useState<string | null>(null);
+
   // Fetch loyalty redemption settings on mount (only when plan includes loyalty)
   useEffect(() => {
     if (!canUseLoyalty(planId)) {
