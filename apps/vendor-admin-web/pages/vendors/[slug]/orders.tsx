@@ -94,9 +94,8 @@ export const getServerSideProps: GetServerSideProps<Props> = async (context) => 
   };
 };
 
-export default function VendorOrdersPage({ vendorSlug, vendorName, orders: initialOrders, statusMessage }: Props) {
+export default function VendorOrdersPage({ vendorSlug, vendorName, orders, statusMessage }: Props) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [orders, setOrders] = useState<OrderSnapshot[]>(initialOrders);
 
   const toggleExpand = (id: string) => {
     setExpandedId(expandedId === id ? null : id);
