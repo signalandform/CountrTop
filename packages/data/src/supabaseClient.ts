@@ -1426,7 +1426,7 @@ export class SupabaseDataClient implements DataClient {
       return {
         vendorId: row.vendor_id,
         planId: row.plan_id as import('@countrtop/models').BillingPlanId,
-        status: row.status ?? undefined,
+        status: row.status ?? 'active',
         currentPeriodEnd: row.current_period_end ?? undefined,
         stripeCustomerId: row.stripe_customer_id ?? undefined,
         stripeSubscriptionId: row.stripe_subscription_id ?? undefined,
@@ -1486,6 +1486,24 @@ export class SupabaseDataClient implements DataClient {
       logQueryPerformance('recordVendorEmailUnsubscribe', startTime, true);
     } catch (error) {
       logQueryPerformance('recordVendorEmailUnsubscribe', startTime, false, error);
+      throw error;
+    }
+  }
+
+  async listVendorEmailUnsubscribes(vendorId: string): Promise<string[]> {
+    const startTime = Date.now();
+    try {
+      const { data, error } = await this.client
+        .from('vendor_email_unsubscribes')
+        .select('email')
+        .eq('vendor_id', vendorId);
+      if (error) throw error;
+      const rows = (data ?? []) as { email: string }[];
+      const result = rows.map((r) => r.email);
+      logQueryPerformance('listVendorEmailUnsubscribes', startTime, true);
+      return result;
+    } catch (error) {
+      logQueryPerformance('listVendorEmailUnsubscribes', startTime, false, error);
       throw error;
     }
   }

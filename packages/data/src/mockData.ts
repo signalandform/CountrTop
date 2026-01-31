@@ -210,6 +210,11 @@ export class MockDataClient implements DataClient {
     return;
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- mock returns empty list
+  async listVendorEmailUnsubscribes(_vendorId: string): Promise<string[]> {
+    return [];
+  }
+
   async upsertVendorBilling(
     vendorId: string,
     data: {

@@ -76,6 +76,7 @@ export interface DataClient {
   ): Promise<import('@countrtop/models').VendorBilling>;
 
   recordVendorEmailUnsubscribe(vendorId: string, email: string): Promise<void>;
+  listVendorEmailUnsubscribes(vendorId: string): Promise<string[]>;
 
   upsertPushDevice(device: PushDeviceInput): Promise<PushDevice>;
   listPushDevicesForUser(userId: string): Promise<PushDevice[]>;
