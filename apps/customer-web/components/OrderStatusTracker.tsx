@@ -410,6 +410,7 @@ export function OrderStatusTracker({
         .completed-cta {
           display: flex;
           flex-direction: column;
+          align-items: center;
           gap: 16px;
           margin-bottom: 16px;
           padding-top: 16px;
@@ -424,6 +425,7 @@ export function OrderStatusTracker({
         .cta-feedback {
           display: flex;
           flex-direction: column;
+          align-items: center;
           gap: 8px;
         }
 
@@ -469,6 +471,7 @@ export function OrderStatusTracker({
           display: flex;
           flex-direction: row;
           flex-wrap: wrap;
+          justify-content: center;
           gap: 20px;
           align-items: flex-start;
         }
@@ -476,6 +479,7 @@ export function OrderStatusTracker({
         @media (max-width: 640px) {
           .cta-actions {
             flex-direction: column;
+            align-items: center;
             gap: 16px;
           }
         }
@@ -483,6 +487,7 @@ export function OrderStatusTracker({
         .cta-action-item {
           display: flex;
           flex-direction: column;
+          align-items: center;
           gap: 4px;
           min-width: 0;
         }

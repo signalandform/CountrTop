@@ -13,9 +13,14 @@ export const summarizeInsights = async (
       uniqueCustomers: 0,
       repeatCustomers: 0,
       pointsIssued: 0,
+      feedbackThumbsUp: 0,
+      feedbackThumbsDown: 0,
       topReorderedItems: []
     };
   }
+
+  const feedbackThumbsUp = orders.filter((o) => o.customerFeedbackRating === 'thumbs_up').length;
+  const feedbackThumbsDown = orders.filter((o) => o.customerFeedbackRating === 'thumbs_down').length;
 
   const counts = new Map<string, number>();
   orders.forEach((order) => {
@@ -60,6 +65,8 @@ export const summarizeInsights = async (
     uniqueCustomers: counts.size,
     repeatCustomers: [...counts.values()].filter((count) => count > 1).length,
     pointsIssued,
+    feedbackThumbsUp,
+    feedbackThumbsDown,
     topReorderedItems
   };
 };

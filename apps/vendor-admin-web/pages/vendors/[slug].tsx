@@ -38,6 +38,8 @@ export const getServerSideProps: GetServerSideProps<VendorAdminProps> = async (c
           uniqueCustomers: 0,
           repeatCustomers: 0,
           pointsIssued: 0,
+          feedbackThumbsUp: 0,
+          feedbackThumbsDown: 0,
           topReorderedItems: []
         },
         statusMessage: authResult.error ?? 'Access denied'

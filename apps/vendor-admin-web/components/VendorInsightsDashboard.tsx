@@ -64,6 +64,22 @@ export function VendorInsightsDashboard({ vendorSlug, vendorName, insights, stat
                 <span className="stat-label">Points Issued</span>
               </div>
             </div>
+
+            <div className="stat-card">
+              <div className="stat-icon">👍</div>
+              <div className="stat-content">
+                <span className="stat-value">{formatMetric(insights.feedbackThumbsUp)}</span>
+                <span className="stat-label">Thumbs Up</span>
+              </div>
+            </div>
+
+            <div className="stat-card">
+              <div className="stat-icon">👎</div>
+              <div className="stat-content">
+                <span className="stat-value">{formatMetric(insights.feedbackThumbsDown)}</span>
+                <span className="stat-label">Thumbs Down</span>
+              </div>
+            </div>
           </div>
         </section>
 

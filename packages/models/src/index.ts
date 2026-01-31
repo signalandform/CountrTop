@@ -177,6 +177,9 @@ export type VendorInsights = {
   uniqueCustomers: number;
   repeatCustomers: number;
   pointsIssued: number;
+  /** Customer post-order feedback (thumbs up/down) counts */
+  feedbackThumbsUp: number;
+  feedbackThumbsDown: number;
   topReorderedItems: { label: string; count: number }[];
 };
 
