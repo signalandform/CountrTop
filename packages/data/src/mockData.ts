@@ -258,13 +258,14 @@ export class MockDataClient implements DataClient {
     return { minPointsToRedeem: 100, maxPointsPerOrder: 500, centsPerPoint: 1 };
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- mock no-op
+  /* eslint-disable @typescript-eslint/no-unused-vars -- mock no-op */
   async setVendorLoyaltySettings(
     _vendorId: string,
     _settings: import('@countrtop/models').VendorLoyaltySettings
   ): Promise<void> {
     return;
   }
+  /* eslint-enable @typescript-eslint/no-unused-vars */
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- mock returns null
   async getVendorBilling(_vendorId: string): Promise<import('@countrtop/models').VendorBilling | null> {
