@@ -362,6 +362,24 @@ function storeHoursArrayToJson(arr: string[]): Record<string, string> | null {
   return Object.keys(out).length ? out : null;
 }
 
+function storeHoursToJson(
+  storeHoursByDay: string[],
+  closedByDay: boolean[]
+): Record<string, string> | null {
+  const out: Record<string, string> = {};
+  for (let i = 0; i < 7; i++) {
+    if (closedByDay[i]) continue;
+    const trimmed = (storeHoursByDay[i] ?? '').trim();
+    if (trimmed) out[String(i)] = trimmed;
+  }
+  return Object.keys(out).length ? out : null;
+}
+
+function deriveClosedByDay(json: Record<string, unknown> | undefined): boolean[] {
+  const arr = storeHoursJsonToArray(json);
+  return arr.map((val) => (val ?? '').trim() === '');
+}
+
 // LocationCard component
 type LocationCardProps = {
   location: VendorLocation;
@@ -404,9 +422,15 @@ function LocationCard({
   const [storeHoursByDay, setStoreHoursByDay] = useState<string[]>(() =>
     storeHoursJsonToArray(location.onlineOrderingHoursJson)
   );
+  const [closedByDay, setClosedByDay] = useState<boolean[]>(() =>
+    deriveClosedByDay(location.onlineOrderingHoursJson)
+  );
 
   useEffect(() => {
-    if (!isEditing) setStoreHoursByDay(storeHoursJsonToArray(location.onlineOrderingHoursJson));
+    if (!isEditing) {
+      setStoreHoursByDay(storeHoursJsonToArray(location.onlineOrderingHoursJson));
+      setClosedByDay(deriveClosedByDay(location.onlineOrderingHoursJson));
+    }
   }, [location.id, location.onlineOrderingHoursJson, isEditing]);
 
   const handleSaveClick = () => {
@@ -420,7 +444,7 @@ function LocationCard({
       kdsSoundAlertsEnabled,
       kdsDisplayMode,
       onlineOrderingLeadTimeMinutes: onlineOrderingLeadTimeMinutes ? parseInt(onlineOrderingLeadTimeMinutes, 10) : 15,
-      onlineOrderingHoursJson: storeHoursArrayToJson(storeHoursByDay) ?? undefined,
+      onlineOrderingHoursJson: storeHoursToJson(storeHoursByDay, closedByDay) ?? undefined,
     });
   };
 
@@ -538,7 +562,7 @@ function LocationCard({
                 Check Closed or enter hours (e.g. 9:00 AM–5:00 PM)
               </small>
               {WEEKDAY_LABELS.map((label, i) => {
-                const isClosed = (storeHoursByDay[i] ?? '') === '';
+                const isClosed = closedByDay[i];
                 return (
                   <div key={i} className="form-group" style={{ marginBottom: 8 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
@@ -548,9 +572,19 @@ function LocationCard({
                           type="checkbox"
                           checked={isClosed}
                           onChange={(e) => {
-                            const next = [...storeHoursByDay];
-                            next[i] = e.target.checked ? '' : (storeHoursByDay[i] ?? '');
-                            setStoreHoursByDay(next);
+                            const checked = e.target.checked;
+                            setClosedByDay((prev) => {
+                              const next = [...prev];
+                              next[i] = checked;
+                              return next;
+                            });
+                            if (checked) {
+                              setStoreHoursByDay((prev) => {
+                                const next = [...prev];
+                                next[i] = '';
+                                return next;
+                              });
+                            }
                           }}
                         />
                         Closed

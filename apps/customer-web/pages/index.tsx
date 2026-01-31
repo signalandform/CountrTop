@@ -794,24 +794,26 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
                   ))}
                 </div>
               </div>
-              <div className="detail-item">
-                <div className="detail-label">Contact</div>
-                <div className="detail-value">
-                  {contactPhone ? (
-                    <a href={`tel:${normalizePhone(contactPhone)}`} className="detail-link">
-                      {contactPhone}
+              <div className="gate-details-right">
+                <div className="detail-item">
+                  <div className="detail-label">Map</div>
+                  <div className="detail-value">
+                    <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className="detail-link">
+                      Open in Maps
                     </a>
-                  ) : (
-                    <span className="muted">Contact the restaurant directly</span>
-                  )}
+                  </div>
                 </div>
-              </div>
-              <div className="detail-item">
-                <div className="detail-label">Map</div>
-                <div className="detail-value">
-                  <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className="detail-link">
-                    Open in Maps
-                  </a>
+                <div className="detail-item">
+                  <div className="detail-label">Contact for help</div>
+                  <div className="detail-value">
+                    {contactPhone ? (
+                      <a href={`tel:${normalizePhone(contactPhone)}`} className="detail-link detail-link-contact">
+                        {contactPhone}
+                      </a>
+                    ) : (
+                      <span className="muted">Contact the restaurant directly</span>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -1334,7 +1336,19 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
 
           .gate-details {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+          }
+
+          @media (max-width: 640px) {
+            .gate-details {
+              grid-template-columns: 1fr;
+            }
+          }
+
+          .gate-details-right {
+            display: flex;
+            flex-direction: column;
             gap: 12px;
           }
 
@@ -1351,10 +1365,6 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
             text-transform: uppercase;
             letter-spacing: 0.4px;
             color: var(--color-text-muted);
-          }
-
-          .detail-item-hours {
-            grid-column: 1 / -1;
           }
 
           .hours-list {

@@ -170,9 +170,12 @@ export function OrderStatusTracker({
             </a>
           )}
           {completedCta.contactPhone ? (
-            <a href={`tel:${completedCta.contactPhone.replace(/\D/g, '')}`} className="cta-button cta-contact">
-              Contact for help
-            </a>
+            <div className="cta-contact-wrap">
+              <span className="cta-contact-label">Contact for help</span>
+              <a href={`tel:${completedCta.contactPhone.replace(/\D/g, '')}`} className="cta-button cta-contact">
+                {completedCta.contactPhone}
+              </a>
+            </div>
           ) : (
             <span className="cta-muted">Contact the restaurant directly for help</span>
           )}
@@ -468,6 +471,20 @@ export function OrderStatusTracker({
           background: var(--theme-button, var(--color-primary));
           border-color: rgba(232, 93, 4, 0.4);
           color: #fff;
+        }
+
+        .cta-contact-wrap {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+
+        .cta-contact-label {
+          font-size: 11px;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.4px;
+          color: var(--color-text-muted);
         }
 
         .cta-contact {

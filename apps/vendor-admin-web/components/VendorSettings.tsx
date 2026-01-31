@@ -1,5 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
-import Head from 'next/head';
+import { useState, useEffect } from 'react';
 import { Vendor } from '@countrtop/models';
 
 type Props = {
@@ -14,18 +13,7 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
 
   // Theming state
   const [logoUrl, setLogoUrl] = useState(vendor.logoUrl || '');
-  const [primaryColor, setPrimaryColor] = useState(vendor.primaryColor || '#E85D04');
-  const [accentColor, setAccentColor] = useState(vendor.accentColor || '#FFB627');
-  const [fontFamily, setFontFamily] = useState(vendor.fontFamily || 'DM Sans');
   const [reviewUrl, setReviewUrl] = useState(vendor.reviewUrl || '');
-
-  // Google Font URL for preview (memoized to avoid re-renders)
-  const googleFontUrl = useMemo(() => {
-    if (!fontFamily || ['SF Pro Display', 'system-ui', 'DM Sans', 'Anybody'].includes(fontFamily)) {
-      return null;
-    }
-    return `https://fonts.googleapis.com/css2?family=${encodeURIComponent(fontFamily)}:wght@400;500;600;700&display=swap`;
-  }, [fontFamily]);
 
   // Feature flags state
   const [featureFlags, setFeatureFlags] = useState<Record<string, boolean>>({});
@@ -270,9 +258,6 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
         credentials: 'include',
         body: JSON.stringify({
           logoUrl: logoUrl || null,
-          primaryColor: primaryColor || null,
-          accentColor: accentColor || null,
-          fontFamily: fontFamily || null,
           reviewUrl: reviewUrl.trim() || null
         })
       });
@@ -295,12 +280,6 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
 
   return (
     <main className="page">
-      {googleFontUrl && (
-        <Head>
-          <link href={googleFontUrl} rel="stylesheet" />
-        </Head>
-      )}
-
       <div className="page-content">
         <form onSubmit={handleSave} className="vendor-form">
           {/* Branding Section */}
@@ -322,63 +301,14 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
                 />
                 <small className="form-hint">Square image recommended (200×200px or larger)</small>
               </div>
+            </div>
+          </div>
 
-              <div className="form-group">
-                <label htmlFor="primaryColor">Button Color</label>
-                <div className="color-input-row">
-                  <input
-                    id="primaryColor"
-                    type="color"
-                    value={primaryColor}
-                    onChange={(e) => setPrimaryColor(e.target.value)}
-                    className="color-picker"
-                    disabled={saving}
-                  />
-                  <input
-                    type="text"
-                    value={primaryColor}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      if (/^#[0-9A-Fa-f]{0,6}$/.test(val)) {
-                        setPrimaryColor(val);
-                      }
-                    }}
-                    className="form-input color-text"
-                    disabled={saving}
-                    placeholder="#E85D04"
-                  />
-                </div>
-                <small className="form-hint">Color for buttons and CTAs</small>
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="accentColor">Accent Color</label>
-                <div className="color-input-row">
-                  <input
-                    id="accentColor"
-                    type="color"
-                    value={accentColor}
-                    onChange={(e) => setAccentColor(e.target.value)}
-                    className="color-picker"
-                    disabled={saving}
-                  />
-                  <input
-                    type="text"
-                    value={accentColor}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      if (/^#[0-9A-Fa-f]{0,6}$/.test(val)) {
-                        setAccentColor(val);
-                      }
-                    }}
-                    className="form-input color-text"
-                    disabled={saving}
-                    placeholder="#FFB627"
-                  />
-                </div>
-                <small className="form-hint">Color for text highlights and badges</small>
-              </div>
-
+          {/* Customer Review Link */}
+          <div className="form-section">
+            <h2>Review Link</h2>
+            <p className="section-description">Shown to customers after order completion (e.g. Google, Yelp)</p>
+            <div className="form-grid">
               <div className="form-group full-width">
                 <label htmlFor="reviewUrl">Review Link</label>
                 <input
@@ -391,56 +321,6 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
                   placeholder="https://g.page/your-business/review"
                 />
                 <small className="form-hint">Shown to customers after order completion (e.g. Google, Yelp)</small>
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="fontFamily">Font Family</label>
-                <select
-                  id="fontFamily"
-                  value={fontFamily}
-                  onChange={(e) => setFontFamily(e.target.value)}
-                  className="form-input"
-                  disabled={saving}
-                >
-                  <option value="DM Sans">DM Sans (Default)</option>
-                  <option value="Anybody">Anybody (Display)</option>
-                  <option value="Inter">Inter</option>
-                  <option value="Poppins">Poppins</option>
-                  <option value="Roboto">Roboto</option>
-                  <option value="Open Sans">Open Sans</option>
-                  <option value="Montserrat">Montserrat</option>
-                  <option value="Lato">Lato</option>
-                  <option value="Playfair Display">Playfair Display</option>
-                  <option value="SF Pro Display">SF Pro Display</option>
-                </select>
-                <small className="form-hint">Font for customer-facing text</small>
-              </div>
-            </div>
-
-            {/* Theme Preview */}
-            <div className="preview-container">
-              <div className="preview-label">Live Preview</div>
-              <div 
-                className="preview-box"
-                style={{
-                  background: '#FFF8F0',
-                  fontFamily: `'${fontFamily}', -apple-system, BlinkMacSystemFont, sans-serif`
-                }}
-              >
-                {logoUrl && <img src={logoUrl} alt="" className="preview-logo" />}
-                <div className="preview-title" style={{ color: accentColor }}>{vendor.displayName}</div>
-                <div className="preview-subtitle">Order fast, earn points</div>
-                <div className="preview-accent-text" style={{ color: accentColor }}>⭐ 150 points</div>
-                <button 
-                  type="button"
-                  className="preview-button"
-                  style={{ 
-                    background: primaryColor,
-                    fontFamily: `'${fontFamily}', -apple-system, BlinkMacSystemFont, sans-serif`
-                  }}
-                >
-                  Start Order
-                </button>
               </div>
             </div>
           </div>
