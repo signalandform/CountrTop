@@ -2,6 +2,9 @@ export type AuthProvider = 'apple' | 'google';
 
 export type VendorStatus = 'active' | 'inactive';
 
+/** Billing plan IDs for vendor feature gating (Beta, Trial, Starter, Pro). */
+export type BillingPlanId = 'beta' | 'trial' | 'starter' | 'pro';
+
 // =============================================================================
 // POS Provider Types
 // =============================================================================
