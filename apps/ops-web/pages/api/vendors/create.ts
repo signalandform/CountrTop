@@ -21,6 +21,9 @@ type CreateVendorRequest = {
   pickup_instructions?: string | null;
   kds_active_limit_total?: number | null;
   kds_active_limit_ct?: number | null;
+  /** Optional: create vendor admin login (Supabase Auth user linked to this vendor) */
+  admin_email?: string | null;
+  admin_password?: string | null;
 };
 
 type CreateVendorResponse =
@@ -123,7 +126,7 @@ export default async function handler(
     // Generate vendor ID
     const vendorId = `vendor_${body.slug}_${Date.now()}`;
 
-    // Insert new vendor
+    // Insert new vendor (with admin_user_id if we created an admin user)
     const { data: vendor, error } = await supabase
       .from('vendors')
       .insert({
@@ -134,6 +137,7 @@ export default async function handler(
         square_location_id: body.square_location_id,
         square_credential_ref: body.square_credential_ref || null,
         status: body.status || 'active',
+        admin_user_id: adminUserId,
         address_line1: body.address_line1 || null,
         address_line2: body.address_line2 || null,
         city: body.city || null,

@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
 import { getBrowserSupabaseClient } from '../lib/supabaseBrowser';
+import type { BillingPlanId } from '@countrtop/models';
+import { canUseCrm } from '../lib/planCapabilities';
 
 type VendorAdminLayoutProps = {
   vendorSlug: string;
@@ -28,6 +30,7 @@ export function VendorAdminLayout({
   const [supabase] = useState(() => getBrowserSupabaseClient());
   const [collapsed, setCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [planId, setPlanId] = useState<BillingPlanId | null>(null);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -35,6 +38,22 @@ export function VendorAdminLayout({
       setCollapsed(true);
     }
   }, []);
+
+  useEffect(() => {
+    if (!vendorSlug) return;
+    let cancelled = false;
+    fetch(`/api/vendors/${vendorSlug}/billing`, { credentials: 'include' })
+      .then((res) => res.json())
+      .then((data) => {
+        if (cancelled || !data.success || !data.data) return;
+        const id = (data.data.planId as BillingPlanId) ?? 'beta';
+        setPlanId(id);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [vendorSlug]);
 
   const closeMobileMenu = () => setMobileMenuOpen(false);
 
@@ -45,7 +64,7 @@ export function VendorAdminLayout({
     const isExact = (target: string) => (path: string) => path === target || path === `${target}/`;
     const isPrefix = (target: string) => (path: string) => path.startsWith(target);
 
-    return [
+    const items: NavItem[] = [
       {
         id: 'dashboard',
         label: 'Dashboard',
@@ -111,7 +130,19 @@ export function VendorAdminLayout({
         isActive: () => false
       }
     ];
-  }, [basePath, vendorSlug]);
+
+    if (planId && canUseCrm(planId)) {
+      items.splice(items.length - 1, 0, {
+        id: 'crm',
+        label: 'CRM',
+        href: `${basePath}/crm`,
+        icon: '✉️',
+        isActive: isPrefix(`${basePath}/crm`)
+      });
+    }
+
+    return items;
+  }, [basePath, vendorSlug, planId]);
 
   const handleSignOut = async () => {
     if (!supabase) return;

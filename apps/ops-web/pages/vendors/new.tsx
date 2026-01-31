@@ -160,7 +160,9 @@ export default function NewVendorPage({ userEmail }: Props) {
         timezone: formData.timezone.trim() || null,
         pickup_instructions: formData.pickup_instructions.trim() || null,
         kds_active_limit_total: formData.kds_active_limit_total ? parseInt(formData.kds_active_limit_total, 10) : null,
-        kds_active_limit_ct: formData.kds_active_limit_ct ? parseInt(formData.kds_active_limit_ct, 10) : null
+        kds_active_limit_ct: formData.kds_active_limit_ct ? parseInt(formData.kds_active_limit_ct, 10) : null,
+        admin_email: formData.admin_email.trim() || null,
+        admin_password: formData.admin_password || null
       };
 
       const response = await fetch('/api/vendors/create', {
@@ -424,6 +426,44 @@ export default function NewVendorPage({ userEmail }: Props) {
             </div>
 
             <div className="form-section">
+              <h2>Vendor Admin Login (optional)</h2>
+              <p className="form-section-desc">
+                Create a login for the vendor so they can access the vendor admin dashboard. Leave blank to set up later.
+              </p>
+              <div className="form-grid">
+                <div className="form-group">
+                  <label htmlFor="admin_email">Admin email</label>
+                  <input
+                    type="email"
+                    id="admin_email"
+                    name="admin_email"
+                    value={formData.admin_email}
+                    onChange={handleChange}
+                    placeholder="e.g., admin@vendor.com"
+                    className="form-input"
+                    disabled={submitting}
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="admin_password">Admin password</label>
+                  <input
+                    type="password"
+                    id="admin_password"
+                    name="admin_password"
+                    value={formData.admin_password}
+                    onChange={handleChange}
+                    placeholder="Min 8 characters"
+                    className="form-input"
+                    disabled={submitting}
+                    minLength={8}
+                    autoComplete="new-password"
+                  />
+                  <small className="form-hint">Minimum 8 characters. Share securely with the vendor.</small>
+                </div>
+              </div>
+            </div>
+
+            <div className="form-section">
               <h2>Settings</h2>
               <div className="form-grid">
                 <div className="form-group full-width">
@@ -535,6 +575,12 @@ export default function NewVendorPage({ userEmail }: Props) {
             color: var(--color-text);
             border-bottom: 1px solid var(--color-border);
             padding-bottom: 12px;
+          }
+
+          .form-section-desc {
+            font-size: 14px;
+            color: var(--color-text-muted);
+            margin: -8px 0 20px;
           }
 
           .form-grid {

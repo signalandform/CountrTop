@@ -471,6 +471,22 @@ export type Database = {
         Update: Partial<Database['public']['Tables']['support_tickets']['Insert']>;
         Relationships: [];
       };
+      vendor_email_unsubscribes: {
+        Row: {
+          id: string;
+          vendor_id: string;
+          email: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          vendor_id: string;
+          email: string;
+          created_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['vendor_email_unsubscribes']['Insert']>;
+        Relationships: [];
+      };
       vendor_location_pins: {
         Row: {
           id: string;
@@ -3041,6 +3057,48 @@ export class SupabaseDataClient implements DataClient {
       return mapSupportTicketFromRow(row);
     } catch (error) {
       logQueryPerformance('updateSupportTicket', startTime, false, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Lists emails that have unsubscribed from a vendor's promotional emails (CRM)
+   */
+  async listVendorEmailUnsubscribes(vendorId: string): Promise<string[]> {
+    const startTime = Date.now();
+    try {
+      const { data, error } = await this.client
+        .from('vendor_email_unsubscribes')
+        .select('email')
+        .eq('vendor_id', vendorId);
+
+      if (error) throw error;
+      const emails = (data ?? []).map((row: { email: string }) => row.email);
+      logQueryPerformance('listVendorEmailUnsubscribes', startTime, true);
+      return emails;
+    } catch (error) {
+      logQueryPerformance('listVendorEmailUnsubscribes', startTime, false, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Records an unsubscribe for a vendor + email (idempotent; duplicate insert is ignored via UNIQUE)
+   */
+  async recordVendorEmailUnsubscribe(vendorId: string, email: string): Promise<void> {
+    const startTime = Date.now();
+    try {
+      const { error } = await this.client
+        .from('vendor_email_unsubscribes')
+        .upsert(
+          { vendor_id: vendorId, email: email.trim().toLowerCase() },
+          { onConflict: 'vendor_id,email', ignoreDuplicates: true }
+        );
+
+      if (error) throw error;
+      logQueryPerformance('recordVendorEmailUnsubscribe', startTime, true);
+    } catch (error) {
+      logQueryPerformance('recordVendorEmailUnsubscribe', startTime, false, error);
       throw error;
     }
   }

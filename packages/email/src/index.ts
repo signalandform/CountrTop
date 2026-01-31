@@ -279,5 +279,89 @@ export async function sendOrderReady(data: OrderReadyData): Promise<{ success: b
   }
 }
 
+// Promotional email (CRM)
+const BATCH_SIZE = 100;
+
+export type PromotionalEmailParams = {
+  fromName: string;
+  to: string[];
+  subject: string;
+  html: string;
+  /** Base URL for unsubscribe (e.g. https://vendor.countrtop.com/api/vendors/vendor/unsubscribe). Email param is appended per recipient. */
+  unsubscribeBaseUrl?: string;
+};
+
+function promotionalEmailHtml(html: string, unsubscribeUrl?: string): string {
+  if (!unsubscribeUrl) return html;
+  const footer = `
+<div style="margin-top: 32px; padding-top: 16px; border-top: 1px solid ${EMAIL.border}; text-align: center;">
+  <p style="margin: 0; color: ${EMAIL.textMuted}; font-size: 12px;">
+    <a href="${unsubscribeUrl}" style="color: ${EMAIL.textMuted};">Unsubscribe</a> from promotional emails from this business.
+  </p>
+</div>`;
+  return html + footer;
+}
+
+export async function sendPromotionalEmail(params: PromotionalEmailParams): Promise<{
+  success: boolean;
+  sentCount?: number;
+  error?: string;
+}> {
+  if (!process.env.RESEND_API_KEY) {
+    console.warn('RESEND_API_KEY not configured, skipping promotional email');
+    return { success: true, sentCount: 0 };
+  }
+
+  const { fromName, to, subject, html, unsubscribeBaseUrl } = params;
+  const recipients = [...new Set(to.map((e) => e.trim().toLowerCase()).filter(Boolean))];
+  if (recipients.length === 0) {
+    return { success: true, sentCount: 0 };
+  }
+
+  const from = `${fromName} <orders@countrtop.com>`;
+  let sentCount = 0;
+
+  try {
+    if (unsubscribeBaseUrl) {
+      for (const email of recipients) {
+        const unsubscribeUrl = `${unsubscribeBaseUrl}${unsubscribeBaseUrl.includes('?') ? '&' : '?'}email=${encodeURIComponent(email)}`;
+        const fullHtml = promotionalEmailHtml(html, unsubscribeUrl);
+        const { error } = await resend.emails.send({
+          from,
+          to: email,
+          subject,
+          html: fullHtml,
+        });
+        if (error) {
+          console.error('Failed to send promotional email:', error);
+          return { success: false, sentCount, error: error.message };
+        }
+        sentCount += 1;
+      }
+    } else {
+      const fullHtml = promotionalEmailHtml(html);
+      for (let i = 0; i < recipients.length; i += BATCH_SIZE) {
+        const chunk = recipients.slice(i, i + BATCH_SIZE);
+        const { error } = await resend.emails.send({
+          from,
+          to: chunk,
+          subject,
+          html: fullHtml,
+        });
+        if (error) {
+          console.error('Failed to send promotional email batch:', error);
+          return { success: false, sentCount, error: error.message };
+        }
+        sentCount += chunk.length;
+      }
+    }
+    return { success: true, sentCount };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    console.error('Promotional email send error:', message);
+    return { success: false, sentCount, error: message };
+  }
+}
+
 // Re-export for convenience
 export { Resend };

@@ -31,3 +31,7 @@ export function canUseScheduledOrders(planId: BillingPlanId): boolean {
 export function canUseRoleBasedStaff(planId: BillingPlanId): boolean {
   return planId === 'pro';
 }
+
+export function canUseCrm(planId: BillingPlanId): boolean {
+  return planId === 'pro';
+}

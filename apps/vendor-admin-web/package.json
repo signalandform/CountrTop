@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@countrtop/data": "workspace:*",
+    "@countrtop/email": "workspace:*",
     "@countrtop/models": "workspace:*",
     "@countrtop/ui": "workspace:*",
     "@supabase/auth-helpers-nextjs": "^0.15.0",

@@ -217,4 +217,8 @@ export interface DataClient {
     id: string,
     updates: { status?: import('@countrtop/models').SupportTicketStatus; opsReply?: string }
   ): Promise<import('@countrtop/models').SupportTicket>;
+
+  // CRM: email unsubscribes (Pro)
+  listVendorEmailUnsubscribes(vendorId: string): Promise<string[]>;
+  recordVendorEmailUnsubscribe(vendorId: string, email: string): Promise<void>;
 }

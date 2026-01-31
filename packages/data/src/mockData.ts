@@ -733,6 +733,20 @@ export class MockDataClient implements DataClient {
     return next;
   }
 
+  private emailUnsubscribes: Array<{ vendorId: string; email: string }> = [];
+
+  async listVendorEmailUnsubscribes(vendorId: string): Promise<string[]> {
+    return this.emailUnsubscribes
+      .filter((u) => u.vendorId === vendorId)
+      .map((u) => u.email);
+  }
+
+  async recordVendorEmailUnsubscribe(vendorId: string, email: string): Promise<void> {
+    const normalized = email.trim().toLowerCase();
+    if (this.emailUnsubscribes.some((u) => u.vendorId === vendorId && u.email === normalized)) return;
+    this.emailUnsubscribes.push({ vendorId, email: normalized });
+  }
+
   private createId(prefix: string) {
     return `${prefix}_${Math.random().toString(16).slice(2)}`;
   }
