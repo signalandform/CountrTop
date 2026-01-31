@@ -148,32 +148,6 @@ export default function Home() {
               </div>
             </div>
           </div>
-          <div className="kds-mockup">
-            <div className="kds-header">Kitchen Display</div>
-            <div className="kds-tickets">
-              <div className="kds-ticket kds-ticket-new">
-                <div className="ticket-header">
-                  <span className="ticket-id">#A7K2</span>
-                  <span className="ticket-time">2:34</span>
-                </div>
-                <div className="ticket-items">
-                  <div>1× Margherita Pizza</div>
-                  <div>1× Garlic Knots</div>
-                </div>
-                <div className="ticket-status">NEW</div>
-              </div>
-              <div className="kds-ticket kds-ticket-progress">
-                <div className="ticket-header">
-                  <span className="ticket-id">#B3M9</span>
-                  <span className="ticket-time">5:12</span>
-                </div>
-                <div className="ticket-items">
-                  <div>2× Pepperoni Pizza</div>
-                </div>
-                <div className="ticket-status">COOKING</div>
-              </div>
-            </div>
-          </div>
           </div>
         </div>
       </section>
@@ -188,18 +162,21 @@ export default function Home() {
                 <rect x="10" y="10" width="20" height="20" rx="4" />
                 <text x="40" y="26" fontSize="14" fontWeight="600">Square</text>
               </svg>
+              <span className="pos-status supported">Supported now</span>
             </div>
             <div className="pos-logo">
               <svg viewBox="0 0 100 40" fill="currentColor">
                 <circle cx="20" cy="20" r="10" />
                 <text x="38" y="26" fontSize="14" fontWeight="600">Toast</text>
               </svg>
+              <span className="pos-status coming-soon">Coming soon</span>
             </div>
             <div className="pos-logo">
               <svg viewBox="0 0 100 40" fill="currentColor">
                 <path d="M10 15 L20 10 L30 15 L30 25 L20 30 L10 25 Z" />
                 <text x="38" y="26" fontSize="14" fontWeight="600">Clover</text>
               </svg>
+              <span className="pos-status coming-soon">Coming soon</span>
             </div>
           </div>
         </div>
@@ -224,7 +201,7 @@ export default function Home() {
               <span className="win-icon">🔌</span>
               <div className="win-content">
                 <h4>POS Integration as Moat</h4>
-                <p>Deep Square, Toast, and Clover integrations. Menu syncs automatically. Orders flow directly to existing systems.</p>
+                <p>Deep Square integration supported now. Toast and Clover integrations are coming soon. Menu syncs automatically and orders flow into your existing systems.</p>
               </div>
             </div>
             <div className="win-item">
@@ -238,7 +215,7 @@ export default function Home() {
               <span className="win-icon">📺</span>
               <div className="win-content">
                 <h4>Built-In Kitchen Display System</h4>
-                <p>KDS shows all orders—online and in-store POS—in one unified queue. Replaces paper tickets entirely.</p>
+                <p>KDS shows all orders—online and in-store POS—in one unified queue. Ticket flow New→Ready→Complete, order recall, and customer notifications when orders are ready. Replaces paper tickets entirely.</p>
               </div>
             </div>
             <div className="win-item">
@@ -252,7 +229,7 @@ export default function Home() {
               <span className="win-icon">📈</span>
               <div className="win-content">
                 <h4>Expansion Ready</h4>
-                <p>Premium add-ons roadmap: SMS notifications, loyalty programs, multi-location management.</p>
+                <p>Loyalty and multi-location available on Starter and Pro. Scale as you grow.</p>
               </div>
             </div>
           </div>
@@ -278,10 +255,29 @@ export default function Home() {
               <h3>Kitchen Display System</h3>
               <p>Real-time order management for your kitchen. See orders as they come in, track progress, and never miss a ticket.</p>
               <ul className="feature-list">
-                <li>Real-time order updates</li>
-                <li>Color-coded priority</li>
+                <li>Ticket flow: New → Ready → Complete with one tap</li>
+                <li>Order recall from completed</li>
+                <li>Employee clock in/out and QR pairing</li>
+                <li>Customer notifications when order is ready</li>
+                <li>Online and POS orders in one queue</li>
                 <li>Offline support</li>
               </ul>
+              <div className="kds-preview">
+                <div className="kds-preview-card">
+                  <div className="kds-preview-left">
+                    <div className="kds-preview-timer">2:34</div>
+                    <div className="kds-preview-label">Order A1B2C3</div>
+                    <span className="kds-preview-badge" data-source="online">Online</span>
+                  </div>
+                  <div className="kds-preview-middle">
+                    <div className="kds-preview-line"><span className="kds-preview-qty">2×</span> Burger</div>
+                    <div className="kds-preview-line"><span className="kds-preview-qty">1×</span> Fries <span className="kds-preview-mod">+ Extra salt</span></div>
+                  </div>
+                  <div className="kds-preview-right">
+                    <button type="button" className="kds-preview-btn" disabled>Ready</button>
+                  </div>
+                </div>
+              </div>
             </div>
             <div className="feature-card">
               <div className="feature-icon">
@@ -291,7 +287,7 @@ export default function Home() {
                 </svg>
               </div>
               <h3>POS Integration</h3>
-              <p>Connect to Square, Toast, or Clover. Orders flow directly into your existing workflow.</p>
+              <p>Connect to Square now. Toast and Clover integrations are coming soon.</p>
             </div>
             <div className="feature-card">
               <div className="feature-icon">
@@ -349,7 +345,7 @@ export default function Home() {
               <div className="step-number">1</div>
               <div className="step-content">
                 <h3>Connect Your POS</h3>
-                <p>Link your Square, Toast, or Clover account with a few clicks. Your menu syncs automatically.</p>
+                <p>Link your Square account in a few clicks. Toast and Clover integrations are coming soon.</p>
               </div>
               <div className="step-visual">
                 <div className="connect-visual">
@@ -379,7 +375,7 @@ export default function Home() {
               <div className="step-number">3</div>
               <div className="step-content">
                 <h3>Start Taking Orders</h3>
-                <p>Share your link and watch orders roll in. They appear on your KDS and sync to your POS instantly.</p>
+                <p>Share your link and watch orders roll in. Orders appear on your KDS in real time and sync to your POS.</p>
               </div>
               <div className="step-visual">
                 <div className="orders-visual">
@@ -404,7 +400,7 @@ export default function Home() {
           <div className="pricing-cards">
             <div className="pricing-card">
               <div className="pricing-header">
-                <h3>Early Access</h3>
+                <h3>Beta</h3>
                 <div className="pricing-badge">Limited Time</div>
               </div>
               <div className="pricing-price">
@@ -413,50 +409,34 @@ export default function Home() {
               </div>
               <p className="pricing-description">Free while we&apos;re in beta. Lock in your spot and help shape the product.</p>
               <ul className="pricing-features">
-                <li>
-                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                    <path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" fill="#10B981"/>
-                  </svg>
-                  Unlimited orders
-                </li>
-                <li>
-                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                    <path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" fill="#10B981"/>
-                  </svg>
-                  Kitchen Display System
-                </li>
-                <li>
-                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                    <path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" fill="#10B981"/>
-                  </svg>
-                  POS Integration
-                </li>
-                <li>
-                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                    <path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" fill="#10B981"/>
-                  </svg>
-                  Custom branding
-                </li>
-                <li>
-                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                    <path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" fill="#10B981"/>
-                  </svg>
-                  Analytics dashboard
-                </li>
-                <li>
-                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                    <path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" fill="#10B981"/>
-                  </svg>
-                  Email notifications
-                </li>
-                <li>
-                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                    <path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" fill="#10B981"/>
-                  </svg>
-                  Priority support
-                </li>
+                <li><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" fill="#10B981"/></svg>KDS single screen: ticket flow New→Ready→Complete, order recall</li>
+                <li><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" fill="#10B981"/></svg>Employee clock in/out, QR pairing</li>
+                <li><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" fill="#10B981"/></svg>Customer notifications when order is ready</li>
+                <li><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" fill="#10B981"/></svg>Basic analytics, single location, employee timesheets</li>
+                <li><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" fill="#10B981"/></svg>Custom pickup instructions, basic support</li>
+                <li><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" fill="#10B981"/></svg>Your storefront: yourname.countrtop.com</li>
+                <li><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" fill="#10B981"/></svg>POS integration, email notifications</li>
               </ul>
               <a href="#contact" className="btn-primary btn-full">Join Waitlist</a>
+            </div>
+            <div className="pricing-card pricing-card-future">
+              <div className="pricing-header">
+                <h3>Starter</h3>
+                <div className="pricing-badge pricing-badge-muted">Post-launch</div>
+              </div>
+              <div className="pricing-price">
+                <span className="price-amount">$49</span>
+                <span className="price-period">/month</span>
+              </div>
+              <p className="pricing-description">Everything in Beta plus loyalty, branding, and more.</p>
+              <ul className="pricing-features">
+                <li><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" fill="#64748B"/></svg>Everything in Beta</li>
+                <li><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" fill="#64748B"/></svg>Advanced analytics</li>
+                <li><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" fill="#64748B"/></svg>Customer loyalty program</li>
+                <li><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" fill="#64748B"/></svg>Scheduled orders</li>
+                <li><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" fill="#64748B"/></svg>Custom branding (logo, colors)</li>
+              </ul>
+              <button className="btn-secondary btn-full" disabled>Coming Soon</button>
             </div>
             <div className="pricing-card pricing-card-future">
               <div className="pricing-header">
@@ -464,41 +444,15 @@ export default function Home() {
                 <div className="pricing-badge pricing-badge-muted">Coming Soon</div>
               </div>
               <div className="pricing-price">
-                <span className="price-amount">$49</span>
+                <span className="price-amount">$99</span>
                 <span className="price-period">/month</span>
               </div>
-              <p className="pricing-description">Full platform access post-beta. Zero commissions. Premium add-ons available.</p>
+              <p className="pricing-description">Everything in Starter for multi-location operations.</p>
               <ul className="pricing-features">
-                <li>
-                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                    <path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" fill="#64748B"/>
-                  </svg>
-                  Everything in Early Access
-                </li>
-                <li>
-                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                    <path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" fill="#64748B"/>
-                  </svg>
-                  Custom domain
-                </li>
-                <li>
-                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                    <path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" fill="#64748B"/>
-                  </svg>
-                  SMS notifications
-                </li>
-                <li>
-                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                    <path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" fill="#64748B"/>
-                  </svg>
-                  Loyalty program
-                </li>
-                <li>
-                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                    <path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" fill="#64748B"/>
-                  </svg>
-                  Multi-location support
-                </li>
+                <li><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" fill="#64748B"/></svg>Everything in Starter</li>
+                <li><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" fill="#64748B"/></svg>Multiple locations</li>
+                <li><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" fill="#64748B"/></svg>Multiple KDS screens</li>
+                <li><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" fill="#64748B"/></svg>Role-based staff accounts</li>
               </ul>
               <button className="btn-secondary btn-full" disabled>Coming Soon</button>
             </div>
@@ -916,74 +870,6 @@ export default function Home() {
           cursor: pointer;
         }
 
-        .kds-mockup {
-          width: 300px;
-          background: var(--color-bg-dark);
-          border-radius: 16px;
-          padding: 1rem;
-          box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
-          animation: float 6s ease-in-out infinite;
-          animation-delay: -3s;
-          align-self: flex-start;
-          margin-left: 2rem;
-        }
-        .kds-header {
-          color: white;
-          font-weight: 600;
-          font-size: 0.875rem;
-          margin-bottom: 1rem;
-          opacity: 0.7;
-        }
-        .kds-tickets {
-          display: flex;
-          flex-direction: column;
-          gap: 0.75rem;
-        }
-        .kds-ticket {
-          background: rgba(255,255,255,0.05);
-          border-radius: 12px;
-          padding: 1rem;
-          border-left: 4px solid;
-        }
-        .kds-ticket-new {
-          border-color: var(--color-primary);
-        }
-        .kds-ticket-progress {
-          border-color: var(--color-accent);
-        }
-        .ticket-header {
-          display: flex;
-          justify-content: space-between;
-          margin-bottom: 0.5rem;
-        }
-        .ticket-id {
-          color: white;
-          font-weight: 700;
-          font-family: var(--font-display);
-        }
-        .ticket-time {
-          color: rgba(255,255,255,0.5);
-          font-size: 0.8125rem;
-        }
-        .ticket-items {
-          color: rgba(255,255,255,0.8);
-          font-size: 0.875rem;
-          margin-bottom: 0.75rem;
-        }
-        .ticket-items div {
-          padding: 0.125rem 0;
-        }
-        .ticket-status {
-          display: inline-block;
-          padding: 0.25rem 0.5rem;
-          background: rgba(255,255,255,0.1);
-          border-radius: 4px;
-          font-size: 0.6875rem;
-          font-weight: 700;
-          color: rgba(255,255,255,0.7);
-          letter-spacing: 0.05em;
-        }
-
         /* Social Proof */
         .social-proof {
           padding: 4rem 0;
@@ -1005,10 +891,32 @@ export default function Home() {
         }
         .pos-logo {
           color: var(--color-text-light);
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 6px;
         }
         .pos-logo svg {
           height: 40px;
           width: auto;
+        }
+        .pos-status {
+          font-size: 0.75rem;
+          padding: 4px 10px;
+          border-radius: 999px;
+          border: 1px solid var(--color-border);
+          text-transform: uppercase;
+          letter-spacing: 0.4px;
+        }
+        .pos-status.supported {
+          color: #0f766e;
+          border-color: rgba(16, 185, 129, 0.4);
+          background: rgba(16, 185, 129, 0.12);
+        }
+        .pos-status.coming-soon {
+          color: #f59e0b;
+          border-color: rgba(245, 158, 11, 0.4);
+          background: rgba(245, 158, 11, 0.12);
         }
 
         /* Why CountrTop Wins */
@@ -1139,6 +1047,85 @@ export default function Home() {
           left: 0;
           color: var(--color-success);
           font-weight: bold;
+        }
+
+        .kds-preview {
+          margin-top: 1.5rem;
+          padding-top: 1.5rem;
+          border-top: 1px solid var(--color-border);
+        }
+        .kds-preview-card {
+          display: flex;
+          align-items: stretch;
+          gap: 1rem;
+          padding: 1rem;
+          background: white;
+          border: 1px solid var(--color-border);
+          border-radius: 12px;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+        .kds-preview-left {
+          display: flex;
+          flex-direction: column;
+          gap: 0.25rem;
+          min-width: 80px;
+        }
+        .kds-preview-timer {
+          font-family: var(--font-display);
+          font-weight: 700;
+          font-size: 1.25rem;
+          color: var(--color-success);
+        }
+        .kds-preview-label {
+          font-size: 0.875rem;
+          font-weight: 600;
+          color: var(--color-text);
+        }
+        .kds-preview-badge {
+          display: inline-block;
+          padding: 0.2rem 0.5rem;
+          border-radius: 6px;
+          font-size: 0.7rem;
+          font-weight: 600;
+        }
+        .kds-preview-badge[data-source="online"] {
+          background: rgba(59, 130, 246, 0.15);
+          color: #2563eb;
+        }
+        .kds-preview-middle {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          gap: 0.35rem;
+          font-size: 0.875rem;
+          color: var(--color-text);
+        }
+        .kds-preview-line {
+          display: flex;
+          align-items: baseline;
+          gap: 0.35rem;
+        }
+        .kds-preview-qty {
+          font-weight: 700;
+          min-width: 2ch;
+        }
+        .kds-preview-mod {
+          font-size: 0.8rem;
+          color: var(--color-text-muted);
+        }
+        .kds-preview-right {
+          display: flex;
+          align-items: center;
+        }
+        .kds-preview-btn {
+          padding: 0.5rem 1rem;
+          border-radius: 8px;
+          border: none;
+          background: var(--color-primary);
+          color: white;
+          font-weight: 600;
+          font-size: 0.875rem;
+          cursor: default;
         }
 
         /* How It Works */
@@ -1278,9 +1265,9 @@ export default function Home() {
         }
         .pricing-cards {
           display: grid;
-          grid-template-columns: repeat(2, 1fr);
+          grid-template-columns: repeat(3, 1fr);
           gap: 2rem;
-          max-width: 800px;
+          max-width: 1100px;
           margin: 0 auto;
         }
         .pricing-card {
@@ -1516,9 +1503,6 @@ export default function Home() {
           }
           .phone-mockup {
             width: 220px;
-          }
-          .kds-mockup {
-            width: 260px;
           }
           .wins-grid {
             grid-template-columns: repeat(2, 1fr);

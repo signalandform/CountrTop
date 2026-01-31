@@ -1,46 +1,37 @@
-import { useState, useEffect, useMemo } from 'react';
-import Head from 'next/head';
-import { Vendor } from '@countrtop/models';
+import { useState, useEffect } from 'react';
+import { Vendor, Employee, BillingPlanId } from '@countrtop/models';
+import { canUseCustomBranding, canUseLoyalty } from '../lib/planCapabilities';
+import { getBrowserSupabaseClient } from '../lib/supabaseBrowser';
 
 type Props = {
   vendor: Vendor;
   vendorSlug: string;
+  planId: BillingPlanId;
 };
 
-export function VendorSettings({ vendor, vendorSlug }: Props) {
+export function VendorSettings({ vendor, vendorSlug, planId }: Props) {
   const [saving, setSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Form state
-  const [addressLine1, setAddressLine1] = useState(vendor.addressLine1 || '');
-  const [addressLine2, setAddressLine2] = useState(vendor.addressLine2 || '');
-  const [city, setCity] = useState(vendor.city || '');
-  const [state, setState] = useState(vendor.state || '');
-  const [postalCode, setPostalCode] = useState(vendor.postalCode || '');
-  const [phone, setPhone] = useState(vendor.phone || '');
-  const [pickupInstructions, setPickupInstructions] = useState(vendor.pickupInstructions || '');
-  const [kdsActiveLimitTotal, setKdsActiveLimitTotal] = useState(vendor.kdsActiveLimitTotal?.toString() || '10');
-  const [kdsActiveLimitCt, setKdsActiveLimitCt] = useState(vendor.kdsActiveLimitCt?.toString() || '10');
+  // Default theme colors (used for reset)
+  const DEFAULT_PRIMARY_COLOR = '#E85D04';
+  const DEFAULT_ACCENT_COLOR = '#FFB627';
 
   // Theming state
   const [logoUrl, setLogoUrl] = useState(vendor.logoUrl || '');
-  const [primaryColor, setPrimaryColor] = useState(vendor.primaryColor || '#E85D04');
-  const [accentColor, setAccentColor] = useState(vendor.accentColor || '#FFB627');
-  const [fontFamily, setFontFamily] = useState(vendor.fontFamily || 'DM Sans');
+  const [primaryColor, setPrimaryColor] = useState(vendor.primaryColor || DEFAULT_PRIMARY_COLOR);
+  const [accentColor, setAccentColor] = useState(vendor.accentColor || DEFAULT_ACCENT_COLOR);
+  const [reviewUrl, setReviewUrl] = useState(vendor.reviewUrl || '');
 
-  // Google Font URL for preview (memoized to avoid re-renders)
-  const googleFontUrl = useMemo(() => {
-    if (!fontFamily || ['SF Pro Display', 'system-ui', 'DM Sans', 'Anybody'].includes(fontFamily)) {
-      return null;
-    }
-    return `https://fonts.googleapis.com/css2?family=${encodeURIComponent(fontFamily)}:wght@400;500;600;700&display=swap`;
-  }, [fontFamily]);
-
-  // Feature flags state
-  const [featureFlags, setFeatureFlags] = useState<Record<string, boolean>>({});
-  const [flagsLoading, setFlagsLoading] = useState(true);
-  const [flagsSaving, setFlagsSaving] = useState(false);
+  // Loyalty redemption settings state
+  const [loyaltySettings, setLoyaltySettings] = useState<{
+    centsPerPoint: number;
+    minPointsToRedeem: number;
+    maxPointsPerOrder: number;
+  }>({ centsPerPoint: 1, minPointsToRedeem: 100, maxPointsPerOrder: 500 });
+  const [loyaltySettingsLoading, setLoyaltySettingsLoading] = useState(true);
+  const [loyaltySettingsSaving, setLoyaltySettingsSaving] = useState(false);
 
   // Location PINs state
   const [locations, setLocations] = useState<Array<{ locationId: string; locationName: string; hasPin: boolean }>>([]);
@@ -49,23 +40,117 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
   const [pinSaving, setPinSaving] = useState<Record<string, boolean>>({});
   const [pinErrors, setPinErrors] = useState<Record<string, string>>({});
 
-  // Fetch feature flags on mount
+  // KDS Pairing tokens state
+  const [pairingTokens, setPairingTokens] = useState<Array<{
+    id: string;
+    locationId?: string | null;
+    expiresAt: string;
+    createdAt: string;
+  }>>([]);
+  const [pairingLoading, setPairingLoading] = useState(true);
+  const [pairingError, setPairingError] = useState<string | null>(null);
+  const [pairingLocationId, setPairingLocationId] = useState('');
+  const [pairingCreating, setPairingCreating] = useState(false);
+  const [generatedToken, setGeneratedToken] = useState<{
+    token: string;
+    expiresAt: string;
+    locationId?: string | null;
+  } | null>(null);
+  const [copySuccess, setCopySuccess] = useState(false);
+
+  // Employees (add/edit/delete)
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [employeesLoading, setEmployeesLoading] = useState(true);
+  const [employeesError, setEmployeesError] = useState<string | null>(null);
+  const [showAddEmployee, setShowAddEmployee] = useState(false);
+  const [newEmployeeName, setNewEmployeeName] = useState('');
+  const [newEmployeePin, setNewEmployeePin] = useState('');
+  const [employeesSaving, setEmployeesSaving] = useState(false);
+  const [editingEmployee, setEditingEmployee] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editPin, setEditPin] = useState('');
+
+  // Account / Security (password, reset link)
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [changePwdSubmitting, setChangePwdSubmitting] = useState(false);
+  const [changePwdError, setChangePwdError] = useState<string | null>(null);
+  const [changePwdSuccess, setChangePwdSuccess] = useState(false);
+  const [resetLinkSent, setResetLinkSent] = useState(false);
+
+  // MFA (2FA) state
+  const [mfaFactorsLoading, setMfaFactorsLoading] = useState(true);
+  const [mfaFactors, setMfaFactors] = useState<Array<{ id: string; friendly_name?: string; factor_type: string }>>([]);
+  const [mfaEnrollData, setMfaEnrollData] = useState<{ factorId: string; qrCode: string; secret: string } | null>(null);
+  const [mfaVerifyCode, setMfaVerifyCode] = useState('');
+  const [mfaVerifyError, setMfaVerifyError] = useState<string | null>(null);
+  const [mfaEnrolling, setMfaEnrolling] = useState(false);
+  const [mfaUnenrolling, setMfaUnenrolling] = useState<string | null>(null);
+
+  // Fetch loyalty redemption settings on mount (only when plan includes loyalty)
   useEffect(() => {
-    const fetchFlags = async () => {
+    if (!canUseLoyalty(planId)) {
+      setLoyaltySettingsLoading(false);
+      return;
+    }
+    const fetchLoyaltySettings = async () => {
       try {
-        const response = await fetch(`/api/vendors/${vendorSlug}/feature-flags`);
+        const response = await fetch(`/api/vendors/${vendorSlug}/loyalty-settings`);
         const data = await response.json();
-        if (data.success) {
-          setFeatureFlags(data.data);
+        if (data.success && data.data) {
+          setLoyaltySettings({
+            centsPerPoint: data.data.centsPerPoint ?? 1,
+            minPointsToRedeem: data.data.minPointsToRedeem ?? 100,
+            maxPointsPerOrder: data.data.maxPointsPerOrder ?? 500
+          });
         }
       } catch (err) {
-        console.error('Failed to fetch feature flags:', err);
+        console.error('Failed to fetch loyalty settings:', err);
       } finally {
-        setFlagsLoading(false);
+        setLoyaltySettingsLoading(false);
       }
     };
-    fetchFlags();
-  }, [vendorSlug]);
+    fetchLoyaltySettings();
+  }, [vendorSlug, planId]);
+
+  // Load current user email for Account section
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const client = getBrowserSupabaseClient();
+    if (!client) return;
+    client.auth.getSession().then(({ data: { session } }) => {
+      setUserEmail(session?.user?.email ?? null);
+    });
+  }, []);
+
+  // Load MFA factors on mount
+  const loadMfaFactors = async () => {
+    const client = getBrowserSupabaseClient();
+    if (!client) {
+      setMfaFactorsLoading(false);
+      return;
+    }
+    setMfaFactorsLoading(true);
+    try {
+      const { data, error } = await client.auth.mfa.listFactors();
+      if (error) {
+        setMfaFactors([]);
+      } else {
+        const totp = (data as { totp?: Array<{ id: string; friendly_name?: string; factor_type: string }> })?.totp ?? [];
+        setMfaFactors(totp.map((f) => ({ id: f.id, friendly_name: f.friendly_name, factor_type: f.factor_type ?? 'totp' })));
+      }
+    } catch {
+      setMfaFactors([]);
+    } finally {
+      setMfaFactorsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadMfaFactors();
+  }, []);
 
   // Fetch locations and PIN status on mount
   useEffect(() => {
@@ -85,27 +170,200 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
     fetchLocations();
   }, [vendorSlug]);
 
-  const handleFeatureFlagChange = async (featureKey: string, enabled: boolean) => {
-    setFlagsSaving(true);
+  useEffect(() => {
+    const fetchPairingTokens = async () => {
+      setPairingLoading(true);
+      setPairingError(null);
+      try {
+        const response = await fetch(`/api/vendors/${vendorSlug}/pairing-tokens`);
+        const data = await response.json();
+        if (data.success) {
+          setPairingTokens(data.data);
+        } else {
+          setPairingError(data.error || 'Failed to load pairing tokens');
+        }
+      } catch (err) {
+        console.error('Failed to fetch pairing tokens:', err);
+        setPairingError('Failed to load pairing tokens');
+      } finally {
+        setPairingLoading(false);
+      }
+    };
+    fetchPairingTokens();
+  }, [vendorSlug]);
+
+  const fetchEmployees = async () => {
+    setEmployeesLoading(true);
+    setEmployeesError(null);
     try {
-      const response = await fetch(`/api/vendors/${vendorSlug}/feature-flags`, {
+      const response = await fetch(`/api/vendors/${vendorSlug}/employees`, { credentials: 'include' });
+      const data = await response.json();
+      if (data.success) {
+        setEmployees(
+          data.data.map((emp: { id: string; name: string; pin: string; isActive: boolean }) => ({
+            id: emp.id,
+            vendorId: vendor.id,
+            name: emp.name,
+            pin: emp.pin,
+            isActive: emp.isActive,
+            createdAt: '',
+            updatedAt: ''
+          }))
+        );
+      } else {
+        setEmployeesError(data.error || 'Failed to load employees');
+      }
+    } catch (err) {
+      setEmployeesError(err instanceof Error ? err.message : 'Failed to load employees');
+    } finally {
+      setEmployeesLoading(false);
+    }
+  };
+
+  const handleAddEmployee = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newEmployeeName.trim() || !newEmployeePin.trim()) {
+      setEmployeesError('Name and PIN are required');
+      return;
+    }
+    if (!/^\d{3}$/.test(newEmployeePin)) {
+      setEmployeesError('PIN must be exactly 3 digits');
+      return;
+    }
+    setEmployeesSaving(true);
+    setEmployeesError(null);
+    try {
+      const response = await fetch(`/api/vendors/${vendorSlug}/employees`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ name: newEmployeeName.trim(), pin: newEmployeePin.trim() })
+      });
+      const data = await response.json();
+      if (data.success) {
+        setNewEmployeeName('');
+        setNewEmployeePin('');
+        setShowAddEmployee(false);
+        await fetchEmployees();
+      } else {
+        setEmployeesError(data.error || 'Failed to create employee');
+      }
+    } catch (err) {
+      setEmployeesError(err instanceof Error ? err.message : 'Failed to create employee');
+    } finally {
+      setEmployeesSaving(false);
+    }
+  };
+
+  const handleUpdateEmployee = async (employeeId: string) => {
+    if (!editName.trim() || !editPin.trim()) {
+      setEmployeesError('Name and PIN are required');
+      return;
+    }
+    if (!/^\d{3}$/.test(editPin)) {
+      setEmployeesError('PIN must be exactly 3 digits');
+      return;
+    }
+    setEmployeesSaving(true);
+    setEmployeesError(null);
+    try {
+      const response = await fetch(`/api/vendors/${vendorSlug}/employees?employeeId=${employeeId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ featureKey, enabled })
+        body: JSON.stringify({ name: editName.trim(), pin: editPin.trim() })
       });
-
       const data = await response.json();
       if (data.success) {
-        setFeatureFlags(prev => ({ ...prev, [featureKey]: enabled }));
+        setEditingEmployee(null);
+        setEditName('');
+        setEditPin('');
+        await fetchEmployees();
       } else {
-        throw new Error(data.error || 'Failed to update feature flag');
+        setEmployeesError(data.error || 'Failed to update employee');
       }
     } catch (err) {
-      console.error('Failed to update feature flag:', err);
-      alert('Failed to update feature flag. Please try again.');
+      setEmployeesError(err instanceof Error ? err.message : 'Failed to update employee');
     } finally {
-      setFlagsSaving(false);
+      setEmployeesSaving(false);
+    }
+  };
+
+  const handleDeleteEmployee = async (employeeId: string) => {
+    if (!confirm('Are you sure you want to delete this employee? This action cannot be undone.')) return;
+    setEmployeesSaving(true);
+    setEmployeesError(null);
+    try {
+      const response = await fetch(`/api/vendors/${vendorSlug}/employees?employeeId=${employeeId}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+      const data = await response.json();
+      if (data.success) await fetchEmployees();
+      else setEmployeesError(data.error || 'Failed to delete employee');
+    } catch (err) {
+      setEmployeesError(err instanceof Error ? err.message : 'Failed to delete employee');
+    } finally {
+      setEmployeesSaving(false);
+    }
+  };
+
+  const handleToggleActive = async (employeeId: string, isActive: boolean) => {
+    setEmployeesSaving(true);
+    setEmployeesError(null);
+    try {
+      const response = await fetch(`/api/vendors/${vendorSlug}/employees?employeeId=${employeeId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ isActive: !isActive })
+      });
+      const data = await response.json();
+      if (data.success) await fetchEmployees();
+      else setEmployeesError(data.error || 'Failed to update employee');
+    } catch (err) {
+      setEmployeesError(err instanceof Error ? err.message : 'Failed to update employee');
+    } finally {
+      setEmployeesSaving(false);
+    }
+  };
+
+  const startEdit = (employee: Employee) => {
+    setEditingEmployee(employee.id);
+    setEditName(employee.name);
+    setEditPin(employee.pin);
+  };
+
+  const cancelEdit = () => {
+    setEditingEmployee(null);
+    setEditName('');
+    setEditPin('');
+  };
+
+  useEffect(() => {
+    fetchEmployees();
+  }, [vendorSlug]);
+
+  const handleSaveLoyaltySettings = async () => {
+    setLoyaltySettingsSaving(true);
+    try {
+      const response = await fetch(`/api/vendors/${vendorSlug}/loyalty-settings`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(loyaltySettings)
+      });
+      const data = await response.json();
+      if (data.success) {
+        setLoyaltySettings(data.data);
+      } else {
+        throw new Error(data.error || 'Failed to save loyalty settings');
+      }
+    } catch (err) {
+      console.error('Failed to save loyalty settings:', err);
+      alert('Failed to save loyalty settings. Please try again.');
+    } finally {
+      setLoyaltySettingsSaving(false);
     }
   };
 
@@ -153,6 +411,80 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
     }
   };
 
+  const handleCreatePairingToken = async () => {
+    setPairingCreating(true);
+    setPairingError(null);
+    setCopySuccess(false);
+    try {
+      const response = await fetch(`/api/vendors/${vendorSlug}/pairing-tokens`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          locationId: pairingLocationId || null
+        })
+      });
+      const data = await response.json();
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to create pairing token');
+      }
+      setGeneratedToken({
+        token: data.data.token,
+        expiresAt: data.data.expiresAt,
+        locationId: data.data.locationId ?? null
+      });
+      setPairingTokens((prev) => [
+        {
+          id: data.data.tokenId,
+          locationId: data.data.locationId ?? null,
+          expiresAt: data.data.expiresAt,
+          createdAt: data.data.createdAt
+        },
+        ...prev
+      ]);
+    } catch (err) {
+      console.error('Failed to create pairing token:', err);
+      setPairingError(err instanceof Error ? err.message : 'Failed to create pairing token');
+    } finally {
+      setPairingCreating(false);
+    }
+  };
+
+  const handleRevokePairingToken = async (tokenId: string) => {
+    setPairingError(null);
+    try {
+      const response = await fetch(`/api/vendors/${vendorSlug}/pairing-tokens?tokenId=${encodeURIComponent(tokenId)}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+      const data = await response.json();
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to revoke token');
+      }
+      setPairingTokens((prev) => prev.filter((token) => token.id !== tokenId));
+    } catch (err) {
+      console.error('Failed to revoke pairing token:', err);
+      setPairingError(err instanceof Error ? err.message : 'Failed to revoke pairing token');
+    }
+  };
+
+  const handleCopyLink = async (link: string) => {
+    try {
+      await navigator.clipboard.writeText(link);
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy pairing link:', err);
+    }
+  };
+
+  const pairingUrl = generatedToken
+    ? `https://kds.countrtop.com/pair?token=${generatedToken.token}`
+    : '';
+  const generatedLocationName = generatedToken?.locationId
+    ? locations.find((loc) => loc.locationId === generatedToken.locationId)?.locationName
+    : null;
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
@@ -165,19 +497,10 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({
-          addressLine1: addressLine1 || null,
-          addressLine2: addressLine2 || null,
-          city: city || null,
-          state: state || null,
-          postalCode: postalCode || null,
-          phone: phone || null,
-          pickupInstructions: pickupInstructions || null,
-          kdsActiveLimitTotal: kdsActiveLimitTotal ? parseInt(kdsActiveLimitTotal, 10) : null,
-          kdsActiveLimitCt: kdsActiveLimitCt ? parseInt(kdsActiveLimitCt, 10) : null,
           logoUrl: logoUrl || null,
           primaryColor: primaryColor || null,
           accentColor: accentColor || null,
-          fontFamily: fontFamily || null
+          reviewUrl: reviewUrl.trim() || null
         })
       });
 
@@ -197,352 +520,331 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
     }
   };
 
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const client = getBrowserSupabaseClient();
+    if (!client || !userEmail) return;
+    setChangePwdError(null);
+    setChangePwdSuccess(false);
+    if (newPassword.length < 8) {
+      setChangePwdError('New password must be at least 8 characters.');
+      return;
+    }
+    if (newPassword !== confirmNewPassword) {
+      setChangePwdError('New passwords do not match.');
+      return;
+    }
+    setChangePwdSubmitting(true);
+    try {
+      const { error: signInError } = await client.auth.signInWithPassword({ email: userEmail, password: currentPassword });
+      if (signInError) {
+        setChangePwdError(signInError.message);
+        setChangePwdSubmitting(false);
+        return;
+      }
+      const { error: updateError } = await client.auth.updateUser({ password: newPassword });
+      if (updateError) {
+        setChangePwdError(updateError.message);
+        setChangePwdSubmitting(false);
+        return;
+      }
+      setChangePwdSuccess(true);
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmNewPassword('');
+      setTimeout(() => setChangePwdSuccess(false), 5000);
+    } catch (err) {
+      setChangePwdError(err instanceof Error ? err.message : 'Failed to change password');
+    } finally {
+      setChangePwdSubmitting(false);
+    }
+  };
+
+  const handleSendResetLink = async () => {
+    const client = getBrowserSupabaseClient();
+    if (!client || !userEmail) return;
+    setChangePwdError(null);
+    try {
+      const { error } = await client.auth.resetPasswordForEmail(userEmail, {
+        redirectTo: `${typeof window !== 'undefined' ? window.location.origin : ''}/reset-password`
+      });
+      if (error) {
+        setChangePwdError(error.message);
+        return;
+      }
+      setResetLinkSent(true);
+      setTimeout(() => setResetLinkSent(false), 5000);
+    } catch (err) {
+      setChangePwdError(err instanceof Error ? err.message : 'Failed to send reset link');
+    }
+  };
+
+  const handleMfaEnrollStart = async () => {
+    const client = getBrowserSupabaseClient();
+    if (!client) return;
+    setMfaVerifyError(null);
+    setMfaEnrollData(null);
+    setMfaEnrolling(true);
+    try {
+      const { data, error } = await client.auth.mfa.enroll({
+        factorType: 'totp',
+        friendlyName: 'Vendor Admin'
+      });
+      if (error) {
+        setChangePwdError(error.message);
+        setMfaEnrolling(false);
+        return;
+      }
+      const totp = (data as { id: string; totp?: { qr_code: string; secret: string } })?.totp;
+      if (data?.id && totp?.qr_code) {
+        setMfaEnrollData({ factorId: data.id, qrCode: totp.qr_code, secret: totp.secret ?? '' });
+      }
+    } catch (err) {
+      setChangePwdError(err instanceof Error ? err.message : 'Failed to start 2FA setup');
+    } finally {
+      setMfaEnrolling(false);
+    }
+  };
+
+  const handleMfaVerify = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const client = getBrowserSupabaseClient();
+    if (!client || !mfaEnrollData) return;
+    setMfaVerifyError(null);
+    const code = mfaVerifyCode.trim().replace(/\s/g, '');
+    if (!code) {
+      setMfaVerifyError('Enter the code from your authenticator app.');
+      return;
+    }
+    try {
+      const { error } = await client.auth.mfa.challengeAndVerify({
+        factorId: mfaEnrollData.factorId,
+        code
+      });
+      if (error) {
+        setMfaVerifyError(error.message);
+        return;
+      }
+      setMfaEnrollData(null);
+      setMfaVerifyCode('');
+      loadMfaFactors();
+    } catch (err) {
+      setMfaVerifyError(err instanceof Error ? err.message : 'Failed to verify');
+    }
+  };
+
+  const handleMfaUnenroll = async (factorId: string) => {
+    const client = getBrowserSupabaseClient();
+    if (!client) return;
+    setMfaUnenrolling(factorId);
+    try {
+      const { error } = await client.auth.mfa.unenroll({ factorId });
+      if (error) {
+        setChangePwdError(error.message);
+      } else {
+        loadMfaFactors();
+      }
+    } catch (err) {
+      setChangePwdError(err instanceof Error ? err.message : 'Failed to disable 2FA');
+    } finally {
+      setMfaUnenrolling(null);
+    }
+  };
+
   return (
     <main className="page">
-      {googleFontUrl && (
-        <Head>
-          <link href={googleFontUrl} rel="stylesheet" />
-        </Head>
-      )}
-
-      <header className="page-header">
-        <a href={`/vendors/${vendorSlug}`} className="back-link">← Back to Dashboard</a>
-        <h1>Settings</h1>
-        <p className="page-subtitle">{vendor.displayName}</p>
-      </header>
-
       <div className="page-content">
         <form onSubmit={handleSave} className="vendor-form">
-          {/* Branding Section */}
-          <div className="form-section highlight">
-            <h2>🎨 Branding & Theme</h2>
-            <p className="section-description">Customize the appearance of your customer-facing pages</p>
-
-            <div className="form-grid">
-              <div className="form-group full-width">
-                <label htmlFor="logoUrl">Logo URL</label>
-                <input
-                  id="logoUrl"
-                  type="url"
-                  value={logoUrl}
-                  onChange={(e) => setLogoUrl(e.target.value)}
-                  className="form-input"
-                  disabled={saving}
-                  placeholder="https://example.com/logo.png"
-                />
-                <small className="form-hint">Square image recommended (200×200px or larger)</small>
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="primaryColor">Button Color</label>
-                <div className="color-input-row">
-                  <input
-                    id="primaryColor"
-                    type="color"
-                    value={primaryColor}
-                    onChange={(e) => setPrimaryColor(e.target.value)}
-                    className="color-picker"
-                    disabled={saving}
-                  />
-                  <input
-                    type="text"
-                    value={primaryColor}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      if (/^#[0-9A-Fa-f]{0,6}$/.test(val)) {
-                        setPrimaryColor(val);
-                      }
-                    }}
-                    className="form-input color-text"
-                    disabled={saving}
-                    placeholder="#E85D04"
-                  />
+          {canUseCustomBranding(planId) && (
+            <div className="form-section highlight">
+              <div className="form-section-header-row">
+                <div>
+                  <h2>🎨 Branding & Theme</h2>
+                  <p className="section-description">Customize the appearance of your customer-facing pages</p>
                 </div>
-                <small className="form-hint">Color for buttons and CTAs</small>
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="accentColor">Accent Color</label>
-                <div className="color-input-row">
-                  <input
-                    id="accentColor"
-                    type="color"
-                    value={accentColor}
-                    onChange={(e) => setAccentColor(e.target.value)}
-                    className="color-picker"
-                    disabled={saving}
-                  />
-                  <input
-                    type="text"
-                    value={accentColor}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      if (/^#[0-9A-Fa-f]{0,6}$/.test(val)) {
-                        setAccentColor(val);
-                      }
-                    }}
-                    className="form-input color-text"
-                    disabled={saving}
-                    placeholder="#FFB627"
-                  />
-                </div>
-                <small className="form-hint">Color for text highlights and badges</small>
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="fontFamily">Font Family</label>
-                <select
-                  id="fontFamily"
-                  value={fontFamily}
-                  onChange={(e) => setFontFamily(e.target.value)}
-                  className="form-input"
-                  disabled={saving}
-                >
-                  <option value="DM Sans">DM Sans (Default)</option>
-                  <option value="Anybody">Anybody (Display)</option>
-                  <option value="Inter">Inter</option>
-                  <option value="Poppins">Poppins</option>
-                  <option value="Roboto">Roboto</option>
-                  <option value="Open Sans">Open Sans</option>
-                  <option value="Montserrat">Montserrat</option>
-                  <option value="Lato">Lato</option>
-                  <option value="Playfair Display">Playfair Display</option>
-                  <option value="SF Pro Display">SF Pro Display</option>
-                </select>
-                <small className="form-hint">Font for customer-facing text</small>
-              </div>
-            </div>
-
-            {/* Theme Preview */}
-            <div className="preview-container">
-              <div className="preview-label">Live Preview</div>
-              <div 
-                className="preview-box"
-                style={{
-                  background: '#FFF8F0',
-                  fontFamily: `'${fontFamily}', -apple-system, BlinkMacSystemFont, sans-serif`
-                }}
-              >
-                {logoUrl && <img src={logoUrl} alt="" className="preview-logo" />}
-                <div className="preview-title" style={{ color: accentColor }}>{vendor.displayName}</div>
-                <div className="preview-subtitle">Order fast, earn points</div>
-                <div className="preview-accent-text" style={{ color: accentColor }}>⭐ 150 points</div>
-                <button 
+                <button
                   type="button"
-                  className="preview-button"
-                  style={{ 
-                    background: primaryColor,
-                    fontFamily: `'${fontFamily}', -apple-system, BlinkMacSystemFont, sans-serif`
+                  onClick={() => {
+                    setPrimaryColor(DEFAULT_PRIMARY_COLOR);
+                    setAccentColor(DEFAULT_ACCENT_COLOR);
                   }}
+                  className="btn-secondary btn-reset-default"
+                  disabled={saving}
                 >
-                  Start Order
+                  Reset to default
                 </button>
               </div>
+
+              <div className="form-grid">
+                <div className="form-group full-width">
+                  <label htmlFor="logoUrl">Logo URL</label>
+                  <input
+                    id="logoUrl"
+                    type="url"
+                    value={logoUrl}
+                    onChange={(e) => setLogoUrl(e.target.value)}
+                    className="form-input"
+                    disabled={saving}
+                    placeholder="https://example.com/logo.png"
+                  />
+                  <small className="form-hint">Square image recommended (200×200px or larger)</small>
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="primaryColor">Button Color</label>
+                  <div className="color-input-row">
+                    <input
+                      id="primaryColor"
+                      type="color"
+                      value={primaryColor}
+                      onChange={(e) => setPrimaryColor(e.target.value)}
+                      className="color-picker"
+                      disabled={saving}
+                    />
+                    <input
+                      type="text"
+                      value={primaryColor}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (/^#[0-9A-Fa-f]{0,6}$/.test(val)) {
+                          setPrimaryColor(val);
+                        }
+                      }}
+                      className="form-input color-text"
+                      disabled={saving}
+                      placeholder="#E85D04"
+                    />
+                  </div>
+                  <small className="form-hint">Color for buttons and CTAs</small>
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="accentColor">Accent Color</label>
+                  <div className="color-input-row">
+                    <input
+                      id="accentColor"
+                      type="color"
+                      value={accentColor}
+                      onChange={(e) => setAccentColor(e.target.value)}
+                      className="color-picker"
+                      disabled={saving}
+                    />
+                    <input
+                      type="text"
+                      value={accentColor}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (/^#[0-9A-Fa-f]{0,6}$/.test(val)) {
+                          setAccentColor(val);
+                        }
+                      }}
+                      className="form-input color-text"
+                      disabled={saving}
+                      placeholder="#FFB627"
+                    />
+                  </div>
+                  <small className="form-hint">Color for text highlights and badges</small>
+                </div>
+              </div>
             </div>
-          </div>
+          )}
 
-          {/* Location Section */}
+          {/* Customer Review Link */}
           <div className="form-section">
-            <h2>📍 Location</h2>
+            <h2>Review Link</h2>
+            <p className="section-description">Shown to customers after order completion (e.g. Google, Yelp)</p>
             <div className="form-grid">
-              <div className="form-group">
-                <label htmlFor="addressLine1">Address Line 1</label>
-                <input
-                  id="addressLine1"
-                  type="text"
-                  value={addressLine1}
-                  onChange={(e) => setAddressLine1(e.target.value)}
-                  className="form-input"
-                  disabled={saving}
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="addressLine2">Address Line 2</label>
-                <input
-                  id="addressLine2"
-                  type="text"
-                  value={addressLine2}
-                  onChange={(e) => setAddressLine2(e.target.value)}
-                  className="form-input"
-                  disabled={saving}
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="city">City</label>
-                <input
-                  id="city"
-                  type="text"
-                  value={city}
-                  onChange={(e) => setCity(e.target.value)}
-                  className="form-input"
-                  disabled={saving}
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="state">State</label>
-                <input
-                  id="state"
-                  type="text"
-                  value={state}
-                  onChange={(e) => setState(e.target.value)}
-                  className="form-input"
-                  disabled={saving}
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="postalCode">Postal Code</label>
-                <input
-                  id="postalCode"
-                  type="text"
-                  value={postalCode}
-                  onChange={(e) => setPostalCode(e.target.value)}
-                  className="form-input"
-                  disabled={saving}
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="phone">Phone</label>
-                <input
-                  id="phone"
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  className="form-input"
-                  disabled={saving}
-                />
-              </div>
-
               <div className="form-group full-width">
-                <label htmlFor="pickupInstructions">Pickup Instructions</label>
-                <textarea
-                  id="pickupInstructions"
-                  value={pickupInstructions}
-                  onChange={(e) => setPickupInstructions(e.target.value)}
+                <label htmlFor="reviewUrl">Review Link</label>
+                <input
+                  id="reviewUrl"
+                  type="url"
+                  value={reviewUrl}
+                  onChange={(e) => setReviewUrl(e.target.value)}
                   className="form-input"
-                  rows={3}
                   disabled={saving}
-                  placeholder="Enter pickup instructions for customers..."
+                  placeholder="https://g.page/your-business/review"
                 />
+                <small className="form-hint">Shown to customers after order completion (e.g. Google, Yelp)</small>
               </div>
             </div>
           </div>
 
-          {/* KDS Settings Section */}
-          <div className="form-section">
-            <h2>🖥️ KDS Queue Settings</h2>
-            <div className="form-grid">
-              <div className="form-group">
-                <label htmlFor="kdsActiveLimitTotal">Max Active Tickets (Total)</label>
-                <input
-                  id="kdsActiveLimitTotal"
-                  type="number"
-                  min="1"
-                  max="50"
-                  value={kdsActiveLimitTotal}
-                  onChange={(e) => setKdsActiveLimitTotal(e.target.value)}
-                  className="form-input"
-                  disabled={saving}
-                />
-                <small className="form-hint">Maximum tickets in queue from all sources</small>
-              </div>
+          {canUseLoyalty(planId) && (
+            <div className="form-section">
+              <h2>⭐ Loyalty Settings</h2>
+              <p className="section-description">Configure points and redemption rules for your loyalty program</p>
 
-              <div className="form-group">
-                <label htmlFor="kdsActiveLimitCt">Max CountrTop Orders</label>
-                <input
-                  id="kdsActiveLimitCt"
-                  type="number"
-                  min="1"
-                  max="50"
-                  value={kdsActiveLimitCt}
-                  onChange={(e) => setKdsActiveLimitCt(e.target.value)}
-                  className="form-input"
-                  disabled={saving}
-                />
-                <small className="form-hint">Maximum CountrTop orders in queue</small>
-              </div>
+              {loyaltySettingsLoading ? (
+                <p className="muted">Loading...</p>
+              ) : (
+                <div className="loyalty-redemption-settings">
+                  <p className="section-description" style={{ marginTop: 0, marginBottom: 16 }}>
+                    Redemption rules (e.g. 100 pts = $1 when cents per point = 1)
+                  </p>
+                  <div className="loyalty-settings-fields">
+                    <div className="form-group">
+                      <label>Cents per point</label>
+                      <input
+                        type="number"
+                        min={0}
+                        step={1}
+                        value={loyaltySettings.centsPerPoint}
+                        onChange={(e) =>
+                          setLoyaltySettings(prev => ({
+                            ...prev,
+                            centsPerPoint: Math.max(0, parseInt(e.target.value, 10) || 0)
+                          }))
+                        }
+                        className="form-input"
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Min points to redeem</label>
+                      <input
+                        type="number"
+                        min={0}
+                        step={1}
+                        value={loyaltySettings.minPointsToRedeem}
+                        onChange={(e) =>
+                          setLoyaltySettings(prev => ({
+                            ...prev,
+                            minPointsToRedeem: Math.max(0, parseInt(e.target.value, 10) || 0)
+                          }))
+                        }
+                        className="form-input"
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Max points per order</label>
+                      <input
+                        type="number"
+                        min={0}
+                        step={1}
+                        value={loyaltySettings.maxPointsPerOrder}
+                        onChange={(e) =>
+                          setLoyaltySettings(prev => ({
+                            ...prev,
+                            maxPointsPerOrder: Math.max(0, parseInt(e.target.value, 10) || 0)
+                          }))
+                        }
+                        className="form-input"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleSaveLoyaltySettings}
+                      disabled={loyaltySettingsSaving}
+                      className="btn-secondary"
+                      style={{ alignSelf: 'flex-start' }}
+                    >
+                      {loyaltySettingsSaving ? 'Saving…' : 'Save redemption rules'}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
-          </div>
-
-          {/* Feature Flags Section */}
-          <div className="form-section">
-            <h2>⚡ Feature Flags</h2>
-            <p className="section-description">Enable or disable features for this vendor</p>
-
-            {flagsLoading ? (
-              <p className="muted">Loading feature flags...</p>
-            ) : (
-              <div className="flags-grid">
-                <label className="flag-card">
-                  <input
-                    type="checkbox"
-                    checked={featureFlags['analytics_enabled'] ?? false}
-                    onChange={(e) => handleFeatureFlagChange('analytics_enabled', e.target.checked)}
-                    disabled={flagsSaving}
-                  />
-                  <div className="flag-content">
-                    <span className="flag-icon">📊</span>
-                    <div>
-                      <span className="flag-name">Analytics Dashboard</span>
-                      <span className="flag-description">Enable analytics access</span>
-                    </div>
-                  </div>
-                </label>
-
-                <label className="flag-card">
-                  <input
-                    type="checkbox"
-                    checked={featureFlags['kds_realtime_enabled'] ?? false}
-                    onChange={(e) => handleFeatureFlagChange('kds_realtime_enabled', e.target.checked)}
-                    disabled={flagsSaving}
-                  />
-                  <div className="flag-content">
-                    <span className="flag-icon">⚡</span>
-                    <div>
-                      <span className="flag-name">KDS Realtime Updates</span>
-                      <span className="flag-description">Live queue updates</span>
-                    </div>
-                  </div>
-                </label>
-
-                <label className="flag-card">
-                  <input
-                    type="checkbox"
-                    checked={featureFlags['kds_pin_auth_enabled'] ?? false}
-                    onChange={(e) => handleFeatureFlagChange('kds_pin_auth_enabled', e.target.checked)}
-                    disabled={flagsSaving}
-                  />
-                  <div className="flag-content">
-                    <span className="flag-icon">🔐</span>
-                    <div>
-                      <span className="flag-name">KDS PIN Authentication</span>
-                      <span className="flag-description">PIN-based KDS login</span>
-                    </div>
-                  </div>
-                </label>
-
-                <label className="flag-card">
-                  <input
-                    type="checkbox"
-                    checked={featureFlags['customer_loyalty_enabled'] ?? false}
-                    onChange={(e) => handleFeatureFlagChange('customer_loyalty_enabled', e.target.checked)}
-                    disabled={flagsSaving}
-                  />
-                  <div className="flag-content">
-                    <span className="flag-icon">⭐</span>
-                    <div>
-                      <span className="flag-name">Loyalty Program</span>
-                      <span className="flag-description">Customer points system</span>
-                    </div>
-                  </div>
-                </label>
-              </div>
-            )}
-          </div>
+          )}
 
           {/* KDS Location PINs Section */}
           <div className="form-section">
@@ -596,6 +898,377 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
                 ))}
               </div>
             )}
+          </div>
+
+          {/* KDS Device Pairing */}
+          <div className="form-section">
+            <h2>📱 KDS Device Pairing</h2>
+            <p className="section-description">Generate a QR code to pair a KDS device in seconds</p>
+
+            {pairingError && <div className="error-banner">{pairingError}</div>}
+
+            <div className="pairing-controls">
+              <div className="pairing-field">
+                <label>Location (optional)</label>
+                <select
+                  value={pairingLocationId}
+                  onChange={(e) => setPairingLocationId(e.target.value)}
+                  className="input"
+                >
+                  <option value="">Any location</option>
+                  {locations.map((location) => (
+                    <option key={location.locationId} value={location.locationId}>
+                      {location.locationName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <button type="button" onClick={handleCreatePairingToken} className="btn-submit" disabled={pairingCreating}>
+                {pairingCreating ? 'Generating…' : 'Generate QR'}
+              </button>
+            </div>
+
+            {generatedToken && (
+              <div className="pairing-card">
+                <div className="pairing-qr">
+                  <img
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(pairingUrl)}`}
+                    alt="KDS pairing QR code"
+                  />
+                </div>
+                <div className="pairing-info">
+                  <div className="pairing-label">Pairing link</div>
+                  <div className="pairing-link">{pairingUrl}</div>
+                  <div className="pairing-meta">
+                    {generatedLocationName ? `Location: ${generatedLocationName}` : 'Location: Any'}
+                  </div>
+                  <div className="pairing-meta">
+                    Expires {new Date(generatedToken.expiresAt).toLocaleString()}
+                  </div>
+                  <button type="button" className="btn-secondary" onClick={() => handleCopyLink(pairingUrl)}>
+                    {copySuccess ? 'Copied!' : 'Copy link'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <div className="pairing-list">
+              <div className="pairing-list-header">Active tokens</div>
+              {pairingLoading ? (
+                <p className="muted">Loading tokens...</p>
+              ) : pairingTokens.length === 0 ? (
+                <p className="muted">No active pairing tokens.</p>
+              ) : (
+                pairingTokens.map((token) => (
+                  <div key={token.id} className="pairing-list-item">
+                    <div>
+                      <div className="pairing-meta">
+                        {token.locationId
+                          ? `Location: ${locations.find((loc) => loc.locationId === token.locationId)?.locationName ?? token.locationId}`
+                          : 'Location: Any'}
+                      </div>
+                      <div className="pairing-meta">
+                        Expires {new Date(token.expiresAt).toLocaleString()}
+                      </div>
+                    </div>
+                    <button type="button" className="btn-secondary" onClick={() => handleRevokePairingToken(token.id)}>
+                      Revoke
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* Employees Section */}
+          <div className="form-section">
+            <div className="employees-section-header">
+              <div>
+                <h2>👥 Employees</h2>
+                <p className="section-description">Add and manage employees who can clock in/out on the KDS</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAddEmployee(!showAddEmployee)}
+                className="btn-secondary"
+                disabled={employeesSaving}
+              >
+                {showAddEmployee ? 'Cancel' : '+ Add Employee'}
+              </button>
+            </div>
+
+            {employeesError && (
+              <div className="error-banner" style={{ marginBottom: 16 }}>
+                <p>{employeesError}</p>
+              </div>
+            )}
+
+            {showAddEmployee && (
+              <div className="add-employee-form">
+                <div className="form-grid">
+                  <div className="form-group">
+                    <label htmlFor="new-employee-name">Name</label>
+                    <input
+                      id="new-employee-name"
+                      type="text"
+                      value={newEmployeeName}
+                      onChange={(e) => setNewEmployeeName(e.target.value)}
+                      placeholder="Employee name"
+                      required
+                      disabled={employeesSaving}
+                      className="form-input"
+                      onKeyDown={(e) => e.key === 'Enter' && handleAddEmployee(e as unknown as React.FormEvent)}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="new-employee-pin">3-Digit PIN</label>
+                    <input
+                      id="new-employee-pin"
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]{3}"
+                      maxLength={3}
+                      value={newEmployeePin}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/\D/g, '').slice(0, 3);
+                        setNewEmployeePin(value);
+                      }}
+                      placeholder="000"
+                      required
+                      disabled={employeesSaving}
+                      className="form-input"
+                      onKeyDown={(e) => e.key === 'Enter' && handleAddEmployee(e as unknown as React.FormEvent)}
+                    />
+                    <small className="form-hint">Employee uses this PIN to clock in/out on KDS</small>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="btn-submit"
+                  disabled={employeesSaving}
+                  style={{ marginTop: 8 }}
+                  onClick={(e) => handleAddEmployee(e as unknown as React.FormEvent)}
+                >
+                  {employeesSaving ? 'Creating...' : 'Create Employee'}
+                </button>
+              </div>
+            )}
+
+            {employeesLoading ? (
+              <p className="muted">Loading employees...</p>
+            ) : employees.length === 0 ? (
+              <p className="muted">No employees yet. Add your first employee to get started.</p>
+            ) : (
+              <div className="employees-list">
+                {employees.map((employee) => (
+                  <div key={employee.id} className={`employee-item ${!employee.isActive ? 'inactive' : ''}`}>
+                    {editingEmployee === employee.id ? (
+                      <div className="employee-edit-form">
+                        <input
+                          type="text"
+                          value={editName}
+                          onChange={(e) => setEditName(e.target.value)}
+                          placeholder="Name"
+                          className="form-input edit-input"
+                          disabled={employeesSaving}
+                        />
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          pattern="[0-9]{3}"
+                          maxLength={3}
+                          value={editPin}
+                          onChange={(e) => {
+                            const value = e.target.value.replace(/\D/g, '').slice(0, 3);
+                            setEditPin(value);
+                          }}
+                          placeholder="PIN"
+                          className="form-input edit-input"
+                          disabled={employeesSaving}
+                        />
+                        <div className="edit-actions">
+                          <button type="button" onClick={() => handleUpdateEmployee(employee.id)} className="btn-submit btn-small" disabled={employeesSaving}>
+                            Save
+                          </button>
+                          <button type="button" onClick={cancelEdit} className="btn-secondary btn-small" disabled={employeesSaving}>
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="employee-info">
+                          <div className="employee-name">{employee.name}</div>
+                          <div className="employee-pin">PIN: {employee.pin}</div>
+                          {!employee.isActive && <span className="inactive-badge">Inactive</span>}
+                        </div>
+                        <div className="employee-actions">
+                          <button
+                            type="button"
+                            onClick={() => handleToggleActive(employee.id, employee.isActive)}
+                            className={`btn-secondary btn-small ${employee.isActive ? 'btn-deactivate' : 'btn-activate'}`}
+                            disabled={employeesSaving}
+                          >
+                            {employee.isActive ? 'Deactivate' : 'Activate'}
+                          </button>
+                          <button type="button" onClick={() => startEdit(employee)} className="btn-secondary btn-small" disabled={employeesSaving}>
+                            Edit
+                          </button>
+                          <button type="button" onClick={() => handleDeleteEmployee(employee.id)} className="btn-delete-small" disabled={employeesSaving}>
+                            Delete
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Account & Security */}
+          <div className="form-section">
+            <h2>Account & Security</h2>
+            <p className="section-description">Change your password or request a password reset link</p>
+            {userEmail && (
+              <p className="account-email">Signed in as <strong>{userEmail}</strong></p>
+            )}
+            {changePwdError && (
+              <div className="account-error">{changePwdError}</div>
+            )}
+            {changePwdSuccess && (
+              <div className="account-success">Password updated successfully.</div>
+            )}
+            {resetLinkSent && (
+              <div className="account-success">Password reset link sent to your email.</div>
+            )}
+            <form onSubmit={handleChangePassword} className="account-password-form">
+              <div className="form-grid account-form-grid">
+                <div className="form-group">
+                  <label htmlFor="currentPassword">Current password</label>
+                  <input
+                    id="currentPassword"
+                    type="password"
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    className="form-input"
+                    required
+                    disabled={changePwdSubmitting}
+                    autoComplete="current-password"
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="newPassword">New password</label>
+                  <input
+                    id="newPassword"
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className="form-input"
+                    required
+                    minLength={8}
+                    disabled={changePwdSubmitting}
+                    autoComplete="new-password"
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="confirmNewPassword">Confirm new password</label>
+                  <input
+                    id="confirmNewPassword"
+                    type="password"
+                    value={confirmNewPassword}
+                    onChange={(e) => setConfirmNewPassword(e.target.value)}
+                    className="form-input"
+                    required
+                    minLength={8}
+                    disabled={changePwdSubmitting}
+                    autoComplete="new-password"
+                  />
+                </div>
+              </div>
+              <div className="account-actions">
+                <button type="submit" className="btn-secondary" disabled={changePwdSubmitting}>
+                  {changePwdSubmitting ? 'Updating…' : 'Change password'}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSendResetLink}
+                  className="btn-secondary"
+                  disabled={resetLinkSent}
+                >
+                  {resetLinkSent ? 'Link sent' : 'Email me a password reset link'}
+                </button>
+              </div>
+            </form>
+
+            <div className="mfa-section">
+              <h3 className="mfa-heading">Two-factor authentication</h3>
+              <p className="section-description" style={{ marginTop: 0 }}>
+                Add an extra layer of security by requiring a code from your authenticator app when signing in.
+              </p>
+              {mfaFactorsLoading ? (
+                <p className="muted">Loading…</p>
+              ) : mfaFactors.length > 0 ? (
+                <div className="mfa-enabled">
+                  <p className="mfa-status">Two-factor authentication is enabled.</p>
+                  <ul className="mfa-factors-list">
+                    {mfaFactors.map((f) => (
+                      <li key={f.id} className="mfa-factor-item">
+                        <span>{f.friendly_name ?? f.factor_type ?? 'Authenticator'}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleMfaUnenroll(f.id)}
+                          className="btn-secondary btn-small"
+                          disabled={mfaUnenrolling === f.id}
+                        >
+                          {mfaUnenrolling === f.id ? 'Disabling…' : 'Disable'}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : mfaEnrollData ? (
+                <div className="mfa-enroll-step">
+                  <p>Scan the QR code with your authenticator app (e.g. Google Authenticator, Authy), then enter the code below.</p>
+                  <div className="mfa-qr-wrap">
+                    <img src={mfaEnrollData.qrCode} alt="QR code for authenticator" width={200} height={200} />
+                  </div>
+                  <p className="muted">Or enter this secret manually: <code>{mfaEnrollData.secret}</code></p>
+                  <form onSubmit={handleMfaVerify} className="mfa-verify-form">
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      autoComplete="one-time-code"
+                      placeholder="000000"
+                      value={mfaVerifyCode}
+                      onChange={(e) => setMfaVerifyCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                      className="form-input mfa-code-input"
+                      maxLength={6}
+                    />
+                    {mfaVerifyError && <div className="account-error">{mfaVerifyError}</div>}
+                    <div className="account-actions">
+                      <button type="submit" className="btn-secondary">Verify and enable</button>
+                      <button
+                        type="button"
+                        onClick={() => { setMfaEnrollData(null); setMfaVerifyCode(''); setMfaVerifyError(null); }}
+                        className="btn-secondary"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleMfaEnrollStart}
+                  className="btn-secondary"
+                  disabled={mfaEnrolling}
+                >
+                  {mfaEnrolling ? 'Setting up…' : 'Enable two-factor authentication'}
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Error Banner */}
@@ -692,6 +1365,123 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
           border-color: rgba(232, 93, 4, 0.25);
         }
 
+        .account-email {
+          margin: 0 0 16px;
+          font-size: 14px;
+          color: var(--color-text-muted);
+        }
+
+        .account-error {
+          margin-bottom: 16px;
+          padding: 12px 16px;
+          background: rgba(239, 68, 68, 0.1);
+          border: 1px solid rgba(239, 68, 68, 0.3);
+          border-radius: 8px;
+          color: #fca5a5;
+          font-size: 14px;
+        }
+
+        .account-success {
+          margin-bottom: 16px;
+          padding: 12px 16px;
+          background: rgba(34, 197, 94, 0.1);
+          border: 1px solid rgba(34, 197, 94, 0.3);
+          border-radius: 8px;
+          color: #86efac;
+          font-size: 14px;
+        }
+
+        .account-password-form .account-form-grid {
+          max-width: 400px;
+        }
+
+        .account-actions {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 12px;
+          margin-top: 16px;
+        }
+
+        .mfa-section {
+          margin-top: 32px;
+          padding-top: 24px;
+          border-top: 1px solid var(--color-border);
+        }
+
+        .mfa-heading {
+          font-size: 16px;
+          font-weight: 600;
+          margin: 0 0 8px;
+        }
+
+        .mfa-status {
+          margin: 0 0 12px;
+          font-size: 14px;
+        }
+
+        .mfa-factors-list {
+          list-style: none;
+          margin: 0;
+          padding: 0;
+        }
+
+        .mfa-factor-item {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 12px 0;
+          border-bottom: 1px solid var(--color-border);
+        }
+
+        .mfa-factor-item:last-child {
+          border-bottom: none;
+        }
+
+        .mfa-enroll-step {
+          max-width: 400px;
+        }
+
+        .mfa-enroll-step p {
+          margin: 0 0 12px;
+          font-size: 14px;
+        }
+
+        .mfa-qr-wrap {
+          margin: 16px 0;
+        }
+
+        .mfa-qr-wrap img {
+          display: block;
+        }
+
+        .mfa-verify-form {
+          margin-top: 16px;
+        }
+
+        .mfa-code-input {
+          max-width: 140px;
+          font-family: ui-monospace, monospace;
+          letter-spacing: 0.2em;
+          text-align: center;
+        }
+
+        .form-section-header-row {
+          display: flex;
+          flex-wrap: wrap;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 16px;
+          margin-bottom: 24px;
+        }
+
+        .form-section-header-row .section-description {
+          margin-bottom: 0;
+        }
+
+        .btn-reset-default {
+          flex-shrink: 0;
+        }
+
         .form-section h2 {
           font-size: 20px;
           font-weight: 600;
@@ -737,6 +1527,16 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
           font-family: inherit;
           transition: border-color 0.2s;
           box-sizing: border-box;
+        }
+
+        .loyalty-settings-fields {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 16px;
+          align-items: flex-end;
+        }
+        .loyalty-settings-fields .form-group {
+          min-width: 140px;
         }
 
         .form-input:focus {
@@ -852,61 +1652,6 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
           font-weight: 600;
           font-size: 15px;
           cursor: default;
-        }
-
-        /* Feature Flags */
-        .flags-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-          gap: 16px;
-        }
-
-        .flag-card {
-          display: flex;
-          align-items: center;
-          gap: 16px;
-          padding: 16px;
-          border-radius: 12px;
-          border: 1px solid var(--color-border);
-          background: var(--ct-bg-surface);
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-
-        .flag-card:hover {
-          background: var(--color-bg-warm);
-          border-color: rgba(232, 93, 4, 0.2);
-        }
-
-        .flag-card input[type="checkbox"] {
-          width: 20px;
-          height: 20px;
-          cursor: pointer;
-          flex-shrink: 0;
-        }
-
-        .flag-content {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-        }
-
-        .flag-icon {
-          font-size: 24px;
-        }
-
-        .flag-name {
-          display: block;
-          font-size: 14px;
-          font-weight: 600;
-          color: var(--color-text);
-        }
-
-        .flag-description {
-          display: block;
-          font-size: 12px;
-          color: var(--color-text-muted);
-          margin-top: 2px;
         }
 
         /* Location PINs */
@@ -1100,6 +1845,220 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
           font-size: 14px;
         }
 
+        .btn-secondary {
+          padding: 10px 16px;
+          border-radius: 12px;
+          border: 1px solid var(--color-border);
+          background: transparent;
+          color: var(--color-text);
+          font-weight: 600;
+          cursor: pointer;
+        }
+
+        .pairing-controls {
+          display: flex;
+          align-items: flex-end;
+          gap: 16px;
+          flex-wrap: wrap;
+          margin-bottom: 16px;
+        }
+
+        .pairing-field {
+          flex: 1;
+          min-width: 220px;
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
+
+        .pairing-card {
+          display: flex;
+          gap: 20px;
+          border: 1px solid var(--color-border);
+          border-radius: 16px;
+          padding: 16px;
+          background: var(--ct-bg-surface);
+          margin-bottom: 16px;
+        }
+
+        .pairing-qr img {
+          width: 180px;
+          height: 180px;
+          border-radius: 12px;
+          border: 1px solid var(--color-border);
+          background: white;
+        }
+
+        .pairing-info {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+
+        .pairing-label {
+          font-size: 12px;
+          text-transform: uppercase;
+          letter-spacing: 0.4px;
+          color: var(--color-text-muted);
+        }
+
+        .pairing-link {
+          font-size: 13px;
+          word-break: break-all;
+        }
+
+        .pairing-meta {
+          font-size: 13px;
+          color: var(--color-text-muted);
+        }
+
+        .pairing-list {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+
+        .pairing-list-header {
+          font-size: 12px;
+          text-transform: uppercase;
+          letter-spacing: 0.4px;
+          color: var(--color-text-muted);
+        }
+
+        .pairing-list-item {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 12px 16px;
+          border: 1px solid var(--color-border);
+          border-radius: 12px;
+          background: var(--ct-bg-surface);
+        }
+
+        /* Employees section */
+        .employees-section-header {
+          display: flex;
+          flex-wrap: wrap;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 16px;
+          margin-bottom: 24px;
+        }
+
+        .employees-section-header .section-description {
+          margin-bottom: 0;
+        }
+
+        .add-employee-form {
+          display: flex;
+          flex-wrap: wrap;
+          align-items: flex-end;
+          gap: 16px;
+          padding: 20px;
+          background: rgba(255, 255, 255, 0.03);
+          border-radius: 12px;
+          margin-bottom: 24px;
+        }
+
+        .employees-list {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+
+        .employee-item {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 16px;
+          background: var(--ct-bg-surface);
+          border: 1px solid var(--color-border);
+          border-radius: 12px;
+        }
+
+        .employee-item.inactive {
+          opacity: 0.6;
+        }
+
+        .employee-info {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+
+        .employee-name {
+          font-size: 16px;
+          font-weight: 600;
+          color: var(--color-text);
+        }
+
+        .employee-pin {
+          font-size: 14px;
+          color: var(--color-text-muted);
+          font-family: monospace;
+        }
+
+        .inactive-badge {
+          display: inline-block;
+          padding: 4px 8px;
+          background: rgba(255, 159, 10, 0.2);
+          color: #ff9f0a;
+          border-radius: 4px;
+          font-size: 12px;
+          font-weight: 600;
+          margin-top: 4px;
+        }
+
+        .employee-actions {
+          display: flex;
+          gap: 8px;
+        }
+
+        .employee-edit-form {
+          display: flex;
+          gap: 8px;
+          align-items: center;
+          flex: 1;
+          flex-wrap: wrap;
+        }
+
+        .employee-edit-form .edit-input {
+          padding: 8px 12px;
+          flex: 1;
+          min-width: 100px;
+        }
+
+        .edit-actions {
+          display: flex;
+          gap: 8px;
+        }
+
+        .btn-small {
+          padding: 8px 16px;
+          font-size: 13px;
+        }
+
+        .btn-delete-small {
+          padding: 8px 16px;
+          border-radius: 6px;
+          border: none;
+          font-weight: 600;
+          font-size: 13px;
+          cursor: pointer;
+          font-family: inherit;
+          background: rgba(255, 59, 48, 0.2);
+          color: #ff3b30;
+        }
+
+        .btn-delete-small:hover:not(:disabled) {
+          background: rgba(255, 59, 48, 0.3);
+        }
+
+        .btn-delete-small:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
         @media (max-width: 768px) {
           .page-header {
             padding: 24px;
@@ -1127,9 +2086,39 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
             justify-content: center;
           }
 
-          .flags-grid,
           .locations-grid {
             grid-template-columns: 1fr;
+          }
+
+          .pairing-card {
+            flex-direction: column;
+            align-items: flex-start;
+          }
+
+          .pairing-qr img {
+            width: 160px;
+            height: 160px;
+          }
+
+          .employee-item {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 12px;
+          }
+
+          .employee-actions {
+            width: 100%;
+            justify-content: flex-end;
+          }
+
+          .employee-edit-form {
+            flex-direction: column;
+            width: 100%;
+          }
+
+          .edit-actions {
+            width: 100%;
+            justify-content: flex-end;
           }
         }
       `}</style>

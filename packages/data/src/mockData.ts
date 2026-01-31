@@ -191,6 +191,26 @@ export class MockDataClient implements DataClient {
     return [];
   }
 
+  async createSupportTicket(input: {
+    vendorId: string;
+    subject: string;
+    message: string;
+    submittedBy?: string | null;
+  }): Promise<import('@countrtop/models').SupportTicket> {
+    const now = new Date().toISOString();
+    const id = `st_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+    return {
+      id,
+      vendorId: input.vendorId,
+      subject: input.subject,
+      message: input.message,
+      status: 'open',
+      submittedBy: input.submittedBy ?? undefined,
+      createdAt: now,
+      updatedAt: now
+    };
+  }
+
   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- mock returns null
   async getSupportTicket(_id: string): Promise<import('@countrtop/models').SupportTicket | null> {
     return null;
@@ -219,8 +239,10 @@ export class MockDataClient implements DataClient {
     vendorId: string,
     data: {
       stripeCustomerId?: string;
+      stripeSubscriptionId?: string | null;
       planId?: import('@countrtop/models').BillingPlanId;
       status?: string;
+      currentPeriodEnd?: string | null;
     }
   ): Promise<import('@countrtop/models').VendorBilling> {
     const now = new Date().toISOString();
@@ -229,7 +251,8 @@ export class MockDataClient implements DataClient {
       planId: data.planId ?? 'beta',
       status: data.status ?? 'active',
       stripeCustomerId: data.stripeCustomerId ?? null,
-      stripeSubscriptionId: null,
+      stripeSubscriptionId: data.stripeSubscriptionId ?? null,
+      currentPeriodEnd: data.currentPeriodEnd ?? null,
       createdAt: now,
       updatedAt: now
     };
@@ -661,6 +684,11 @@ export class MockDataClient implements DataClient {
     _employeeId: string
   ): Promise<import('@countrtop/models').TimeEntry | null> {
     return null;
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- mock returns empty
+  async listActiveTimeEntries(_vendorId: string): Promise<import('@countrtop/models').TimeEntry[]> {
+    return [];
   }
 
   async listTimeEntries(

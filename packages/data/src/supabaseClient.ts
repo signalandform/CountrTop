@@ -67,6 +67,11 @@ class QueryCache {
 
 const queryCache = new QueryCache();
 
+/** Invalidate vendor cache entry for a slug so next getVendorBySlug returns fresh data. */
+export function invalidateVendorCacheBySlug(slug: string): void {
+  queryCache.delete(`vendor:slug:${slug}`);
+}
+
 // Performance logging helper
 // Use lazy loading to avoid pulling in Square SDK in Edge Runtime (middleware)
 let loggerModule: { getLogger?: () => { info: (msg: string, data?: unknown) => void; warn: (msg: string, data?: unknown) => void; error: (msg: string, error?: unknown, data?: unknown) => void } } | null | false = null;
@@ -1240,6 +1245,46 @@ export class SupabaseDataClient implements DataClient {
     }
   }
 
+  async createSupportTicket(input: {
+    vendorId: string;
+    subject: string;
+    message: string;
+    submittedBy?: string | null;
+  }): Promise<import('@countrtop/models').SupportTicket> {
+    const startTime = Date.now();
+    try {
+      const { data: row, error } = await this.client
+        .from('support_tickets')
+        .insert({
+          vendor_id: input.vendorId,
+          subject: input.subject,
+          message: input.message,
+          status: 'open',
+          submitted_by: input.submittedBy ?? null
+        })
+        .select('id,vendor_id,subject,message,status,submitted_by,created_at,updated_at,ops_reply,ops_replied_at')
+        .single();
+      if (error) throw error;
+      const r = row as Database['public']['Tables']['support_tickets']['Row'];
+      logQueryPerformance('createSupportTicket', startTime, true);
+      return {
+        id: r.id,
+        vendorId: r.vendor_id,
+        subject: r.subject,
+        message: r.message,
+        status: r.status as 'open' | 'in_progress' | 'closed',
+        submittedBy: r.submitted_by ?? undefined,
+        createdAt: r.created_at,
+        updatedAt: r.updated_at,
+        opsReply: r.ops_reply ?? undefined,
+        opsRepliedAt: r.ops_replied_at ?? undefined
+      };
+    } catch (error) {
+      logQueryPerformance('createSupportTicket', startTime, false, error);
+      throw error;
+    }
+  }
+
   async getSupportTicket(id: string): Promise<import('@countrtop/models').SupportTicket | null> {
     const startTime = Date.now();
     try {
@@ -1468,8 +1513,10 @@ export class SupabaseDataClient implements DataClient {
     vendorId: string,
     data: {
       stripeCustomerId?: string;
+      stripeSubscriptionId?: string | null;
       planId?: import('@countrtop/models').BillingPlanId;
       status?: string;
+      currentPeriodEnd?: string | null;
     }
   ): Promise<import('@countrtop/models').VendorBilling> {
     const startTime = Date.now();
@@ -1478,7 +1525,9 @@ export class SupabaseDataClient implements DataClient {
         vendor_id: vendorId,
         plan_id: data.planId ?? 'beta',
         ...(data.stripeCustomerId !== undefined && { stripe_customer_id: data.stripeCustomerId }),
-        ...(data.status !== undefined && { status: data.status })
+        ...(data.stripeSubscriptionId !== undefined && { stripe_subscription_id: data.stripeSubscriptionId }),
+        ...(data.status !== undefined && { status: data.status }),
+        ...(data.currentPeriodEnd !== undefined && { current_period_end: data.currentPeriodEnd })
       };
       const { data: row, error } = await this.client
         .from('vendor_billing')
@@ -3443,6 +3492,38 @@ export class SupabaseDataClient implements DataClient {
       return timeEntry;
     } catch (error) {
       logQueryPerformance('getActiveTimeEntry', startTime, false, error);
+      throw error;
+    }
+  }
+
+  async listActiveTimeEntries(vendorId: string): Promise<import('@countrtop/models').TimeEntry[]> {
+    const startTime = Date.now();
+    try {
+      const { data, error } = await this.client
+        .from('time_entries')
+        .select('*')
+        .eq('vendor_id', vendorId)
+        .is('clock_out_at', null)
+        .order('clock_in_at', { ascending: false });
+
+      if (error) throw error;
+
+      const timeEntries = ((data || []) as Database['public']['Tables']['time_entries']['Row'][]).map((row) => ({
+        id: row.id,
+        vendorId: row.vendor_id,
+        employeeId: row.employee_id,
+        clockInAt: row.clock_in_at,
+        clockOutAt: row.clock_out_at,
+        locationId: row.location_id,
+        notes: row.notes,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at
+      }));
+
+      logQueryPerformance('listActiveTimeEntries', startTime, true);
+      return timeEntries;
+    } catch (error) {
+      logQueryPerformance('listActiveTimeEntries', startTime, false, error);
       throw error;
     }
   }

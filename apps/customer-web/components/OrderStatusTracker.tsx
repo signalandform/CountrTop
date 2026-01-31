@@ -2,6 +2,13 @@ import React from 'react';
 
 export type OrderStatusState = 'placed' | 'preparing' | 'ready' | 'completed' | 'unknown';
 
+export type CompletedCtaProps = {
+  contactPhone: string;
+  reviewUrl?: string | null;
+  feedbackRating?: 'thumbs_up' | 'thumbs_down' | null;
+  onFeedback: (rating: 'thumbs_up' | 'thumbs_down') => void;
+};
+
 type OrderStatusTrackerProps = {
   status: OrderStatusState;
   shortcode?: string | null;
@@ -12,6 +19,7 @@ type OrderStatusTrackerProps = {
   currency?: string;
   placedAt?: string;
   compact?: boolean;
+  completedCta?: CompletedCtaProps;
 };
 
 const getStatusLabel = (s: OrderStatusState) => {
@@ -44,6 +52,7 @@ export function OrderStatusTracker({
   currency = 'USD',
   placedAt,
   compact = false,
+  completedCta,
 }: OrderStatusTrackerProps) {
   const formatCurrency = (cents: number, curr: string) =>
     new Intl.NumberFormat('en-US', { style: 'currency', currency: curr }).format(cents / 100);
@@ -120,6 +129,70 @@ export function OrderStatusTracker({
         </div>
       )}
 
+      {/* Completed CTA: feedback, review link, contact */}
+      {status === 'completed' && completedCta && (
+        <div className="completed-cta">
+          <div className="cta-feedback">
+            <div className="cta-label">How was your food?</div>
+            {completedCta.feedbackRating ? (
+              <p className="cta-feedback-thanks">
+                Thanks for your feedback! {completedCta.feedbackRating === 'thumbs_up' ? '👍' : '👎'}
+              </p>
+            ) : (
+              <div className="cta-thumbs">
+                <button
+                  type="button"
+                  className="cta-thumb"
+                  onClick={() => completedCta.onFeedback('thumbs_up')}
+                  aria-label="Thumbs up"
+                >
+                  👍
+                </button>
+                <button
+                  type="button"
+                  className="cta-thumb"
+                  onClick={() => completedCta.onFeedback('thumbs_down')}
+                  aria-label="Thumbs down"
+                >
+                  👎
+                </button>
+              </div>
+            )}
+          </div>
+          <div className="cta-actions">
+            {completedCta.reviewUrl && (
+              <div className="cta-action-item">
+                <div className="cta-label">Review</div>
+                <a
+                  href={completedCta.reviewUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="cta-link cta-link-review"
+                >
+                  Leave us a review
+                </a>
+              </div>
+            )}
+            {completedCta.contactPhone ? (
+              <div className="cta-action-item">
+                <div className="cta-label">Contact for help</div>
+                <a
+                  href={`tel:${completedCta.contactPhone.replace(/\D/g, '')}`}
+                  className="cta-link cta-link-contact"
+                >
+                  {completedCta.contactPhone}
+                </a>
+              </div>
+            ) : (
+              <div className="cta-action-item">
+                <div className="cta-label">Contact</div>
+                <span className="cta-muted">Contact the restaurant directly</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Items Summary (if provided and not compact) */}
       {!compact && items && items.length > 0 && (
         <div className="items-summary">
@@ -146,11 +219,11 @@ export function OrderStatusTracker({
 
       <style jsx>{`
         .order-status-tracker {
-          background: rgba(255, 255, 255, 0.05);
-          backdrop-filter: blur(10px);
-          border: 1px solid rgba(255, 255, 255, 0.1);
+          background: var(--ct-bg-surface);
+          border: 1px solid var(--ct-card-border);
           border-radius: 16px;
           padding: 20px;
+          box-shadow: var(--ct-card-shadow);
         }
 
         .order-status-tracker.compact {
@@ -272,7 +345,8 @@ export function OrderStatusTracker({
           gap: 10px;
           padding: 16px;
           border-radius: 12px;
-          background: var(--color-bg-warm);
+          background: var(--ct-bg-surface-warm);
+          border: 1px solid var(--ct-card-border);
           margin-bottom: 16px;
         }
 
@@ -282,8 +356,8 @@ export function OrderStatusTracker({
         }
 
         .status-message.status-ready {
-          background: rgba(16, 185, 129, 0.15);
-          border: 1px solid rgba(16, 185, 129, 0.3);
+          background: rgba(16, 185, 129, 0.12);
+          border-color: rgba(16, 185, 129, 0.3);
         }
 
         .status-emoji {
@@ -313,6 +387,7 @@ export function OrderStatusTracker({
           text-align: center;
           padding: 20px;
           background: rgba(16, 185, 129, 0.12);
+          border: 1px solid rgba(16, 185, 129, 0.28);
           border-radius: 12px;
           margin-bottom: 16px;
         }
@@ -331,9 +406,119 @@ export function OrderStatusTracker({
           color: var(--color-success);
         }
 
+        /* Completed CTA */
+        .completed-cta {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 16px;
+          margin-bottom: 16px;
+          padding-top: 16px;
+          border-top: 1px solid var(--ct-card-border);
+        }
+
+        .compact .completed-cta {
+          margin-bottom: 0;
+          padding-top: 12px;
+        }
+
+        .cta-feedback {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .cta-label {
+          font-size: 11px;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.4px;
+          color: var(--color-text-muted);
+        }
+
+        .cta-feedback-thanks {
+          font-size: 14px;
+          color: var(--color-text);
+          margin: 0;
+        }
+
+        .cta-thumbs {
+          display: flex;
+          gap: 12px;
+        }
+
+        .cta-thumb {
+          width: 44px;
+          height: 44px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border: 1px solid var(--ct-card-border);
+          background: var(--ct-bg-surface-warm);
+          border-radius: 12px;
+          font-size: 20px;
+          cursor: pointer;
+          transition: background 0.2s, border-color 0.2s;
+        }
+
+        .cta-thumb:hover {
+          background: rgba(232, 93, 4, 0.08);
+          border-color: rgba(232, 93, 4, 0.25);
+        }
+
+        .cta-actions {
+          display: flex;
+          flex-direction: row;
+          flex-wrap: wrap;
+          justify-content: center;
+          gap: 20px;
+          align-items: flex-start;
+        }
+
+        @media (max-width: 640px) {
+          .cta-actions {
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+          }
+        }
+
+        .cta-action-item {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 4px;
+          min-width: 0;
+        }
+
+        .cta-link {
+          font-size: 14px;
+          font-weight: 500;
+          text-decoration: none;
+          transition: opacity 0.2s;
+        }
+
+        .cta-link:hover {
+          opacity: 0.85;
+        }
+
+        .cta-link-review {
+          color: var(--theme-button, var(--color-primary));
+        }
+
+        .cta-link-contact {
+          color: var(--theme-accent, var(--color-accent));
+        }
+
+        .cta-muted {
+          font-size: 14px;
+          color: var(--color-text-muted);
+        }
+
         /* Items Summary */
         .items-summary {
-          border-top: 1px solid var(--color-border);
+          border-top: 1px solid var(--ct-card-border);
           padding-top: 16px;
         }
 
@@ -371,7 +556,7 @@ export function OrderStatusTracker({
           justify-content: space-between;
           padding-top: 12px;
           margin-top: 8px;
-          border-top: 1px solid var(--color-border);
+          border-top: 1px solid var(--ct-card-border);
           font-size: 15px;
         }
 

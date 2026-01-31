@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 
 import { Vendor, VendorInsights } from '@countrtop/models';
 
+import { VendorAdminLayout } from '../../components/VendorAdminLayout';
 import { VendorInsightsDashboard } from '../../components/VendorInsightsDashboard';
 import { getServerDataClient } from '../../lib/dataClient';
 import { summarizeInsights } from '../../lib/insights';
@@ -89,13 +90,18 @@ export default function VendorAdminVendorPage({
       <Head>
         <title>CountrTop Vendor Dashboard</title>
       </Head>
-      <VendorInsightsDashboard
+      <VendorAdminLayout
         vendorSlug={vendorSlug}
         vendorName={vendorName}
-        vendor={vendor}
-        insights={insights}
-        statusMessage={statusMessage}
-      />
+        vendorLogoUrl={vendor?.logoUrl}
+      >
+        <VendorInsightsDashboard
+          vendorSlug={vendorSlug}
+          vendorName={vendorName}
+          insights={insights}
+          statusMessage={statusMessage}
+        />
+      </VendorAdminLayout>
     </>
   );
 }

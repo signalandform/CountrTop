@@ -261,5 +261,56 @@ export async function sendOrderReady(data: OrderReadyData): Promise<{ success: b
   }
 }
 
+/** Promotional email payload (CRM send). */
+export type PromotionalEmailData = {
+  fromName: string;
+  to: string[];
+  subject: string;
+  html: string;
+  unsubscribeBaseUrl?: string;
+};
+
+/** Send promotional email to a list of addresses. Returns sentCount on success. */
+export async function sendPromotionalEmail(data: PromotionalEmailData): Promise<{
+  success: boolean;
+  error?: string;
+  sentCount?: number;
+}> {
+  if (!process.env.RESEND_API_KEY) {
+    console.warn('RESEND_API_KEY not configured, skipping promotional email');
+    return { success: true, sentCount: 0 };
+  }
+
+  const { fromName, to, subject, html, unsubscribeBaseUrl } = data;
+  if (to.length === 0) {
+    return { success: true, sentCount: 0 };
+  }
+
+  const footer = unsubscribeBaseUrl
+    ? `<p style="margin: 20px 0 0; color: #888; font-size: 12px;"><a href="${unsubscribeBaseUrl}" style="color: #888;">Unsubscribe</a></p>`
+    : '';
+  const fullHtml = html + footer;
+
+  try {
+    const { error } = await resend.emails.send({
+      from: `${fromName} <orders@countrtop.com>`,
+      to,
+      subject,
+      html: fullHtml,
+    });
+
+    if (error) {
+      console.error('Failed to send promotional email:', error);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, sentCount: to.length };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    console.error('Promotional email error:', message);
+    return { success: false, error: message };
+  }
+}
+
 // Re-export for convenience
 export { Resend };

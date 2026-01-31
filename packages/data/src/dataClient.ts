@@ -74,8 +74,10 @@ export interface DataClient {
     vendorId: string,
     data: {
       stripeCustomerId?: string;
+      stripeSubscriptionId?: string | null;
       planId?: import('@countrtop/models').BillingPlanId;
       status?: string;
+      currentPeriodEnd?: string | null;
     }
   ): Promise<import('@countrtop/models').VendorBilling>;
 
@@ -193,6 +195,7 @@ export interface DataClient {
   clockIn(vendorId: string, employeeId: string, locationId: string | null): Promise<import('@countrtop/models').TimeEntry>;
   clockOut(vendorId: string, employeeId: string): Promise<import('@countrtop/models').TimeEntry>;
   getActiveTimeEntry(vendorId: string, employeeId: string): Promise<import('@countrtop/models').TimeEntry | null>;
+  listActiveTimeEntries(vendorId: string): Promise<import('@countrtop/models').TimeEntry[]>;
   listTimeEntries(vendorId: string, employeeId: string | null, startDate: Date, endDate: Date): Promise<import('@countrtop/models').TimeEntry[]>;
 
   // KDS pairing tokens (device pairing)
@@ -206,6 +209,12 @@ export interface DataClient {
 
   // Ops: support tickets
   listSupportTickets(filters: { vendorId?: string; status?: string }): Promise<import('@countrtop/models').SupportTicket[]>;
+  createSupportTicket(input: {
+    vendorId: string;
+    subject: string;
+    message: string;
+    submittedBy?: string | null;
+  }): Promise<import('@countrtop/models').SupportTicket>;
   getSupportTicket(id: string): Promise<import('@countrtop/models').SupportTicket | null>;
   updateSupportTicket(
     id: string,
