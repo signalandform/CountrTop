@@ -123,7 +123,9 @@ export default function NewVendorPage({ userEmail }: Props) {
     timezone: '',
     pickup_instructions: '',
     kds_active_limit_total: '',
-    kds_active_limit_ct: ''
+    kds_active_limit_ct: '',
+    admin_email: '',
+    admin_password: ''
   });
 
   const posConfig = POS_CONFIG[formData.pos_provider];
@@ -161,7 +163,7 @@ export default function NewVendorPage({ userEmail }: Props) {
         pickup_instructions: formData.pickup_instructions.trim() || null,
         kds_active_limit_total: formData.kds_active_limit_total ? parseInt(formData.kds_active_limit_total, 10) : null,
         kds_active_limit_ct: formData.kds_active_limit_ct ? parseInt(formData.kds_active_limit_ct, 10) : null,
-        admin_email: formData.admin_email.trim() || null,
+        admin_email: formData.admin_email?.trim() || null,
         admin_password: formData.admin_password || null
       };
 
