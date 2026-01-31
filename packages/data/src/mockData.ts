@@ -191,6 +191,44 @@ export class MockDataClient implements DataClient {
     return [];
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- mock returns null
+  async getSupportTicket(_id: string): Promise<import('@countrtop/models').SupportTicket | null> {
+    return null;
+  }
+
+  /* eslint-disable @typescript-eslint/no-unused-vars -- mock throws, params unused */
+  async updateSupportTicket(
+    _id: string,
+    _updates: { status?: import('@countrtop/models').SupportTicketStatus; opsReply?: string }
+  ): Promise<import('@countrtop/models').SupportTicket> {
+    throw new Error('updateSupportTicket not implemented in mock client');
+  }
+  /* eslint-enable @typescript-eslint/no-unused-vars */
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- mock no-op
+  async recordVendorEmailUnsubscribe(_vendorId: string, _email: string): Promise<void> {
+    return;
+  }
+
+  async upsertVendorBilling(
+    vendorId: string,
+    data: {
+      stripeCustomerId?: string;
+      planId?: import('@countrtop/models').BillingPlanId;
+      status?: string;
+    }
+  ): Promise<import('@countrtop/models').VendorBilling> {
+    const now = new Date().toISOString();
+    return {
+      vendorId,
+      planId: data.planId ?? 'beta',
+      stripeCustomerId: data.stripeCustomerId ?? null,
+      stripeSubscriptionId: null,
+      createdAt: now,
+      updatedAt: now
+    };
+  }
+
   async recordLoyaltyEntry(entry: LoyaltyLedgerEntryInput): Promise<LoyaltyLedgerEntry> {
     const id = entry.id ?? this.createId('ledger');
     const createdAt = entry.createdAt ?? new Date().toISOString();

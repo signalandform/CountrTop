@@ -497,6 +497,22 @@ export type Database = {
         Update: Partial<Database['public']['Tables']['vendor_billing']['Insert']>;
         Relationships: [];
       };
+      vendor_email_unsubscribes: {
+        Row: {
+          id: string;
+          vendor_id: string;
+          email: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          vendor_id: string;
+          email: string;
+          created_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['vendor_email_unsubscribes']['Insert']>;
+        Relationships: [];
+      };
       employees: {
         Row: {
           id: string;
@@ -1220,6 +1236,78 @@ export class SupabaseDataClient implements DataClient {
     }
   }
 
+  async getSupportTicket(id: string): Promise<import('@countrtop/models').SupportTicket | null> {
+    const startTime = Date.now();
+    try {
+      const { data, error } = await this.client
+        .from('support_tickets')
+        .select('id,vendor_id,subject,message,status,submitted_by,created_at,updated_at,ops_reply,ops_replied_at')
+        .eq('id', id)
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) {
+        logQueryPerformance('getSupportTicket', startTime, true);
+        return null;
+      }
+      const row = data as Database['public']['Tables']['support_tickets']['Row'];
+      logQueryPerformance('getSupportTicket', startTime, true);
+      return {
+        id: row.id,
+        vendorId: row.vendor_id,
+        subject: row.subject,
+        message: row.message,
+        status: row.status as 'open' | 'in_progress' | 'closed',
+        submittedBy: row.submitted_by ?? undefined,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+        opsReply: row.ops_reply ?? undefined,
+        opsRepliedAt: row.ops_replied_at ?? undefined
+      };
+    } catch (error) {
+      logQueryPerformance('getSupportTicket', startTime, false, error);
+      throw error;
+    }
+  }
+
+  async updateSupportTicket(
+    id: string,
+    updates: { status?: import('@countrtop/models').SupportTicketStatus; opsReply?: string }
+  ): Promise<import('@countrtop/models').SupportTicket> {
+    const startTime = Date.now();
+    try {
+      const payload: Database['public']['Tables']['support_tickets']['Update'] = {};
+      if (updates.status !== undefined) payload.status = updates.status;
+      if (updates.opsReply !== undefined) {
+        payload.ops_reply = updates.opsReply;
+        payload.ops_replied_at = new Date().toISOString();
+      }
+      const { data, error } = await this.client
+        .from('support_tickets')
+        .update(payload)
+        .eq('id', id)
+        .select('id,vendor_id,subject,message,status,submitted_by,created_at,updated_at,ops_reply,ops_replied_at')
+        .single();
+      if (error) throw error;
+      const row = data as Database['public']['Tables']['support_tickets']['Row'];
+      logQueryPerformance('updateSupportTicket', startTime, true);
+      return {
+        id: row.id,
+        vendorId: row.vendor_id,
+        subject: row.subject,
+        message: row.message,
+        status: row.status as 'open' | 'in_progress' | 'closed',
+        submittedBy: row.submitted_by ?? undefined,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+        opsReply: row.ops_reply ?? undefined,
+        opsRepliedAt: row.ops_replied_at ?? undefined
+      };
+    } catch (error) {
+      logQueryPerformance('updateSupportTicket', startTime, false, error);
+      throw error;
+    }
+  }
+
   async recordLoyaltyEntry(entry: LoyaltyLedgerEntryInput): Promise<LoyaltyLedgerEntry> {
     const startTime = Date.now();
     try {
@@ -1341,6 +1429,57 @@ export class SupabaseDataClient implements DataClient {
       };
     } catch (error) {
       logQueryPerformance('getVendorBilling', startTime, false, error);
+      throw error;
+    }
+  }
+
+  async upsertVendorBilling(
+    vendorId: string,
+    data: {
+      stripeCustomerId?: string;
+      planId?: import('@countrtop/models').BillingPlanId;
+      status?: string;
+    }
+  ): Promise<import('@countrtop/models').VendorBilling> {
+    const startTime = Date.now();
+    try {
+      const payload: Database['public']['Tables']['vendor_billing']['Insert'] = {
+        vendor_id: vendorId,
+        plan_id: data.planId ?? 'beta',
+        ...(data.stripeCustomerId !== undefined && { stripe_customer_id: data.stripeCustomerId })
+      };
+      const { data: row, error } = await this.client
+        .from('vendor_billing')
+        .upsert(payload, { onConflict: 'vendor_id' })
+        .select('vendor_id,plan_id,stripe_customer_id,stripe_subscription_id,created_at,updated_at')
+        .single();
+      if (error) throw error;
+      const r = row as Database['public']['Tables']['vendor_billing']['Row'];
+      logQueryPerformance('upsertVendorBilling', startTime, true);
+      return {
+        vendorId: r.vendor_id,
+        planId: r.plan_id as import('@countrtop/models').BillingPlanId,
+        stripeCustomerId: r.stripe_customer_id ?? undefined,
+        stripeSubscriptionId: r.stripe_subscription_id ?? undefined,
+        createdAt: r.created_at,
+        updatedAt: r.updated_at
+      };
+    } catch (error) {
+      logQueryPerformance('upsertVendorBilling', startTime, false, error);
+      throw error;
+    }
+  }
+
+  async recordVendorEmailUnsubscribe(vendorId: string, email: string): Promise<void> {
+    const startTime = Date.now();
+    try {
+      const { error } = await this.client
+        .from('vendor_email_unsubscribes')
+        .upsert({ vendor_id: vendorId, email }, { onConflict: 'vendor_id,email' });
+      if (error) throw error;
+      logQueryPerformance('recordVendorEmailUnsubscribe', startTime, true);
+    } catch (error) {
+      logQueryPerformance('recordVendorEmailUnsubscribe', startTime, false, error);
       throw error;
     }
   }

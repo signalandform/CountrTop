@@ -66,6 +66,16 @@ export interface DataClient {
   getLoyaltyBalance(vendorId: string, userId: string): Promise<number>;
   getVendorLoyaltySettings(vendorId: string): Promise<import('@countrtop/models').VendorLoyaltySettings>;
   getVendorBilling(vendorId: string): Promise<import('@countrtop/models').VendorBilling | null>;
+  upsertVendorBilling(
+    vendorId: string,
+    data: {
+      stripeCustomerId?: string;
+      planId?: import('@countrtop/models').BillingPlanId;
+      status?: string;
+    }
+  ): Promise<import('@countrtop/models').VendorBilling>;
+
+  recordVendorEmailUnsubscribe(vendorId: string, email: string): Promise<void>;
 
   upsertPushDevice(device: PushDeviceInput): Promise<PushDevice>;
   listPushDevicesForUser(userId: string): Promise<PushDevice[]>;
@@ -191,6 +201,11 @@ export interface DataClient {
 
   // Ops: support tickets
   listSupportTickets(filters: { vendorId?: string; status?: string }): Promise<import('@countrtop/models').SupportTicket[]>;
+  getSupportTicket(id: string): Promise<import('@countrtop/models').SupportTicket | null>;
+  updateSupportTicket(
+    id: string,
+    updates: { status?: import('@countrtop/models').SupportTicketStatus; opsReply?: string }
+  ): Promise<import('@countrtop/models').SupportTicket>;
 }
 
 export type PairingTokenListItem = {
