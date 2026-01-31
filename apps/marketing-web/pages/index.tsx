@@ -257,7 +257,7 @@ export default function Home() {
               <ul className="feature-list">
                 <li>Ticket flow: New → Ready → Complete with one tap</li>
                 <li>Order recall from completed</li>
-                <li>Employee clock in/out and QR pairing</li>
+                <li>Employee clock in/out</li>
                 <li>Customer notifications when order is ready</li>
                 <li>Online and POS orders in one queue</li>
                 <li>Offline support</li>
@@ -410,7 +410,7 @@ export default function Home() {
               <p className="pricing-description">Free while we&apos;re in beta. Lock in your spot and help shape the product.</p>
               <ul className="pricing-features">
                 <li><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" fill="#10B981"/></svg>KDS single screen: ticket flow New→Ready→Complete, order recall</li>
-                <li><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" fill="#10B981"/></svg>Employee clock in/out, QR pairing</li>
+                <li><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" fill="#10B981"/></svg>Employee clock in/out</li>
                 <li><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" fill="#10B981"/></svg>Customer notifications when order is ready</li>
                 <li><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" fill="#10B981"/></svg>Basic analytics, single location, employee timesheets</li>
                 <li><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" fill="#10B981"/></svg>Custom pickup instructions, basic support</li>

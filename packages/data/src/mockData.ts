@@ -1,10 +1,7 @@
 import {
   DataClient,
-  CreatePairingTokenResult,
-  ConsumePairingTokenResult,
   LoyaltyLedgerEntryInput,
   OrderSnapshotInput,
-  PairingTokenListItem,
   PushDeviceInput
 } from './dataClient';
 import { KitchenTicket, KitchenTicketWithOrder, LoyaltyLedgerEntry, OrderSnapshot, PushDevice, User, Vendor } from './models';
@@ -158,32 +155,6 @@ export class MockDataClient implements DataClient {
     if (order) {
       order.customerFeedbackRating = rating;
     }
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- mock returns empty list
-  async listPairingTokens(_vendorId: string): Promise<PairingTokenListItem[]> {
-    return [];
-  }
-
-  async createPairingToken(
-    vendorId: string,
-    locationId: string | null,
-    expiresInMinutes = 60
-  ): Promise<CreatePairingTokenResult> {
-    const now = new Date().toISOString();
-    const expiresAt = new Date(Date.now() + expiresInMinutes * 60 * 1000).toISOString();
-    return {
-      token: 'mock_token_' + this.createId('pair'),
-      tokenId: this.createId('pair'),
-      createdAt: now,
-      expiresAt,
-      locationId
-    };
-  }
-
-  /* eslint-disable-next-line @typescript-eslint/no-unused-vars -- mock always returns null */
-  async consumePairingToken(_token: string): Promise<ConsumePairingTokenResult | null> {
-    return null;
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- mock returns empty list

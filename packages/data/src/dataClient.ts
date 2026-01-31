@@ -198,15 +198,6 @@ export interface DataClient {
   listActiveTimeEntries(vendorId: string): Promise<import('@countrtop/models').TimeEntry[]>;
   listTimeEntries(vendorId: string, employeeId: string | null, startDate: Date, endDate: Date): Promise<import('@countrtop/models').TimeEntry[]>;
 
-  // KDS pairing tokens (device pairing)
-  listPairingTokens(vendorId: string): Promise<PairingTokenListItem[]>;
-  createPairingToken(
-    vendorId: string,
-    locationId: string | null,
-    expiresInMinutes?: number
-  ): Promise<CreatePairingTokenResult>;
-  consumePairingToken(token: string): Promise<ConsumePairingTokenResult | null>;
-
   // Ops: support tickets
   listSupportTickets(filters: { vendorId?: string; status?: string }): Promise<import('@countrtop/models').SupportTicket[]>;
   createSupportTicket(input: {
@@ -221,23 +212,3 @@ export interface DataClient {
     updates: { status?: import('@countrtop/models').SupportTicketStatus; opsReply?: string }
   ): Promise<import('@countrtop/models').SupportTicket>;
 }
-
-export type PairingTokenListItem = {
-  id: string;
-  locationId: string | null;
-  expiresAt: string;
-  createdAt: string;
-};
-
-export type CreatePairingTokenResult = {
-  token: string;
-  tokenId: string;
-  createdAt: string;
-  expiresAt: string;
-  locationId: string | null;
-};
-
-export type ConsumePairingTokenResult = {
-  vendorId: string;
-  locationId: string | null;
-};
