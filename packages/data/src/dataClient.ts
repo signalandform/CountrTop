@@ -65,6 +65,7 @@ export interface DataClient {
   listLoyaltyEntriesForUser(vendorId: string, userId: string): Promise<LoyaltyLedgerEntry[]>;
   getLoyaltyBalance(vendorId: string, userId: string): Promise<number>;
   getVendorLoyaltySettings(vendorId: string): Promise<import('@countrtop/models').VendorLoyaltySettings>;
+  getVendorBilling(vendorId: string): Promise<import('@countrtop/models').VendorBilling | null>;
 
   upsertPushDevice(device: PushDeviceInput): Promise<PushDevice>;
   listPushDevicesForUser(userId: string): Promise<PushDevice[]>;

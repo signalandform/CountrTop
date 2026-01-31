@@ -54,6 +54,8 @@ export type Vendor = {
   primaryColor?: string | null;
   accentColor?: string | null;
   fontFamily?: string | null;
+  /** Vendor-supplied review link (e.g. Google/Yelp) for customer storefront CTA */
+  reviewUrl?: string | null;
 };
 
 export type VendorLocation = {
@@ -173,18 +175,31 @@ export type VendorInsights = {
   topReorderedItems: { label: string; count: number }[];
 };
 
+/** Support ticket status. */
+export type SupportTicketStatus = 'open' | 'in_progress' | 'closed';
+
 /** Support ticket (vendor -> ops). */
 export type SupportTicket = {
   id: string;
   vendorId: string;
   subject: string;
   message: string;
-  status: 'open' | 'in_progress' | 'closed';
+  status: SupportTicketStatus;
   submittedBy?: string | null;
   createdAt: string;
   updatedAt: string;
   opsReply?: string | null;
   opsRepliedAt?: string | null;
+};
+
+/** Vendor billing (plan / Stripe). */
+export type VendorBilling = {
+  vendorId: string;
+  planId: BillingPlanId;
+  stripeCustomerId?: string | null;
+  stripeSubscriptionId?: string | null;
+  createdAt: string;
+  updatedAt: string;
 };
 
 /** Vendor loyalty redemption settings (points-as-discount at checkout). */

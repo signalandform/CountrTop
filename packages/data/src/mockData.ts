@@ -214,6 +214,11 @@ export class MockDataClient implements DataClient {
     return { minPointsToRedeem: 100, maxPointsPerOrder: 500, centsPerPoint: 1 };
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- mock returns null
+  async getVendorBilling(_vendorId: string): Promise<import('@countrtop/models').VendorBilling | null> {
+    return null;
+  }
+
   async upsertPushDevice(device: PushDeviceInput): Promise<PushDevice> {
     const now = new Date().toISOString();
     const existingIndex = this.pushDevices.findIndex(
