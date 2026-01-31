@@ -19,9 +19,6 @@ export const summarizeInsights = async (
     };
   }
 
-  const feedbackThumbsUp = orders.filter((o) => o.customerFeedbackRating === 'thumbs_up').length;
-  const feedbackThumbsDown = orders.filter((o) => o.customerFeedbackRating === 'thumbs_down').length;
-
   const counts = new Map<string, number>();
   orders.forEach((order) => {
     if (!order.userId) return;
@@ -59,6 +56,9 @@ export const summarizeInsights = async (
     .map(([label, count]) => ({ label, count }))
     .sort((a, b) => b.count - a.count)
     .slice(0, 5);
+
+  const feedbackThumbsUp = orders.filter((o) => o.customerFeedbackRating === 'thumbs_up').length;
+  const feedbackThumbsDown = orders.filter((o) => o.customerFeedbackRating === 'thumbs_down').length;
 
   return {
     orders: orders.length,

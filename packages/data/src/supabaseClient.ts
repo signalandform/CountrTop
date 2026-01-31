@@ -261,6 +261,56 @@ export type Database = {
         Update: Partial<Database['public']['Tables']['kds_pairing_tokens']['Insert']>;
         Relationships: [];
       };
+      vendor_loyalty_settings: {
+        Row: {
+          id: string;
+          vendor_id: string;
+          cents_per_point: number;
+          min_points_to_redeem: number;
+          max_points_per_order: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          vendor_id: string;
+          cents_per_point?: number;
+          min_points_to_redeem?: number;
+          max_points_per_order?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['vendor_loyalty_settings']['Insert']>;
+        Relationships: [];
+      };
+      support_tickets: {
+        Row: {
+          id: string;
+          vendor_id: string;
+          subject: string;
+          message: string;
+          status: string;
+          submitted_by: string | null;
+          created_at: string;
+          updated_at: string;
+          ops_reply: string | null;
+          ops_replied_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          vendor_id: string;
+          subject: string;
+          message: string;
+          status?: string;
+          submitted_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          ops_reply?: string | null;
+          ops_replied_at?: string | null;
+        };
+        Update: Partial<Database['public']['Tables']['support_tickets']['Insert']>;
+        Relationships: [];
+      };
       loyalty_ledger: {
         Row: {
           id: string;
@@ -1134,6 +1184,40 @@ export class SupabaseDataClient implements DataClient {
     }
   }
 
+  async listSupportTickets(filters: {
+    vendorId?: string;
+    status?: string;
+  }): Promise<import('@countrtop/models').SupportTicket[]> {
+    const startTime = Date.now();
+    try {
+      let q = this.client
+        .from('support_tickets')
+        .select('id,vendor_id,subject,message,status,submitted_by,created_at,updated_at,ops_reply,ops_replied_at');
+      if (filters.vendorId) q = q.eq('vendor_id', filters.vendorId);
+      if (filters.status) q = q.eq('status', filters.status);
+      const { data, error } = await q.order('created_at', { ascending: false });
+      if (error) throw error;
+      const rows = (data ?? []) as Database['public']['Tables']['support_tickets']['Row'][];
+      const result = rows.map((row) => ({
+        id: row.id,
+        vendorId: row.vendor_id,
+        subject: row.subject,
+        message: row.message,
+        status: row.status as 'open' | 'in_progress' | 'closed',
+        submittedBy: row.submitted_by ?? undefined,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+        opsReply: row.ops_reply ?? undefined,
+        opsRepliedAt: row.ops_replied_at ?? undefined
+      }));
+      logQueryPerformance('listSupportTickets', startTime, true);
+      return result;
+    } catch (error) {
+      logQueryPerformance('listSupportTickets', startTime, false, error);
+      throw error;
+    }
+  }
+
   async recordLoyaltyEntry(entry: LoyaltyLedgerEntryInput): Promise<LoyaltyLedgerEntry> {
     const startTime = Date.now();
     try {
@@ -1196,6 +1280,36 @@ export class SupabaseDataClient implements DataClient {
       return balance;
     } catch (error) {
       logQueryPerformance('getLoyaltyBalance', startTime, false, error);
+      throw error;
+    }
+  }
+
+  async getVendorLoyaltySettings(vendorId: string): Promise<import('@countrtop/models').VendorLoyaltySettings> {
+    const startTime = Date.now();
+    try {
+      const { data, error } = await this.client
+        .from('vendor_loyalty_settings')
+        .select('min_points_to_redeem,max_points_per_order,cents_per_point')
+        .eq('vendor_id', vendorId)
+        .maybeSingle();
+      if (error) throw error;
+      if (data) {
+        const row = data as Database['public']['Tables']['vendor_loyalty_settings']['Row'];
+        logQueryPerformance('getVendorLoyaltySettings', startTime, true);
+        return {
+          minPointsToRedeem: row.min_points_to_redeem,
+          maxPointsPerOrder: row.max_points_per_order,
+          centsPerPoint: row.cents_per_point
+        };
+      }
+      logQueryPerformance('getVendorLoyaltySettings', startTime, true);
+      return {
+        minPointsToRedeem: 100,
+        maxPointsPerOrder: 500,
+        centsPerPoint: 1
+      };
+    } catch (error) {
+      logQueryPerformance('getVendorLoyaltySettings', startTime, false, error);
       throw error;
     }
   }

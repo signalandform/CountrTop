@@ -64,6 +64,7 @@ export interface DataClient {
   recordLoyaltyEntry(entry: LoyaltyLedgerEntryInput): Promise<LoyaltyLedgerEntry>;
   listLoyaltyEntriesForUser(vendorId: string, userId: string): Promise<LoyaltyLedgerEntry[]>;
   getLoyaltyBalance(vendorId: string, userId: string): Promise<number>;
+  getVendorLoyaltySettings(vendorId: string): Promise<import('@countrtop/models').VendorLoyaltySettings>;
 
   upsertPushDevice(device: PushDeviceInput): Promise<PushDevice>;
   listPushDevicesForUser(userId: string): Promise<PushDevice[]>;
@@ -186,6 +187,9 @@ export interface DataClient {
     expiresInMinutes?: number
   ): Promise<CreatePairingTokenResult>;
   consumePairingToken(token: string): Promise<ConsumePairingTokenResult | null>;
+
+  // Ops: support tickets
+  listSupportTickets(filters: { vendorId?: string; status?: string }): Promise<import('@countrtop/models').SupportTicket[]>;
 }
 
 export type PairingTokenListItem = {

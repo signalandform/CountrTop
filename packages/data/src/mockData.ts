@@ -186,6 +186,11 @@ export class MockDataClient implements DataClient {
     return null;
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- mock returns empty list
+  async listSupportTickets(_filters: { vendorId?: string; status?: string }): Promise<import('@countrtop/models').SupportTicket[]> {
+    return [];
+  }
+
   async recordLoyaltyEntry(entry: LoyaltyLedgerEntryInput): Promise<LoyaltyLedgerEntry> {
     const id = entry.id ?? this.createId('ledger');
     const createdAt = entry.createdAt ?? new Date().toISOString();
@@ -202,6 +207,11 @@ export class MockDataClient implements DataClient {
     return this.loyaltyLedger
       .filter((entry) => entry.vendorId === vendorId && entry.userId === userId)
       .reduce((sum, entry) => sum + entry.pointsDelta, 0);
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- mock returns defaults
+  async getVendorLoyaltySettings(_vendorId: string): Promise<import('@countrtop/models').VendorLoyaltySettings> {
+    return { minPointsToRedeem: 100, maxPointsPerOrder: 500, centsPerPoint: 1 };
   }
 
   async upsertPushDevice(device: PushDeviceInput): Promise<PushDevice> {

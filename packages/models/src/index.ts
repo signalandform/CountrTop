@@ -168,7 +168,30 @@ export type VendorInsights = {
   uniqueCustomers: number;
   repeatCustomers: number;
   pointsIssued: number;
+  feedbackThumbsUp: number;
+  feedbackThumbsDown: number;
   topReorderedItems: { label: string; count: number }[];
+};
+
+/** Support ticket (vendor -> ops). */
+export type SupportTicket = {
+  id: string;
+  vendorId: string;
+  subject: string;
+  message: string;
+  status: 'open' | 'in_progress' | 'closed';
+  submittedBy?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  opsReply?: string | null;
+  opsRepliedAt?: string | null;
+};
+
+/** Vendor loyalty redemption settings (points-as-discount at checkout). */
+export type VendorLoyaltySettings = {
+  minPointsToRedeem: number;
+  maxPointsPerOrder: number;
+  centsPerPoint: number;
 };
 
 // Menu and Catalog Types
