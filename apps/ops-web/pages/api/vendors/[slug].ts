@@ -3,15 +3,6 @@ import { createClient } from '@supabase/supabase-js';
 
 import type { Database } from '@countrtop/data';
 import { requireOpsAdminApi } from '../../../lib/auth';
-import { getServerDataClient } from '../../../lib/dataClient';
-
-type BillingInfo = {
-  planId: string;
-  status: string;
-  currentPeriodEnd: string | null;
-  stripeCustomerId: string | null;
-  stripeSubscriptionId: string | null;
-};
 
 type VendorRow = {
   id: string;
@@ -33,7 +24,6 @@ type VendorRow = {
   admin_user_id?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
-  billing?: BillingInfo | null;
 };
 
 type VendorResponse =
@@ -105,27 +95,9 @@ export default async function handler(
       });
     }
 
-    const vendorRow = vendor as Omit<VendorRow, 'billing'>;
-    let billing: BillingInfo | null = null;
-    try {
-      const dataClient = getServerDataClient();
-      const billingRecord = await dataClient.getVendorBilling(vendorRow.id);
-      if (billingRecord) {
-        billing = {
-          planId: billingRecord.planId,
-          status: billingRecord.status,
-          currentPeriodEnd: billingRecord.currentPeriodEnd ?? null,
-          stripeCustomerId: billingRecord.stripeCustomerId ?? null,
-          stripeSubscriptionId: billingRecord.stripeSubscriptionId ?? null
-        };
-      }
-    } catch (billingErr) {
-      console.warn('Failed to fetch vendor billing:', billingErr);
-    }
-
     return res.status(200).json({
       success: true,
-      vendor: { ...vendorRow, billing } as VendorRow
+      vendor: vendor as VendorRow
     });
   } catch (error) {
     console.error('Unexpected error fetching vendor:', error);

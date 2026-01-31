@@ -2,10 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { requireVendorAdminApi } from '../../../../lib/auth';
 import { createClient } from '@supabase/supabase-js';
 
-import { type Database, invalidateVendorCacheBySlug } from '@countrtop/data';
-import { getServerDataClient } from '../../../../lib/dataClient';
-import { canUseCustomBranding } from '../../../../lib/planCapabilities';
-import type { BillingPlanId } from '@countrtop/models';
+import type { Database } from '@countrtop/data';
 
 type UpdateSettingsResponse = 
   | { success: true }
@@ -63,8 +60,7 @@ export default async function handler(
     logoUrl,
     primaryColor,
     accentColor,
-    fontFamily,
-    reviewUrl
+    fontFamily
   } = req.body;
 
   try {
@@ -79,41 +75,6 @@ export default async function handler(
         persistSession: false
       }
     });
-
-    // Fetch vendor row for ID and previous settings
-    const { data: vendorRow, error: vendorError } = await supabase
-      .from('vendors')
-      .select('id, pickup_instructions')
-      .eq('slug', vendorSlug)
-      .maybeSingle();
-
-    if (vendorError) {
-      return res.status(500).json({
-        success: false,
-        error: `Failed to load vendor: ${vendorError.message}`
-      });
-    }
-
-    if (!vendorRow) {
-      return res.status(404).json({ success: false, error: 'Vendor not found' });
-    }
-
-    const dataClient = getServerDataClient();
-    const billing = await dataClient.getVendorBilling(vendorRow.id);
-    const planId: BillingPlanId = (billing?.planId as BillingPlanId) ?? 'beta';
-    const hasBrandingUpdate =
-      logoUrl !== undefined ||
-      primaryColor !== undefined ||
-      accentColor !== undefined ||
-      fontFamily !== undefined;
-    if (hasBrandingUpdate && !canUseCustomBranding(planId)) {
-      return res.status(403).json({
-        success: false,
-        error: 'Custom branding is not available on your plan. Upgrade to Starter or Pro.'
-      });
-    }
-
-    const previousPickupInstructions = vendorRow.pickup_instructions ?? null;
 
     // Build update object - only include provided fields
     const updateData: Partial<Database['public']['Tables']['vendors']['Update']> = {};
@@ -132,9 +93,6 @@ export default async function handler(
     if (primaryColor !== undefined) updateData.primary_color = primaryColor || null;
     if (accentColor !== undefined) updateData.accent_color = accentColor || null;
     if (fontFamily !== undefined) updateData.font_family = fontFamily || null;
-    if (reviewUrl !== undefined) updateData.review_url = reviewUrl ?? null;
-    // Ensure reviewUrl is applied when present in body (handles any body parsing quirks)
-    if (req.body && 'reviewUrl' in req.body) updateData.review_url = req.body.reviewUrl ?? null;
 
     // Do not allow updating square_location_id or admin_user_id through this endpoint
     // These are protected fields
@@ -145,46 +103,10 @@ export default async function handler(
       .eq('slug', vendorSlug);
 
     if (updateError) {
-      return res.status(500).json({
-        success: false,
-        error: `Failed to update vendor: ${updateError.message}`
+      return res.status(500).json({ 
+        success: false, 
+        error: `Failed to update vendor: ${updateError.message}` 
       });
-    }
-
-    invalidateVendorCacheBySlug(vendorSlug);
-
-    // Keep location pickup instructions in sync when settings update the default.
-    if (pickupInstructions !== undefined) {
-      const normalizedPickupInstructions = pickupInstructions || null;
-      const { data: locationRows, error: locationError } = await supabase
-        .from('vendor_locations')
-        .select('id, pickup_instructions')
-        .eq('vendor_id', vendorRow.id);
-
-      if (locationError) {
-        return res.status(500).json({
-          success: false,
-          error: `Failed to load vendor locations: ${locationError.message}`
-        });
-      }
-
-      const locationIdsToUpdate = (locationRows ?? [])
-        .filter((loc) => loc.pickup_instructions == null || (loc.pickup_instructions ?? null) === previousPickupInstructions)
-        .map((loc) => loc.id);
-
-      if (locationIdsToUpdate.length > 0) {
-        const { error: locationUpdateError } = await supabase
-          .from('vendor_locations')
-          .update({ pickup_instructions: normalizedPickupInstructions })
-          .in('id', locationIdsToUpdate);
-
-        if (locationUpdateError) {
-          return res.status(500).json({
-            success: false,
-            error: `Failed to update vendor locations: ${locationUpdateError.message}`
-          });
-        }
-      }
     }
 
     return res.status(200).json({ success: true });

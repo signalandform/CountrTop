@@ -196,7 +196,8 @@ export type SupportTicket = {
 export type VendorBilling = {
   vendorId: string;
   planId: BillingPlanId;
-  status?: string | null;
+  /** Subscription status (e.g. active); getVendorBilling returns 'active' when null. */
+  status: string;
   currentPeriodEnd?: string | null;
   stripeCustomerId?: string | null;
   stripeSubscriptionId?: string | null;

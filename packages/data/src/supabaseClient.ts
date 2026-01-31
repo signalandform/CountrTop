@@ -1408,6 +1408,31 @@ export class SupabaseDataClient implements DataClient {
     }
   }
 
+  async setVendorLoyaltySettings(
+    vendorId: string,
+    settings: import('@countrtop/models').VendorLoyaltySettings
+  ): Promise<void> {
+    const startTime = Date.now();
+    try {
+      const { error } = await this.client
+        .from('vendor_loyalty_settings')
+        .upsert(
+          {
+            vendor_id: vendorId,
+            cents_per_point: settings.centsPerPoint,
+            min_points_to_redeem: settings.minPointsToRedeem,
+            max_points_per_order: settings.maxPointsPerOrder
+          },
+          { onConflict: 'vendor_id' }
+        );
+      if (error) throw error;
+      logQueryPerformance('setVendorLoyaltySettings', startTime, true);
+    } catch (error) {
+      logQueryPerformance('setVendorLoyaltySettings', startTime, false, error);
+      throw error;
+    }
+  }
+
   async getVendorBilling(vendorId: string): Promise<import('@countrtop/models').VendorBilling | null> {
     const startTime = Date.now();
     try {
@@ -1452,12 +1477,13 @@ export class SupabaseDataClient implements DataClient {
       const payload: Database['public']['Tables']['vendor_billing']['Insert'] = {
         vendor_id: vendorId,
         plan_id: data.planId ?? 'beta',
-        ...(data.stripeCustomerId !== undefined && { stripe_customer_id: data.stripeCustomerId })
+        ...(data.stripeCustomerId !== undefined && { stripe_customer_id: data.stripeCustomerId }),
+        ...(data.status !== undefined && { status: data.status })
       };
       const { data: row, error } = await this.client
         .from('vendor_billing')
         .upsert(payload, { onConflict: 'vendor_id' })
-        .select('vendor_id,plan_id,stripe_customer_id,stripe_subscription_id,created_at,updated_at')
+        .select('vendor_id,plan_id,status,current_period_end,stripe_customer_id,stripe_subscription_id,created_at,updated_at')
         .single();
       if (error) throw error;
       const r = row as Database['public']['Tables']['vendor_billing']['Row'];
@@ -1465,6 +1491,8 @@ export class SupabaseDataClient implements DataClient {
       return {
         vendorId: r.vendor_id,
         planId: r.plan_id as import('@countrtop/models').BillingPlanId,
+        status: r.status ?? 'active',
+        currentPeriodEnd: r.current_period_end ?? undefined,
         stripeCustomerId: r.stripe_customer_id ?? undefined,
         stripeSubscriptionId: r.stripe_subscription_id ?? undefined,
         createdAt: r.created_at,

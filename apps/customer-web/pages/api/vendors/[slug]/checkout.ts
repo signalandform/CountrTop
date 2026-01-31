@@ -20,9 +20,6 @@ type CheckoutItem = {
 type CheckoutRequest = {
   items: CheckoutItem[];
   userId?: string | null;
-  locationId?: string | null;
-  /** Loyalty points to redeem for order discount (requires userId, loyalty enabled, valid balance) */
-  redeemPoints?: number;
 };
 
 type CheckoutResponse =
@@ -64,36 +61,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse<CheckoutRespons
     return res.status(404).json({ ok: false, error: 'Vendor not found' });
   }
 
-  const redeemPoints = typeof body.redeemPoints === 'number' ? Math.floor(body.redeemPoints) : 0;
-  let discountCents = 0;
-  const currency = body.items[0]?.currency ?? 'USD';
-
-  if (redeemPoints > 0) {
-    if (!body.userId) {
-      return res.status(400).json({ ok: false, error: 'Sign in required to redeem points' });
-    }
-    const loyaltyEnabled = await dataClient.getVendorFeatureFlag(vendor.id, 'customer_loyalty_enabled');
-    if (!loyaltyEnabled) {
-      return res.status(400).json({ ok: false, error: 'Loyalty redemption is not enabled' });
-    }
-    const balance = await dataClient.getLoyaltyBalance(vendor.id, body.userId);
-    if (redeemPoints > balance) {
-      return res.status(400).json({ ok: false, error: 'Not enough points to redeem' });
-    }
-    const settings = await dataClient.getVendorLoyaltySettings(vendor.id);
-    if (redeemPoints < settings.minPointsToRedeem || redeemPoints > settings.maxPointsPerOrder) {
-      return res.status(400).json({
-        ok: false,
-        error: `Redeem between ${settings.minPointsToRedeem} and ${settings.maxPointsPerOrder} points`
-      });
-    }
-    const orderTotalCents = body.items.reduce((sum, i) => sum + i.price * i.quantity, 0);
-    discountCents = Math.min(redeemPoints * settings.centsPerPoint, orderTotalCents);
-    if (discountCents <= 0) {
-      return res.status(400).json({ ok: false, error: 'Discount amount must be greater than zero' });
-    }
-  }
-
   const orderReferenceId = buildReferenceId();
   const baseUrl = getBaseUrl(req);
   const redirectUrl = `${baseUrl}/checkout/confirm?orderId=${encodeURIComponent(orderReferenceId)}`;
@@ -109,20 +76,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<CheckoutRespons
   }
 
   try {
-    let locationId = vendor.squareLocationId;
-    if (body.locationId) {
-      const locations = await dataClient.listVendorLocations(vendor.id);
-      const matched = locations.find(
-        (loc) => loc.squareLocationId === body.locationId || loc.externalLocationId === body.locationId
-      );
-      if (!matched) {
-        return res.status(400).json({ ok: false, error: 'Invalid pickup location' });
-      }
-      if (matched.onlineOrderingEnabled === false) {
-        return res.status(400).json({ ok: false, error: 'Online ordering is disabled for this location' });
-      }
-      locationId = matched.squareLocationId || matched.externalLocationId || locationId;
-    }
+    const locationId = vendor.squareLocationId;
     if (!locationId || locationId === 'SQUARE_LOCATION_DEMO') {
       return res.status(400).json({ ok: false, error: 'Vendor Square location id not configured' });
     }
@@ -137,40 +91,17 @@ async function handler(req: NextApiRequest, res: NextApiResponse<CheckoutRespons
 
     const square = squareClientForVendor(vendor);
 
-    const orderMetadata: Record<string, string> = {};
-    if (body.userId) orderMetadata.ct_user_id = body.userId;
-    if (redeemPoints > 0) orderMetadata.ct_redeem_points = String(redeemPoints);
-
-    const orderPayload: {
-      locationId: string;
-      referenceId: string;
-      lineItems: { catalogObjectId: string; quantity: string }[];
-      metadata?: Record<string, string>;
-      discounts?: { uid: string; name: string; type: string; amountMoney: { amount: bigint; currency: string }; scope: string }[];
-    } = {
-      locationId,
-      referenceId: orderReferenceId,
-      lineItems: body.items.map((item) => ({
-        catalogObjectId: item.variationId,
-        quantity: item.quantity.toString()
-      }))
-    };
-    if (Object.keys(orderMetadata).length > 0) orderPayload.metadata = orderMetadata;
-    if (discountCents > 0) {
-      orderPayload.discounts = [
-        {
-          uid: `ct_loyalty_${orderReferenceId}`,
-          name: 'Loyalty points',
-          type: 'FIXED_AMOUNT',
-          amountMoney: { amount: BigInt(discountCents), currency },
-          scope: 'ORDER'
-        }
-      ];
-    }
-
     const { result } = await square.checkoutApi.createPaymentLink({
       idempotencyKey: randomUUID(),
-      order: orderPayload,
+      order: {
+        locationId,
+        referenceId: orderReferenceId,
+        ...(body.userId ? { metadata: { ct_user_id: body.userId } } : {}),
+        lineItems: body.items.map((item) => ({
+          catalogObjectId: item.variationId,
+          quantity: item.quantity.toString()
+        }))
+      },
       checkoutOptions: {
         redirectUrl
       }

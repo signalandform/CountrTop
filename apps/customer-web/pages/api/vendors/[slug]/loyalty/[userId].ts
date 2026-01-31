@@ -1,19 +1,12 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import type { BillingPlanId } from '@countrtop/models';
 
 import { getServerDataClient } from '../../../../../lib/dataClient';
-
-function canUseLoyalty(planId: BillingPlanId): boolean {
-  return planId === 'starter' || planId === 'pro';
-}
 
 type LoyaltyResponse =
   | {
       ok: true;
       balance: number;
       entries: Array<{ id: string; pointsDelta: number; createdAt: string; orderId: string }>;
-      /** Redemption rules when loyalty is enabled (for checkout UI) */
-      redemptionRules?: { centsPerPoint: number; minPoints: number; maxPointsPerOrder: number };
     }
   | { ok: false; error: string };
 
@@ -39,31 +32,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     return res.status(404).json({ ok: false, error: 'Vendor not found' });
   }
 
-  // Free-tier (Beta/Trial) vendors don't have loyalty; return success with zero balance so customer sign-in flow never fails.
-  // If billing fetch throws (e.g. table missing, RLS), treat as free tier so we never 500 and break sign-in.
-  let planId: BillingPlanId = 'beta';
   try {
-    const billing = await dataClient.getVendorBilling(vendor.id);
-    planId = (billing?.planId as BillingPlanId) ?? 'beta';
-  } catch {
-    // Assume free tier on any billing error
-  }
-  if (!canUseLoyalty(planId)) {
-    return res.status(200).json({
-      ok: true,
-      balance: 0,
-      entries: []
-    });
-  }
-
-  try {
-    const loyaltyEnabled = await dataClient.getVendorFeatureFlag(vendor.id, 'customer_loyalty_enabled');
-    const [entries, balance, settings] = await Promise.all([
+    const [entries, balance] = await Promise.all([
       dataClient.listLoyaltyEntriesForUser(vendor.id, userId),
-      dataClient.getLoyaltyBalance(vendor.id, userId),
-      loyaltyEnabled ? dataClient.getVendorLoyaltySettings(vendor.id) : Promise.resolve(null)
+      dataClient.getLoyaltyBalance(vendor.id, userId)
     ]);
-    const response: LoyaltyResponse = {
+    return res.status(200).json({
       ok: true,
       balance,
       entries: entries.map((entry) => ({
@@ -72,15 +46,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         createdAt: entry.createdAt,
         orderId: entry.orderId
       }))
-    };
-    if (loyaltyEnabled && settings) {
-      response.redemptionRules = {
-        centsPerPoint: settings.centsPerPoint,
-        minPoints: settings.minPointsToRedeem,
-        maxPointsPerOrder: settings.maxPointsPerOrder
-      };
-    }
-    return res.status(200).json(response);
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to load loyalty';
     return res.status(500).json({ ok: false, error: message });

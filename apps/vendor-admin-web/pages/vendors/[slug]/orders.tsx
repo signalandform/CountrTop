@@ -5,7 +5,6 @@ import { useState } from 'react';
 import { OrderSnapshot } from '@countrtop/models';
 import { getServerDataClient } from '../../../lib/dataClient';
 import { requireVendorAdmin } from '../../../lib/auth';
-import { VendorAdminLayout } from '../../../components/VendorAdminLayout';
 
 type Props = {
   vendorSlug: string;
@@ -94,11 +93,57 @@ export const getServerSideProps: GetServerSideProps<Props> = async (context) => 
   };
 };
 
-export default function VendorOrdersPage({ vendorSlug, vendorName, orders, statusMessage }: Props) {
+export default function VendorOrdersPage({ vendorSlug, vendorName, orders: initialOrders, statusMessage }: Props) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [orders, setOrders] = useState<OrderSnapshot[]>(initialOrders);
+  const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const toggleExpand = (id: string) => {
     setExpandedId(expandedId === id ? null : id);
+  };
+
+  const updateOrderStatus = async (orderId: string, status: 'READY' | 'COMPLETE') => {
+    setUpdatingOrderId(orderId);
+    setError(null);
+
+    try {
+      const response = await fetch(`/api/vendors/${vendorSlug}/orders/${orderId}/status`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ status })
+      });
+
+      const data = await response.json();
+
+      if (!data.ok) {
+        throw new Error(data.error || 'Failed to update order status');
+      }
+
+      // Update local state
+      setOrders((prevOrders) =>
+        prevOrders.map((order) => {
+          if (order.id === orderId) {
+            return {
+              ...order,
+              fulfillmentStatus: status,
+              readyAt: status === 'READY' ? new Date().toISOString() : order.readyAt,
+              completedAt: status === 'COMPLETE' ? new Date().toISOString() : order.completedAt,
+              updatedAt: new Date().toISOString()
+            };
+          }
+          return order;
+        })
+      );
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to update order status';
+      setError(message);
+      setTimeout(() => setError(null), 5000);
+    } finally {
+      setUpdatingOrderId(null);
+    }
   };
 
   return (
@@ -106,17 +151,22 @@ export default function VendorOrdersPage({ vendorSlug, vendorName, orders, statu
       <Head>
         <title>{`Orders – ${vendorName}`}</title>
       </Head>
-      <VendorAdminLayout vendorSlug={vendorSlug} vendorName={vendorName}>
-        <main className="page">
-          <header className="header">
-            <div className="header-content">
-              <p className="eyebrow">CountrTop Admin</p>
-              <h1 className="title">{vendorName} Orders</h1>
-              <p className="subtitle">Recent order snapshots</p>
-            </div>
-          </header>
+      <main className="page">
+        {/* Header */}
+        <header className="header">
+          <div className="header-content">
+            <p className="eyebrow">CountrTop Admin</p>
+            <h1 className="title">{vendorName} Orders</h1>
+            <p className="subtitle">Recent order snapshots</p>
+          </div>
+          <a href={`/vendors/${vendorSlug}`} className="back-link">
+            ← Back to Dashboard
+          </a>
+        </header>
 
         {statusMessage && <div className="error-banner">{statusMessage}</div>}
+
+        {error && <div className="error-banner">{error}</div>}
 
         {!statusMessage && orders.length === 0 && (
           <div className="empty-state">
@@ -132,6 +182,11 @@ export default function VendorOrdersPage({ vendorSlug, vendorName, orders, statu
             const itemCount = data.items.reduce((sum, i) => sum + i.quantity, 0);
             const isExpanded = expandedId === order.id;
 
+            const currentStatus = order.fulfillmentStatus ?? 'PLACED';
+            const isUpdating = updatingOrderId === order.id;
+            const canMarkReady = currentStatus === 'PLACED';
+            const canMarkComplete = currentStatus === 'READY';
+
             return (
               <div key={order.id} className={`order-card ${isExpanded ? 'expanded' : ''}`}>
                 <button className="order-header" onClick={() => toggleExpand(order.id)}>
@@ -141,6 +196,11 @@ export default function VendorOrdersPage({ vendorSlug, vendorName, orders, statu
                   </div>
                   <div className="order-total">{formatCurrency(data.total, data.currency)}</div>
                   <div className="order-items">{itemCount} items</div>
+                  <div className="order-status">
+                    <span className={`status-badge status-${currentStatus.toLowerCase()}`}>
+                      {currentStatus}
+                    </span>
+                  </div>
                   <div className="order-customer">
                     {order.pickupLabel || order.customerDisplayName || shortenId(order.userId)}
                   </div>
@@ -163,6 +223,35 @@ export default function VendorOrdersPage({ vendorSlug, vendorName, orders, statu
                         <div className="detail-divider" />
                       </>
                     )}
+                    <div className="order-actions">
+                      {canMarkReady && (
+                        <button
+                          className="btn-action btn-ready"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            updateOrderStatus(order.id, 'READY');
+                          }}
+                          disabled={isUpdating}
+                        >
+                          {isUpdating ? 'Updating...' : 'Mark Ready'}
+                        </button>
+                      )}
+                      {canMarkComplete && (
+                        <button
+                          className="btn-action btn-complete"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            updateOrderStatus(order.id, 'COMPLETE');
+                          }}
+                          disabled={isUpdating}
+                        >
+                          {isUpdating ? 'Updating...' : 'Mark Complete'}
+                        </button>
+                      )}
+                      {currentStatus === 'COMPLETE' && (
+                        <span className="status-complete-text">Order completed</span>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
@@ -273,7 +362,7 @@ export default function VendorOrdersPage({ vendorSlug, vendorName, orders, statu
           .order-header {
             width: 100%;
             display: grid;
-            grid-template-columns: 2fr 1fr 1fr 1fr 40px;
+            grid-template-columns: 2fr 1fr 1fr 1fr 1fr 40px;
             gap: 16px;
             align-items: center;
             padding: 16px 20px;
@@ -286,31 +375,14 @@ export default function VendorOrdersPage({ vendorSlug, vendorName, orders, statu
           }
 
           @media (max-width: 700px) {
-            .page {
-              padding: 0 16px 40px;
-            }
-            .header {
-              padding: 24px 0 24px;
-            }
-            .title {
-              font-size: 24px;
-            }
             .order-header {
               grid-template-columns: 1fr 1fr;
               gap: 12px;
-              padding: 14px 16px;
-              min-height: 44px;
             }
             .order-items,
-            .order-customer {
+            .order-customer,
+            .order-status {
               display: none;
-            }
-            .order-expand {
-              min-width: 44px;
-              min-height: 44px;
-            }
-            .order-details {
-              padding: 0 16px 16px;
             }
           }
 
@@ -346,6 +418,38 @@ export default function VendorOrdersPage({ vendorSlug, vendorName, orders, statu
             color: var(--color-text-muted);
             font-size: 13px;
             font-family: monospace;
+          }
+
+          .order-status {
+            display: flex;
+            align-items: center;
+          }
+
+          .status-badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          }
+
+          .status-badge.status-placed {
+            background: rgba(232, 93, 4, 0.12);
+            color: var(--color-primary);
+            border: 1px solid rgba(232, 93, 4, 0.28);
+          }
+
+          .status-badge.status-ready {
+            background: rgba(255, 182, 39, 0.18);
+            color: var(--color-accent);
+            border: 1px solid rgba(255, 182, 39, 0.28);
+          }
+
+          .status-badge.status-complete {
+            background: rgba(16, 185, 129, 0.18);
+            color: var(--color-success);
+            border: 1px solid rgba(16, 185, 129, 0.28);
           }
 
           .order-expand {
@@ -406,9 +510,59 @@ export default function VendorOrdersPage({ vendorSlug, vendorName, orders, statu
             color: var(--color-text-muted);
             font-size: 14px;
           }
+
+          .order-actions {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            padding-top: 8px;
+          }
+
+          .btn-action {
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: none;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+          }
+
+          .btn-action:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+          }
+
+          .btn-ready {
+            background: rgba(255, 182, 39, 0.18);
+            color: var(--color-accent);
+            border: 1px solid rgba(255, 182, 39, 0.28);
+          }
+
+          .btn-ready:hover:not(:disabled) {
+            background: rgba(255, 182, 39, 0.28);
+            border-color: rgba(255, 182, 39, 0.5);
+          }
+
+          .btn-complete {
+            background: rgba(16, 185, 129, 0.18);
+            color: var(--color-success);
+            border: 1px solid rgba(16, 185, 129, 0.28);
+          }
+
+          .btn-complete:hover:not(:disabled) {
+            background: rgba(16, 185, 129, 0.28);
+            border-color: rgba(16, 185, 129, 0.5);
+          }
+
+          .status-complete-text {
+            color: var(--color-success);
+            font-size: 14px;
+            font-weight: 600;
+          }
         `}</style>
-        </main>
-      </VendorAdminLayout>
+      </main>
     </>
   );
 }

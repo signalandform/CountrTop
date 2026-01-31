@@ -227,6 +227,7 @@ export class MockDataClient implements DataClient {
     return {
       vendorId,
       planId: data.planId ?? 'beta',
+      status: data.status ?? 'active',
       stripeCustomerId: data.stripeCustomerId ?? null,
       stripeSubscriptionId: null,
       createdAt: now,
@@ -255,6 +256,14 @@ export class MockDataClient implements DataClient {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- mock returns defaults
   async getVendorLoyaltySettings(_vendorId: string): Promise<import('@countrtop/models').VendorLoyaltySettings> {
     return { minPointsToRedeem: 100, maxPointsPerOrder: 500, centsPerPoint: 1 };
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- mock no-op
+  async setVendorLoyaltySettings(
+    _vendorId: string,
+    _settings: import('@countrtop/models').VendorLoyaltySettings
+  ): Promise<void> {
+    return;
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- mock returns null

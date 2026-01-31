@@ -23,9 +23,6 @@ type VendorRow = {
   admin_user_id?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
-  planId?: string;
-  billingStatus?: string | null;
-  currentPeriodEnd?: string | null;
 };
 
 type VendorsResponse =
@@ -82,35 +79,9 @@ export default async function handler(
       });
     }
 
-    const vendorList = (vendors || []) as Omit<VendorRow, 'planId' | 'billingStatus' | 'currentPeriodEnd'>[];
-
-    const { data: billingRows } = await supabase
-      .from('vendor_billing')
-      .select('vendor_id, plan_id, status, current_period_end');
-
-    const billingByVendorId = new Map<string, { plan_id: string; status: string; current_period_end: string | null }>();
-    for (const row of billingRows || []) {
-      const r = row as { vendor_id: string; plan_id: string; status: string; current_period_end: string | null };
-      billingByVendorId.set(r.vendor_id, {
-        plan_id: r.plan_id,
-        status: r.status,
-        current_period_end: r.current_period_end
-      });
-    }
-
-    const vendorsWithBilling: VendorRow[] = vendorList.map((v) => {
-      const billing = billingByVendorId.get(v.id);
-      return {
-        ...v,
-        planId: billing?.plan_id ?? 'beta',
-        billingStatus: billing?.status ?? null,
-        currentPeriodEnd: billing?.current_period_end ?? null
-      };
-    });
-
     return res.status(200).json({
       success: true,
-      vendors: vendorsWithBilling
+      vendors: (vendors || []) as VendorRow[]
     });
   } catch (error) {
     console.error('Unexpected error fetching vendors:', error);

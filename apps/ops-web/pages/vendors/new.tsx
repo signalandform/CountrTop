@@ -3,7 +3,6 @@ import type { GetServerSideProps } from 'next';
 import Link from 'next/link';
 import { useState } from 'react';
 import { useRouter } from 'next/router';
-import { OpsAdminLayout } from '../../components/OpsAdminLayout';
 
 import { requireOpsAdmin } from '../../lib/auth';
 
@@ -102,7 +101,8 @@ export const getServerSideProps: GetServerSideProps<Props> = async (context) => 
   };
 };
 
-export default function NewVendorPage({ userEmail }: Props) {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export default function NewVendorPage({ userEmail: _userEmail }: Props) {
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -123,9 +123,7 @@ export default function NewVendorPage({ userEmail }: Props) {
     timezone: '',
     pickup_instructions: '',
     kds_active_limit_total: '',
-    kds_active_limit_ct: '',
-    admin_email: '',
-    admin_password: ''
+    kds_active_limit_ct: ''
   });
 
   const posConfig = POS_CONFIG[formData.pos_provider];
@@ -162,9 +160,7 @@ export default function NewVendorPage({ userEmail }: Props) {
         timezone: formData.timezone.trim() || null,
         pickup_instructions: formData.pickup_instructions.trim() || null,
         kds_active_limit_total: formData.kds_active_limit_total ? parseInt(formData.kds_active_limit_total, 10) : null,
-        kds_active_limit_ct: formData.kds_active_limit_ct ? parseInt(formData.kds_active_limit_ct, 10) : null,
-        admin_email: formData.admin_email?.trim() || null,
-        admin_password: formData.admin_password || null
+        kds_active_limit_ct: formData.kds_active_limit_ct ? parseInt(formData.kds_active_limit_ct, 10) : null
       };
 
       const response = await fetch('/api/vendors/create', {
@@ -195,11 +191,11 @@ export default function NewVendorPage({ userEmail }: Props) {
       <Head>
         <title>Onboard New Vendor – CountrTop Ops</title>
       </Head>
-      <OpsAdminLayout userEmail={userEmail}>
-        <main className="page">
-          <header className="page-header">
-            <h1>Onboard New Vendor</h1>
-          </header>
+      <main className="page">
+        <header className="page-header">
+          <Link href="/vendors" className="back-link">← Back to Vendors</Link>
+          <h1>Onboard New Vendor</h1>
+        </header>
 
         <div className="page-content">
           <form onSubmit={handleSubmit} className="vendor-form">
@@ -428,44 +424,6 @@ export default function NewVendorPage({ userEmail }: Props) {
             </div>
 
             <div className="form-section">
-              <h2>Vendor Admin Login (optional)</h2>
-              <p className="form-section-desc">
-                Create a login for the vendor so they can access the vendor admin dashboard. Leave blank to set up later.
-              </p>
-              <div className="form-grid">
-                <div className="form-group">
-                  <label htmlFor="admin_email">Admin email</label>
-                  <input
-                    type="email"
-                    id="admin_email"
-                    name="admin_email"
-                    value={formData.admin_email}
-                    onChange={handleChange}
-                    placeholder="e.g., admin@vendor.com"
-                    className="form-input"
-                    disabled={submitting}
-                  />
-                </div>
-                <div className="form-group">
-                  <label htmlFor="admin_password">Admin password</label>
-                  <input
-                    type="password"
-                    id="admin_password"
-                    name="admin_password"
-                    value={formData.admin_password}
-                    onChange={handleChange}
-                    placeholder="Min 8 characters"
-                    className="form-input"
-                    disabled={submitting}
-                    minLength={8}
-                    autoComplete="new-password"
-                  />
-                  <small className="form-hint">Minimum 8 characters. Share securely with the vendor.</small>
-                </div>
-              </div>
-            </div>
-
-            <div className="form-section">
               <h2>Settings</h2>
               <div className="form-grid">
                 <div className="form-group full-width">
@@ -528,7 +486,7 @@ export default function NewVendorPage({ userEmail }: Props) {
           </form>
         </div>
 
-          <style jsx global>{`
+        <style jsx global>{`
           .page {
             min-height: 100vh;
             background: var(--ct-bg-primary);
@@ -539,6 +497,19 @@ export default function NewVendorPage({ userEmail }: Props) {
           .page-header {
             padding: 32px 48px;
             border-bottom: 1px solid var(--color-border);
+          }
+
+          .back-link {
+            display: inline-block;
+            margin-bottom: 16px;
+            color: var(--color-accent);
+            text-decoration: none;
+            font-size: 14px;
+            transition: color 0.2s;
+          }
+
+          .back-link:hover {
+            color: var(--color-primary);
           }
 
           .page-header h1 {
@@ -577,12 +548,6 @@ export default function NewVendorPage({ userEmail }: Props) {
             color: var(--color-text);
             border-bottom: 1px solid var(--color-border);
             padding-bottom: 12px;
-          }
-
-          .form-section-desc {
-            font-size: 14px;
-            color: var(--color-text-muted);
-            margin: -8px 0 20px;
           }
 
           .form-grid {
@@ -841,9 +806,8 @@ export default function NewVendorPage({ userEmail }: Props) {
               padding: 16px 20px;
             }
           }
-          `}</style>
-        </main>
-      </OpsAdminLayout>
+        `}</style>
+      </main>
     </>
   );
 }

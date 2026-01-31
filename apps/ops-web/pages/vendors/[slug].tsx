@@ -1,17 +1,9 @@
 import Head from 'next/head';
 import type { GetServerSideProps } from 'next';
+import Link from 'next/link';
 import { useState, useEffect } from 'react';
-import { OpsAdminLayout } from '../../components/OpsAdminLayout';
 
 import { requireOpsAdmin } from '../../lib/auth';
-
-type BillingInfo = {
-  planId: string;
-  status: string;
-  currentPeriodEnd: string | null;
-  stripeCustomerId?: string | null;
-  stripeSubscriptionId?: string | null;
-};
 
 type Vendor = {
   id: string;
@@ -33,14 +25,6 @@ type Vendor = {
   admin_user_id?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
-  billing?: BillingInfo | null;
-};
-
-const PLAN_LABELS: Record<string, string> = {
-  beta: 'Beta',
-  trial: 'Trial',
-  starter: 'Starter',
-  pro: 'Pro'
 };
 
 type Props = {
@@ -73,18 +57,14 @@ export const getServerSideProps: GetServerSideProps<Props> = async (context) => 
   };
 };
 
-export default function VendorDetailPage({ userEmail, vendorSlug }: Props) {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export default function VendorDetailPage({ userEmail: _userEmail, vendorSlug }: Props) {
   const [vendor, setVendor] = useState<Vendor | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [featureFlags, setFeatureFlags] = useState<Record<string, boolean>>({});
   const [flagsLoading, setFlagsLoading] = useState(false);
   const [togglingFlag, setTogglingFlag] = useState<string | null>(null);
-  const [adminEmail, setAdminEmail] = useState('');
-  const [adminPassword, setAdminPassword] = useState('');
-  const [adminSubmitting, setAdminSubmitting] = useState(false);
-  const [adminError, setAdminError] = useState<string | null>(null);
-  const [adminSuccess, setAdminSuccess] = useState(false);
 
   const fetchVendor = async () => {
     try {
@@ -172,40 +152,6 @@ export default function VendorDetailPage({ userEmail, vendorSlug }: Props) {
     }
   };
 
-  const handleSetVendorAdmin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!vendorSlug) return;
-    setAdminError(null);
-    setAdminSuccess(false);
-    const email = adminEmail.trim();
-    const password = adminPassword;
-    if (!email || password.length < 8) {
-      setAdminError('Email and password (min 8 characters) are required.');
-      return;
-    }
-    setAdminSubmitting(true);
-    try {
-      const response = await fetch(`/api/vendors/${vendorSlug}/admin`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ admin_email: email, admin_password: password })
-      });
-      const data = await response.json();
-      if (!response.ok || !data.success) {
-        throw new Error(data.error || `HTTP ${response.status}`);
-      }
-      setAdminSuccess(true);
-      setAdminEmail('');
-      setAdminPassword('');
-      fetchVendor();
-    } catch (err) {
-      setAdminError(err instanceof Error ? err.message : 'Failed to set vendor admin');
-    } finally {
-      setAdminSubmitting(false);
-    }
-  };
-
   useEffect(() => {
     if (vendorSlug) {
       fetchVendor();
@@ -228,11 +174,11 @@ export default function VendorDetailPage({ userEmail, vendorSlug }: Props) {
       <Head>
         <title>{vendor ? `${vendor.display_name} – Vendor Details` : 'Vendor Details – CountrTop Ops'}</title>
       </Head>
-      <OpsAdminLayout userEmail={userEmail}>
-        <main className="page">
-          <header className="page-header">
-            <h1>{vendor ? vendor.display_name : 'Vendor Details'}</h1>
-          </header>
+      <main className="page">
+        <header className="page-header">
+          <Link href="/vendors" className="back-link">← Back to Vendors</Link>
+          <h1>{vendor ? vendor.display_name : 'Vendor Details'}</h1>
+        </header>
 
         <div className="page-content">
           {error && (
@@ -364,10 +310,6 @@ export default function VendorDetailPage({ userEmail, vendorSlug }: Props) {
 
               <div className="detail-section">
                 <h2>Feature Flags</h2>
-                <p className="flags-context">
-                  Feature flags are available on Starter and Pro plans. This vendor is on{' '}
-                  <strong>{PLAN_LABELS[vendor.billing?.planId ?? 'beta'] ?? vendor.billing?.planId ?? 'Beta'}</strong>.
-                </p>
                 {flagsLoading ? (
                   <div className="flags-loading">
                     <p>Loading feature flags...</p>
@@ -432,57 +374,6 @@ export default function VendorDetailPage({ userEmail, vendorSlug }: Props) {
                 </div>
               </div>
 
-              <div className="detail-section">
-                <h2>Vendor Admin</h2>
-                <p className="admin-context">
-                  {vendor.admin_user_id
-                    ? 'Change the vendor admin login. This creates a new Auth user and links it to this vendor (replacing the previous admin).'
-                    : 'Set the vendor admin login so they can access vendor admin. Creates a Supabase Auth user and links it to this vendor.'}
-                </p>
-                {adminSuccess && (
-                  <div className="admin-success">
-                    Vendor admin set successfully. They can now sign in at vendor admin with the email and password you provided.
-                  </div>
-                )}
-                {adminError && (
-                  <div className="admin-error">
-                    {adminError}
-                  </div>
-                )}
-                <form onSubmit={handleSetVendorAdmin} className="admin-form">
-                  <div className="form-row">
-                    <label htmlFor="admin_email">Admin email</label>
-                    <input
-                      id="admin_email"
-                      type="email"
-                      value={adminEmail}
-                      onChange={(e) => setAdminEmail(e.target.value)}
-                      placeholder="admin@vendor.com"
-                      required
-                      disabled={adminSubmitting}
-                      className="admin-input"
-                    />
-                  </div>
-                  <div className="form-row">
-                    <label htmlFor="admin_password">Password (min 8 characters)</label>
-                    <input
-                      id="admin_password"
-                      type="password"
-                      value={adminPassword}
-                      onChange={(e) => setAdminPassword(e.target.value)}
-                      placeholder="••••••••"
-                      required
-                      minLength={8}
-                      disabled={adminSubmitting}
-                      className="admin-input"
-                    />
-                  </div>
-                  <button type="submit" className="btn-set-admin" disabled={adminSubmitting}>
-                    {adminSubmitting ? 'Setting...' : vendor.admin_user_id ? 'Change vendor admin' : 'Set vendor admin'}
-                  </button>
-                </form>
-              </div>
-
               <div className="action-section">
                 <a
                   href={`https://${vendor.slug}.countrtop.com`}
@@ -505,7 +396,7 @@ export default function VendorDetailPage({ userEmail, vendorSlug }: Props) {
           )}
         </div>
 
-          <style jsx global>{`
+        <style jsx global>{`
           .page {
             min-height: 100vh;
             background: var(--ct-bg-primary);
@@ -516,6 +407,19 @@ export default function VendorDetailPage({ userEmail, vendorSlug }: Props) {
           .page-header {
             padding: 32px 48px;
             border-bottom: 1px solid var(--color-border);
+          }
+
+          .back-link {
+            display: inline-block;
+            margin-bottom: 16px;
+            color: var(--color-accent);
+            text-decoration: none;
+            font-size: 14px;
+            transition: color 0.2s;
+          }
+
+          .back-link:hover {
+            color: var(--color-primary);
           }
 
           .page-header h1 {
@@ -660,16 +564,6 @@ export default function VendorDetailPage({ userEmail, vendorSlug }: Props) {
             color: #fca5a5;
           }
 
-          .flags-context {
-            margin: 0 0 20px;
-            font-size: 14px;
-            color: var(--color-text-muted);
-          }
-
-          .flags-context strong {
-            color: var(--color-text);
-          }
-
           .flags-loading,
           .flags-empty {
             text-align: center;
@@ -811,90 +705,6 @@ export default function VendorDetailPage({ userEmail, vendorSlug }: Props) {
             cursor: not-allowed;
           }
 
-          .admin-context {
-            margin: 0 0 16px;
-            font-size: 14px;
-            color: var(--color-text-muted);
-          }
-
-          .admin-success {
-            margin-bottom: 16px;
-            padding: 12px 16px;
-            background: rgba(34, 197, 94, 0.1);
-            border: 1px solid rgba(34, 197, 94, 0.3);
-            border-radius: 8px;
-            color: #86efac;
-            font-size: 14px;
-          }
-
-          .admin-error {
-            margin-bottom: 16px;
-            padding: 12px 16px;
-            background: rgba(239, 68, 68, 0.1);
-            border: 1px solid rgba(239, 68, 68, 0.3);
-            border-radius: 8px;
-            color: #fca5a5;
-            font-size: 14px;
-          }
-
-          .admin-form {
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-            max-width: 400px;
-          }
-
-          .admin-form .form-row {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-          }
-
-          .admin-form .form-row label {
-            font-size: 12px;
-            font-weight: 600;
-            color: var(--color-text-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-          }
-
-          .admin-input {
-            padding: 10px 12px;
-            border: 1px solid var(--color-border);
-            border-radius: 8px;
-            background: var(--ct-bg-primary);
-            color: var(--color-text);
-            font-size: 14px;
-            font-family: inherit;
-          }
-
-          .admin-input:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-          }
-
-          .btn-set-admin {
-            padding: 10px 20px;
-            border-radius: 8px;
-            border: none;
-            background: var(--ct-gradient-primary);
-            color: white;
-            font-weight: 600;
-            font-size: 14px;
-            cursor: pointer;
-            align-self: flex-start;
-            font-family: inherit;
-          }
-
-          .btn-set-admin:hover:not(:disabled) {
-            opacity: 0.9;
-          }
-
-          .btn-set-admin:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-          }
-
           .action-section {
             display: flex;
             gap: 16px;
@@ -953,9 +763,8 @@ export default function VendorDetailPage({ userEmail, vendorSlug }: Props) {
               flex-direction: column;
             }
           }
-          `}</style>
-        </main>
-      </OpsAdminLayout>
+        `}</style>
+      </main>
     </>
   );
 }

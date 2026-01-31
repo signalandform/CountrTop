@@ -1,11 +1,9 @@
 import Head from 'next/head';
 import { useEffect, useRef, useState } from 'react';
-import { useRouter } from 'next/router';
 
 import { getBrowserSupabaseClient } from '../lib/supabaseBrowser';
 
 export default function LoginPage() {
-  const router = useRouter();
   const [supabase, setSupabase] = useState<ReturnType<typeof getBrowserSupabaseClient>>(null);
   const [loading, setLoading] = useState(true);
   const [signingIn, setSigningIn] = useState(false);
@@ -14,7 +12,6 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [resetEmailSent, setResetEmailSent] = useState(false);
   const hasCheckedSession = useRef(false);
-  const resetSuccess = router.query.reset === 'success';
 
   useEffect(() => {
     // Prevent multiple session checks
@@ -131,19 +128,9 @@ export default function LoginPage() {
         setError(signInError.message);
         setSigningIn(false);
       } else if (data.session?.user?.id) {
+        // Success - set session cookies on server, then query vendor
         try {
-          // Check if MFA challenge is required (aal1 but user has TOTP factors)
-          const aalResult = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-          const factorsResult = await supabase.auth.mfa.listFactors();
-          const totpFactors = (factorsResult.data as { totp?: Array<{ id: string }> })?.totp ?? [];
-          const needsMfa =
-            aalResult.data?.currentLevel === 'aal1' &&
-            totpFactors.length > 0;
-          if (needsMfa && totpFactors[0]?.id) {
-            window.location.replace(`/mfa-challenge?factorId=${encodeURIComponent(totpFactors[0].id)}`);
-            return;
-          }
-          // Set session cookies on server, then query vendor
+          // First, set the session cookies on the server so server-side code can read them
           const setSessionResponse = await fetch('/api/auth/set-session', {
             method: 'POST',
             headers: {
@@ -272,12 +259,6 @@ export default function LoginPage() {
         <div className="login-container">
           <h1>CountrTop Vendor Admin</h1>
           <p className="subtitle">Sign in to access vendor admin</p>
-
-          {resetSuccess && (
-            <div className="reset-success-message">
-              Your password has been updated. You can now sign in with your new password.
-            </div>
-          )}
           
           {resetEmailSent ? (
             <div className="reset-message">
@@ -457,17 +438,6 @@ export default function LoginPage() {
             cursor: not-allowed;
           }
 
-          .reset-success-message {
-            padding: 12px 16px;
-            background: rgba(34, 197, 94, 0.1);
-            border: 1px solid rgba(34, 197, 94, 0.3);
-            border-radius: 8px;
-            color: #86efac;
-            font-size: 14px;
-            margin-bottom: 20px;
-            text-align: center;
-          }
-
           .reset-message {
             text-align: center;
           }
@@ -534,25 +504,6 @@ export default function LoginPage() {
 
           .error-dismiss:hover {
             opacity: 1;
-          }
-
-          @media (max-width: 768px) {
-            .login-page {
-              padding: 16px;
-              align-items: flex-start;
-              padding-top: 24px;
-            }
-            .login-container {
-              padding: 28px 20px;
-              max-width: 100%;
-            }
-            h1 {
-              font-size: 24px;
-            }
-            .input-field,
-            .btn-signin {
-              min-height: 48px;
-            }
           }
         `}</style>
       </main>
