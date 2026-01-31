@@ -59,6 +59,30 @@ CLOVER_WEBHOOK_SIGNING_KEY=your-signing-key
 RESEND_API_KEY=re_abc123...
 ```
 
+## Vendor Billing (Stripe)
+
+Used by vendor-admin-web for subscription plans (Beta/Trial, Starter, Pro).
+
+```bash
+# Get from: https://dashboard.stripe.com/apikeys
+STRIPE_SECRET_KEY=sk_test_...  # or sk_live_...
+
+# Price IDs from Stripe Dashboard → Products → each product's price
+STRIPE_PRICE_BETA_TRIAL=price_...   # $0 (Beta/Trial)
+STRIPE_PRICE_STARTER=price_...      # $49/month
+STRIPE_PRICE_PRO=price_...         # $99/month
+
+# Webhook signing secret from Stripe Dashboard → Developers → Webhooks → Add endpoint
+# Endpoint URL: https://your-vendor-admin-domain.com/api/webhooks/stripe
+STRIPE_WEBHOOK_SECRET=whsec_...
+```
+
+Optional for redirect URLs after Checkout/Portal:
+
+```bash
+NEXT_PUBLIC_APP_URL=https://your-vendor-admin-domain.com
+```
+
 ## Error Monitoring
 
 ### Sentry

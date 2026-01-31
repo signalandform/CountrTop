@@ -194,6 +194,22 @@ export type VendorLoyaltySettings = {
   maxPointsPerOrder: number;
 };
 
+/** Billing plan slug for feature gating */
+export type BillingPlanId = 'beta' | 'trial' | 'starter' | 'pro';
+
+/** Vendor billing record (Stripe customer + optional subscription) */
+export type VendorBilling = {
+  vendorId: string;
+  stripeCustomerId: string | null;
+  stripeSubscriptionId: string | null;
+  planId: BillingPlanId;
+  /** Stripe subscription status: active, trialing, past_due, canceled, etc. */
+  status: string;
+  currentPeriodEnd: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
 // Menu and Catalog Types
 export type MenuItem = {
   id: string;

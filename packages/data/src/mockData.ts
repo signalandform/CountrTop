@@ -636,6 +636,30 @@ export class MockDataClient implements DataClient {
     return [];
   }
 
+  async getVendorBilling(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _vendorId: string
+  ): Promise<import('@countrtop/models').VendorBilling | null> {
+    return null;
+  }
+
+  async upsertVendorBilling(
+    vendorId: string,
+    data: Partial<Omit<import('@countrtop/models').VendorBilling, 'vendorId' | 'createdAt' | 'updatedAt'>>
+  ): Promise<import('@countrtop/models').VendorBilling> {
+    const now = new Date().toISOString();
+    return {
+      vendorId,
+      stripeCustomerId: data.stripeCustomerId ?? null,
+      stripeSubscriptionId: data.stripeSubscriptionId ?? null,
+      planId: (data.planId ?? 'beta') as import('@countrtop/models').BillingPlanId,
+      status: data.status ?? 'active',
+      currentPeriodEnd: data.currentPeriodEnd ?? null,
+      createdAt: now,
+      updatedAt: now
+    };
+  }
+
   private createId(prefix: string) {
     return `${prefix}_${Math.random().toString(16).slice(2)}`;
   }

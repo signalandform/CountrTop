@@ -3,6 +3,8 @@ import { createClient } from '@supabase/supabase-js';
 import { createDataClient, type Database } from '@countrtop/data';
 import type { VendorLocation } from '@countrtop/models';
 import { requireVendorAdminApi } from '../../../../lib/auth';
+import { canUseMultipleLocations } from '../../../../lib/planCapabilities';
+import type { BillingPlanId } from '@countrtop/models';
 
 type LocationsResponse =
   | { ok: true; locations: VendorLocation[] }
@@ -54,6 +56,16 @@ export default async function handler(
 
     // POST: Create a new location
     if (req.method === 'POST') {
+      const billing = await dataClient.getVendorBilling(vendor.id);
+      const planId: BillingPlanId = (billing?.planId as BillingPlanId) ?? 'beta';
+      const existingLocations = await dataClient.listVendorLocations(vendor.id, true);
+      if (existingLocations.length >= 1 && !canUseMultipleLocations(planId)) {
+        return res.status(403).json({
+          ok: false,
+          error: 'Multiple locations require the Pro plan. Upgrade to add more locations.'
+        });
+      }
+
       const { 
         squareLocationId, 
         name, 

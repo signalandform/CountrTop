@@ -1,6 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { getServerDataClient } from '../../../../lib/dataClient';
 import { requireVendorAdminApi } from '../../../../lib/auth';
+import { canUseLoyalty } from '../../../../lib/planCapabilities';
+import type { BillingPlanId } from '@countrtop/models';
 
 type LoyaltySettingsResponse =
   | { success: true; data: { centsPerPoint: number; minPointsToRedeem: number; maxPointsPerOrder: number } }
@@ -44,6 +46,15 @@ export default async function handler(
 
     if (!vendor) {
       return res.status(404).json({ success: false, error: 'Vendor not found' });
+    }
+
+    const billing = await dataClient.getVendorBilling(vendor.id);
+    const planId: BillingPlanId = (billing?.planId as BillingPlanId) ?? 'beta';
+    if (!canUseLoyalty(planId)) {
+      return res.status(403).json({
+        success: false,
+        error: 'Loyalty program is not available on your plan. Upgrade to Starter or Pro.'
+      });
     }
 
     if (req.method === 'GET') {

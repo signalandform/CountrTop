@@ -25,6 +25,7 @@ import {
   SquareOrder,
   User,
   Vendor,
+  VendorBilling,
   VendorLoyaltySettings,
   VendorLocation,
   VendorStatus
@@ -412,6 +413,32 @@ export type Database = {
           updated_at?: string;
         };
         Update: Partial<Database['public']['Tables']['vendor_loyalty_settings']['Insert']>;
+        Relationships: [];
+      };
+      vendor_billing: {
+        Row: {
+          id: string;
+          vendor_id: string;
+          stripe_customer_id: string | null;
+          stripe_subscription_id: string | null;
+          plan_id: string;
+          status: string;
+          current_period_end: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          vendor_id: string;
+          stripe_customer_id?: string | null;
+          stripe_subscription_id?: string | null;
+          plan_id?: string;
+          status?: string;
+          current_period_end?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['vendor_billing']['Insert']>;
         Relationships: [];
       };
       vendor_location_pins: {
@@ -2758,6 +2785,86 @@ export class SupabaseDataClient implements DataClient {
       return { vendorId, ...settings };
     } catch (error) {
       logQueryPerformance('setVendorLoyaltySettings', startTime, false, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Gets billing record for a vendor (Stripe customer + subscription state)
+   */
+  async getVendorBilling(vendorId: string): Promise<VendorBilling | null> {
+    const startTime = Date.now();
+    try {
+      const { data, error } = await this.client
+        .from('vendor_billing')
+        .select('vendor_id, stripe_customer_id, stripe_subscription_id, plan_id, status, current_period_end, created_at, updated_at')
+        .eq('vendor_id', vendorId)
+        .maybeSingle();
+
+      if (error) throw error;
+      if (!data) {
+        logQueryPerformance('getVendorBilling', startTime, true);
+        return null;
+      }
+
+      const row = data as Database['public']['Tables']['vendor_billing']['Row'];
+      logQueryPerformance('getVendorBilling', startTime, true);
+      return {
+        vendorId: row.vendor_id,
+        stripeCustomerId: row.stripe_customer_id,
+        stripeSubscriptionId: row.stripe_subscription_id,
+        planId: row.plan_id as VendorBilling['planId'],
+        status: row.status,
+        currentPeriodEnd: row.current_period_end,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at
+      };
+    } catch (error) {
+      logQueryPerformance('getVendorBilling', startTime, false, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Upserts vendor billing record (create or update Stripe customer/subscription refs)
+   */
+  async upsertVendorBilling(
+    vendorId: string,
+    data: Partial<Omit<VendorBilling, 'vendorId' | 'createdAt' | 'updatedAt'>>
+  ): Promise<VendorBilling> {
+    const startTime = Date.now();
+    try {
+      const payload: Database['public']['Tables']['vendor_billing']['Insert'] = {
+        vendor_id: vendorId,
+        stripe_customer_id: data.stripeCustomerId ?? null,
+        stripe_subscription_id: data.stripeSubscriptionId ?? null,
+        plan_id: data.planId ?? 'beta',
+        status: data.status ?? 'active',
+        current_period_end: data.currentPeriodEnd ?? null,
+        updated_at: new Date().toISOString()
+      };
+
+      const { data: row, error } = await this.client
+        .from('vendor_billing')
+        .upsert(payload, { onConflict: 'vendor_id', ignoreDuplicates: false })
+        .select('vendor_id, stripe_customer_id, stripe_subscription_id, plan_id, status, current_period_end, created_at, updated_at')
+        .single();
+
+      if (error) throw error;
+      const r = row as Database['public']['Tables']['vendor_billing']['Row'];
+      logQueryPerformance('upsertVendorBilling', startTime, true);
+      return {
+        vendorId: r.vendor_id,
+        stripeCustomerId: r.stripe_customer_id,
+        stripeSubscriptionId: r.stripe_subscription_id,
+        planId: r.plan_id as VendorBilling['planId'],
+        status: r.status,
+        currentPeriodEnd: r.current_period_end,
+        createdAt: r.created_at,
+        updatedAt: r.updated_at
+      };
+    } catch (error) {
+      logQueryPerformance('upsertVendorBilling', startTime, false, error);
       throw error;
     }
   }

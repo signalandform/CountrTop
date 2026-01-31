@@ -195,4 +195,11 @@ export interface DataClient {
   getActiveTimeEntry(vendorId: string, employeeId: string): Promise<import('@countrtop/models').TimeEntry | null>;
   listActiveTimeEntries(vendorId: string): Promise<import('@countrtop/models').TimeEntry[]>;
   listTimeEntries(vendorId: string, employeeId: string | null, startDate: Date, endDate: Date): Promise<import('@countrtop/models').TimeEntry[]>;
+
+  // Billing (Stripe)
+  getVendorBilling(vendorId: string): Promise<import('@countrtop/models').VendorBilling | null>;
+  upsertVendorBilling(
+    vendorId: string,
+    data: Partial<Omit<import('@countrtop/models').VendorBilling, 'vendorId' | 'createdAt' | 'updatedAt'>>
+  ): Promise<import('@countrtop/models').VendorBilling>;
 }

@@ -3,6 +3,9 @@ import { requireVendorAdminApi } from '../../../../lib/auth';
 import { createClient } from '@supabase/supabase-js';
 
 import { type Database, invalidateVendorCacheBySlug } from '@countrtop/data';
+import { getServerDataClient } from '../../../../lib/dataClient';
+import { canUseCustomBranding } from '../../../../lib/planCapabilities';
+import type { BillingPlanId } from '@countrtop/models';
 
 type UpdateSettingsResponse = 
   | { success: true }
@@ -93,6 +96,21 @@ export default async function handler(
 
     if (!vendorRow) {
       return res.status(404).json({ success: false, error: 'Vendor not found' });
+    }
+
+    const dataClient = getServerDataClient();
+    const billing = await dataClient.getVendorBilling(vendorRow.id);
+    const planId: BillingPlanId = (billing?.planId as BillingPlanId) ?? 'beta';
+    const hasBrandingUpdate =
+      logoUrl !== undefined ||
+      primaryColor !== undefined ||
+      accentColor !== undefined ||
+      fontFamily !== undefined;
+    if (hasBrandingUpdate && !canUseCustomBranding(planId)) {
+      return res.status(403).json({
+        success: false,
+        error: 'Custom branding is not available on your plan. Upgrade to Starter or Pro.'
+      });
     }
 
     const previousPickupInstructions = vendorRow.pickup_instructions ?? null;
