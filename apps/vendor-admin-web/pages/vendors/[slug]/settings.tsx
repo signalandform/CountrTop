@@ -75,6 +75,15 @@ export default function VendorSettingsPage({ vendorSlug, vendorName, vendor }: V
             max-width: 1200px;
             margin: 0 auto;
           }
+
+          @media (max-width: 768px) {
+            .page {
+              padding: 16px;
+            }
+            .container {
+              max-width: 100%;
+            }
+          }
         `}</style>
       </main>
     </VendorAdminLayout>

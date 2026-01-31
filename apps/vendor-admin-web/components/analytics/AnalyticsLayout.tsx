@@ -164,6 +164,31 @@ export function AnalyticsLayout({ vendorSlug, vendorName, children, currentTab }
         .analytics-content {
           width: 100%;
         }
+
+        @media (max-width: 768px) {
+          .header {
+            padding: 12px 0 20px;
+          }
+          .title {
+            font-size: 24px;
+          }
+          .analytics-nav {
+            gap: 10px;
+            margin-bottom: 24px;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            padding-bottom: 4px;
+            flex-wrap: nowrap;
+          }
+          .analytics-nav-item {
+            padding: 10px 16px;
+            font-size: 13px;
+            white-space: nowrap;
+            min-height: 44px;
+            display: inline-flex;
+            align-items: center;
+          }
+        }
       `}</style>
     </VendorAdminLayout>
   );

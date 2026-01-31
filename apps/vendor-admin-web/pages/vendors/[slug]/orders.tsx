@@ -373,14 +373,34 @@ export default function VendorOrdersPage({ vendorSlug, vendorName, orders: initi
           }
 
           @media (max-width: 700px) {
+            .page {
+              padding: 0 16px 40px;
+            }
+            .header {
+              padding: 24px 0 24px;
+            }
+            .title {
+              font-size: 24px;
+            }
             .order-header {
               grid-template-columns: 1fr 1fr;
               gap: 12px;
+              padding: 14px 16px;
+              min-height: 44px;
             }
             .order-items,
-            .order-customer,
-            .order-status {
+            .order-customer {
               display: none;
+            }
+            .order-status {
+              display: flex;
+            }
+            .order-expand {
+              min-width: 44px;
+              min-height: 44px;
+            }
+            .order-details {
+              padding: 0 16px 16px;
             }
           }
 

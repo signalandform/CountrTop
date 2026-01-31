@@ -307,6 +307,24 @@ export default function LocationsPage({
             color: var(--color-text-muted);
             margin: 0;
           }
+
+          @media (max-width: 768px) {
+            .page {
+              padding: 16px;
+            }
+            .container {
+              max-width: 100%;
+            }
+            .header {
+              margin-bottom: 24px;
+            }
+            .title {
+              font-size: 24px;
+            }
+            .locations-list {
+              gap: 12px;
+            }
+          }
           `}</style>
         </main>
       </VendorAdminLayout>
@@ -829,6 +847,41 @@ function LocationCard({
 
         .btn-primary-set:hover {
           background: rgba(232, 93, 4, 0.12);
+        }
+
+        @media (max-width: 768px) {
+          .location-card {
+            padding: 16px;
+          }
+          .card-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 12px;
+          }
+          .card-title-row {
+            flex-wrap: wrap;
+          }
+          .info-row {
+            flex-direction: column;
+            gap: 4px;
+            margin-bottom: 12px;
+          }
+          .label {
+            min-width: 0;
+          }
+          .form-row.two-col {
+            grid-template-columns: 1fr;
+          }
+          .card-actions {
+            flex-direction: column;
+          }
+          .card-actions .btn-cancel,
+          .card-actions .btn-save {
+            width: 100%;
+          }
+          .badges {
+            flex-wrap: wrap;
+          }
         }
       `}</style>
     </div>

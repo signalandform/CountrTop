@@ -505,6 +505,25 @@ export default function LoginPage() {
           .error-dismiss:hover {
             opacity: 1;
           }
+
+          @media (max-width: 768px) {
+            .login-page {
+              padding: 16px;
+              align-items: flex-start;
+              padding-top: 24px;
+            }
+            .login-container {
+              padding: 28px 20px;
+              max-width: 100%;
+            }
+            h1 {
+              font-size: 24px;
+            }
+            .input-field,
+            .btn-signin {
+              min-height: 48px;
+            }
+          }
         `}</style>
       </main>
     </>

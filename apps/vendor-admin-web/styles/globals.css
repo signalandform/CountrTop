@@ -1,2 +1,16 @@
 /* Vendor admin globals (shared theme in @countrtop/ui). */
 
+/* Touch-friendly tap highlight */
+button,
+a,
+[role="button"] {
+  -webkit-tap-highlight-color: rgba(232, 93, 4, 0.15);
+}
+
+/* Safe area for notched devices */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  body {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+

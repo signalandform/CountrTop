@@ -27,6 +27,7 @@ export function VendorAdminLayout({
   const router = useRouter();
   const [supabase] = useState(() => getBrowserSupabaseClient());
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -34,6 +35,8 @@ export function VendorAdminLayout({
       setCollapsed(true);
     }
   }, []);
+
+  const closeMobileMenu = () => setMobileMenuOpen(false);
 
   const basePath = `/vendors/${vendorSlug}`;
   const currentPath = router.asPath.split('?')[0];
@@ -107,7 +110,35 @@ export function VendorAdminLayout({
   };
 
   return (
-    <div className={`vendor-admin-layout ${collapsed ? 'collapsed' : ''}`}>
+    <div className={`vendor-admin-layout ${collapsed ? 'collapsed' : ''} ${mobileMenuOpen ? 'mobile-menu-open' : ''}`}>
+      {/* Mobile top bar: hamburger + vendor name */}
+      <header className="mobile-topbar" aria-hidden="true">
+        <button
+          type="button"
+          className="mobile-menu-btn"
+          onClick={() => setMobileMenuOpen(true)}
+          aria-label="Open menu"
+        >
+          ☰
+        </button>
+        <div className="mobile-topbar-title">
+          {vendorLogoUrl && (
+            <img src={vendorLogoUrl} alt="" className="mobile-topbar-logo" />
+          )}
+          <span>{vendorName}</span>
+        </div>
+      </header>
+
+      {/* Backdrop when mobile drawer is open */}
+      <div
+        className="sidebar-backdrop"
+        role="button"
+        tabIndex={0}
+        onClick={closeMobileMenu}
+        onKeyDown={(e) => e.key === 'Escape' && closeMobileMenu()}
+        aria-label="Close menu"
+      />
+
       <aside className="sidebar">
         <div className="sidebar-header">
           <button
@@ -117,6 +148,14 @@ export function VendorAdminLayout({
             aria-label={collapsed ? 'Expand navigation' : 'Collapse navigation'}
           >
             ☰
+          </button>
+          <button
+            type="button"
+            className="sidebar-close-mobile"
+            onClick={closeMobileMenu}
+            aria-label="Close menu"
+          >
+            ✕
           </button>
           <div className="vendor-meta">
             {vendorLogoUrl && (
@@ -135,6 +174,7 @@ export function VendorAdminLayout({
                 key={item.id}
                 href={item.href}
                 className={`nav-item ${isActive ? 'active' : ''}`}
+                onClick={item.isExternal ? undefined : closeMobileMenu}
                 {...(item.isExternal
                   ? { target: '_blank', rel: 'noopener noreferrer' }
                   : {})}
@@ -297,7 +337,155 @@ export function VendorAdminLayout({
           margin: 0 auto;
         }
 
-        @media (max-width: 900px) {
+        /* Mobile: top bar + drawer */
+        .mobile-topbar {
+          display: none;
+        }
+
+        .sidebar-backdrop {
+          display: none;
+        }
+
+        .sidebar-close-mobile {
+          display: none;
+        }
+
+        @media (max-width: 768px) {
+          .vendor-admin-layout {
+            flex-direction: column;
+          }
+
+          .mobile-topbar {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 56px;
+            padding: 0 16px;
+            background: var(--ct-bg-surface);
+            border-bottom: 1px solid var(--ct-card-border);
+            z-index: 100;
+            box-shadow: var(--ct-card-shadow);
+          }
+
+          .mobile-menu-btn {
+            width: 44px;
+            height: 44px;
+            min-width: 44px;
+            min-height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid var(--ct-card-border);
+            background: var(--ct-bg-surface-warm);
+            color: var(--ct-text);
+            border-radius: 10px;
+            font-size: 20px;
+            cursor: pointer;
+          }
+
+          .mobile-topbar-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 0;
+          }
+
+          .mobile-topbar-title span {
+            font-weight: 700;
+            font-size: 16px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+          }
+
+          .mobile-topbar-logo {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            object-fit: cover;
+            flex-shrink: 0;
+          }
+
+          .sidebar-backdrop {
+            display: block;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.4);
+            z-index: 101;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+          }
+
+          .vendor-admin-layout.mobile-menu-open .sidebar-backdrop {
+            opacity: 1;
+            pointer-events: auto;
+          }
+
+          .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            width: 280px;
+            max-width: 85vw;
+            z-index: 102;
+            transform: translateX(-100%);
+            transition: transform 0.25s ease;
+            box-shadow: none;
+          }
+
+          .vendor-admin-layout.mobile-menu-open .sidebar {
+            transform: translateX(0);
+            box-shadow: 4px 0 24px rgba(0, 0, 0, 0.15);
+          }
+
+          .vendor-admin-layout.collapsed .sidebar {
+            width: 280px;
+            max-width: 85vw;
+          }
+
+          .vendor-admin-layout.collapsed .vendor-meta,
+          .vendor-admin-layout.collapsed .nav-label {
+            display: flex;
+          }
+
+          .vendor-admin-layout.collapsed .sidebar-toggle {
+            margin: 0;
+          }
+
+          .sidebar-toggle {
+            display: none;
+          }
+
+          .sidebar-close-mobile {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            min-width: 36px;
+            min-height: 36px;
+            border: 1px solid var(--ct-card-border);
+            background: var(--ct-bg-surface-warm);
+            color: var(--ct-text);
+            border-radius: 10px;
+            font-size: 18px;
+            cursor: pointer;
+            margin-left: auto;
+          }
+
+          .layout-content {
+            padding: 56px 16px 32px;
+            width: 100%;
+          }
+        }
+
+        @media (max-width: 900px) and (min-width: 769px) {
           .layout-content {
             padding: 24px 20px 40px;
           }
