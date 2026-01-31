@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { getServerDataClient } from '../../../../../lib/dataClient';
+import { getServerDataClient } from '../../../../../../lib/dataClient';
 
 type FeedbackResponse = { ok: true } | { ok: false; error: string };
 
