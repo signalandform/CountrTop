@@ -57,21 +57,13 @@ export interface DataClient {
     status: 'READY' | 'COMPLETE'
   ): Promise<OrderSnapshot>;
   updateOrderSnapshotFeedback(
-    snapshotId: string,
+    orderSnapshotId: string,
     rating: 'thumbs_up' | 'thumbs_down'
-  ): Promise<OrderSnapshot>;
+  ): Promise<void>;
 
   recordLoyaltyEntry(entry: LoyaltyLedgerEntryInput): Promise<LoyaltyLedgerEntry>;
   listLoyaltyEntriesForUser(vendorId: string, userId: string): Promise<LoyaltyLedgerEntry[]>;
   getLoyaltyBalance(vendorId: string, userId: string): Promise<number>;
-
-  /** Loyalty redemption rules for a vendor; returns defaults when no row exists */
-  getVendorLoyaltySettings(vendorId: string): Promise<import('./models').VendorLoyaltySettings>;
-  /** Upsert loyalty redemption settings for a vendor */
-  setVendorLoyaltySettings(
-    vendorId: string,
-    settings: { centsPerPoint: number; minPointsToRedeem: number; maxPointsPerOrder: number }
-  ): Promise<import('./models').VendorLoyaltySettings>;
 
   upsertPushDevice(device: PushDeviceInput): Promise<PushDevice>;
   listPushDevicesForUser(userId: string): Promise<PushDevice[]>;
@@ -174,15 +166,6 @@ export interface DataClient {
   getLocationPins(vendorId: string): Promise<Record<string, boolean>>; // locationId -> hasPin
   setLocationPin(vendorId: string, locationId: string, pin: string): Promise<void>; // pin is plain text, will be hashed
 
-  // KDS Pairing Tokens (QR pairing)
-  createPairingToken(
-    vendorId: string,
-    locationId?: string | null,
-    expiresInMinutes?: number
-  ): Promise<{ token: string; tokenId: string; createdAt: string; expiresAt: string; locationId?: string | null }>;
-  listPairingTokens(vendorId: string): Promise<import('@countrtop/models').PairingToken[]>;
-  consumePairingToken(token: string): Promise<{ vendorId: string; locationId?: string | null } | null>;
-
   // Employees & Time Tracking
   listEmployees(vendorId: string): Promise<import('@countrtop/models').Employee[]>;
   createEmployee(vendorId: string, name: string, pin: string): Promise<import('@countrtop/models').Employee>;
@@ -193,32 +176,34 @@ export interface DataClient {
   clockIn(vendorId: string, employeeId: string, locationId: string | null): Promise<import('@countrtop/models').TimeEntry>;
   clockOut(vendorId: string, employeeId: string): Promise<import('@countrtop/models').TimeEntry>;
   getActiveTimeEntry(vendorId: string, employeeId: string): Promise<import('@countrtop/models').TimeEntry | null>;
-  listActiveTimeEntries(vendorId: string): Promise<import('@countrtop/models').TimeEntry[]>;
   listTimeEntries(vendorId: string, employeeId: string | null, startDate: Date, endDate: Date): Promise<import('@countrtop/models').TimeEntry[]>;
 
-  // Billing (Stripe)
-  getVendorBilling(vendorId: string): Promise<import('@countrtop/models').VendorBilling | null>;
-  upsertVendorBilling(
+  // KDS pairing tokens (device pairing)
+  listPairingTokens(vendorId: string): Promise<PairingTokenListItem[]>;
+  createPairingToken(
     vendorId: string,
-    data: Partial<Omit<import('@countrtop/models').VendorBilling, 'vendorId' | 'createdAt' | 'updatedAt'>>
-  ): Promise<import('@countrtop/models').VendorBilling>;
-
-  // Support tickets
-  createSupportTicket(input: {
-    vendorId: string;
-    subject: string;
-    message: string;
-    submittedBy?: string | null;
-  }): Promise<import('@countrtop/models').SupportTicket>;
-  listSupportTicketsForVendor(vendorId: string): Promise<import('@countrtop/models').SupportTicket[]>;
-  listSupportTickets(options?: { vendorId?: string; status?: string }): Promise<import('@countrtop/models').SupportTicket[]>;
-  getSupportTicket(id: string): Promise<import('@countrtop/models').SupportTicket | null>;
-  updateSupportTicket(
-    id: string,
-    updates: { status?: import('@countrtop/models').SupportTicketStatus; opsReply?: string }
-  ): Promise<import('@countrtop/models').SupportTicket>;
-
-  // CRM: email unsubscribes (Pro)
-  listVendorEmailUnsubscribes(vendorId: string): Promise<string[]>;
-  recordVendorEmailUnsubscribe(vendorId: string, email: string): Promise<void>;
+    locationId: string | null,
+    expiresInMinutes?: number
+  ): Promise<CreatePairingTokenResult>;
+  consumePairingToken(token: string): Promise<ConsumePairingTokenResult | null>;
 }
+
+export type PairingTokenListItem = {
+  id: string;
+  locationId: string | null;
+  expiresAt: string;
+  createdAt: string;
+};
+
+export type CreatePairingTokenResult = {
+  token: string;
+  tokenId: string;
+  createdAt: string;
+  expiresAt: string;
+  locationId: string | null;
+};
+
+export type ConsumePairingTokenResult = {
+  vendorId: string;
+  locationId: string | null;
+};

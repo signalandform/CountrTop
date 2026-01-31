@@ -1,15 +1,13 @@
-import { DataClient, LoyaltyLedgerEntryInput, OrderSnapshotInput, PushDeviceInput } from './dataClient';
 import {
-  KitchenTicket,
-  KitchenTicketWithOrder,
-  LoyaltyLedgerEntry,
-  OrderSnapshot,
-  PushDevice,
-  SupportTicket,
-  SupportTicketStatus,
-  User,
-  Vendor
-} from './models';
+  DataClient,
+  CreatePairingTokenResult,
+  ConsumePairingTokenResult,
+  LoyaltyLedgerEntryInput,
+  OrderSnapshotInput,
+  PairingTokenListItem,
+  PushDeviceInput
+} from './dataClient';
+import { KitchenTicket, KitchenTicketWithOrder, LoyaltyLedgerEntry, OrderSnapshot, PushDevice, User, Vendor } from './models';
 
 export type MockDataSeed = {
   vendors?: Vendor[];
@@ -17,7 +15,6 @@ export type MockDataSeed = {
   users?: User[];
   loyaltyLedger?: LoyaltyLedgerEntry[];
   pushDevices?: PushDevice[];
-  supportTickets?: SupportTicket[];
 };
 
 export class MockDataClient implements DataClient {
@@ -26,7 +23,6 @@ export class MockDataClient implements DataClient {
   private users: User[];
   private loyaltyLedger: LoyaltyLedgerEntry[];
   private pushDevices: PushDevice[];
-  private supportTickets: SupportTicket[];
 
   constructor(seed: MockDataSeed = {}) {
     this.vendors = [...(seed.vendors ?? defaultMockVendors)];
@@ -34,7 +30,6 @@ export class MockDataClient implements DataClient {
     this.users = [...(seed.users ?? defaultMockUsers)];
     this.loyaltyLedger = [...(seed.loyaltyLedger ?? defaultMockLoyaltyLedger)];
     this.pushDevices = [...(seed.pushDevices ?? defaultMockPushDevices)];
-    this.supportTickets = [...(seed.supportTickets ?? [])];
   }
 
   async signInWithProvider(provider: User['provider'], idToken: string): Promise<User> {
@@ -156,16 +151,37 @@ export class MockDataClient implements DataClient {
   }
 
   async updateOrderSnapshotFeedback(
-    snapshotId: string,
+    orderSnapshotId: string,
     rating: 'thumbs_up' | 'thumbs_down'
-  ): Promise<OrderSnapshot> {
-    const order = this.orderSnapshots.find((o) => o.id === snapshotId);
-    if (!order) {
-      throw new Error('Order not found');
+  ): Promise<void> {
+    const order = this.orderSnapshots.find((o) => o.id === orderSnapshotId);
+    if (order) {
+      order.customerFeedbackRating = rating;
     }
-    order.customerFeedbackRating = rating;
-    order.updatedAt = new Date().toISOString();
-    return order;
+  }
+
+  async listPairingTokens(_vendorId: string): Promise<PairingTokenListItem[]> {
+    return [];
+  }
+
+  async createPairingToken(
+    vendorId: string,
+    locationId: string | null,
+    expiresInMinutes = 60
+  ): Promise<CreatePairingTokenResult> {
+    const now = new Date().toISOString();
+    const expiresAt = new Date(Date.now() + expiresInMinutes * 60 * 1000).toISOString();
+    return {
+      token: 'mock_token_' + this.createId('pair'),
+      tokenId: this.createId('pair'),
+      createdAt: now,
+      expiresAt,
+      locationId
+    };
+  }
+
+  async consumePairingToken(_token: string): Promise<ConsumePairingTokenResult | null> {
+    return null;
   }
 
   async recordLoyaltyEntry(entry: LoyaltyLedgerEntryInput): Promise<LoyaltyLedgerEntry> {
@@ -184,26 +200,6 @@ export class MockDataClient implements DataClient {
     return this.loyaltyLedger
       .filter((entry) => entry.vendorId === vendorId && entry.userId === userId)
       .reduce((sum, entry) => sum + entry.pointsDelta, 0);
-  }
-
-  private loyaltySettings = new Map<string, { centsPerPoint: number; minPointsToRedeem: number; maxPointsPerOrder: number }>();
-
-  async getVendorLoyaltySettings(vendorId: string): Promise<import('./models').VendorLoyaltySettings> {
-    const stored = this.loyaltySettings.get(vendorId);
-    return {
-      vendorId,
-      centsPerPoint: stored?.centsPerPoint ?? 1,
-      minPointsToRedeem: stored?.minPointsToRedeem ?? 100,
-      maxPointsPerOrder: stored?.maxPointsPerOrder ?? 500
-    };
-  }
-
-  async setVendorLoyaltySettings(
-    vendorId: string,
-    settings: { centsPerPoint: number; minPointsToRedeem: number; maxPointsPerOrder: number }
-  ): Promise<import('./models').VendorLoyaltySettings> {
-    this.loyaltySettings.set(vendorId, settings);
-    return { vendorId, ...settings };
   }
 
   async upsertPushDevice(device: PushDeviceInput): Promise<PushDevice> {
@@ -524,38 +520,6 @@ export class MockDataClient implements DataClient {
     return;
   }
 
-  async createPairingToken(
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    _vendorId: string,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    _locationId: string | null = null,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    _expiresInMinutes = 60
-  ): Promise<{ token: string; tokenId: string; createdAt: string; expiresAt: string; locationId?: string | null }> {
-    const createdAt = new Date().toISOString();
-    return {
-      token: 'MOCKTOKEN',
-      tokenId: 'mock-token',
-      createdAt,
-      expiresAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
-      locationId: _locationId
-    };
-  }
-
-  async listPairingTokens(
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    _vendorId: string
-  ): Promise<import('@countrtop/models').PairingToken[]> {
-    return [];
-  }
-
-  async consumePairingToken(
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    _token: string
-  ): Promise<{ vendorId: string; locationId?: string | null } | null> {
-    return null;
-  }
-
   // Employees & Time Tracking
   async listEmployees(
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -629,13 +593,6 @@ export class MockDataClient implements DataClient {
     return null;
   }
 
-  async listActiveTimeEntries(
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    _vendorId: string
-  ): Promise<import('@countrtop/models').TimeEntry[]> {
-    return [];
-  }
-
   async listTimeEntries(
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     _vendorId: string,
@@ -647,104 +604,6 @@ export class MockDataClient implements DataClient {
     _endDate: Date
   ): Promise<import('@countrtop/models').TimeEntry[]> {
     return [];
-  }
-
-  async getVendorBilling(
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    _vendorId: string
-  ): Promise<import('@countrtop/models').VendorBilling | null> {
-    return null;
-  }
-
-  async upsertVendorBilling(
-    vendorId: string,
-    data: Partial<Omit<import('@countrtop/models').VendorBilling, 'vendorId' | 'createdAt' | 'updatedAt'>>
-  ): Promise<import('@countrtop/models').VendorBilling> {
-    const now = new Date().toISOString();
-    return {
-      vendorId,
-      stripeCustomerId: data.stripeCustomerId ?? null,
-      stripeSubscriptionId: data.stripeSubscriptionId ?? null,
-      planId: (data.planId ?? 'beta') as import('@countrtop/models').BillingPlanId,
-      status: data.status ?? 'active',
-      currentPeriodEnd: data.currentPeriodEnd ?? null,
-      createdAt: now,
-      updatedAt: now
-    };
-  }
-
-  async createSupportTicket(input: {
-    vendorId: string;
-    subject: string;
-    message: string;
-    submittedBy?: string | null;
-  }): Promise<SupportTicket> {
-    const now = new Date().toISOString();
-    const ticket: SupportTicket = {
-      id: this.createId('st'),
-      vendorId: input.vendorId,
-      subject: input.subject.trim(),
-      message: input.message.trim(),
-      status: 'open',
-      submittedBy: input.submittedBy ?? null,
-      createdAt: now,
-      updatedAt: now,
-      opsReply: null,
-      opsRepliedAt: null
-    };
-    this.supportTickets.push(ticket);
-    return ticket;
-  }
-
-  async listSupportTicketsForVendor(vendorId: string): Promise<SupportTicket[]> {
-    return this.supportTickets
-      .filter((t) => t.vendorId === vendorId)
-      .sort((a, b) => (b.createdAt > a.createdAt ? 1 : -1));
-  }
-
-  async listSupportTickets(options?: { vendorId?: string; status?: string }): Promise<SupportTicket[]> {
-    let list = [...this.supportTickets];
-    if (options?.vendorId) list = list.filter((t) => t.vendorId === options.vendorId);
-    if (options?.status) list = list.filter((t) => t.status === options.status);
-    return list.sort((a, b) => (b.createdAt > a.createdAt ? 1 : -1));
-  }
-
-  async getSupportTicket(id: string): Promise<SupportTicket | null> {
-    return this.supportTickets.find((t) => t.id === id) ?? null;
-  }
-
-  async updateSupportTicket(
-    id: string,
-    updates: { status?: SupportTicketStatus; opsReply?: string }
-  ): Promise<SupportTicket> {
-    const idx = this.supportTickets.findIndex((t) => t.id === id);
-    if (idx < 0) throw new Error(`Support ticket ${id} not found`);
-    const now = new Date().toISOString();
-    const existing = this.supportTickets[idx];
-    const next: SupportTicket = {
-      ...existing,
-      updatedAt: now,
-      status: updates.status ?? existing.status,
-      opsReply: updates.opsReply !== undefined ? updates.opsReply : existing.opsReply,
-      opsRepliedAt:
-        updates.opsReply !== undefined ? now : existing.opsRepliedAt
-    };
-    this.supportTickets[idx] = next;
-    return next;
-  }
-
-  private emailUnsubscribes: Array<{ vendorId: string; email: string }> = [];
-
-  async listVendorEmailUnsubscribes(vendorId: string): Promise<string[]> {
-    return this.emailUnsubscribes
-      .filter((u) => u.vendorId === vendorId)
-      .map((u) => u.email);
-  }
-
-  async recordVendorEmailUnsubscribe(vendorId: string, email: string): Promise<void> {
-    const normalized = email.trim().toLowerCase();
-    if (this.emailUnsubscribes.some((u) => u.vendorId === vendorId && u.email === normalized)) return;
-    this.emailUnsubscribes.push({ vendorId, email: normalized });
   }
 
   private createId(prefix: string) {

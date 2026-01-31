@@ -51,8 +51,6 @@ export type Vendor = {
   primaryColor?: string | null;
   accentColor?: string | null;
   fontFamily?: string | null;
-  /** Review link for customer "Leave us a review" CTA (e.g. Google/Yelp) */
-  reviewUrl?: string | null;
 };
 
 export type VendorLocation = {
@@ -90,16 +88,6 @@ export type VendorLocation = {
   onlineOrderingHoursJson?: Record<string, unknown>;
   createdAt: string;
   updatedAt: string;
-};
-
-export type PairingToken = {
-  id: string;
-  vendorId: string;
-  locationId?: string | null;
-  tokenHash: string;
-  expiresAt: string;
-  usedAt?: string | null;
-  createdAt: string;
 };
 
 export type Employee = {
@@ -177,54 +165,7 @@ export type VendorInsights = {
   uniqueCustomers: number;
   repeatCustomers: number;
   pointsIssued: number;
-  /** Customer post-order feedback (thumbs up/down) counts */
-  feedbackThumbsUp: number;
-  feedbackThumbsDown: number;
   topReorderedItems: { label: string; count: number }[];
-};
-
-/** Loyalty redemption rules per vendor (points-as-discount at checkout) */
-export type VendorLoyaltySettings = {
-  vendorId: string;
-  /** Redemption rate: e.g. 1 = 100 points -> $1 (100 cents) */
-  centsPerPoint: number;
-  /** Minimum points required to redeem in one order */
-  minPointsToRedeem: number;
-  /** Maximum points that can be redeemed per order */
-  maxPointsPerOrder: number;
-};
-
-/** Billing plan slug for feature gating */
-export type BillingPlanId = 'beta' | 'trial' | 'starter' | 'pro';
-
-/** Vendor billing record (Stripe customer + optional subscription) */
-export type VendorBilling = {
-  vendorId: string;
-  stripeCustomerId: string | null;
-  stripeSubscriptionId: string | null;
-  planId: BillingPlanId;
-  /** Stripe subscription status: active, trialing, past_due, canceled, etc. */
-  status: string;
-  currentPeriodEnd: string | null;
-  createdAt: string;
-  updatedAt: string;
-};
-
-/** Support ticket status */
-export type SupportTicketStatus = 'open' | 'in_progress' | 'closed';
-
-/** Support ticket (vendor -> ops) */
-export type SupportTicket = {
-  id: string;
-  vendorId: string;
-  subject: string;
-  message: string;
-  status: SupportTicketStatus;
-  submittedBy: string | null;
-  createdAt: string;
-  updatedAt: string;
-  opsReply: string | null;
-  opsRepliedAt: string | null;
 };
 
 // Menu and Catalog Types
@@ -263,7 +204,6 @@ export type OrderHistoryEntry = {
   fulfillmentStatus?: string | null;
   readyAt?: string | null;
   completedAt?: string | null;
-  customerFeedbackRating?: 'thumbs_up' | 'thumbs_down' | null;
 };
 
 export type OpsOrder = {

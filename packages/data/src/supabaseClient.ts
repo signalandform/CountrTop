@@ -219,6 +219,7 @@ export type Database = {
           updated_at: string | null;
           customer_display_name: string | null;
           pickup_label: string | null;
+          customer_feedback_rating: string | null;
         };
         Insert: {
           id?: string;
@@ -233,8 +234,31 @@ export type Database = {
           updated_at?: string | null;
           customer_display_name?: string | null;
           pickup_label?: string | null;
+          customer_feedback_rating?: string | null;
         };
         Update: Partial<Database['public']['Tables']['order_snapshots']['Insert']>;
+        Relationships: [];
+      };
+      kds_pairing_tokens: {
+        Row: {
+          id: string;
+          vendor_id: string;
+          location_id: string | null;
+          token_hash: string;
+          expires_at: string;
+          used_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          vendor_id: string;
+          location_id?: string | null;
+          token_hash: string;
+          expires_at: string;
+          used_at?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['kds_pairing_tokens']['Insert']>;
         Relationships: [];
       };
       loyalty_ledger: {
@@ -998,6 +1022,115 @@ export class SupabaseDataClient implements DataClient {
       return result;
     } catch (error) {
       logQueryPerformance('updateOrderSnapshotStatus', startTime, false, error);
+      throw error;
+    }
+  }
+
+  async updateOrderSnapshotFeedback(
+    orderSnapshotId: string,
+    rating: 'thumbs_up' | 'thumbs_down'
+  ): Promise<void> {
+    const startTime = Date.now();
+    try {
+      const { error } = await this.client
+        .from('order_snapshots')
+        .update({ customer_feedback_rating: rating })
+        .eq('id', orderSnapshotId);
+      if (error) throw error;
+      logQueryPerformance('updateOrderSnapshotFeedback', startTime, true);
+    } catch (error) {
+      logQueryPerformance('updateOrderSnapshotFeedback', startTime, false, error);
+      throw error;
+    }
+  }
+
+  async listPairingTokens(vendorId: string): Promise<import('./dataClient').PairingTokenListItem[]> {
+    const startTime = Date.now();
+    try {
+      const { data, error } = await this.client
+        .from('kds_pairing_tokens')
+        .select('id,location_id,expires_at,created_at')
+        .eq('vendor_id', vendorId)
+        .is('used_at', null)
+        .gt('expires_at', new Date().toISOString());
+      if (error) throw error;
+      const rows = (data ?? []) as Database['public']['Tables']['kds_pairing_tokens']['Row'][];
+      const result = rows.map((row) => ({
+        id: row.id,
+        locationId: row.location_id,
+        expiresAt: row.expires_at,
+        createdAt: row.created_at
+      }));
+      logQueryPerformance('listPairingTokens', startTime, true);
+      return result;
+    } catch (error) {
+      logQueryPerformance('listPairingTokens', startTime, false, error);
+      throw error;
+    }
+  }
+
+  async createPairingToken(
+    vendorId: string,
+    locationId: string | null,
+    expiresInMinutes = 60
+  ): Promise<import('./dataClient').CreatePairingTokenResult> {
+    const startTime = Date.now();
+    try {
+      const plainToken = randomUUID().replace(/-/g, '') + randomUUID().replace(/-/g, '');
+      const tokenHash = createHash('sha256').update(plainToken).digest('hex');
+      const expiresAt = new Date(Date.now() + expiresInMinutes * 60 * 1000).toISOString();
+      const createdAt = new Date().toISOString();
+      const { data, error } = await this.client
+        .from('kds_pairing_tokens')
+        .insert({
+          vendor_id: vendorId,
+          location_id: locationId,
+          token_hash: tokenHash,
+          expires_at: expiresAt
+        })
+        .select('id,created_at,expires_at,location_id')
+        .single();
+      if (error) throw error;
+      const row = data as Database['public']['Tables']['kds_pairing_tokens']['Row'];
+      logQueryPerformance('createPairingToken', startTime, true);
+      return {
+        token: plainToken,
+        tokenId: row.id,
+        createdAt: row.created_at,
+        expiresAt: row.expires_at,
+        locationId: row.location_id
+      };
+    } catch (error) {
+      logQueryPerformance('createPairingToken', startTime, false, error);
+      throw error;
+    }
+  }
+
+  async consumePairingToken(token: string): Promise<import('./dataClient').ConsumePairingTokenResult | null> {
+    const startTime = Date.now();
+    try {
+      const tokenHash = createHash('sha256').update(token).digest('hex');
+      const { data: row, error: findError } = await this.client
+        .from('kds_pairing_tokens')
+        .select('id,vendor_id,location_id')
+        .eq('token_hash', tokenHash)
+        .is('used_at', null)
+        .gt('expires_at', new Date().toISOString())
+        .maybeSingle();
+      if (findError) throw findError;
+      if (!row) {
+        logQueryPerformance('consumePairingToken', startTime, true);
+        return null;
+      }
+      const { error: updateError } = await this.client
+        .from('kds_pairing_tokens')
+        .update({ used_at: new Date().toISOString() })
+        .eq('id', row.id);
+      if (updateError) throw updateError;
+      logQueryPerformance('consumePairingToken', startTime, true);
+      return { vendorId: row.vendor_id, locationId: row.location_id };
+    } catch (error) {
+      logQueryPerformance('consumePairingToken', startTime, false, error);
       throw error;
     }
   }
@@ -3089,7 +3222,11 @@ const mapOrderSnapshotFromRow = (
   completedAt: row.completed_at ?? undefined,
   updatedAt: row.updated_at ?? undefined,
   customerDisplayName: row.customer_display_name ?? undefined,
-  pickupLabel: row.pickup_label ?? undefined
+  pickupLabel: row.pickup_label ?? undefined,
+  customerFeedbackRating:
+    row.customer_feedback_rating === 'thumbs_up' || row.customer_feedback_rating === 'thumbs_down'
+      ? row.customer_feedback_rating
+      : undefined
 });
 
 const mapLoyaltyLedgerFromRow = (
