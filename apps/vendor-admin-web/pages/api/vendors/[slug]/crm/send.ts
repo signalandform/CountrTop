@@ -19,8 +19,7 @@ const normalizeSlug = (v: string | string[] | undefined) => (Array.isArray(v) ? 
 
 async function getCustomerEmails(
   dataClient: ReturnType<typeof getServerDataClient>,
-  vendorId: string,
-  slug: string
+  vendorId: string
 ): Promise<string[]> {
   const orders = await dataClient.listOrderSnapshotsForVendor(vendorId);
   const unsubscribes = await dataClient.listVendorEmailUnsubscribes(vendorId);
@@ -113,7 +112,7 @@ export default async function handler(
       });
     }
 
-    const emails = await getCustomerEmails(dataClient, vendor.id, slug);
+    const emails = await getCustomerEmails(dataClient, vendor.id);
     if (emails.length === 0) {
       return res.status(200).json({ success: true, sentCount: 0 });
     }
