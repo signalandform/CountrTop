@@ -21,11 +21,6 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
   const [accentColor, setAccentColor] = useState(vendor.accentColor || DEFAULT_ACCENT_COLOR);
   const [reviewUrl, setReviewUrl] = useState(vendor.reviewUrl || '');
 
-  // Feature flags state
-  const [featureFlags, setFeatureFlags] = useState<Record<string, boolean>>({});
-  const [flagsLoading, setFlagsLoading] = useState(true);
-  const [flagsSaving, setFlagsSaving] = useState(false);
-
   // Loyalty redemption settings state
   const [loyaltySettings, setLoyaltySettings] = useState<{
     centsPerPoint: number;
@@ -71,24 +66,6 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
   const [editingEmployee, setEditingEmployee] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [editPin, setEditPin] = useState('');
-
-  // Fetch feature flags on mount
-  useEffect(() => {
-    const fetchFlags = async () => {
-      try {
-        const response = await fetch(`/api/vendors/${vendorSlug}/feature-flags`);
-        const data = await response.json();
-        if (data.success) {
-          setFeatureFlags(data.data);
-        }
-      } catch (err) {
-        console.error('Failed to fetch feature flags:', err);
-      } finally {
-        setFlagsLoading(false);
-      }
-    };
-    fetchFlags();
-  }, [vendorSlug]);
 
   // Fetch loyalty redemption settings on mount
   useEffect(() => {
@@ -303,30 +280,6 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
   useEffect(() => {
     fetchEmployees();
   }, [vendorSlug]);
-
-  const handleFeatureFlagChange = async (featureKey: string, enabled: boolean) => {
-    setFlagsSaving(true);
-    try {
-      const response = await fetch(`/api/vendors/${vendorSlug}/feature-flags`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ featureKey, enabled })
-      });
-
-      const data = await response.json();
-      if (data.success) {
-        setFeatureFlags(prev => ({ ...prev, [featureKey]: enabled }));
-      } else {
-        throw new Error(data.error || 'Failed to update feature flag');
-      }
-    } catch (err) {
-      console.error('Failed to update feature flag:', err);
-      alert('Failed to update feature flag. Please try again.');
-    } finally {
-      setFlagsSaving(false);
-    }
-  };
 
   const handleSaveLoyaltySettings = async () => {
     setLoyaltySettingsSaving(true);
@@ -622,149 +575,77 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
             </div>
           </div>
 
-          {/* Feature Flags Section */}
+          {/* Loyalty Settings Section */}
           <div className="form-section">
-            <h2>⚡ Feature Flags</h2>
-            <p className="section-description">Enable or disable features for this vendor</p>
+            <h2>⭐ Loyalty Settings</h2>
+            <p className="section-description">Configure points and redemption rules for your loyalty program</p>
 
-            {flagsLoading ? (
-              <p className="muted">Loading feature flags...</p>
+            {loyaltySettingsLoading ? (
+              <p className="muted">Loading...</p>
             ) : (
-              <div className="flags-grid">
-                <label className="flag-card">
-                  <input
-                    type="checkbox"
-                    checked={featureFlags['analytics_enabled'] ?? false}
-                    onChange={(e) => handleFeatureFlagChange('analytics_enabled', e.target.checked)}
-                    disabled={flagsSaving}
-                  />
-                  <div className="flag-content">
-                    <span className="flag-icon">📊</span>
-                    <div>
-                      <span className="flag-name">Analytics Dashboard</span>
-                      <span className="flag-description">Enable analytics access</span>
-                    </div>
+              <div className="loyalty-redemption-settings">
+                <p className="section-description" style={{ marginTop: 0, marginBottom: 16 }}>
+                  Redemption rules (e.g. 100 pts = $1 when cents per point = 1)
+                </p>
+                <div className="loyalty-settings-fields">
+                  <div className="form-group">
+                    <label>Cents per point</label>
+                    <input
+                      type="number"
+                      min={0}
+                      step={1}
+                      value={loyaltySettings.centsPerPoint}
+                      onChange={(e) =>
+                        setLoyaltySettings(prev => ({
+                          ...prev,
+                          centsPerPoint: Math.max(0, parseInt(e.target.value, 10) || 0)
+                        }))
+                      }
+                      className="form-input"
+                    />
                   </div>
-                </label>
-
-                <label className="flag-card">
-                  <input
-                    type="checkbox"
-                    checked={featureFlags['kds_realtime_enabled'] ?? false}
-                    onChange={(e) => handleFeatureFlagChange('kds_realtime_enabled', e.target.checked)}
-                    disabled={flagsSaving}
-                  />
-                  <div className="flag-content">
-                    <span className="flag-icon">⚡</span>
-                    <div>
-                      <span className="flag-name">KDS Realtime Updates</span>
-                      <span className="flag-description">Live queue updates</span>
-                    </div>
+                  <div className="form-group">
+                    <label>Min points to redeem</label>
+                    <input
+                      type="number"
+                      min={0}
+                      step={1}
+                      value={loyaltySettings.minPointsToRedeem}
+                      onChange={(e) =>
+                        setLoyaltySettings(prev => ({
+                          ...prev,
+                          minPointsToRedeem: Math.max(0, parseInt(e.target.value, 10) || 0)
+                        }))
+                      }
+                      className="form-input"
+                    />
                   </div>
-                </label>
-
-                <label className="flag-card">
-                  <input
-                    type="checkbox"
-                    checked={featureFlags['kds_pin_auth_enabled'] ?? false}
-                    onChange={(e) => handleFeatureFlagChange('kds_pin_auth_enabled', e.target.checked)}
-                    disabled={flagsSaving}
-                  />
-                  <div className="flag-content">
-                    <span className="flag-icon">🔐</span>
-                    <div>
-                      <span className="flag-name">KDS PIN Authentication</span>
-                      <span className="flag-description">PIN-based KDS login</span>
-                    </div>
+                  <div className="form-group">
+                    <label>Max points per order</label>
+                    <input
+                      type="number"
+                      min={0}
+                      step={1}
+                      value={loyaltySettings.maxPointsPerOrder}
+                      onChange={(e) =>
+                        setLoyaltySettings(prev => ({
+                          ...prev,
+                          maxPointsPerOrder: Math.max(0, parseInt(e.target.value, 10) || 0)
+                        }))
+                      }
+                      className="form-input"
+                    />
                   </div>
-                </label>
-
-                <label className="flag-card">
-                  <input
-                    type="checkbox"
-                    checked={featureFlags['customer_loyalty_enabled'] ?? false}
-                    onChange={(e) => handleFeatureFlagChange('customer_loyalty_enabled', e.target.checked)}
-                    disabled={flagsSaving}
-                  />
-                  <div className="flag-content">
-                    <span className="flag-icon">⭐</span>
-                    <div>
-                      <span className="flag-name">Loyalty Program</span>
-                      <span className="flag-description">Customer points system</span>
-                    </div>
-                  </div>
-                </label>
-
-                {featureFlags['customer_loyalty_enabled'] && (
-                  <div className="loyalty-redemption-settings">
-                    <p className="section-description" style={{ marginTop: 12, marginBottom: 8 }}>
-                      Redemption rules (e.g. 100 pts = $1 when cents per point = 1)
-                    </p>
-                    {loyaltySettingsLoading ? (
-                      <p className="muted">Loading...</p>
-                    ) : (
-                      <div className="loyalty-settings-fields">
-                        <div className="form-group">
-                          <label>Cents per point</label>
-                          <input
-                            type="number"
-                            min={0}
-                            step={1}
-                            value={loyaltySettings.centsPerPoint}
-                            onChange={(e) =>
-                              setLoyaltySettings(prev => ({
-                                ...prev,
-                                centsPerPoint: Math.max(0, parseInt(e.target.value, 10) || 0)
-                              }))
-                            }
-                            className="form-input"
-                          />
-                        </div>
-                        <div className="form-group">
-                          <label>Min points to redeem</label>
-                          <input
-                            type="number"
-                            min={0}
-                            step={1}
-                            value={loyaltySettings.minPointsToRedeem}
-                            onChange={(e) =>
-                              setLoyaltySettings(prev => ({
-                                ...prev,
-                                minPointsToRedeem: Math.max(0, parseInt(e.target.value, 10) || 0)
-                              }))
-                            }
-                            className="form-input"
-                          />
-                        </div>
-                        <div className="form-group">
-                          <label>Max points per order</label>
-                          <input
-                            type="number"
-                            min={0}
-                            step={1}
-                            value={loyaltySettings.maxPointsPerOrder}
-                            onChange={(e) =>
-                              setLoyaltySettings(prev => ({
-                                ...prev,
-                                maxPointsPerOrder: Math.max(0, parseInt(e.target.value, 10) || 0)
-                              }))
-                            }
-                            className="form-input"
-                          />
-                        </div>
-                        <button
-                          type="button"
-                          onClick={handleSaveLoyaltySettings}
-                          disabled={loyaltySettingsSaving}
-                          className="btn-secondary"
-                          style={{ alignSelf: 'flex-start' }}
-                        >
-                          {loyaltySettingsSaving ? 'Saving…' : 'Save redemption rules'}
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                )}
+                  <button
+                    type="button"
+                    onClick={handleSaveLoyaltySettings}
+                    disabled={loyaltySettingsSaving}
+                    className="btn-secondary"
+                    style={{ alignSelf: 'flex-start' }}
+                  >
+                    {loyaltySettingsSaving ? 'Saving…' : 'Save redemption rules'}
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -1332,61 +1213,6 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
           cursor: default;
         }
 
-        /* Feature Flags */
-        .flags-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-          gap: 16px;
-        }
-
-        .flag-card {
-          display: flex;
-          align-items: center;
-          gap: 16px;
-          padding: 16px;
-          border-radius: 12px;
-          border: 1px solid var(--color-border);
-          background: var(--ct-bg-surface);
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-
-        .flag-card:hover {
-          background: var(--color-bg-warm);
-          border-color: rgba(232, 93, 4, 0.2);
-        }
-
-        .flag-card input[type="checkbox"] {
-          width: 20px;
-          height: 20px;
-          cursor: pointer;
-          flex-shrink: 0;
-        }
-
-        .flag-content {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-        }
-
-        .flag-icon {
-          font-size: 24px;
-        }
-
-        .flag-name {
-          display: block;
-          font-size: 14px;
-          font-weight: 600;
-          color: var(--color-text);
-        }
-
-        .flag-description {
-          display: block;
-          font-size: 12px;
-          color: var(--color-text-muted);
-          margin-top: 2px;
-        }
-
         /* Location PINs */
         .locations-grid {
           display: grid;
@@ -1819,7 +1645,6 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
             justify-content: center;
           }
 
-          .flags-grid,
           .locations-grid {
             grid-template-columns: 1fr;
           }
