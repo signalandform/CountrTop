@@ -147,7 +147,6 @@ type AddLocationFormProps = {
   }) => Promise<void>;
   onCancel?: () => void;
   creating: boolean;
-  error: string | null;
   submitLabel: string;
   showCancelButton: boolean;
 };
@@ -163,7 +162,6 @@ function AddLocationForm({
   onSubmit,
   onCancel,
   creating,
-  error,
   submitLabel,
   showCancelButton
 }: AddLocationFormProps) {
@@ -374,7 +372,6 @@ export default function LocationsPage({
   vendorName, 
   vendor,
   locations: initialLocations,
-  planId,
   canAddMoreLocations,
   error 
 }: LocationsPageProps) {
@@ -548,7 +545,6 @@ export default function LocationsPage({
                             setCreateError(null);
                           }}
                           creating={creating}
-                          error={createError}
                           submitLabel="Add location"
                           showCancelButton={true}
                         />

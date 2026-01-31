@@ -1,4 +1,5 @@
 import Head from 'next/head';
+import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
 import { getBrowserSupabaseClient } from '../lib/supabaseBrowser';
@@ -106,7 +107,7 @@ export default function MfaChallengePage() {
           <div className="mfa-container">
             <h1>Sign in required</h1>
             <p>This page requires an active sign-in. Please sign in first.</p>
-            <a href="/login" className="mfa-link">Go to sign in</a>
+            <Link href="/login" className="mfa-link">Go to sign in</Link>
           </div>
         </main>
         <style jsx>{`
@@ -159,7 +160,7 @@ export default function MfaChallengePage() {
               {submitting ? 'Verifying…' : 'Verify'}
             </button>
           </form>
-          <a href="/login" className="mfa-link back-link">Use a different account</a>
+          <Link href="/login" className="mfa-link back-link">Use a different account</Link>
         </div>
       </main>
       <style jsx>{`
