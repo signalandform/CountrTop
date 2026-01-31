@@ -481,6 +481,8 @@ export type Database = {
         Row: {
           vendor_id: string;
           plan_id: string;
+          status: string | null;
+          current_period_end: string | null;
           stripe_customer_id: string | null;
           stripe_subscription_id: string | null;
           created_at: string;
@@ -489,6 +491,8 @@ export type Database = {
         Insert: {
           vendor_id: string;
           plan_id?: string;
+          status?: string | null;
+          current_period_end?: string | null;
           stripe_customer_id?: string | null;
           stripe_subscription_id?: string | null;
           created_at?: string;
@@ -1409,7 +1413,7 @@ export class SupabaseDataClient implements DataClient {
     try {
       const { data, error } = await this.client
         .from('vendor_billing')
-        .select('vendor_id,plan_id,stripe_customer_id,stripe_subscription_id,created_at,updated_at')
+        .select('vendor_id,plan_id,status,current_period_end,stripe_customer_id,stripe_subscription_id,created_at,updated_at')
         .eq('vendor_id', vendorId)
         .maybeSingle();
       if (error) throw error;
@@ -1422,6 +1426,8 @@ export class SupabaseDataClient implements DataClient {
       return {
         vendorId: row.vendor_id,
         planId: row.plan_id as import('@countrtop/models').BillingPlanId,
+        status: row.status ?? undefined,
+        currentPeriodEnd: row.current_period_end ?? undefined,
         stripeCustomerId: row.stripe_customer_id ?? undefined,
         stripeSubscriptionId: row.stripe_subscription_id ?? undefined,
         createdAt: row.created_at,

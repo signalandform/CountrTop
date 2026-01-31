@@ -196,6 +196,8 @@ export type SupportTicket = {
 export type VendorBilling = {
   vendorId: string;
   planId: BillingPlanId;
+  status?: string | null;
+  currentPeriodEnd?: string | null;
   stripeCustomerId?: string | null;
   stripeSubscriptionId?: string | null;
   createdAt: string;
@@ -245,6 +247,8 @@ export type OrderHistoryEntry = {
   fulfillmentStatus?: string | null;
   readyAt?: string | null;
   completedAt?: string | null;
+  /** Customer feedback: thumbs_up or thumbs_down */
+  customerFeedbackRating?: 'thumbs_up' | 'thumbs_down' | null;
 };
 
 export type OpsOrder = {
