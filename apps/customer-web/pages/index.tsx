@@ -226,6 +226,12 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
   } | null>(null);
   const [, setTrackingLoading] = useState(false);
   const [loyalty, setLoyalty] = useState<number | null>(null);
+  const [loyaltyRedemptionRules, setLoyaltyRedemptionRules] = useState<{
+    centsPerPoint: number;
+    minPoints: number;
+    maxPointsPerOrder: number;
+  } | null>(null);
+  const [redeemPointsToUse, setRedeemPointsToUse] = useState(0);
 
   // Track what user data we've loaded to prevent duplicate fetches
   // Pickup confirmation persistence
@@ -265,6 +271,16 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
   const cartTotal = useMemo(() => cart.reduce((sum, i) => sum + i.price * i.quantity, 0), [cart]);
   const cartCurrency = cart[0]?.currency ?? 'USD';
   const appleEnabled = process.env.NEXT_PUBLIC_APPLE_SIGNIN === 'true';
+  const maxRedeemPoints = useMemo(() => {
+    if (loyalty === null || !loyaltyRedemptionRules || cart.length === 0) return 0;
+    const { centsPerPoint, maxPointsPerOrder } = loyaltyRedemptionRules;
+    return Math.min(
+      loyalty,
+      maxPointsPerOrder,
+      Math.floor(cartTotal / centsPerPoint)
+    );
+  }, [loyalty, loyaltyRedemptionRules, cart.length, cartTotal]);
+
   const recentOrder = useMemo(() => {
     if (orders.length === 0) return null;
     return orders[0]; // Orders are already sorted by date (most recent first)
@@ -310,6 +326,18 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
     },
     postToNative
   });
+
+  const canRedeemPoints =
+    !!user &&
+    loyalty !== null &&
+    !!loyaltyRedemptionRules &&
+    loyalty >= loyaltyRedemptionRules.minPoints &&
+    cart.length > 0 &&
+    maxRedeemPoints >= loyaltyRedemptionRules.minPoints;
+
+  useEffect(() => {
+    if (redeemPointsToUse > maxRedeemPoints) setRedeemPointsToUse(Math.max(0, maxRedeemPoints));
+  }, [maxRedeemPoints, redeemPointsToUse]);
 
   const signOut = useCallback(async () => {
     await baseSignOut();
@@ -381,12 +409,16 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
         setOrdersError(ordersResult.error);
       }
 
-      // Fetch loyalty
-      const loyaltyResult = await apiFetch<{ balance: number }>(
-        `/api/vendors/${vendorSlug}/loyalty/${encodeURIComponent(userId)}`
-      );
+      // Fetch loyalty (and redemption rules when loyalty is enabled)
+      const loyaltyResult = await apiFetch<{
+        balance: number;
+        redemptionRules?: { centsPerPoint: number; minPoints: number; maxPointsPerOrder: number };
+      }>(`/api/vendors/${vendorSlug}/loyalty/${encodeURIComponent(userId)}`);
       if (loyaltyResult.ok) {
         setLoyalty(loyaltyResult.data.balance ?? 0);
+        setLoyaltyRedemptionRules(loyaltyResult.data.redemptionRules ?? null);
+      } else {
+        setLoyaltyRedemptionRules(null);
       }
 
       setOrdersLoading(false);
@@ -479,6 +511,7 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
         body: JSON.stringify({
           userId: user?.id ?? null,
           locationId: selectedLocation?.squareLocationId,
+          redeemPoints: redeemPointsToUse > 0 ? redeemPointsToUse : undefined,
           items: cart.map((i) => ({
             id: i.id,
             name: i.name,
@@ -1102,6 +1135,37 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
                 <span>Total</span>
                 <strong>{formatCurrency(cartTotal, cartCurrency)}</strong>
               </div>
+              {canRedeemPoints && loyaltyRedemptionRules && (
+                <div className="loyalty-redeem">
+                  <label className="loyalty-redeem-label">Use points</label>
+                  <div className="loyalty-redeem-row">
+                    <input
+                      type="number"
+                      min={0}
+                      max={maxRedeemPoints}
+                      value={redeemPointsToUse || ''}
+                      onChange={(e) => {
+                        const v = e.target.value === '' ? 0 : parseInt(e.target.value, 10);
+                        setRedeemPointsToUse(Number.isNaN(v) ? 0 : Math.max(0, Math.min(maxRedeemPoints, v)));
+                      }}
+                      placeholder="0"
+                      className="loyalty-redeem-input"
+                    />
+                    <button
+                      type="button"
+                      className="loyalty-redeem-max"
+                      onClick={() => setRedeemPointsToUse(maxRedeemPoints)}
+                    >
+                      Use max
+                    </button>
+                  </div>
+                  {redeemPointsToUse > 0 && (
+                    <span className="loyalty-redeem-off">
+                      = {formatCurrency(redeemPointsToUse * loyaltyRedemptionRules.centsPerPoint, cartCurrency)} off
+                    </span>
+                  )}
+                </div>
+              )}
               {canOrder && (
                 <div className="pickup-eta">
                   Pickup ETA: ~{pickupEtaMinutes} min
@@ -1924,6 +1988,42 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
             justify-content: space-between;
             font-size: 16px;
             margin-bottom: 12px;
+          }
+
+          .loyalty-redeem {
+            margin-bottom: 12px;
+          }
+          .loyalty-redeem-label {
+            display: block;
+            font-size: 13px;
+            color: var(--color-text-muted);
+            margin-bottom: 6px;
+          }
+          .loyalty-redeem-row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+          }
+          .loyalty-redeem-input {
+            width: 80px;
+            padding: 8px 10px;
+            border: 1px solid var(--color-border);
+            border-radius: 8px;
+            font-size: 14px;
+          }
+          .loyalty-redeem-max {
+            padding: 8px 12px;
+            border: 1px solid var(--color-border);
+            border-radius: 8px;
+            background: var(--color-bg);
+            font-size: 13px;
+            cursor: pointer;
+          }
+          .loyalty-redeem-off {
+            font-size: 13px;
+            color: var(--color-text-muted);
+            margin-top: 4px;
+            display: inline-block;
           }
 
           .pickup-eta {

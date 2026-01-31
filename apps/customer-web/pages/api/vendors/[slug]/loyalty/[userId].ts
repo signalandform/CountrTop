@@ -7,6 +7,8 @@ type LoyaltyResponse =
       ok: true;
       balance: number;
       entries: Array<{ id: string; pointsDelta: number; createdAt: string; orderId: string }>;
+      /** Redemption rules when loyalty is enabled (for checkout UI) */
+      redemptionRules?: { centsPerPoint: number; minPoints: number; maxPointsPerOrder: number };
     }
   | { ok: false; error: string };
 
@@ -33,11 +35,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
   }
 
   try {
-    const [entries, balance] = await Promise.all([
+    const loyaltyEnabled = await dataClient.getVendorFeatureFlag(vendor.id, 'customer_loyalty_enabled');
+    const [entries, balance, settings] = await Promise.all([
       dataClient.listLoyaltyEntriesForUser(vendor.id, userId),
-      dataClient.getLoyaltyBalance(vendor.id, userId)
+      dataClient.getLoyaltyBalance(vendor.id, userId),
+      loyaltyEnabled ? dataClient.getVendorLoyaltySettings(vendor.id) : Promise.resolve(null)
     ]);
-    return res.status(200).json({
+    const response: LoyaltyResponse = {
       ok: true,
       balance,
       entries: entries.map((entry) => ({
@@ -46,7 +50,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         createdAt: entry.createdAt,
         orderId: entry.orderId
       }))
-    });
+    };
+    if (loyaltyEnabled && settings) {
+      response.redemptionRules = {
+        centsPerPoint: settings.centsPerPoint,
+        minPoints: settings.minPointsToRedeem,
+        maxPointsPerOrder: settings.maxPointsPerOrder
+      };
+    }
+    return res.status(200).json(response);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to load loyalty';
     return res.status(500).json({ ok: false, error: message });

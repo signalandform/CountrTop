@@ -353,6 +353,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
           pointsDelta: points
         });
       }
+      // Record redemption (negative points) if order had loyalty discount
+      const redeemPointsRaw = order?.metadata?.ct_redeem_points;
+      const redeemPoints = typeof redeemPointsRaw === 'string' ? parseInt(redeemPointsRaw, 10) : Number(redeemPointsRaw);
+      if (userId && !Number.isNaN(redeemPoints) && redeemPoints > 0) {
+        const entries = await dataClient.listLoyaltyEntriesForUser(vendor.id, userId);
+        const alreadyRedeemed = entries.some((e) => e.orderId === snapshot.id && e.pointsDelta < 0);
+        if (!alreadyRedeemed) {
+          await dataClient.recordLoyaltyEntry({
+            id: crypto.randomUUID(),
+            vendorId: vendor.id,
+            userId,
+            orderId: snapshot.id,
+            pointsDelta: -redeemPoints
+          });
+        }
+      }
     }
 
     // Send order confirmation email (async, don't block response)

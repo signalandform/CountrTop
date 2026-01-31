@@ -173,6 +173,26 @@ export class MockDataClient implements DataClient {
       .reduce((sum, entry) => sum + entry.pointsDelta, 0);
   }
 
+  private loyaltySettings = new Map<string, { centsPerPoint: number; minPointsToRedeem: number; maxPointsPerOrder: number }>();
+
+  async getVendorLoyaltySettings(vendorId: string): Promise<import('./models').VendorLoyaltySettings> {
+    const stored = this.loyaltySettings.get(vendorId);
+    return {
+      vendorId,
+      centsPerPoint: stored?.centsPerPoint ?? 1,
+      minPointsToRedeem: stored?.minPointsToRedeem ?? 100,
+      maxPointsPerOrder: stored?.maxPointsPerOrder ?? 500
+    };
+  }
+
+  async setVendorLoyaltySettings(
+    vendorId: string,
+    settings: { centsPerPoint: number; minPointsToRedeem: number; maxPointsPerOrder: number }
+  ): Promise<import('./models').VendorLoyaltySettings> {
+    this.loyaltySettings.set(vendorId, settings);
+    return { vendorId, ...settings };
+  }
+
   async upsertPushDevice(device: PushDeviceInput): Promise<PushDevice> {
     const now = new Date().toISOString();
     const existingIndex = this.pushDevices.findIndex(

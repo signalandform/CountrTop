@@ -183,6 +183,17 @@ export type VendorInsights = {
   topReorderedItems: { label: string; count: number }[];
 };
 
+/** Loyalty redemption rules per vendor (points-as-discount at checkout) */
+export type VendorLoyaltySettings = {
+  vendorId: string;
+  /** Redemption rate: e.g. 1 = 100 points -> $1 (100 cents) */
+  centsPerPoint: number;
+  /** Minimum points required to redeem in one order */
+  minPointsToRedeem: number;
+  /** Maximum points that can be redeemed per order */
+  maxPointsPerOrder: number;
+};
+
 // Menu and Catalog Types
 export type MenuItem = {
   id: string;

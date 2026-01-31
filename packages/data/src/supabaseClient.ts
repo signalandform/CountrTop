@@ -25,6 +25,7 @@ import {
   SquareOrder,
   User,
   Vendor,
+  VendorLoyaltySettings,
   VendorLocation,
   VendorStatus
 } from './models';
@@ -389,6 +390,28 @@ export type Database = {
           updated_at?: string;
         };
         Update: Partial<Database['public']['Tables']['vendor_feature_flags']['Insert']>;
+        Relationships: [];
+      };
+      vendor_loyalty_settings: {
+        Row: {
+          id: string;
+          vendor_id: string;
+          cents_per_point: number;
+          min_points_to_redeem: number;
+          max_points_per_order: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          vendor_id: string;
+          cents_per_point?: number;
+          min_points_to_redeem?: number;
+          max_points_per_order?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['vendor_loyalty_settings']['Insert']>;
         Relationships: [];
       };
       vendor_location_pins: {
@@ -2660,6 +2683,81 @@ export class SupabaseDataClient implements DataClient {
       return flags;
     } catch (error) {
       logQueryPerformance('getVendorFeatureFlags', startTime, false, error);
+      throw error;
+    }
+  }
+
+  /** Default loyalty redemption rules when no row exists */
+  private static readonly DEFAULT_LOYALTY_SETTINGS: Omit<VendorLoyaltySettings, 'vendorId'> = {
+    centsPerPoint: 1,
+    minPointsToRedeem: 100,
+    maxPointsPerOrder: 500
+  };
+
+  /**
+   * Gets loyalty redemption settings for a vendor; returns defaults when no row exists
+   */
+  async getVendorLoyaltySettings(vendorId: string): Promise<VendorLoyaltySettings> {
+    const startTime = Date.now();
+    try {
+      const { data, error } = await this.client
+        .from('vendor_loyalty_settings')
+        .select('vendor_id, cents_per_point, min_points_to_redeem, max_points_per_order')
+        .eq('vendor_id', vendorId)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      if (!data) {
+        logQueryPerformance('getVendorLoyaltySettings', startTime, true);
+        return {
+          vendorId,
+          ...SupabaseDataClient.DEFAULT_LOYALTY_SETTINGS
+        };
+      }
+
+      const row = data as Database['public']['Tables']['vendor_loyalty_settings']['Row'];
+      logQueryPerformance('getVendorLoyaltySettings', startTime, true);
+      return {
+        vendorId: row.vendor_id,
+        centsPerPoint: row.cents_per_point,
+        minPointsToRedeem: row.min_points_to_redeem,
+        maxPointsPerOrder: row.max_points_per_order
+      };
+    } catch (error) {
+      logQueryPerformance('getVendorLoyaltySettings', startTime, false, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Upserts loyalty redemption settings for a vendor
+   */
+  async setVendorLoyaltySettings(
+    vendorId: string,
+    settings: { centsPerPoint: number; minPointsToRedeem: number; maxPointsPerOrder: number }
+  ): Promise<VendorLoyaltySettings> {
+    const startTime = Date.now();
+    try {
+      const { error } = await this.client
+        .from('vendor_loyalty_settings')
+        .upsert(
+          {
+            vendor_id: vendorId,
+            cents_per_point: settings.centsPerPoint,
+            min_points_to_redeem: settings.minPointsToRedeem,
+            max_points_per_order: settings.maxPointsPerOrder,
+            updated_at: new Date().toISOString()
+          },
+          { onConflict: 'vendor_id' }
+        );
+
+      if (error) throw error;
+
+      logQueryPerformance('setVendorLoyaltySettings', startTime, true);
+      return { vendorId, ...settings };
+    } catch (error) {
+      logQueryPerformance('setVendorLoyaltySettings', startTime, false, error);
       throw error;
     }
   }

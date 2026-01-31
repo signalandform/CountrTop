@@ -65,6 +65,14 @@ export interface DataClient {
   listLoyaltyEntriesForUser(vendorId: string, userId: string): Promise<LoyaltyLedgerEntry[]>;
   getLoyaltyBalance(vendorId: string, userId: string): Promise<number>;
 
+  /** Loyalty redemption rules for a vendor; returns defaults when no row exists */
+  getVendorLoyaltySettings(vendorId: string): Promise<import('./models').VendorLoyaltySettings>;
+  /** Upsert loyalty redemption settings for a vendor */
+  setVendorLoyaltySettings(
+    vendorId: string,
+    settings: { centsPerPoint: number; minPointsToRedeem: number; maxPointsPerOrder: number }
+  ): Promise<import('./models').VendorLoyaltySettings>;
+
   upsertPushDevice(device: PushDeviceInput): Promise<PushDevice>;
   listPushDevicesForUser(userId: string): Promise<PushDevice[]>;
 

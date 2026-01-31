@@ -26,6 +26,15 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
   const [flagsLoading, setFlagsLoading] = useState(true);
   const [flagsSaving, setFlagsSaving] = useState(false);
 
+  // Loyalty redemption settings state
+  const [loyaltySettings, setLoyaltySettings] = useState<{
+    centsPerPoint: number;
+    minPointsToRedeem: number;
+    maxPointsPerOrder: number;
+  }>({ centsPerPoint: 1, minPointsToRedeem: 100, maxPointsPerOrder: 500 });
+  const [loyaltySettingsLoading, setLoyaltySettingsLoading] = useState(true);
+  const [loyaltySettingsSaving, setLoyaltySettingsSaving] = useState(false);
+
   // Location PINs state
   const [locations, setLocations] = useState<Array<{ locationId: string; locationName: string; hasPin: boolean }>>([]);
   const [locationsLoading, setLocationsLoading] = useState(true);
@@ -67,6 +76,28 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
       }
     };
     fetchFlags();
+  }, [vendorSlug]);
+
+  // Fetch loyalty redemption settings on mount
+  useEffect(() => {
+    const fetchLoyaltySettings = async () => {
+      try {
+        const response = await fetch(`/api/vendors/${vendorSlug}/loyalty-settings`);
+        const data = await response.json();
+        if (data.success && data.data) {
+          setLoyaltySettings({
+            centsPerPoint: data.data.centsPerPoint ?? 1,
+            minPointsToRedeem: data.data.minPointsToRedeem ?? 100,
+            maxPointsPerOrder: data.data.maxPointsPerOrder ?? 500
+          });
+        }
+      } catch (err) {
+        console.error('Failed to fetch loyalty settings:', err);
+      } finally {
+        setLoyaltySettingsLoading(false);
+      }
+    };
+    fetchLoyaltySettings();
   }, [vendorSlug]);
 
   // Fetch locations and PIN status on mount
@@ -130,6 +161,29 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
       alert('Failed to update feature flag. Please try again.');
     } finally {
       setFlagsSaving(false);
+    }
+  };
+
+  const handleSaveLoyaltySettings = async () => {
+    setLoyaltySettingsSaving(true);
+    try {
+      const response = await fetch(`/api/vendors/${vendorSlug}/loyalty-settings`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(loyaltySettings)
+      });
+      const data = await response.json();
+      if (data.success) {
+        setLoyaltySettings(data.data);
+      } else {
+        throw new Error(data.error || 'Failed to save loyalty settings');
+      }
+    } catch (err) {
+      console.error('Failed to save loyalty settings:', err);
+      alert('Failed to save loyalty settings. Please try again.');
+    } finally {
+      setLoyaltySettingsSaving(false);
     }
   };
 
@@ -476,6 +530,77 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
                     </div>
                   </div>
                 </label>
+
+                {featureFlags['customer_loyalty_enabled'] && (
+                  <div className="loyalty-redemption-settings">
+                    <p className="section-description" style={{ marginTop: 12, marginBottom: 8 }}>
+                      Redemption rules (e.g. 100 pts = $1 when cents per point = 1)
+                    </p>
+                    {loyaltySettingsLoading ? (
+                      <p className="muted">Loading...</p>
+                    ) : (
+                      <div className="loyalty-settings-fields">
+                        <div className="form-group">
+                          <label>Cents per point</label>
+                          <input
+                            type="number"
+                            min={0}
+                            step={1}
+                            value={loyaltySettings.centsPerPoint}
+                            onChange={(e) =>
+                              setLoyaltySettings(prev => ({
+                                ...prev,
+                                centsPerPoint: Math.max(0, parseInt(e.target.value, 10) || 0)
+                              }))
+                            }
+                            className="form-input"
+                          />
+                        </div>
+                        <div className="form-group">
+                          <label>Min points to redeem</label>
+                          <input
+                            type="number"
+                            min={0}
+                            step={1}
+                            value={loyaltySettings.minPointsToRedeem}
+                            onChange={(e) =>
+                              setLoyaltySettings(prev => ({
+                                ...prev,
+                                minPointsToRedeem: Math.max(0, parseInt(e.target.value, 10) || 0)
+                              }))
+                            }
+                            className="form-input"
+                          />
+                        </div>
+                        <div className="form-group">
+                          <label>Max points per order</label>
+                          <input
+                            type="number"
+                            min={0}
+                            step={1}
+                            value={loyaltySettings.maxPointsPerOrder}
+                            onChange={(e) =>
+                              setLoyaltySettings(prev => ({
+                                ...prev,
+                                maxPointsPerOrder: Math.max(0, parseInt(e.target.value, 10) || 0)
+                              }))
+                            }
+                            className="form-input"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleSaveLoyaltySettings}
+                          disabled={loyaltySettingsSaving}
+                          className="btn-secondary"
+                          style={{ alignSelf: 'flex-start' }}
+                        >
+                          {loyaltySettingsSaving ? 'Saving…' : 'Save redemption rules'}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -770,6 +895,16 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
           font-family: inherit;
           transition: border-color 0.2s;
           box-sizing: border-box;
+        }
+
+        .loyalty-settings-fields {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 16px;
+          align-items: flex-end;
+        }
+        .loyalty-settings-fields .form-group {
+          min-width: 140px;
         }
 
         .form-input:focus {
