@@ -8,6 +8,8 @@ import { requireOpsAdmin } from '../lib/auth';
 
 type POSProvider = 'square' | 'clover' | 'toast';
 
+type PlanId = 'beta' | 'trial' | 'starter' | 'pro';
+
 type Vendor = {
   id: string;
   slug: string;
@@ -25,6 +27,16 @@ type Vendor = {
   admin_user_id?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
+  planId?: string;
+  billingStatus?: string | null;
+  currentPeriodEnd?: string | null;
+};
+
+const PLAN_LABELS: Record<string, string> = {
+  beta: 'Beta',
+  trial: 'Trial',
+  starter: 'Starter',
+  pro: 'Pro'
 };
 
 const POS_LABELS: Record<POSProvider, string> = {
@@ -70,6 +82,7 @@ export default function VendorsPage({ userEmail }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [posFilter, setPosFilter] = useState<POSProvider | 'all'>('all');
+  const [planFilter, setPlanFilter] = useState<PlanId | 'all'>('all');
 
   useEffect(() => {
     fetchVendors();
@@ -106,6 +119,10 @@ export default function VendorsPage({ userEmail }: Props) {
     if (posFilter !== 'all' && vendor.pos_provider !== posFilter) {
       return false;
     }
+    // Plan filter
+    if (planFilter !== 'all' && (vendor.planId ?? 'beta') !== planFilter) {
+      return false;
+    }
     // Search filter
     if (!searchQuery) return true;
     const query = searchQuery.toLowerCase();
@@ -123,6 +140,13 @@ export default function VendorsPage({ userEmail }: Props) {
     acc[v.pos_provider] = (acc[v.pos_provider] || 0) + 1;
     return acc;
   }, {} as Record<POSProvider, number>);
+
+  // Calculate plan counts for summary
+  const planCounts = vendors.reduce((acc, v) => {
+    const plan = v.planId ?? 'beta';
+    acc[plan] = (acc[plan] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
 
   return (
     <>
@@ -178,6 +202,40 @@ export default function VendorsPage({ userEmail }: Props) {
               <span className="pos-icon">🍞</span> Toast ({posCounts.toast || 0})
             </button>
             </div>
+
+          {/* Plan Filter Tabs */}
+            <div className="plan-filter-tabs">
+            <button
+              className={`plan-tab ${planFilter === 'all' ? 'active' : ''}`}
+              onClick={() => setPlanFilter('all')}
+            >
+              All plans ({vendors.length})
+            </button>
+            <button
+              className={`plan-tab ${planFilter === 'beta' ? 'active' : ''}`}
+              onClick={() => setPlanFilter('beta')}
+            >
+              Beta ({planCounts.beta ?? 0})
+            </button>
+            <button
+              className={`plan-tab ${planFilter === 'trial' ? 'active' : ''}`}
+              onClick={() => setPlanFilter('trial')}
+            >
+              Trial ({planCounts.trial ?? 0})
+            </button>
+            <button
+              className={`plan-tab ${planFilter === 'starter' ? 'active' : ''}`}
+              onClick={() => setPlanFilter('starter')}
+            >
+              Starter ({planCounts.starter ?? 0})
+            </button>
+            <button
+              className={`plan-tab ${planFilter === 'pro' ? 'active' : ''}`}
+              onClick={() => setPlanFilter('pro')}
+            >
+              Pro ({planCounts.pro ?? 0})
+            </button>
+            </div>
           </header>
 
         <div className="page-content">
@@ -203,6 +261,7 @@ export default function VendorsPage({ userEmail }: Props) {
                   <tr>
                     <th>Name</th>
                     <th>Slug</th>
+                    <th>Plan</th>
                     <th>POS</th>
                     <th>External ID</th>
                     <th>Status</th>
@@ -218,6 +277,11 @@ export default function VendorsPage({ userEmail }: Props) {
                       </td>
                       <td>
                         <code className="slug-code">{vendor.slug}</code>
+                      </td>
+                      <td>
+                        <span className="plan-badge">
+                          {PLAN_LABELS[vendor.planId ?? 'beta'] ?? vendor.planId ?? 'Beta'}
+                        </span>
                       </td>
                       <td>
                         <span 
@@ -583,6 +647,49 @@ export default function VendorsPage({ userEmail }: Props) {
 
           .pos-icon {
             font-size: 12px;
+          }
+
+          /* Plan Filter Tabs */
+          .plan-filter-tabs {
+            display: flex;
+            gap: 8px;
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid var(--color-border);
+          }
+
+          .plan-tab {
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: 1px solid var(--color-border);
+            background: var(--ct-bg-surface);
+            color: var(--color-text-muted);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+          }
+
+          .plan-tab:hover {
+            background: var(--color-bg-warm);
+            color: var(--color-text);
+          }
+
+          .plan-tab.active {
+            background: rgba(232, 93, 4, 0.15);
+            border-color: var(--color-primary);
+            color: var(--color-primary);
+          }
+
+          .plan-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            background: rgba(232, 93, 4, 0.12);
+            color: var(--color-primary);
           }
 
           /* POS Badge in table */

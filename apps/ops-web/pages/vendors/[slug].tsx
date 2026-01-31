@@ -5,6 +5,14 @@ import { OpsAdminLayout } from '../../components/OpsAdminLayout';
 
 import { requireOpsAdmin } from '../../lib/auth';
 
+type BillingInfo = {
+  planId: string;
+  status: string;
+  currentPeriodEnd: string | null;
+  stripeCustomerId?: string | null;
+  stripeSubscriptionId?: string | null;
+};
+
 type Vendor = {
   id: string;
   slug: string;
@@ -25,6 +33,14 @@ type Vendor = {
   admin_user_id?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
+  billing?: BillingInfo | null;
+};
+
+const PLAN_LABELS: Record<string, string> = {
+  beta: 'Beta',
+  trial: 'Trial',
+  starter: 'Starter',
+  pro: 'Pro'
 };
 
 type Props = {
@@ -309,6 +325,10 @@ export default function VendorDetailPage({ userEmail, vendorSlug }: Props) {
 
               <div className="detail-section">
                 <h2>Feature Flags</h2>
+                <p className="flags-context">
+                  Feature flags are available on Starter and Pro plans. This vendor is on{' '}
+                  <strong>{PLAN_LABELS[vendor.billing?.planId ?? 'beta'] ?? vendor.billing?.planId ?? 'Beta'}</strong>.
+                </p>
                 {flagsLoading ? (
                   <div className="flags-loading">
                     <p>Loading feature flags...</p>
@@ -548,6 +568,16 @@ export default function VendorDetailPage({ userEmail, vendorSlug }: Props) {
           .status-badge.inactive {
             background: rgba(239, 68, 68, 0.2);
             color: #fca5a5;
+          }
+
+          .flags-context {
+            margin: 0 0 20px;
+            font-size: 14px;
+            color: var(--color-text-muted);
+          }
+
+          .flags-context strong {
+            color: var(--color-text);
           }
 
           .flags-loading,

@@ -148,32 +148,6 @@ export default function Home() {
               </div>
             </div>
           </div>
-          <div className="kds-mockup">
-            <div className="kds-header">Kitchen Display</div>
-            <div className="kds-tickets">
-              <div className="kds-ticket kds-ticket-new">
-                <div className="ticket-header">
-                  <span className="ticket-id">#A7K2</span>
-                  <span className="ticket-time">2:34</span>
-                </div>
-                <div className="ticket-items">
-                  <div>1× Margherita Pizza</div>
-                  <div>1× Garlic Knots</div>
-                </div>
-                <div className="ticket-status">NEW</div>
-              </div>
-              <div className="kds-ticket kds-ticket-progress">
-                <div className="ticket-header">
-                  <span className="ticket-id">#B3M9</span>
-                  <span className="ticket-time">5:12</span>
-                </div>
-                <div className="ticket-items">
-                  <div>2× Pepperoni Pizza</div>
-                </div>
-                <div className="ticket-status">COOKING</div>
-              </div>
-            </div>
-          </div>
           </div>
         </div>
       </section>
@@ -896,74 +870,6 @@ export default function Home() {
           cursor: pointer;
         }
 
-        .kds-mockup {
-          width: 300px;
-          background: var(--color-bg-dark);
-          border-radius: 16px;
-          padding: 1rem;
-          box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
-          animation: float 6s ease-in-out infinite;
-          animation-delay: -3s;
-          align-self: flex-start;
-          margin-left: 2rem;
-        }
-        .kds-header {
-          color: white;
-          font-weight: 600;
-          font-size: 0.875rem;
-          margin-bottom: 1rem;
-          opacity: 0.7;
-        }
-        .kds-tickets {
-          display: flex;
-          flex-direction: column;
-          gap: 0.75rem;
-        }
-        .kds-ticket {
-          background: rgba(255,255,255,0.05);
-          border-radius: 12px;
-          padding: 1rem;
-          border-left: 4px solid;
-        }
-        .kds-ticket-new {
-          border-color: var(--color-primary);
-        }
-        .kds-ticket-progress {
-          border-color: var(--color-accent);
-        }
-        .ticket-header {
-          display: flex;
-          justify-content: space-between;
-          margin-bottom: 0.5rem;
-        }
-        .ticket-id {
-          color: white;
-          font-weight: 700;
-          font-family: var(--font-display);
-        }
-        .ticket-time {
-          color: rgba(255,255,255,0.5);
-          font-size: 0.8125rem;
-        }
-        .ticket-items {
-          color: rgba(255,255,255,0.8);
-          font-size: 0.875rem;
-          margin-bottom: 0.75rem;
-        }
-        .ticket-items div {
-          padding: 0.125rem 0;
-        }
-        .ticket-status {
-          display: inline-block;
-          padding: 0.25rem 0.5rem;
-          background: rgba(255,255,255,0.1);
-          border-radius: 4px;
-          font-size: 0.6875rem;
-          font-weight: 700;
-          color: rgba(255,255,255,0.7);
-          letter-spacing: 0.05em;
-        }
-
         /* Social Proof */
         .social-proof {
           padding: 4rem 0;
@@ -1597,9 +1503,6 @@ export default function Home() {
           }
           .phone-mockup {
             width: 220px;
-          }
-          .kds-mockup {
-            width: 260px;
           }
           .wins-grid {
             grid-template-columns: repeat(2, 1fr);
