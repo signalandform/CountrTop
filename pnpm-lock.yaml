@@ -245,6 +245,9 @@ importers:
       '@countrtop/data':
         specifier: workspace:*
         version: link:../../packages/data
+      '@countrtop/email':
+        specifier: workspace:*
+        version: link:../../packages/email
       '@countrtop/models':
         specifier: workspace:*
         version: link:../../packages/models
