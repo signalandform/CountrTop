@@ -45,6 +45,10 @@ export default async function handler(
     await dataClient.updateOrderSnapshotFeedback(snapshot.id, rating);
     return res.status(200).json({ ok: true });
   } catch (error) {
+    const err = error as { code?: string; message?: string };
+    if (err?.code === '42703') {
+      return res.status(200).json({ ok: false, error: 'Feedback not available yet' });
+    }
     const message = error instanceof Error ? error.message : 'Failed to save feedback';
     return res.status(500).json({ ok: false, error: message });
   }
