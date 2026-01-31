@@ -14,6 +14,7 @@ type OrderHistoryResponse =
         fulfillmentStatus?: string | null;
         readyAt?: string | null;
         completedAt?: string | null;
+        customerFeedbackRating?: 'thumbs_up' | 'thumbs_down' | null;
       }>;
     }
   | { ok: false; error: string };
@@ -50,7 +51,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         snapshotJson: order.snapshotJson,
         fulfillmentStatus: order.fulfillmentStatus,
         readyAt: order.readyAt,
-        completedAt: order.completedAt
+        completedAt: order.completedAt,
+        customerFeedbackRating: order.customerFeedbackRating ?? null
       }))
     });
   } catch (error) {

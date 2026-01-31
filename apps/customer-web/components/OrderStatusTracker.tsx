@@ -2,6 +2,13 @@ import React from 'react';
 
 export type OrderStatusState = 'placed' | 'preparing' | 'ready' | 'completed' | 'unknown';
 
+export type CompletedCtaProps = {
+  contactPhone: string;
+  reviewUrl?: string | null;
+  feedbackRating?: 'thumbs_up' | 'thumbs_down' | null;
+  onFeedback: (rating: 'thumbs_up' | 'thumbs_down') => void;
+};
+
 type OrderStatusTrackerProps = {
   status: OrderStatusState;
   shortcode?: string | null;
@@ -12,6 +19,7 @@ type OrderStatusTrackerProps = {
   currency?: string;
   placedAt?: string;
   compact?: boolean;
+  completedCta?: CompletedCtaProps;
 };
 
 const getStatusLabel = (s: OrderStatusState) => {
@@ -44,6 +52,7 @@ export function OrderStatusTracker({
   currency = 'USD',
   placedAt,
   compact = false,
+  completedCta,
 }: OrderStatusTrackerProps) {
   const formatCurrency = (cents: number, curr: string) =>
     new Intl.NumberFormat('en-US', { style: 'currency', currency: curr }).format(cents / 100);
@@ -117,6 +126,56 @@ export function OrderStatusTracker({
         <div className="ready-shortcode">
           <div className="shortcode-label">Show this code at pickup</div>
           <div className="shortcode-value">#{shortcode}</div>
+        </div>
+      )}
+
+      {/* Completed CTA: feedback, review link, contact */}
+      {status === 'completed' && completedCta && (
+        <div className="completed-cta">
+          <div className="cta-row">
+            <span className="cta-label">How was your food?</span>
+            {completedCta.feedbackRating ? (
+              <span className="cta-feedback-thanks">
+                Thanks for your feedback! {completedCta.feedbackRating === 'thumbs_up' ? '👍' : '👎'}
+              </span>
+            ) : (
+              <div className="cta-thumbs">
+                <button
+                  type="button"
+                  className="cta-thumb"
+                  onClick={() => completedCta.onFeedback('thumbs_up')}
+                  aria-label="Thumbs up"
+                >
+                  👍
+                </button>
+                <button
+                  type="button"
+                  className="cta-thumb"
+                  onClick={() => completedCta.onFeedback('thumbs_down')}
+                  aria-label="Thumbs down"
+                >
+                  👎
+                </button>
+              </div>
+            )}
+          </div>
+          {completedCta.reviewUrl && (
+            <a
+              href={completedCta.reviewUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="cta-button cta-review"
+            >
+              Leave us a review
+            </a>
+          )}
+          {completedCta.contactPhone ? (
+            <a href={`tel:${completedCta.contactPhone.replace(/\D/g, '')}`} className="cta-button cta-contact">
+              Contact for help
+            </a>
+          ) : (
+            <span className="cta-muted">Contact the restaurant directly for help</span>
+          )}
         </div>
       )}
 
@@ -331,6 +390,93 @@ export function OrderStatusTracker({
           font-size: 32px;
           font-weight: 800;
           color: var(--color-success);
+        }
+
+        /* Completed CTA */
+        .completed-cta {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          margin-bottom: 16px;
+          padding-top: 4px;
+        }
+
+        .compact .completed-cta {
+          margin-bottom: 0;
+        }
+
+        .cta-row {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+
+        .cta-label {
+          font-size: 13px;
+          font-weight: 600;
+          color: var(--color-text);
+        }
+
+        .cta-feedback-thanks {
+          font-size: 14px;
+          color: var(--color-text-muted);
+        }
+
+        .cta-thumbs {
+          display: flex;
+          gap: 12px;
+        }
+
+        .cta-thumb {
+          width: 44px;
+          height: 44px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border: 1px solid var(--ct-card-border);
+          background: var(--ct-bg-surface-warm);
+          border-radius: 12px;
+          font-size: 20px;
+          cursor: pointer;
+          transition: background 0.2s, border-color 0.2s;
+        }
+
+        .cta-thumb:hover {
+          background: rgba(232, 93, 4, 0.08);
+          border-color: rgba(232, 93, 4, 0.25);
+        }
+
+        .cta-button {
+          display: inline-block;
+          padding: 10px 16px;
+          border-radius: 10px;
+          font-size: 14px;
+          font-weight: 600;
+          text-decoration: none;
+          text-align: center;
+          transition: opacity 0.2s;
+          border: 1px solid var(--ct-card-border);
+          background: var(--ct-bg-surface-warm);
+          color: var(--ct-text);
+        }
+
+        .cta-button:hover {
+          opacity: 0.9;
+        }
+
+        .cta-review {
+          background: var(--theme-button, var(--color-primary));
+          border-color: rgba(232, 93, 4, 0.4);
+          color: #fff;
+        }
+
+        .cta-contact {
+          color: var(--theme-accent, var(--color-accent));
+        }
+
+        .cta-muted {
+          font-size: 13px;
+          color: var(--color-text-muted);
         }
 
         /* Items Summary */

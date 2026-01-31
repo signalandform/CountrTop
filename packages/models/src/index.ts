@@ -51,6 +51,8 @@ export type Vendor = {
   primaryColor?: string | null;
   accentColor?: string | null;
   fontFamily?: string | null;
+  /** Review link for customer "Leave us a review" CTA (e.g. Google/Yelp) */
+  reviewUrl?: string | null;
 };
 
 export type VendorLocation = {
@@ -146,6 +148,8 @@ export type OrderSnapshot = {
   updatedAt?: string | null;
   customerDisplayName?: string | null;
   pickupLabel?: string | null;
+  /** Customer feedback: thumbs_up or thumbs_down; one per order for analytics */
+  customerFeedbackRating?: 'thumbs_up' | 'thumbs_down' | null;
 };
 
 export type LoyaltyLedgerEntry = {
@@ -212,6 +216,7 @@ export type OrderHistoryEntry = {
   fulfillmentStatus?: string | null;
   readyAt?: string | null;
   completedAt?: string | null;
+  customerFeedbackRating?: 'thumbs_up' | 'thumbs_down' | null;
 };
 
 export type OpsOrder = {

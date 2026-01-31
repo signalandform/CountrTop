@@ -75,6 +75,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req }) => 
     primaryColor: rawVendor.primaryColor ?? null,
     accentColor: rawVendor.accentColor ?? null,
     fontFamily: rawVendor.fontFamily ?? null,
+    reviewUrl: rawVendor.reviewUrl ?? null,
   })) : null;
 
   // Fetch locations for the vendor
@@ -1028,6 +1029,32 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
                 }
               };
 
+              const isCompleted = mapTrackingToStatus() === 'completed';
+              const completedCta = isCompleted
+                ? {
+                    contactPhone: contactPhone || '',
+                    reviewUrl: vendor?.reviewUrl ?? null,
+                    feedbackRating: recentOrder.customerFeedbackRating ?? null,
+                    onFeedback: async (rating: 'thumbs_up' | 'thumbs_down') => {
+                      try {
+                        const res = await fetch(
+                          `/api/vendors/${vendorSlug}/orders/${recentOrder.squareOrderId}/feedback`,
+                          {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            credentials: 'include',
+                            body: JSON.stringify({ rating })
+                          }
+                        );
+                        const data = await res.json().catch(() => ({}));
+                        if (res.ok && data.ok) setLoadedUserId(null);
+                      } catch {
+                        // ignore
+                      }
+                    }
+                  }
+                : undefined;
+
               return (
                 <OrderStatusTracker
                   status={mapTrackingToStatus()}
@@ -1038,6 +1065,7 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
                   currency={recentOrderDetails.currency}
                   placedAt={recentOrder.placedAt}
                   compact={true}
+                  completedCta={completedCta}
                 />
               );
             })()}

@@ -142,6 +142,19 @@ export class MockDataClient implements DataClient {
     return order;
   }
 
+  async updateOrderSnapshotFeedback(
+    snapshotId: string,
+    rating: 'thumbs_up' | 'thumbs_down'
+  ): Promise<OrderSnapshot> {
+    const order = this.orderSnapshots.find((o) => o.id === snapshotId);
+    if (!order) {
+      throw new Error('Order not found');
+    }
+    order.customerFeedbackRating = rating;
+    order.updatedAt = new Date().toISOString();
+    return order;
+  }
+
   async recordLoyaltyEntry(entry: LoyaltyLedgerEntryInput): Promise<LoyaltyLedgerEntry> {
     const id = entry.id ?? this.createId('ledger');
     const createdAt = entry.createdAt ?? new Date().toISOString();

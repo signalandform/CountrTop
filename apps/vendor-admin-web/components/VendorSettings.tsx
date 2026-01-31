@@ -17,6 +17,7 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
   const [primaryColor, setPrimaryColor] = useState(vendor.primaryColor || '#E85D04');
   const [accentColor, setAccentColor] = useState(vendor.accentColor || '#FFB627');
   const [fontFamily, setFontFamily] = useState(vendor.fontFamily || 'DM Sans');
+  const [reviewUrl, setReviewUrl] = useState(vendor.reviewUrl || '');
 
   // Google Font URL for preview (memoized to avoid re-renders)
   const googleFontUrl = useMemo(() => {
@@ -271,7 +272,8 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
           logoUrl: logoUrl || null,
           primaryColor: primaryColor || null,
           accentColor: accentColor || null,
-          fontFamily: fontFamily || null
+          fontFamily: fontFamily || null,
+          reviewUrl: reviewUrl.trim() || null
         })
       });
 
@@ -375,6 +377,20 @@ export function VendorSettings({ vendor, vendorSlug }: Props) {
                   />
                 </div>
                 <small className="form-hint">Color for text highlights and badges</small>
+              </div>
+
+              <div className="form-group full-width">
+                <label htmlFor="reviewUrl">Review Link</label>
+                <input
+                  id="reviewUrl"
+                  type="url"
+                  value={reviewUrl}
+                  onChange={(e) => setReviewUrl(e.target.value)}
+                  className="form-input"
+                  disabled={saving}
+                  placeholder="https://g.page/your-business/review"
+                />
+                <small className="form-hint">Shown to customers after order completion (e.g. Google, Yelp)</small>
               </div>
 
               <div className="form-group">

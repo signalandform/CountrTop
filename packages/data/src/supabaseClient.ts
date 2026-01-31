@@ -178,6 +178,7 @@ export type Database = {
           primary_color: string | null;
           accent_color: string | null;
           font_family: string | null;
+          review_url: string | null;
         };
         Insert: {
           id?: string;
@@ -202,6 +203,7 @@ export type Database = {
           primary_color?: string | null;
           accent_color?: string | null;
           font_family?: string | null;
+          review_url?: string | null;
         };
         Update: Partial<Database['public']['Tables']['vendors']['Insert']>;
         Relationships: [];
@@ -220,6 +222,7 @@ export type Database = {
           updated_at: string | null;
           customer_display_name: string | null;
           pickup_label: string | null;
+          customer_feedback_rating: string | null;
         };
         Insert: {
           id?: string;
@@ -234,6 +237,7 @@ export type Database = {
           updated_at?: string | null;
           customer_display_name?: string | null;
           pickup_label?: string | null;
+          customer_feedback_rating?: string | null;
         };
         Update: Partial<Database['public']['Tables']['order_snapshots']['Insert']>;
         Relationships: [];
@@ -573,7 +577,7 @@ export class SupabaseDataClient implements DataClient {
       // Field limiting: only select needed columns (including theming fields)
       const { data, error } = await this.client
         .from('vendors')
-        .select('id,slug,display_name,square_location_id,square_credential_ref,status,address_line1,address_line2,city,state,postal_code,phone,timezone,pickup_instructions,kds_active_limit_total,kds_active_limit_ct,logo_url,primary_color,accent_color,font_family')
+        .select('id,slug,display_name,square_location_id,square_credential_ref,status,address_line1,address_line2,city,state,postal_code,phone,timezone,pickup_instructions,kds_active_limit_total,kds_active_limit_ct,logo_url,primary_color,accent_color,font_family,review_url')
         .eq('slug', slug)
         .maybeSingle();
       if (error) throw error;
@@ -597,7 +601,7 @@ export class SupabaseDataClient implements DataClient {
       // Field limiting: only select needed columns (including theming fields)
       const { data, error } = await this.client
         .from('vendors')
-        .select('id,slug,display_name,square_location_id,square_credential_ref,status,address_line1,address_line2,city,state,postal_code,phone,timezone,pickup_instructions,kds_active_limit_total,kds_active_limit_ct,logo_url,primary_color,accent_color,font_family')
+        .select('id,slug,display_name,square_location_id,square_credential_ref,status,address_line1,address_line2,city,state,postal_code,phone,timezone,pickup_instructions,kds_active_limit_total,kds_active_limit_ct,logo_url,primary_color,accent_color,font_family,review_url')
         .eq('id', vendorId)
         .maybeSingle();
       if (error) throw error;
@@ -621,7 +625,7 @@ export class SupabaseDataClient implements DataClient {
       // Field limiting: only select needed columns (including theming fields)
       const { data, error } = await this.client
         .from('vendors')
-        .select('id,slug,display_name,square_location_id,square_credential_ref,status,address_line1,address_line2,city,state,postal_code,phone,timezone,pickup_instructions,kds_active_limit_total,kds_active_limit_ct,logo_url,primary_color,accent_color,font_family')
+        .select('id,slug,display_name,square_location_id,square_credential_ref,status,address_line1,address_line2,city,state,postal_code,phone,timezone,pickup_instructions,kds_active_limit_total,kds_active_limit_ct,logo_url,primary_color,accent_color,font_family,review_url')
         .eq('square_location_id', locationId)
         .maybeSingle();
       if (error) throw error;
@@ -821,7 +825,7 @@ export class SupabaseDataClient implements DataClient {
       const { data, error } = await this.client
         .from('order_snapshots')
         .insert(toOrderSnapshotInsert(withId))
-        .select('id,vendor_id,user_id,square_order_id,placed_at,snapshot_json,fulfillment_status,ready_at,completed_at,updated_at,customer_display_name,pickup_label')
+        .select('id,vendor_id,user_id,square_order_id,placed_at,snapshot_json,fulfillment_status,ready_at,completed_at,updated_at,customer_display_name,pickup_label,customer_feedback_rating')
         .single();
       if (error) throw error;
       const result = mapOrderSnapshotFromRow(data as Database['public']['Tables']['order_snapshots']['Row']);
@@ -848,7 +852,7 @@ export class SupabaseDataClient implements DataClient {
       // Field limiting: select only needed columns
       const { data, error } = await this.client
         .from('order_snapshots')
-        .select('id,vendor_id,user_id,square_order_id,placed_at,snapshot_json,fulfillment_status,ready_at,completed_at,updated_at,customer_display_name,pickup_label')
+        .select('id,vendor_id,user_id,square_order_id,placed_at,snapshot_json,fulfillment_status,ready_at,completed_at,updated_at,customer_display_name,pickup_label,customer_feedback_rating')
         .eq('id', orderId)
         .maybeSingle();
       if (error) throw error;
@@ -877,7 +881,7 @@ export class SupabaseDataClient implements DataClient {
       // Field limiting: select only needed columns
       const { data, error } = await this.client
         .from('order_snapshots')
-        .select('id,vendor_id,user_id,square_order_id,placed_at,snapshot_json,fulfillment_status,ready_at,completed_at,updated_at,customer_display_name,pickup_label')
+        .select('id,vendor_id,user_id,square_order_id,placed_at,snapshot_json,fulfillment_status,ready_at,completed_at,updated_at,customer_display_name,pickup_label,customer_feedback_rating')
         .eq('vendor_id', vendorId)
         .eq('square_order_id', squareOrderId)
         .maybeSingle();
@@ -904,7 +908,7 @@ export class SupabaseDataClient implements DataClient {
       // Field limiting: select only needed columns
       const { data, error } = await this.client
         .from('order_snapshots')
-        .select('id,vendor_id,user_id,square_order_id,placed_at,snapshot_json,fulfillment_status,ready_at,completed_at,updated_at,customer_display_name,pickup_label')
+        .select('id,vendor_id,user_id,square_order_id,placed_at,snapshot_json,fulfillment_status,ready_at,completed_at,updated_at,customer_display_name,pickup_label,customer_feedback_rating')
         .eq('vendor_id', vendorId)
         .eq('user_id', userId)
         .order('placed_at', { ascending: false });
@@ -931,7 +935,7 @@ export class SupabaseDataClient implements DataClient {
       // Field limiting: select only needed columns
       const { data, error } = await this.client
         .from('order_snapshots')
-        .select('id,vendor_id,user_id,square_order_id,placed_at,snapshot_json,fulfillment_status,ready_at,completed_at,updated_at,customer_display_name,pickup_label')
+        .select('id,vendor_id,user_id,square_order_id,placed_at,snapshot_json,fulfillment_status,ready_at,completed_at,updated_at,customer_display_name,pickup_label,customer_feedback_rating')
         .eq('vendor_id', vendorId)
         .order('placed_at', { ascending: false });
       if (error) throw error;
@@ -984,7 +988,7 @@ export class SupabaseDataClient implements DataClient {
         .update(updatePayload)
         .eq('id', orderId)
         .eq('vendor_id', vendorId)
-        .select('id,vendor_id,user_id,square_order_id,placed_at,snapshot_json,fulfillment_status,ready_at,completed_at,updated_at,customer_display_name,pickup_label')
+        .select('id,vendor_id,user_id,square_order_id,placed_at,snapshot_json,fulfillment_status,ready_at,completed_at,updated_at,customer_display_name,pickup_label,customer_feedback_rating')
         .single();
       if (error) throw error;
 
@@ -1001,6 +1005,33 @@ export class SupabaseDataClient implements DataClient {
       return result;
     } catch (error) {
       logQueryPerformance('updateOrderSnapshotStatus', startTime, false, error);
+      throw error;
+    }
+  }
+
+  async updateOrderSnapshotFeedback(
+    snapshotId: string,
+    rating: 'thumbs_up' | 'thumbs_down'
+  ): Promise<OrderSnapshot> {
+    const startTime = Date.now();
+    try {
+      const { data, error } = await this.client
+        .from('order_snapshots')
+        .update({ customer_feedback_rating: rating })
+        .eq('id', snapshotId)
+        .select('id,vendor_id,user_id,square_order_id,placed_at,snapshot_json,fulfillment_status,ready_at,completed_at,updated_at,customer_display_name,pickup_label,customer_feedback_rating')
+        .single();
+      if (error) throw error;
+      const result = mapOrderSnapshotFromRow(data as Database['public']['Tables']['order_snapshots']['Row']);
+      queryCache.delete(`order:${snapshotId}`);
+      queryCache.delete(`orders:vendor:${result.vendorId}`);
+      if (result.userId) {
+        queryCache.delete(`orders:user:${result.vendorId}:${result.userId}`);
+      }
+      logQueryPerformance('updateOrderSnapshotFeedback', startTime, true);
+      return result;
+    } catch (error) {
+      logQueryPerformance('updateOrderSnapshotFeedback', startTime, false, error);
       throw error;
     }
   }
@@ -3143,6 +3174,7 @@ const mapVendorFromRow = (row: Database['public']['Tables']['vendors']['Row']): 
   primaryColor: row.primary_color ?? undefined,
   accentColor: row.accent_color ?? undefined,
   fontFamily: row.font_family ?? undefined,
+  reviewUrl: row.review_url ?? undefined,
 });
 
 const mapVendorLocationFromRow = (row: Database['public']['Tables']['vendor_locations']['Row']): VendorLocation => ({
@@ -3191,7 +3223,11 @@ const mapOrderSnapshotFromRow = (
   completedAt: row.completed_at ?? undefined,
   updatedAt: row.updated_at ?? undefined,
   customerDisplayName: row.customer_display_name ?? undefined,
-  pickupLabel: row.pickup_label ?? undefined
+  pickupLabel: row.pickup_label ?? undefined,
+  customerFeedbackRating:
+    row.customer_feedback_rating === 'thumbs_up' || row.customer_feedback_rating === 'thumbs_down'
+      ? row.customer_feedback_rating
+      : undefined,
 });
 
 const mapLoyaltyLedgerFromRow = (
@@ -3230,7 +3266,8 @@ const toOrderSnapshotInsert = (
   completed_at: order.completedAt ?? null,
   // omit updated_at so DB default/trigger populates it
   customer_display_name: order.customerDisplayName ?? null,
-  pickup_label: order.pickupLabel ?? null
+  pickup_label: order.pickupLabel ?? null,
+  customer_feedback_rating: order.customerFeedbackRating ?? null
 });
 
 const toLoyaltyLedgerInsert = (

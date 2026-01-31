@@ -60,7 +60,8 @@ export default async function handler(
     logoUrl,
     primaryColor,
     accentColor,
-    fontFamily
+    fontFamily,
+    reviewUrl
   } = req.body;
 
   try {
@@ -113,6 +114,7 @@ export default async function handler(
     if (primaryColor !== undefined) updateData.primary_color = primaryColor || null;
     if (accentColor !== undefined) updateData.accent_color = accentColor || null;
     if (fontFamily !== undefined) updateData.font_family = fontFamily || null;
+    if (reviewUrl !== undefined) updateData.review_url = reviewUrl ?? null;
 
     // Do not allow updating square_location_id or admin_user_id through this endpoint
     // These are protected fields

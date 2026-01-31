@@ -56,6 +56,10 @@ export interface DataClient {
     vendorId: string,
     status: 'READY' | 'COMPLETE'
   ): Promise<OrderSnapshot>;
+  updateOrderSnapshotFeedback(
+    snapshotId: string,
+    rating: 'thumbs_up' | 'thumbs_down'
+  ): Promise<OrderSnapshot>;
 
   recordLoyaltyEntry(entry: LoyaltyLedgerEntryInput): Promise<LoyaltyLedgerEntry>;
   listLoyaltyEntriesForUser(vendorId: string, userId: string): Promise<LoyaltyLedgerEntry[]>;
