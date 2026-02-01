@@ -1516,6 +1516,7 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
             display: flex;
             flex-direction: column;
             gap: 16px;
+            align-items: flex-start;
           }
 
           .ticket-card {
@@ -1528,6 +1529,8 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
             border-radius: 16px;
             transition: background 0.2s, border-color 0.2s;
             position: relative;
+            width: fit-content;
+            max-width: 100%;
           }
 
           .ticket-shortcode {
@@ -1658,8 +1661,7 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
           }
 
           .ticket-middle {
-            flex: 1;
-            min-width: 0;
+            flex: 0 1 auto;
             font-size: 25px;
           }
 
@@ -1774,6 +1776,7 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
             background: rgba(255, 159, 10, 0.1);
             border: 1px solid rgba(255, 159, 10, 0.3);
             border-radius: 16px;
+            width: fit-content;
           }
 
           .held-section-header {
