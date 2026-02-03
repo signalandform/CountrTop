@@ -178,6 +178,8 @@ Additional documentation in `docs/`:
 - **CONNECTION_POOLING.md** – Supabase connection pooling
 - **INDEXES.md** – Database index documentation
 
+-- <3 jacknel
+
 ---
 
 ## Deployment
