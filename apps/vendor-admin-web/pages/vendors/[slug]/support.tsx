@@ -310,7 +310,7 @@ export default function VendorSupportPage({ vendorSlug, vendorName, vendor }: Ve
             margin-top: 32px;
             padding: 24px;
             border-radius: var(--ct-card-border-radius, 20px);
-            max-width: 720px;
+            max-width: 560px;
           }
 
           .tickets-list {

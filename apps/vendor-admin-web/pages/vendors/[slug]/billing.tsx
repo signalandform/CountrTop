@@ -160,6 +160,34 @@ export default function VendorBillingPage({ vendorSlug, vendorName, vendor }: Ve
 
   const formatDate = (iso: string) => (iso ? new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '—');
 
+  const planFeatures: Record<BillingPlanId, string[]> = {
+    beta: [
+      'KDS: ticket flow New → In Progress → Ready → Complete, order recall',
+      'Employee clock in/out',
+      'Customer notifications when order is ready',
+      'Basic analytics, single location, employee timesheets',
+      'Custom pickup instructions, basic support',
+      'Your storefront: yourname.countrtop.com',
+      'POS integration, email notifications'
+    ],
+    trial: [
+      'Same as Beta during trial'
+    ],
+    starter: [
+      'Everything in Beta',
+      'Advanced analytics',
+      'Customer loyalty program',
+      'Scheduled orders',
+      'Custom branding (logo, colors)'
+    ],
+    pro: [
+      'Everything in Starter',
+      'Multiple locations',
+      'Multiple KDS screens',
+      'Role-based staff accounts'
+    ]
+  };
+
   if (!vendor) {
     return (
       <VendorAdminLayout vendorSlug={vendorSlug} vendorName={vendorName}>
@@ -215,7 +243,7 @@ export default function VendorBillingPage({ vendorSlug, vendorName, vendor }: Ve
                           disabled={!!checkoutLoading}
                           onClick={() => handleSubscribe('starter')}
                         >
-                          {checkoutLoading === 'starter' ? 'Redirecting…' : 'Subscribe to Starter ($49/mo)'}
+                          {checkoutLoading === 'starter' ? 'Redirecting…' : 'Upgrade to Starter ($49/mo)'}
                         </button>
                         <button
                           type="button"
@@ -223,7 +251,7 @@ export default function VendorBillingPage({ vendorSlug, vendorName, vendor }: Ve
                           disabled={!!checkoutLoading}
                           onClick={() => handleSubscribe('pro')}
                         >
-                          {checkoutLoading === 'pro' ? 'Redirecting…' : 'Subscribe to Pro ($99/mo)'}
+                          {checkoutLoading === 'pro' ? 'Redirecting…' : 'Upgrade to Pro ($99/mo)'}
                         </button>
                       </div>
                     )}
@@ -317,7 +345,7 @@ export default function VendorBillingPage({ vendorSlug, vendorName, vendor }: Ve
 
           .billing-sections {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            grid-template-columns: repeat(2, minmax(280px, 1fr));
             gap: 20px;
           }
 
@@ -352,6 +380,18 @@ export default function VendorBillingPage({ vendorSlug, vendorName, vendor }: Ve
           .plan-interval {
             font-size: 14px;
             font-weight: 500;
+          }
+
+          .plan-features-list {
+            margin: 12px 0 0;
+            padding-left: 20px;
+            font-size: 14px;
+            color: var(--ct-text-muted);
+            line-height: 1.5;
+          }
+
+          .plan-features-list li {
+            margin-bottom: 4px;
           }
 
           .upgrade-actions {

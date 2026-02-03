@@ -1,5 +1,6 @@
 import Head from 'next/head';
 import type { GetServerSideProps } from 'next';
+import { useRouter } from 'next/router';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { createDataClient, type Database } from '@countrtop/data';
@@ -49,9 +50,12 @@ export const getServerSideProps: GetServerSideProps<VendorPageProps> = async (co
     if (authResult.redirect) {
       return { redirect: authResult.redirect };
     }
+    const loginDestination = slug
+      ? `/login?vendorSlug=${encodeURIComponent(slug)}`
+      : '/login';
     return {
       redirect: {
-        destination: '/login',
+        destination: loginDestination,
         permanent: false
       }
     };
@@ -149,7 +153,7 @@ const renderLineItems = (lineItems: unknown[] | null | undefined) => {
         return (
           <div key={idx} className="line-item">
             <div className="item-header">
-              <span className="quantity-badge">{qty}×</span>
+              <span className="quantity-box">{qty}</span>
               <span className="item-name">{name}</span>
             </div>
             {modifiers.length > 0 && (
@@ -200,6 +204,7 @@ const getPickupLabel = (ticket: Ticket['ticket'], order: Ticket['order']): strin
 };
 
 export default function VendorQueuePage({ vendorSlug, vendorName, locationId: initialLocationId, locationName }: VendorPageProps) {
+  const router = useRouter();
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -759,8 +764,7 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
   }, [activeTicketMenu]);
 
   const handleSettings = () => {
-    // Placeholder: Open settings modal or navigate to settings page
-    alert('Settings - Coming soon');
+    router.push(`/vendors/${vendorSlug}/settings`);
   };
 
   const handleTimeClock = () => {
@@ -1531,6 +1535,7 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
             position: relative;
             width: fit-content;
             max-width: 100%;
+            min-width: 420px;
           }
 
           .ticket-shortcode {
@@ -1687,6 +1692,22 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
             display: flex;
             align-items: center;
             gap: 16px;
+          }
+
+          .line-item .quantity-box {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 56px;
+            height: 44px;
+            padding: 0 12px;
+            background: #1a1a2e;
+            border-radius: 10px;
+            font-size: 26px;
+            font-weight: 800;
+            color: #e5e7eb;
+            font-variant-numeric: tabular-nums;
+            flex-shrink: 0;
           }
 
           .line-item .quantity-badge,
@@ -2113,6 +2134,21 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
             display: flex;
             align-items: center;
             gap: 10px;
+          }
+
+          .completed-ticket-details .quantity-box {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 40px;
+            height: 32px;
+            padding: 0 8px;
+            background: #1a1a2e;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: 800;
+            color: #e5e7eb;
+            font-variant-numeric: tabular-nums;
           }
 
           .completed-ticket-details .quantity-badge {

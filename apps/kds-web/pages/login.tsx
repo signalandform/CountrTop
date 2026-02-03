@@ -26,6 +26,7 @@ type Step = 'vendor' | 'location' | 'pin';
 
 export default function LoginPage() {
   const router = useRouter();
+  const vendorSlugFromQuery = typeof router.query.vendorSlug === 'string' ? router.query.vendorSlug : null;
   const [step, setStep] = useState<Step>('vendor');
   const [loading, setLoading] = useState(false);
   const [vendorsLoading, setVendorsLoading] = useState(false);
@@ -51,6 +52,21 @@ export default function LoginPage() {
   const [pin, setPin] = useState('');
   const [authenticating, setAuthenticating] = useState(false);
   const [recentVendors, setRecentVendors] = useState<RecentVendor[]>([]);
+
+  // When arrived with vendorSlug in query: skip vendor step, go to location step and set selected vendor
+  useEffect(() => {
+    if (!router.isReady) return;
+    if (vendorSlugFromQuery) {
+      setSelectedVendor({
+        slug: vendorSlugFromQuery,
+        displayName: '',
+        squareLocationId: ''
+      });
+      setStep('location');
+    } else {
+      router.replace('/');
+    }
+  }, [router.isReady, vendorSlugFromQuery, router]);
 
   // Check for existing session
   useEffect(() => {
@@ -112,21 +128,25 @@ export default function LoginPage() {
   }, []);
 
   useEffect(() => {
-    fetchVendors();
-  }, [fetchVendors]);
+    if (!vendorSlugFromQuery) fetchVendors();
+  }, [fetchVendors, vendorSlugFromQuery]);
 
   const handleBack = useCallback(() => {
     if (step === 'location') {
-      setStep('vendor');
-      setSelectedVendor(null);
-      setLocations([]);
+      if (vendorSlugFromQuery) {
+        router.push('/');
+      } else {
+        setStep('vendor');
+        setSelectedVendor(null);
+        setLocations([]);
+      }
     } else if (step === 'pin') {
       setStep('location');
       setSelectedLocation(null);
       setPin('');
     }
     setError(null);
-  }, [step]);
+  }, [step, vendorSlugFromQuery, router]);
 
   // Fetch locations when vendor selected
   const fetchLocations = useCallback(async () => {
@@ -138,6 +158,9 @@ export default function LoginPage() {
       const data = await response.json();
       if (data.success) {
         setLocations(data.data);
+        if (data.vendorDisplayName && selectedVendor) {
+          setSelectedVendor(prev => prev ? { ...prev, displayName: data.vendorDisplayName } : null);
+        }
         if (data.data.length === 0) {
           setError({
             title: 'No locations available',
@@ -324,7 +347,7 @@ export default function LoginPage() {
             </div>
           )}
 
-          {step === 'vendor' && (
+          {step === 'vendor' && !vendorSlugFromQuery && (
             <div className="step">
               <h2>Select Vendor</h2>
               {recentVendors.length > 0 && (

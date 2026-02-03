@@ -10,7 +10,7 @@ type LocationItem = {
 };
 
 type LocationsResponse =
-  | { success: true; data: LocationItem[] }
+  | { success: true; data: LocationItem[]; vendorDisplayName?: string }
   | { success: false; error: string };
 
 /**
@@ -80,7 +80,8 @@ export default async function handler(
           name: vendor.displayName,
           isPrimary: true,
           address: [vendor.addressLine1, vendor.city, vendor.state].filter(Boolean).join(', ')
-        }]
+        }],
+        vendorDisplayName: vendor.displayName
       });
     }
 
@@ -93,7 +94,8 @@ export default async function handler(
 
     return res.status(200).json({
       success: true,
-      data: locations
+      data: locations,
+      vendorDisplayName: vendor.displayName
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
