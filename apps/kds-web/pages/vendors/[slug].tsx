@@ -47,9 +47,7 @@ export const getServerSideProps: GetServerSideProps<VendorPageProps> = async (co
   // Check KDS session
   const authResult = await requireKDSSession(context, slug ?? null, locationIdParam ?? null);
   if (!authResult.authorized) {
-    if (authResult.redirect) {
-      return { redirect: authResult.redirect };
-    }
+    // Always send to login with vendor slug when we have one (so user lands on location step)
     const loginDestination = slug
       ? `/login?vendorSlug=${encodeURIComponent(slug)}`
       : '/login';

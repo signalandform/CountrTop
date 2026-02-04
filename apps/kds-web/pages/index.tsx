@@ -69,7 +69,7 @@ export default function KDSHome() {
 
       addRecentVendor({ slug });
       refreshRecents();
-      router.push(`/vendors/${slug}`);
+      router.push(`/login?vendorSlug=${encodeURIComponent(slug)}`);
     } catch (err) {
       setError({
         title: 'Network error',

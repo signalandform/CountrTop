@@ -24,12 +24,11 @@ type Location = {
 
 type Step = 'vendor' | 'location' | 'pin';
 
-function getVendorSlugFromAsPath(asPath: string): string | null {
-  const q = asPath.indexOf('?');
-  const search = q >= 0 ? asPath.slice(q) : '';
-  const params = new URLSearchParams(search);
+function getVendorSlugFromUrl(): string | null {
+  if (typeof window === 'undefined') return null;
+  const params = new URLSearchParams(window.location.search);
   const slug = params.get('vendorSlug');
-  return slug && typeof slug === 'string' ? slug : null;
+  return slug && /^[a-z0-9-]+$/.test(slug) ? slug.trim().toLowerCase() : null;
 }
 
 export default function LoginPage() {
@@ -62,10 +61,9 @@ export default function LoginPage() {
   const [recentVendors, setRecentVendors] = useState<RecentVendor[]>([]);
 
   // When arrived with vendorSlug in URL: skip vendor step, go to location step and set selected vendor.
-  // Parse from asPath because router.query can be empty on first client render (Next.js hydration).
+  // Parse from window.location.search so we have the slug on first client paint (avoids router hydration delay).
   useEffect(() => {
-    if (!router.isReady) return;
-    const slug = getVendorSlugFromAsPath(router.asPath) ?? (typeof router.query.vendorSlug === 'string' ? router.query.vendorSlug : null);
+    const slug = getVendorSlugFromUrl();
     if (slug) {
       setVendorSlugFromUrl(slug);
       setSelectedVendor({
@@ -74,10 +72,9 @@ export default function LoginPage() {
         squareLocationId: ''
       });
       setStep('location');
-    } else {
-      router.replace('/');
     }
-  }, [router.isReady, router.asPath, router.query.vendorSlug, router]);
+    // If no slug, stay on login and show vendor step (e.g. direct visit to /login); do not redirect to /
+  }, []);
 
   // Check for existing session
   useEffect(() => {
@@ -139,12 +136,9 @@ export default function LoginPage() {
   }, []);
 
   // Only fetch vendors list when we have no slug in the URL (so we might show vendor step).
-  // When URL has ?vendorSlug=, we skip vendor step and don't need the list.
   useEffect(() => {
-    if (!router.isReady) return;
-    const slugInUrl = getVendorSlugFromAsPath(router.asPath) ?? (typeof router.query.vendorSlug === 'string' ? router.query.vendorSlug : null);
-    if (!slugInUrl) fetchVendors();
-  }, [router.isReady, router.asPath, router.query.vendorSlug, fetchVendors]);
+    if (!getVendorSlugFromUrl()) fetchVendors();
+  }, [fetchVendors]);
 
   const handleBack = useCallback(() => {
     if (step === 'location') {

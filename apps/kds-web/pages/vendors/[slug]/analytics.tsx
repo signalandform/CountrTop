@@ -47,12 +47,12 @@ export const getServerSideProps: GetServerSideProps<AnalyticsPageProps> = async 
   // Check KDS session
   const authResult = await requireKDSSession(context, slug ?? null, locationIdParam ?? null);
   if (!authResult.authorized) {
-    if (authResult.redirect) {
-      return { redirect: authResult.redirect };
-    }
+    const loginDestination = slug
+      ? `/login?vendorSlug=${encodeURIComponent(slug)}`
+      : '/login';
     return {
       redirect: {
-        destination: '/login',
+        destination: loginDestination,
         permanent: false
       }
     };

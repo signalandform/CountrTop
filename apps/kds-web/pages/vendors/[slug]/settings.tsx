@@ -16,20 +16,12 @@ export const getServerSideProps: GetServerSideProps<SettingsPageProps> = async (
 
   const authResult = await requireKDSSession(context, slug ?? null, locationIdParam ?? null);
   if (!authResult.authorized) {
-    if (authResult.redirect) {
-      const loginDestination = slug
-        ? `/login?vendorSlug=${encodeURIComponent(slug)}`
-        : '/login';
-      return {
-        redirect: {
-          destination: loginDestination,
-          permanent: false
-        }
-      };
-    }
+    const loginDestination = slug
+      ? `/login?vendorSlug=${encodeURIComponent(slug)}`
+      : '/login';
     return {
       redirect: {
-        destination: '/login',
+        destination: loginDestination,
         permanent: false
       }
     };
