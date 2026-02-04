@@ -1,5 +1,5 @@
 import Head from 'next/head';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/router';
 
 import {
@@ -28,7 +28,9 @@ function getVendorSlugFromUrl(): string | null {
   if (typeof window === 'undefined') return null;
   const params = new URLSearchParams(window.location.search);
   const slug = params.get('vendorSlug');
-  return slug && /^[a-z0-9-]+$/.test(slug) ? slug.trim().toLowerCase() : null;
+  if (!slug) return null;
+  const normalized = slug.trim().toLowerCase();
+  return /^[a-z0-9-]+$/.test(normalized) ? normalized : null;
 }
 
 export default function LoginPage() {
@@ -60,20 +62,76 @@ export default function LoginPage() {
   const [authenticating, setAuthenticating] = useState(false);
   const [recentVendors, setRecentVendors] = useState<RecentVendor[]>([]);
 
-  // When arrived with vendorSlug in URL: skip vendor step, go to location step and set selected vendor.
-  // Parse from window.location.search so we have the slug on first client paint (avoids router hydration delay).
+  // Guard: only run the URL-slug locations fetch once per mount (avoids spam from router/Strict Mode).
+  const hasFetchedLocationsForUrlSlug = useRef(false);
+
+  // When arrived with vendorSlug in URL: skip vendor step, go to location step, set selected vendor, and fetch locations once.
   useEffect(() => {
     const slug = getVendorSlugFromUrl();
-    if (slug) {
-      setVendorSlugFromUrl(slug);
-      setSelectedVendor({
-        slug,
-        displayName: '',
-        squareLocationId: ''
+    if (!slug) return;
+    if (hasFetchedLocationsForUrlSlug.current) return;
+    hasFetchedLocationsForUrlSlug.current = true;
+
+    setVendorSlugFromUrl(slug);
+    setSelectedVendor({
+      slug,
+      displayName: '',
+      squareLocationId: ''
+    });
+    setStep('location');
+
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    fetch(`/api/kds/vendors/${encodeURIComponent(slug)}/locations`)
+      .then((res) => res.json().then((data) => ({ ok: res.ok, status: res.status, data })))
+      .then(({ ok, status, data }) => {
+        if (cancelled) return;
+        if (data.success) {
+          setLocations(data.data ?? []);
+          if (data.vendorDisplayName) {
+            setSelectedVendor((prev) =>
+              prev ? { ...prev, displayName: data.vendorDisplayName } : prev
+            );
+          }
+          if (data.data?.length === 0) {
+            setError({
+              title: 'No locations available',
+              message: 'This vendor has no active locations. KDS may be disabled.',
+              primaryLabel: 'Back',
+              onPrimary: () => router.push('/')
+            });
+          }
+        } else {
+          setError({
+            title: status === 404 ? 'Vendor not found' : 'Unable to load locations',
+            message: data.error ?? 'Please try again.',
+            primaryLabel: 'Back',
+            onPrimary: () => router.push('/')
+          });
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setError({
+            title: 'Unable to load locations',
+            message: 'Please check your connection and try again.',
+            primaryLabel: 'Try again',
+            onPrimary: () => window.location.reload(),
+            secondaryLabel: 'Back',
+            onSecondary: () => router.push('/')
+          });
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
       });
-      setStep('location');
-    }
-    // If no slug, stay on login and show vendor step (e.g. direct visit to /login); do not redirect to /
+
+    return () => {
+      cancelled = true;
+    };
+    // Intentionally run only once on mount when URL has vendorSlug (router is stable; no deps to avoid re-runs).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Check for existing session
@@ -212,11 +270,12 @@ export default function LoginPage() {
     }
   }, [selectedVendor, handleBack]);
 
+  // Fetch locations when user selected a vendor from the list (not when we landed with ?vendorSlug= — that effect fetches already).
   useEffect(() => {
-    if (selectedVendor && step === 'location') {
+    if (selectedVendor && step === 'location' && !vendorSlugFromUrl) {
       fetchLocations();
     }
-  }, [selectedVendor, step, fetchLocations]);
+  }, [selectedVendor, step, fetchLocations, vendorSlugFromUrl]);
 
   const handleVendorSelect = (vendor: Vendor) => {
     setSelectedVendor(vendor);
