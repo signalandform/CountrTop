@@ -85,7 +85,7 @@ export default function LoginPage() {
     setError(null);
     fetch(`/api/kds/vendors/${encodeURIComponent(slug)}/locations`)
       .then((res) => res.json().then((data) => ({ ok: res.ok, status: res.status, data })))
-      .then(({ ok, status, data }) => {
+      .then(({ status, data }) => {
         if (cancelled) return;
         if (data.success) {
           setLocations(data.data ?? []);
