@@ -138,9 +138,13 @@ export default function LoginPage() {
     }
   }, []);
 
+  // Only fetch vendors list when we have no slug in the URL (so we might show vendor step).
+  // When URL has ?vendorSlug=, we skip vendor step and don't need the list.
   useEffect(() => {
-    if (!vendorSlugFromUrl) fetchVendors();
-  }, [fetchVendors, vendorSlugFromUrl]);
+    if (!router.isReady) return;
+    const slugInUrl = getVendorSlugFromAsPath(router.asPath) ?? (typeof router.query.vendorSlug === 'string' ? router.query.vendorSlug : null);
+    if (!slugInUrl) fetchVendors();
+  }, [router.isReady, router.asPath, router.query.vendorSlug, fetchVendors]);
 
   const handleBack = useCallback(() => {
     if (step === 'location') {
