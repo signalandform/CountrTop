@@ -24,9 +24,17 @@ type Location = {
 
 type Step = 'vendor' | 'location' | 'pin';
 
+function getVendorSlugFromAsPath(asPath: string): string | null {
+  const q = asPath.indexOf('?');
+  const search = q >= 0 ? asPath.slice(q) : '';
+  const params = new URLSearchParams(search);
+  const slug = params.get('vendorSlug');
+  return slug && typeof slug === 'string' ? slug : null;
+}
+
 export default function LoginPage() {
   const router = useRouter();
-  const vendorSlugFromQuery = typeof router.query.vendorSlug === 'string' ? router.query.vendorSlug : null;
+  const [vendorSlugFromUrl, setVendorSlugFromUrl] = useState<string | null>(null);
   const [step, setStep] = useState<Step>('vendor');
   const [loading, setLoading] = useState(false);
   const [vendorsLoading, setVendorsLoading] = useState(false);
@@ -53,12 +61,15 @@ export default function LoginPage() {
   const [authenticating, setAuthenticating] = useState(false);
   const [recentVendors, setRecentVendors] = useState<RecentVendor[]>([]);
 
-  // When arrived with vendorSlug in query: skip vendor step, go to location step and set selected vendor
+  // When arrived with vendorSlug in URL: skip vendor step, go to location step and set selected vendor.
+  // Parse from asPath because router.query can be empty on first client render (Next.js hydration).
   useEffect(() => {
     if (!router.isReady) return;
-    if (vendorSlugFromQuery) {
+    const slug = getVendorSlugFromAsPath(router.asPath) ?? (typeof router.query.vendorSlug === 'string' ? router.query.vendorSlug : null);
+    if (slug) {
+      setVendorSlugFromUrl(slug);
       setSelectedVendor({
-        slug: vendorSlugFromQuery,
+        slug,
         displayName: '',
         squareLocationId: ''
       });
@@ -66,7 +77,7 @@ export default function LoginPage() {
     } else {
       router.replace('/');
     }
-  }, [router.isReady, vendorSlugFromQuery, router]);
+  }, [router.isReady, router.asPath, router.query.vendorSlug, router]);
 
   // Check for existing session
   useEffect(() => {
@@ -128,12 +139,12 @@ export default function LoginPage() {
   }, []);
 
   useEffect(() => {
-    if (!vendorSlugFromQuery) fetchVendors();
-  }, [fetchVendors, vendorSlugFromQuery]);
+    if (!vendorSlugFromUrl) fetchVendors();
+  }, [fetchVendors, vendorSlugFromUrl]);
 
   const handleBack = useCallback(() => {
     if (step === 'location') {
-      if (vendorSlugFromQuery) {
+      if (vendorSlugFromUrl) {
         router.push('/');
       } else {
         setStep('vendor');
@@ -146,7 +157,7 @@ export default function LoginPage() {
       setPin('');
     }
     setError(null);
-  }, [step, vendorSlugFromQuery, router]);
+  }, [step, vendorSlugFromUrl, router]);
 
   // Fetch locations when vendor selected
   const fetchLocations = useCallback(async () => {
@@ -347,7 +358,7 @@ export default function LoginPage() {
             </div>
           )}
 
-          {step === 'vendor' && !vendorSlugFromQuery && (
+          {step === 'vendor' && !vendorSlugFromUrl && (
             <div className="step">
               <h2>Select Vendor</h2>
               {recentVendors.length > 0 && (
