@@ -235,6 +235,13 @@ export default function VendorBillingPage({ vendorSlug, vendorName, vendor }: Ve
                     {billing.currentPeriodEnd && (
                       <p className="muted">Next billing: {formatDate(billing.currentPeriodEnd)}</p>
                     )}
+                    {planFeatures[billing.planId]?.length > 0 && (
+                      <ul className="plan-features-list">
+                        {planFeatures[billing.planId].map((feature, i) => (
+                          <li key={i}>{feature}</li>
+                        ))}
+                      </ul>
+                    )}
                     {billing.canUpgrade && (
                       <div className="upgrade-actions">
                         <button
