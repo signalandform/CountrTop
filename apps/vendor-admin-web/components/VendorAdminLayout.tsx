@@ -122,6 +122,13 @@ export function VendorAdminLayout({
         isActive: isPrefix(`${basePath}/support`)
       },
       {
+        id: 'help',
+        label: 'Help',
+        href: `${basePath}/help`,
+        icon: '❓',
+        isActive: isPrefix(`${basePath}/help`)
+      },
+      {
         id: 'kds',
         label: 'KDS',
         href: 'https://kds.countrtop.com',
