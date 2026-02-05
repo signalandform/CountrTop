@@ -1539,7 +1539,7 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
           .ticket-card-body {
             display: flex;
             align-items: center;
-            gap: 24px;
+            gap: 12px;
             min-height: 170px;
           }
 
