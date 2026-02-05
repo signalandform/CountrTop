@@ -1632,8 +1632,8 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
             display: flex;
             justify-content: space-between;
             align-items: flex-end;
-            margin-top: 8px;
-            padding-top: 8px;
+            margin-top: auto;
+            padding-top: 12px;
             border-top: 1px solid rgba(255, 255, 255, 0.06);
             gap: 8px;
           }
@@ -1662,7 +1662,7 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
           }
 
           .ticket-shortcode {
-            font-size: 18px;
+            font-size: 36px;
             font-weight: 900;
             line-height: 1;
             background: var(--ct-gradient-primary);
