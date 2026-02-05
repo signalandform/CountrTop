@@ -47,17 +47,17 @@ export default async function handler(
   }
 
   // Verify secret token (required for cron jobs)
-  // Vercel Cron sends X-Vercel-Authorization header automatically when VERCEL_CRON_SECRET is set
-  // Also support Authorization header, query param, and body for manual testing
-  const vercelAuthHeader = req.headers['x-vercel-authorization'];
+  // Vercel Cron sends Authorization: Bearer <secret> when CRON_SECRET is set (see vercel.com/docs/cron-jobs)
+  // Also accept X-Vercel-Authorization, query param, body for compatibility and manual testing
   const authHeader = req.headers['authorization'];
-  const secret = vercelAuthHeader || 
-                 authHeader?.replace(/^Bearer\s+/i, '') || 
-                 req.query.secret as string || 
+  const vercelAuthHeader = req.headers['x-vercel-authorization'];
+  const secret = authHeader?.replace(/^Bearer\s+/i, '') ||
+                 vercelAuthHeader ||
+                 (req.query.secret as string) ||
                  req.body?.secret;
-  
-  // Check both VERCEL_CRON_SECRET (Vercel standard) and CRON_SECRET (custom)
-  const expectedSecret = process.env.VERCEL_CRON_SECRET || process.env.CRON_SECRET;
+
+  // CRON_SECRET is what Vercel reads to send the header; VERCEL_CRON_SECRET as fallback
+  const expectedSecret = process.env.CRON_SECRET || process.env.VERCEL_CRON_SECRET;
 
   // If secret is set, require it to match
   // If not set, allow access (for development/testing - NOT recommended for production)

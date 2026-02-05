@@ -21,13 +21,19 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse<ProcessResponse>
 ) {
-  if (req.method !== 'POST') {
+  // Vercel Cron sends GET; also allow POST for manual triggers
+  if (req.method !== 'GET' && req.method !== 'POST') {
     return res.status(405).json({ ok: false, claimed: 0, done: 0, failed: 0, error: 'Method not allowed' });
   }
 
+  // Vercel Cron sends X-Vercel-Authorization; also support Authorization, query, body for manual triggers
+  const vercelAuthHeader = req.headers['x-vercel-authorization'];
   const authHeader = req.headers['authorization'];
-  const secret = authHeader?.replace(/^Bearer\s+/i, '') || (req.body?.secret as string);
-  const expectedSecret = process.env.CRON_SECRET || process.env.VERCEL_CRON_SECRET;
+  const secret = vercelAuthHeader ||
+    authHeader?.replace(/^Bearer\s+/i, '') ||
+    (req.query?.secret as string) ||
+    (req.body?.secret as string);
+  const expectedSecret = process.env.VERCEL_CRON_SECRET || process.env.CRON_SECRET;
 
   if (expectedSecret && (!secret || secret !== expectedSecret)) {
     logger.warn('Unauthorized process-webhooks request');

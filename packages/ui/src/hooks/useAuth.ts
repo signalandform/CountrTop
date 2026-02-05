@@ -20,6 +20,8 @@ export type UseAuthReturn = {
   status: AuthStatus;
   error: string | null;
   signIn: (provider: 'apple' | 'google') => Promise<void>;
+  signInWithPassword: (email: string, password: string) => Promise<void>;
+  signUpWithPassword: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   isReady: boolean;
 };
@@ -200,6 +202,34 @@ export function useAuth(options: UseAuthOptions): UseAuthReturn {
     }
   }, [supabase, isNativeWebView, postToNative]);
 
+  const signInWithPassword = useCallback(async (email: string, password: string) => {
+    if (!supabase) {
+      setError('Supabase auth is not configured for this environment.');
+      return;
+    }
+    setError(null);
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to sign in');
+    }
+  }, [supabase]);
+
+  const signUpWithPassword = useCallback(async (email: string, password: string) => {
+    if (!supabase) {
+      setError('Supabase auth is not configured for this environment.');
+      return;
+    }
+    setError(null);
+    try {
+      const { error } = await supabase.auth.signUp({ email, password });
+      if (error) throw error;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to create account');
+    }
+  }, [supabase]);
+
   const signOut = useCallback(async () => {
     if (!supabase) return;
     try {
@@ -217,6 +247,8 @@ export function useAuth(options: UseAuthOptions): UseAuthReturn {
     status,
     error,
     signIn,
+    signInWithPassword,
+    signUpWithPassword,
     signOut,
     isReady
   };

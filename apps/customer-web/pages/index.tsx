@@ -198,6 +198,10 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
   const [supabase, setSupabase] = useState<ReturnType<typeof getBrowserSupabaseClient>>(null);
   const [notice, setNotice] = useState<Notice | null>(null);
   const [isNative, setIsNative] = useState(false);
+  const [authEmail, setAuthEmail] = useState('');
+  const [authPassword, setAuthPassword] = useState('');
+  const [authIsSignUp, setAuthIsSignUp] = useState(false);
+  const [authEmailPasswordLoading, setAuthEmailPasswordLoading] = useState(false);
 
   // Location state - default to primary or first location
   const [selectedLocation, setSelectedLocation] = useState<LocationOption | null>(
@@ -348,7 +352,7 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
     if (bridge?.postMessage) bridge.postMessage(JSON.stringify(payload));
   }, []);
 
-  const { user, status: authStatus, error: authError, signIn, signOut: baseSignOut } = useAuth({
+  const { user, status: authStatus, error: authError, signIn, signInWithPassword, signUpWithPassword, signOut: baseSignOut } = useAuth({
     supabase,
     isNativeWebView: isNative,
     onNativeAuthUpdate: (u) => {
@@ -896,15 +900,63 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
               </div>
             ) : (
               mounted && supabase && (
-                <div className="auth-buttons">
-                  {appleEnabled && (
-                    <button onClick={() => signIn('apple')} className="btn-auth">
-                      Sign in with Apple
+                <div className="auth-section">
+                  <div className="auth-buttons">
+                    {appleEnabled && (
+                      <button onClick={() => signIn('apple')} className="btn-auth">
+                        Sign in with Apple
+                      </button>
+                    )}
+                    <button onClick={() => signIn('google')} className="btn-auth">
+                      Sign in with Google
                     </button>
-                  )}
-                  <button onClick={() => signIn('google')} className="btn-auth">
-                    Sign in with Google
-                  </button>
+                  </div>
+                  <div className="auth-email-divider">Or sign in with email</div>
+                  <form
+                    className="auth-email-form"
+                    onSubmit={async (e) => {
+                      e.preventDefault();
+                      if (!authEmail.trim() || !authPassword || authEmailPasswordLoading) return;
+                      setAuthEmailPasswordLoading(true);
+                      if (authIsSignUp) {
+                        await signUpWithPassword(authEmail.trim(), authPassword);
+                      } else {
+                        await signInWithPassword(authEmail.trim(), authPassword);
+                      }
+                      setAuthEmailPasswordLoading(false);
+                    }}
+                  >
+                    <input
+                      type="email"
+                      placeholder="Email"
+                      value={authEmail}
+                      onChange={(e) => setAuthEmail(e.target.value)}
+                      className="auth-email-input"
+                      required
+                      disabled={authEmailPasswordLoading}
+                      autoComplete="email"
+                    />
+                    <input
+                      type="password"
+                      placeholder="Password"
+                      value={authPassword}
+                      onChange={(e) => setAuthPassword(e.target.value)}
+                      className="auth-email-input"
+                      required
+                      disabled={authEmailPasswordLoading}
+                      autoComplete={authIsSignUp ? 'new-password' : 'current-password'}
+                    />
+                    <button type="submit" className="btn-auth btn-auth-submit" disabled={authEmailPasswordLoading}>
+                      {authEmailPasswordLoading ? 'Please wait…' : authIsSignUp ? 'Create account' : 'Sign in'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAuthIsSignUp(!authIsSignUp)}
+                      className="auth-toggle-link"
+                    >
+                      {authIsSignUp ? 'Already have an account? Sign in' : 'Create account'}
+                    </button>
+                  </form>
                 </div>
               )
             )}
@@ -1959,6 +2011,67 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
 
           .btn-auth:hover {
             background: var(--color-bg-warm);
+          }
+
+          .auth-section {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+          }
+
+          .auth-email-divider {
+            font-size: 13px;
+            color: var(--color-text-muted);
+            text-align: center;
+          }
+
+          .auth-email-form {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+          }
+
+          .auth-email-input {
+            padding: 12px 14px;
+            border-radius: 10px;
+            border: 1px solid var(--color-border);
+            background: var(--ct-bg-surface);
+            color: var(--color-text);
+            font-size: 16px;
+            font-family: inherit;
+          }
+
+          .auth-email-input:focus {
+            outline: none;
+            border-color: var(--color-primary);
+          }
+
+          .auth-email-input::placeholder {
+            color: var(--color-text-muted);
+          }
+
+          .btn-auth-submit {
+            width: 100%;
+          }
+
+          .btn-auth-submit:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+          }
+
+          .auth-toggle-link {
+            background: none;
+            border: none;
+            color: var(--color-text-muted);
+            font-size: 14px;
+            cursor: pointer;
+            text-decoration: underline;
+            padding: 0;
+            align-self: flex-start;
+          }
+
+          .auth-toggle-link:hover {
+            color: var(--color-primary);
           }
 
           .btn-primary {
