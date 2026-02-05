@@ -943,24 +943,31 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
                   <div key={ticket.id} className="ticket-slot">
                     <span className="ticket-slot-number">{index + 1}</span>
                     <div className="ticket-card ticket-held">
-                      <div className="ticket-left">
-                        <div className="pickup-label">{displayLabel}</div>
-                        {scheduledLabel && <div className="scheduled-badge">📅 {scheduledLabel}</div>}
+                      {/* Top row: Held label left, Resume right */}
+                      <div className="ticket-card-header">
                         <div className="held-badge">⏸️ Held</div>
-                      </div>
-                      <div className="ticket-middle">
-                        {renderLineItems(order.lineItems)}
-                        {ticket.staffNotes && (
-                          <div className="staff-notes">📝 {ticket.staffNotes}</div>
-                        )}
-                      </div>
-                      <div className="ticket-right">
                         <button 
                           className="action-button unhold-button"
                           onClick={() => handleUnholdTicket(ticket.id)}
                         >
                           Resume
                         </button>
+                      </div>
+                      {/* Middle: line items */}
+                      <div className="ticket-card-body">
+                        {renderLineItems(order.lineItems)}
+                        {ticket.staffNotes && (
+                          <div className="staff-notes">📝 {ticket.staffNotes}</div>
+                        )}
+                      </div>
+                      {/* Bottom: pickup label + scheduled left */}
+                      <div className="ticket-card-footer">
+                        <div className="ticket-footer-left">
+                          <span className="pickup-label">{displayLabel}</span>
+                          {scheduledLabel && (
+                            <div className="scheduled-badge">📅 {scheduledLabel}</div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1005,82 +1012,83 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
                         }
                       }}
                     >
-                    {/* Menu button */}
-                    <div className="ticket-menu-wrapper" onClick={(e) => e.stopPropagation()}>
-                      <button 
-                        className="ticket-menu-button"
-                        onClick={() => handleTicketMenuToggle(ticket.id)}
-                      >
-                        ⋮
-                      </button>
-                      {isMenuOpen && (
-                        <div className="ticket-menu-dropdown">
-                          <button onClick={() => handleHoldTicket(ticket.id)}>
-                            ⏸️ Hold
-                          </button>
-                          <button onClick={() => handleOpenNoteEditor(ticket.id, ticket.staffNotes || '')}>
-                            📝 {ticket.staffNotes ? 'Edit Note' : 'Add Note'}
-                          </button>
-                          <button onClick={() => handleOpenLabelEditor(ticket.id, ticket.customLabel || '')}>
-                            ✏️ Rename
-                          </button>
-                          <div className="menu-divider" />
-                          <button 
-                            onClick={() => handleMoveTicket(ticket.id, 'up')}
-                            disabled={isFirst}
-                          >
-                            ⬆️ Move Up
-                          </button>
-                          <button 
-                            onClick={() => handleMoveTicket(ticket.id, 'down')}
-                            disabled={isLast}
-                          >
-                            ⬇️ Move Down
-                          </button>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="ticket-card-body">
-                      <div className="ticket-left">
-                        {ticket.shortcode && (
-                          <div className="ticket-shortcode">
-                            {ticket.shortcode}
-                          </div>
-                        )}
+                      {/* Top row: timer left, menu right */}
+                      <div className="ticket-card-header">
                         <div className={`age-timer age-timer-${ageColor}`}>{age}</div>
-                        <div className="pickup-label">{displayLabel}</div>
-                        <div className="badge-row">
-                          {scheduledLabel && (
-                            <div className="scheduled-badge" title={`Scheduled pickup: ${scheduledLabel}`}>
-                              📅 {scheduledLabel}
-                            </div>
-                          )}
-                          <div className="source-badge" data-source={ticket.source}>
-                            {sourceBadge}
-                          </div>
-                          {isPreparing && (
-                            <div className="status-badge preparing">
-                              🔥 Cooking
-                            </div>
-                          )}
-                          {hasLoyalty && (
-                            <div className="loyalty-badge" title={`${customer?.loyaltyPoints} loyalty points`}>
-                              ⭐ {customer?.loyaltyPoints}
+                        <div className="ticket-menu-wrapper" onClick={(e) => e.stopPropagation()}>
+                          <button 
+                            className="ticket-menu-button"
+                            onClick={() => handleTicketMenuToggle(ticket.id)}
+                          >
+                            ⋮
+                          </button>
+                          {isMenuOpen && (
+                            <div className="ticket-menu-dropdown">
+                              <button onClick={() => handleHoldTicket(ticket.id)}>
+                                ⏸️ Hold
+                              </button>
+                              <button onClick={() => handleOpenNoteEditor(ticket.id, ticket.staffNotes || '')}>
+                                📝 {ticket.staffNotes ? 'Edit Note' : 'Add Note'}
+                              </button>
+                              <button onClick={() => handleOpenLabelEditor(ticket.id, ticket.customLabel || '')}>
+                                ✏️ Rename
+                              </button>
+                              <div className="menu-divider" />
+                              <button 
+                                onClick={() => handleMoveTicket(ticket.id, 'up')}
+                                disabled={isFirst}
+                              >
+                                ⬆️ Move Up
+                              </button>
+                              <button 
+                                onClick={() => handleMoveTicket(ticket.id, 'down')}
+                                disabled={isLast}
+                              >
+                                ⬇️ Move Down
+                              </button>
                             </div>
                           )}
                         </div>
                       </div>
-                      <div className="ticket-middle">
+
+                      {/* Middle: line items (quantity + names) */}
+                      <div className="ticket-card-body">
                         {renderLineItems(order.lineItems)}
                         {ticket.staffNotes && (
                           <div className="staff-notes">📝 {ticket.staffNotes}</div>
                         )}
                       </div>
-                    </div>
-                    <div className="ticket-card-footer">
-                      <span className="ticket-status-readout">{statusReadout}</span>
-                    </div>
+
+                      {/* Bottom row: shortcode + badges left, status right */}
+                      <div className="ticket-card-footer">
+                        <div className="ticket-footer-left">
+                          {ticket.shortcode && (
+                            <span className="ticket-shortcode">{ticket.shortcode}</span>
+                          )}
+                          <span className="pickup-label">{displayLabel}</span>
+                          <div className="badge-row">
+                            {scheduledLabel && (
+                              <div className="scheduled-badge" title={`Scheduled pickup: ${scheduledLabel}`}>
+                                📅 {scheduledLabel}
+                              </div>
+                            )}
+                            <div className="source-badge" data-source={ticket.source}>
+                              {sourceBadge}
+                            </div>
+                            {isPreparing && (
+                              <div className="status-badge preparing">
+                                🔥 Cooking
+                              </div>
+                            )}
+                            {hasLoyalty && (
+                              <div className="loyalty-badge" title={`${customer?.loyaltyPoints} loyalty points`}>
+                                ⭐ {customer?.loyaltyPoints}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <span className="ticket-status-readout">{statusReadout}</span>
+                      </div>
                     </div>
                   </div>
                 );
@@ -1552,8 +1560,9 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
 
           .ticket-slot {
             flex: 0 0 auto;
-            min-width: 420px;
-            max-width: 520px;
+            width: 300px;
+            min-width: 300px;
+            max-width: 300px;
             position: relative;
             background: rgba(255, 255, 255, 0.04);
             border-radius: 16px;
@@ -1575,7 +1584,7 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
             flex-direction: column;
             align-items: stretch;
             gap: 0;
-            padding: 20px;
+            padding: 12px 16px;
             background: var(--ct-bg-surface);
             border: 1px solid var(--color-border);
             border-radius: 12px;
@@ -1583,24 +1592,50 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
             position: relative;
             width: 100%;
             min-width: 0;
-            min-height: 220px;
+            min-height: 180px;
             cursor: pointer;
+          }
+
+          .ticket-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+          }
+
+          .ticket-card-header .age-timer {
+            font-size: 18px;
+            padding: 4px 10px;
+            min-width: 52px;
           }
 
           .ticket-card-body {
             display: flex;
-            align-items: center;
-            gap: 12px;
-            min-height: 170px;
+            flex-direction: column;
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto;
+            max-height: 120px;
+            gap: 4px;
           }
 
           .ticket-card-footer {
             display: flex;
-            justify-content: flex-end;
-            align-items: center;
-            margin-top: 12px;
-            padding-top: 12px;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin-top: 8px;
+            padding-top: 8px;
             border-top: 1px solid rgba(255, 255, 255, 0.06);
+            gap: 8px;
+          }
+
+          .ticket-footer-left {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 6px;
+            min-width: 0;
+            flex: 1;
           }
 
           .ticket-card:hover {
@@ -1610,12 +1645,6 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
 
           .ticket-card.ticket-held {
             cursor: default;
-            flex-direction: row;
-            gap: 24px;
-          }
-
-          .ticket-card.ticket-held .ticket-card-footer {
-            display: none;
           }
 
           .ticket-card.ticket-held:hover {
@@ -1624,44 +1653,29 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
           }
 
           .ticket-shortcode {
-            font-size: 32px;
+            font-size: 18px;
             font-weight: 900;
             line-height: 1;
-            margin-bottom: 4px;
             background: var(--ct-gradient-primary);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
           }
 
-          .ticket-card:hover {
-            background: var(--color-bg-warm);
-            border-color: rgba(232, 93, 4, 0.25);
-          }
-
-          .ticket-left {
-            flex: 0 0 200px;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            align-items: flex-start;
-          }
-
-          .ticket-left .age-timer {
-            align-self: flex-start;
-          }
-
           .pickup-label {
-            font-size: 18px;
+            font-size: 14px;
             font-weight: 600;
             color: var(--color-text);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
           }
 
           .source-badge {
             display: inline-block;
-            padding: 4px 12px;
-            border-radius: 8px;
-            font-size: 12px;
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: 10px;
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.5px;
@@ -1688,18 +1702,19 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
 
           .badge-row {
             display: flex;
-            flex-direction: column;
-            gap: 6px;
-            align-items: flex-start;
+            flex-wrap: wrap;
+            flex-direction: row;
+            gap: 4px;
+            align-items: center;
           }
 
           .loyalty-badge {
             display: inline-flex;
             align-items: center;
-            gap: 4px;
-            padding: 4px 10px;
-            border-radius: 8px;
-            font-size: 12px;
+            gap: 2px;
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: 10px;
             font-weight: 600;
             background: linear-gradient(135deg, rgba(255, 215, 0, 0.2) 0%, rgba(255, 193, 7, 0.2) 100%);
             color: #ffc107;
@@ -1722,10 +1737,10 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
           .status-badge {
             display: inline-flex;
             align-items: center;
-            gap: 4px;
-            padding: 4px 10px;
-            border-radius: 8px;
-            font-size: 12px;
+            gap: 2px;
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: 10px;
             font-weight: 600;
           }
 
@@ -1743,11 +1758,6 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
             50% {
               opacity: 0.7;
             }
-          }
-
-          .ticket-middle {
-            flex: 0 1 auto;
-            font-size: 25px;
           }
 
           .line-items-list {
@@ -1779,12 +1789,12 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            min-width: 56px;
-            height: 44px;
-            padding: 0 12px;
+            min-width: 28px;
+            height: 28px;
+            padding: 0 6px;
             background: #000;
-            border-radius: 10px;
-            font-size: 26px;
+            border-radius: 6px;
+            font-size: 14px;
             font-weight: 800;
             color: #fff;
             font-variant-numeric: tabular-nums;
@@ -1792,17 +1802,17 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
           }
 
           .line-item .quantity-badge,
-          .ticket-middle .quantity-badge {
+          .ticket-card-body .quantity-badge {
             display: inline-flex !important;
             align-items: center;
             justify-content: center;
-            min-width: 56px;
-            height: 44px;
-            padding: 0 12px;
+            min-width: 28px;
+            height: 28px;
+            padding: 0 6px;
             background: rgba(232, 93, 4, 0.18) !important;
             border: 2px solid var(--color-primary) !important;
-            border-radius: 10px;
-            font-size: 26px;
+            border-radius: 6px;
+            font-size: 14px;
             font-weight: 800;
             color: var(--color-text);
             font-variant-numeric: tabular-nums;
@@ -1810,8 +1820,8 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
           }
 
           .line-item .item-name,
-          .ticket-middle .item-name {
-            font-size: 24px;
+          .ticket-card-body .item-name {
+            font-size: 15px;
             color: var(--color-text);
             font-weight: 600;
             line-height: 1.3;
@@ -1822,44 +1832,44 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
           }
 
           /* Parent-scoped :global for renderLineItems() (unscoped class names) */
-          .ticket-middle :global(.line-items-list) {
+          .ticket-card-body :global(.line-items-list) {
             display: flex;
             flex-direction: column;
             gap: 4px;
           }
-          .ticket-middle :global(.line-item) {
+          .ticket-card-body :global(.line-item) {
             display: flex;
             flex-direction: column;
-            gap: 4px;
-            padding: 8px 0;
+            gap: 2px;
+            padding: 4px 0;
             border-bottom: 1px solid rgba(255, 255, 255, 0.05);
           }
-          .ticket-middle :global(.line-item:last-child) {
+          .ticket-card-body :global(.line-item:last-child) {
             border-bottom: none;
           }
-          .ticket-middle :global(.line-item .item-header) {
+          .ticket-card-body :global(.line-item .item-header) {
             display: flex;
             align-items: center;
-            gap: 16px;
+            gap: 8px;
             flex-wrap: nowrap;
           }
-          .ticket-middle :global(.line-item .quantity-box) {
+          .ticket-card-body :global(.line-item .quantity-box) {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            min-width: 56px;
-            height: 44px;
-            padding: 0 12px;
+            min-width: 28px;
+            height: 28px;
+            padding: 0 6px;
             background: #000;
-            border-radius: 10px;
-            font-size: 26px;
+            border-radius: 6px;
+            font-size: 14px;
             font-weight: 800;
             color: #fff;
             font-variant-numeric: tabular-nums;
             flex-shrink: 0;
           }
-          .ticket-middle :global(.line-item .item-name) {
-            font-size: 24px;
+          .ticket-card-body :global(.line-item .item-name) {
+            font-size: 15px;
             color: var(--color-text);
             font-weight: 600;
             line-height: 1.3;
@@ -1868,39 +1878,39 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
             text-overflow: ellipsis;
             min-width: 0;
           }
-          .ticket-middle :global(.line-item .modifiers-list) {
+          .ticket-card-body :global(.line-item .modifiers-list) {
             display: flex;
             flex-wrap: wrap;
-            gap: 6px;
-            margin-left: 72px;
-            margin-top: 4px;
+            gap: 4px;
+            margin-left: 36px;
+            margin-top: 2px;
           }
-          .ticket-middle :global(.line-item .item-note) {
-            margin-left: 72px;
-            margin-top: 4px;
-            font-size: 15px;
+          .ticket-card-body :global(.line-item .item-note) {
+            margin-left: 36px;
+            margin-top: 2px;
+            font-size: 12px;
             color: #ffd60a;
             font-style: italic;
           }
-          .ticket-middle :global(.line-items-empty) {
-            font-size: 14px;
+          .ticket-card-body :global(.line-items-empty) {
+            font-size: 13px;
             color: var(--color-text-muted);
           }
-          .ticket-middle :global(.line-item .modifier) {
-            padding: 4px 10px;
-            border-radius: 6px;
-            font-size: 14px;
+          .ticket-card-body :global(.line-item .modifier) {
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
             font-weight: 500;
             background: var(--color-bg-warm);
             color: var(--color-text-muted);
           }
-          .ticket-middle :global(.line-item .modifier-allergy) {
+          .ticket-card-body :global(.line-item .modifier-allergy) {
             background: rgba(255, 59, 48, 0.25);
             color: #ff6b6b;
             border: 1px solid rgba(255, 59, 48, 0.4);
             font-weight: 600;
           }
-          .ticket-middle :global(.line-item .modifier-extra) {
+          .ticket-card-body :global(.line-item .modifier-extra) {
             background: rgba(52, 199, 89, 0.2);
             color: #6ee7b7;
           }
@@ -1949,7 +1959,7 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
 
           /* Staff notes on ticket */
           .staff-notes {
-            margin-top: 12px;
+            margin-top: 6px;
             padding: 8px 12px;
             background: rgba(255, 214, 10, 0.15);
             border: 1px solid rgba(255, 214, 10, 0.3);
@@ -1966,12 +1976,12 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
 
           .scheduled-badge {
             display: inline-block;
-            padding: 4px 10px;
+            padding: 2px 8px;
             background: rgba(94, 92, 230, 0.2);
             color: #5e5ce6;
             border: 1px solid rgba(94, 92, 230, 0.3);
             border-radius: 6px;
-            font-size: 12px;
+            font-size: 10px;
             font-weight: 500;
           }
 
@@ -1987,13 +1997,13 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
 
           .unhold-button {
             background: linear-gradient(135deg, #ff9f0a 0%, #ff6b00 100%) !important;
+            padding: 6px 12px;
+            font-size: 13px;
           }
 
-          /* Ticket menu - positioned top-right */
+          /* Ticket menu - in header, right side */
           .ticket-menu-wrapper {
-            position: absolute;
-            top: 12px;
-            right: 12px;
+            position: relative;
             z-index: 10;
           }
 
@@ -2119,17 +2129,6 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
             opacity: 0.9;
           }
 
-          .ticket-right {
-            flex: 0 0 auto;
-            display: flex;
-            flex-direction: column;
-            align-items: flex-end;
-            justify-content: flex-end;
-            gap: 12px;
-            font-size: 25px;
-            padding-top: 40px; /* Space for menu button */
-          }
-
           .ticket-actions {
             display: flex;
             gap: 8px;
@@ -2137,9 +2136,10 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
           }
 
           .ticket-status-readout {
-            font-size: 14px;
+            font-size: 12px;
             color: var(--color-text-muted);
-            font-weight: 500;
+            font-weight: 600;
+            flex-shrink: 0;
           }
 
           .modal-overlay {
@@ -2645,30 +2645,19 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
             transform: none;
           }
 
+          @media (max-width: 1024px) {
+            .ticket-slot {
+              width: 300px;
+              min-width: 300px;
+              max-width: 300px;
+            }
+          }
+
           @media (max-width: 768px) {
             .ticket-slot {
-              min-width: 320px;
-            }
-
-            .ticket-card {
-              flex-direction: column;
-              align-items: flex-start;
-            }
-
-            .ticket-card-body {
-              flex-direction: column;
-              width: 100%;
-            }
-
-            .ticket-left,
-            .ticket-middle,
-            .ticket-right {
-              flex: 1 1 100%;
-              width: 100%;
-            }
-
-            .ticket-right {
-              align-items: stretch;
+              width: 300px;
+              min-width: 300px;
+              max-width: 300px;
             }
 
             .action-button {
