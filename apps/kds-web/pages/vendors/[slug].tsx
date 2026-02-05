@@ -1031,32 +1031,34 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
                         {ticket.shortcode}
                       </div>
                     )}
-                    <div className="ticket-left">
-                      <div className={`age-timer age-timer-${ageColor}`}>{age}</div>
-                      <div className="pickup-label">{displayLabel}</div>
-                      <div className="badge-row">
-                        <div className="source-badge" data-source={ticket.source}>
-                          {sourceBadge}
+                    <div className="ticket-card-body">
+                      <div className="ticket-left">
+                        <div className={`age-timer age-timer-${ageColor}`}>{age}</div>
+                        <div className="pickup-label">{displayLabel}</div>
+                        <div className="badge-row">
+                          <div className="source-badge" data-source={ticket.source}>
+                            {sourceBadge}
+                          </div>
+                          {isPreparing && (
+                            <div className="status-badge preparing">
+                              🔥 Cooking
+                            </div>
+                          )}
+                          {hasLoyalty && (
+                            <div className="loyalty-badge" title={`${customer?.loyaltyPoints} loyalty points`}>
+                              ⭐ {customer?.loyaltyPoints}
+                            </div>
+                          )}
                         </div>
-                        {isPreparing && (
-                          <div className="status-badge preparing">
-                            🔥 Cooking
-                          </div>
-                        )}
-                        {hasLoyalty && (
-                          <div className="loyalty-badge" title={`${customer?.loyaltyPoints} loyalty points`}>
-                            ⭐ {customer?.loyaltyPoints}
-                          </div>
+                      </div>
+                      <div className="ticket-middle">
+                        {renderLineItems(order.lineItems)}
+                        {ticket.staffNotes && (
+                          <div className="staff-notes">📝 {ticket.staffNotes}</div>
                         )}
                       </div>
                     </div>
-                    <div className="ticket-middle">
-                      {renderLineItems(order.lineItems)}
-                      {ticket.staffNotes && (
-                        <div className="staff-notes">📝 {ticket.staffNotes}</div>
-                      )}
-                    </div>
-                    <div className="ticket-right">
+                    <div className="ticket-card-footer">
                       <span className="ticket-status-readout">{statusReadout}</span>
                     </div>
                   </div>
@@ -1518,8 +1520,9 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
 
           .ticket-card {
             display: flex;
-            align-items: center;
-            gap: 24px;
+            flex-direction: column;
+            align-items: stretch;
+            gap: 0;
             padding: 20px;
             background: var(--ct-bg-surface);
             border: 1px solid var(--color-border);
@@ -1532,6 +1535,21 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
             cursor: pointer;
           }
 
+          .ticket-card-body {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+          }
+
+          .ticket-card-footer {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+          }
+
           .ticket-card:hover {
             background: var(--color-bg-warm);
             border-color: rgba(232, 93, 4, 0.25);
@@ -1539,6 +1557,12 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
 
           .ticket-card.ticket-held {
             cursor: default;
+            flex-direction: row;
+            gap: 24px;
+          }
+
+          .ticket-card.ticket-held .ticket-card-footer {
+            display: none;
           }
 
           .ticket-card.ticket-held:hover {
@@ -2583,6 +2607,11 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
             .ticket-card {
               flex-direction: column;
               align-items: flex-start;
+            }
+
+            .ticket-card-body {
+              flex-direction: column;
+              width: 100%;
             }
 
             .ticket-left,
