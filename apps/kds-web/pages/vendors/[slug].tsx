@@ -1026,13 +1026,13 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
                       )}
                     </div>
 
-                    {ticket.shortcode && (
-                      <div className="ticket-shortcode">
-                        {ticket.shortcode}
-                      </div>
-                    )}
                     <div className="ticket-card-body">
                       <div className="ticket-left">
+                        {ticket.shortcode && (
+                          <div className="ticket-shortcode">
+                            {ticket.shortcode}
+                          </div>
+                        )}
                         <div className={`age-timer age-timer-${ageColor}`}>{age}</div>
                         <div className="pickup-label">{displayLabel}</div>
                         <div className="badge-row">
@@ -1532,6 +1532,7 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
             width: fit-content;
             max-width: 100%;
             min-width: 420px;
+            min-height: 220px;
             cursor: pointer;
           }
 
@@ -1571,15 +1572,10 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
           }
 
           .ticket-shortcode {
-            position: absolute;
-            top: -20px;
-            left: 24px;
-            font-size: 48px;
+            font-size: 32px;
             font-weight: 900;
-            color: #fff;
-            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
             line-height: 1;
-            z-index: 1;
+            margin-bottom: 4px;
             background: var(--ct-gradient-primary);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
