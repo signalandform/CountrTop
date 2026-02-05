@@ -82,7 +82,7 @@ export default async function handler(
       });
     }
 
-    const vendorList = (vendors || []) as Omit<VendorRow, 'planId' | 'billingStatus' | 'currentPeriodEnd'>[];
+    const vendorList = (vendors || []) as unknown as Omit<VendorRow, 'planId' | 'billingStatus' | 'currentPeriodEnd'>[];
 
     const { data: billingRows } = await supabase
       .from('vendor_billing')
