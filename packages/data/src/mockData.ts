@@ -77,9 +77,11 @@ export class MockDataClient implements DataClient {
   }
 
   async setSquarePaymentsActivationStatus(
-    _vendorId: string,
-    _data: { activated: boolean; checkedAt: string; error?: string | null; locationId?: string | null }
+    vendorId: string,
+    data: { activated: boolean; checkedAt: string; error?: string | null; locationId?: string | null }
   ): Promise<void> {
+    void vendorId;
+    void data;
     // No-op for mock
   }
 
