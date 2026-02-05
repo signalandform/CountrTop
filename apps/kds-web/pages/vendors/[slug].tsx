@@ -1532,7 +1532,7 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
             width: fit-content;
             max-width: 100%;
             min-width: 420px;
-            min-height: 220px;
+            min-height: 240px;
             cursor: pointer;
           }
 
@@ -1540,6 +1540,7 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
             display: flex;
             align-items: center;
             gap: 24px;
+            min-height: 170px;
           }
 
           .ticket-card-footer {
