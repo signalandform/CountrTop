@@ -459,7 +459,7 @@ export type SquarePaymentsActivationResult = {
  */
 export async function checkSquarePaymentsActivation(
   vendor: Vendor,
-  locationId?: string
+  _locationId?: string
 ): Promise<SquarePaymentsActivationResult> {
   const square = squareClientForVendor(vendor);
   try {

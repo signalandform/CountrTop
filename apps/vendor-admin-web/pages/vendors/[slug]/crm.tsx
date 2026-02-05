@@ -179,7 +179,7 @@ export default function VendorCrmPage({ vendorSlug, vendorName, vendor }: Vendor
                     <ul className="email-list">
                       {customers.slice(0, 50).map((c) => (
                         <li key={c.email}>
-                          {c.displayName ? `${c.displayName} &lt;${c.email}&gt;` : c.email}
+                          {c.displayName ? `${c.displayName} <${c.email}>` : c.email}
                           {c.orderCount > 1 && ` (${c.orderCount} orders)`}
                         </li>
                       ))}
