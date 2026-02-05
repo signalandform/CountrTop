@@ -66,6 +66,23 @@ export class MockDataClient implements DataClient {
     return this.vendors.find((vendor) => vendor.squareLocationId === locationId) ?? null;
   }
 
+  async getSquarePaymentsActivationStatus(vendorId: string): Promise<{
+    activated: boolean | null;
+    checkedAt: string | null;
+    error: string | null;
+    locationId: string | null;
+  } | null> {
+    const vendor = this.vendors.find((v) => v.id === vendorId);
+    return vendor ? { activated: true, checkedAt: new Date().toISOString(), error: null, locationId: null } : null;
+  }
+
+  async setSquarePaymentsActivationStatus(
+    _vendorId: string,
+    _data: { activated: boolean; checkedAt: string; error?: string | null; locationId?: string | null }
+  ): Promise<void> {
+    // No-op for mock
+  }
+
   /* eslint-disable @typescript-eslint/no-unused-vars */
   // Mock vendor location methods - return empty/null for mock client
   async listVendorLocations(vendorId: string, includeInactive = false): Promise<import('./models').VendorLocation[]> {

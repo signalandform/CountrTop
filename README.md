@@ -9,7 +9,7 @@ CountrTop is a **commission-free online ordering platform** for independent rest
 - **Next.js** – Customer web, vendor admin, KDS, ops dashboard, and marketing site
 - **React Native (Expo)** – Customer iOS shell + vendor ops tablet app
 - **Supabase** – Auth, data, RLS, and realtime subscriptions
-- **Square / Toast / Clover** – POS integrations for catalog, checkout, and orders
+- **Square / Toast / Clover** – POS integrations for catalog, checkout, and orders. Vendors must activate their Square account for production payments; CountrTop detects and guides this during onboarding.
 - **Resend** – Transactional email (order confirmations, ready notifications)
 - **Vercel** – Hosting and deployment
 

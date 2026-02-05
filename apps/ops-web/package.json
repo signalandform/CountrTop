@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@countrtop/api-client": "workspace:^",
     "@countrtop/data": "workspace:*",
     "@countrtop/models": "workspace:*",
     "@countrtop/ui": "workspace:*",
@@ -25,4 +26,3 @@
     "typescript": "^5.3.3"
   }
 }
-

@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@countrtop/api-client": "workspace:^",
     "@countrtop/data": "workspace:*",
     "@countrtop/email": "workspace:*",
     "@countrtop/models": "workspace:*",

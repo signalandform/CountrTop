@@ -49,6 +49,8 @@ CountrTop integrates with major POS systems to automatically sync your menu and 
 - Read locations
 - Create payment links
 
+**Square Payments Activation:** Your Square account must be activated for production card payments before going live. CountrTop detects this automatically and shows a "Payments Activated" status on your Dashboard. If your account is not yet activated, complete the setup in your [Square Dashboard](https://squareup.com/dashboard) (business info + bank account), then click "Re-check Square Activation" on the CountrTop Dashboard.
+
 ### Toast (Coming soon)
 
 Toast integration is on our roadmap. We will update this guide as soon as it is available.

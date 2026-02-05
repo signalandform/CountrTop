@@ -220,6 +220,10 @@ export function createResilientSquareClient(
       retrieveLocation: wrapApiMethod(client.locationsApi.retrieveLocation.bind(client.locationsApi)),
       listLocations: wrapApiMethod(client.locationsApi.listLocations.bind(client.locationsApi))
     },
+    merchantsApi: {
+      ...client.merchantsApi,
+      retrieveMerchant: wrapApiMethod(client.merchantsApi.retrieveMerchant.bind(client.merchantsApi))
+    },
     // Expose circuit breaker state for monitoring
     getCircuitBreakerState: () => circuitBreaker.getState()
   };
@@ -436,6 +440,40 @@ export async function listSquareOrdersUpdatedSince(
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     throw new Error(`Failed to list Square orders updated since ${updatedSinceISO}: ${errorMessage}`);
+  }
+}
+
+export type SquarePaymentsActivationResult = {
+  activated: boolean;
+  error?: string;
+};
+
+/**
+ * Checks whether the Square merchant account is activated for production card payments.
+ * Uses Merchants API retrieveMerchant("me") - status ACTIVE means payments are enabled.
+ * Safe and idempotent; does not charge any money.
+ *
+ * @param vendor - Vendor object with Square credentials
+ * @param locationId - Optional Square location ID (for logging)
+ * @returns Result with activated boolean; error if check failed (network, token, or account not activated)
+ */
+export async function checkSquarePaymentsActivation(
+  vendor: Vendor,
+  locationId?: string
+): Promise<SquarePaymentsActivationResult> {
+  const square = squareClientForVendor(vendor);
+  try {
+    const { result } = await square.merchantsApi.retrieveMerchant('me');
+    if (result.errors && result.errors.length > 0) {
+      const msg = result.errors.map((e) => e.detail || e.code).join(', ');
+      return { activated: false, error: msg };
+    }
+    const status = result.merchant?.status;
+    const activated = status === 'ACTIVE';
+    return { activated };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return { activated: false, error: message };
   }
 }
 

@@ -2,6 +2,8 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 
 import type { Database } from '@countrtop/data';
+import { createDataClient } from '@countrtop/data';
+import { checkSquarePaymentsActivation } from '@countrtop/api-client/square';
 import { requireOpsAdminApi } from '../../../lib/auth';
 
 type CreateVendorRequest = {
@@ -170,6 +172,28 @@ export default async function handler(
         success: false,
         error: `Failed to create vendor billing: ${billingError.message}`
       });
+    }
+
+    // Run Square payments activation check (best-effort; do not fail vendor creation)
+    if (body.pos_provider === 'square' && body.square_location_id && body.square_location_id !== 'SQUARE_LOCATION_DEMO') {
+      try {
+        const dataClient = createDataClient({ supabase });
+        const vendorForCheck = await dataClient.getVendorById(vendor.id);
+        if (vendorForCheck) {
+          const result = await checkSquarePaymentsActivation(
+            vendorForCheck,
+            body.square_location_id
+          );
+          await dataClient.setSquarePaymentsActivationStatus(vendor.id, {
+            activated: result.activated,
+            checkedAt: new Date().toISOString(),
+            error: result.error ?? null,
+            locationId: body.square_location_id
+          });
+        }
+      } catch (checkErr) {
+        console.warn('Square payments activation check failed on vendor create:', checkErr);
+      }
     }
 
     return res.status(201).json({

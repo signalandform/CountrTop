@@ -71,6 +71,17 @@ export interface DataClient {
   getVendorById(vendorId: string): Promise<Vendor | null>;
   getVendorBySquareLocationId(locationId: string): Promise<Vendor | null>;
 
+  getSquarePaymentsActivationStatus(vendorId: string): Promise<{
+    activated: boolean | null;
+    checkedAt: string | null;
+    error: string | null;
+    locationId: string | null;
+  } | null>;
+  setSquarePaymentsActivationStatus(
+    vendorId: string,
+    data: { activated: boolean; checkedAt: string; error?: string | null; locationId?: string | null }
+  ): Promise<void>;
+
   // Multi-Location Support
   listVendorLocations(vendorId: string, includeInactive?: boolean): Promise<VendorLocation[]>;
   getVendorLocationBySquareId(squareLocationId: string): Promise<VendorLocation | null>;

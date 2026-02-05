@@ -99,7 +99,18 @@ export default async function handler(
       if (phone !== undefined) updates.phone = phone;
       if (timezone !== undefined) updates.timezone = timezone;
       if (pickupInstructions !== undefined) updates.pickupInstructions = pickupInstructions;
-      if (onlineOrderingEnabled !== undefined) updates.onlineOrderingEnabled = onlineOrderingEnabled;
+      if (onlineOrderingEnabled !== undefined) {
+        if (onlineOrderingEnabled === true) {
+          const paymentsStatus = await dataClient.getSquarePaymentsActivationStatus(vendor.id);
+          if (paymentsStatus?.activated === false) {
+            return res.status(400).json({
+              ok: false,
+              error: 'Square payments must be activated before enabling online ordering. Complete activation in the Square Dashboard, then use Re-check Square Activation on the Dashboard.'
+            });
+          }
+        }
+        updates.onlineOrderingEnabled = onlineOrderingEnabled;
+      }
       if (kdsActiveLimitTotal !== undefined) updates.kdsActiveLimitTotal = kdsActiveLimitTotal;
       if (kdsActiveLimitCt !== undefined) updates.kdsActiveLimitCt = kdsActiveLimitCt;
       // New KDS settings

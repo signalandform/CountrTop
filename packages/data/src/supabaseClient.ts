@@ -190,6 +190,11 @@ export type Database = {
           accent_color: string | null;
           font_family: string | null;
           review_url: string | null;
+          // Square payments activation
+          square_payments_activated: boolean | null;
+          square_payments_activation_checked_at: string | null;
+          square_payments_activation_error: string | null;
+          square_payments_activation_location_id: string | null;
         };
         Insert: {
           id?: string;
@@ -215,6 +220,10 @@ export type Database = {
           accent_color?: string | null;
           font_family?: string | null;
           review_url?: string | null;
+          square_payments_activated?: boolean | null;
+          square_payments_activation_checked_at?: string | null;
+          square_payments_activation_error?: string | null;
+          square_payments_activation_location_id?: string | null;
         };
         Update: Partial<Database['public']['Tables']['vendors']['Insert']>;
         Relationships: [];
@@ -831,6 +840,46 @@ export class SupabaseDataClient implements DataClient {
       logQueryPerformance('getVendorBySquareLocationId', startTime, false, error);
       throw error;
     }
+  }
+
+  async getSquarePaymentsActivationStatus(vendorId: string): Promise<{
+    activated: boolean | null;
+    checkedAt: string | null;
+    error: string | null;
+    locationId: string | null;
+  } | null> {
+    const { data, error } = await this.client
+      .from('vendors')
+      .select('square_payments_activated,square_payments_activation_checked_at,square_payments_activation_error,square_payments_activation_location_id')
+      .eq('id', vendorId)
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) return null;
+    const row = data as Database['public']['Tables']['vendors']['Row'];
+    return {
+      activated: row.square_payments_activated ?? null,
+      checkedAt: row.square_payments_activation_checked_at ?? null,
+      error: row.square_payments_activation_error ?? null,
+      locationId: row.square_payments_activation_location_id ?? null
+    };
+  }
+
+  async setSquarePaymentsActivationStatus(
+    vendorId: string,
+    data: { activated: boolean; checkedAt: string; error?: string | null; locationId?: string | null }
+  ): Promise<void> {
+    const { error } = await this.client
+      .from('vendors')
+      .update({
+        square_payments_activated: data.activated,
+        square_payments_activation_checked_at: data.checkedAt,
+        square_payments_activation_error: data.error ?? null,
+        square_payments_activation_location_id: data.locationId ?? null
+      })
+      .eq('id', vendorId);
+    if (error) throw error;
+    const { data: vendor } = await this.client.from('vendors').select('slug').eq('id', vendorId).single();
+    if (vendor?.slug) invalidateVendorCacheBySlug(vendor.slug);
   }
 
   // --- Vendor Locations ---

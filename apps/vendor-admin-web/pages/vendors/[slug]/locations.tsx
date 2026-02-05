@@ -18,6 +18,7 @@ type LocationsPageProps = {
   locations: VendorLocation[];
   planId: BillingPlanId;
   canAddMoreLocations: boolean;
+  squarePaymentsActivated: boolean | null;
   error?: string | null;
 };
 
@@ -38,6 +39,7 @@ export const getServerSideProps: GetServerSideProps<LocationsPageProps> = async 
         locations: [],
         planId: 'beta' as BillingPlanId,
         canAddMoreLocations: true,
+        squarePaymentsActivated: null,
         error: authResult.error ?? 'Access denied'
       }
     };
@@ -55,12 +57,17 @@ export const getServerSideProps: GetServerSideProps<LocationsPageProps> = async 
         locations: [],
         planId: 'beta' as BillingPlanId,
         canAddMoreLocations: true,
+        squarePaymentsActivated: null,
         error: 'Vendor not found'
       }
     };
   }
 
-  const billing = await dataClient.getVendorBilling(vendor.id);
+  const [billingResult, paymentsStatus] = await Promise.all([
+    dataClient.getVendorBilling(vendor.id),
+    dataClient.getSquarePaymentsActivationStatus(vendor.id)
+  ]);
+  const billing = billingResult;
   const planId: BillingPlanId = (billing?.planId as BillingPlanId) ?? 'beta';
 
   // Fetch locations using service role
@@ -126,7 +133,8 @@ export const getServerSideProps: GetServerSideProps<LocationsPageProps> = async 
       vendor,
       locations,
       planId,
-      canAddMoreLocations
+      canAddMoreLocations,
+      squarePaymentsActivated: paymentsStatus?.activated ?? null
     }
   };
 };
@@ -376,6 +384,7 @@ export default function LocationsPage({
   vendor,
   locations: initialLocations,
   canAddMoreLocations,
+  squarePaymentsActivated,
   error 
 }: LocationsPageProps) {
   const [locations, setLocations] = useState(initialLocations);
@@ -565,6 +574,7 @@ export default function LocationsPage({
                     location={location}
                     isEditing={editingId === location.id}
                     saving={saving}
+                    squarePaymentsActivated={squarePaymentsActivated}
                     onEdit={() => setEditingId(location.id)}
                     onCancel={() => setEditingId(null)}
                     onSave={(updates) => handleSave(location.id, updates)}
@@ -777,6 +787,7 @@ type LocationCardProps = {
   location: VendorLocation;
   isEditing: boolean;
   saving: boolean;
+  squarePaymentsActivated: boolean | null;
   onEdit: () => void;
   onCancel: () => void;
   onSave: (updates: Partial<VendorLocation>) => void;
@@ -788,6 +799,7 @@ function LocationCard({
   location, 
   isEditing, 
   saving,
+  squarePaymentsActivated,
   onEdit, 
   onCancel, 
   onSave,
@@ -934,10 +946,26 @@ function LocationCard({
                     <input
                       type="checkbox"
                       checked={onlineOrderingEnabled}
-                      onChange={(e) => setOnlineOrderingEnabled(e.target.checked)}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        if (checked && squarePaymentsActivated === false) {
+                          alert(
+                            'Square payments must be activated before enabling online ordering. ' +
+                            'Complete your Square account activation (business info + bank account) in the Square Dashboard, ' +
+                            'then use "Re-check Square Activation" on the Dashboard.'
+                          );
+                          return;
+                        }
+                        setOnlineOrderingEnabled(checked);
+                      }}
                     />
                     Online Ordering Enabled
                   </label>
+                  {squarePaymentsActivated === false && (
+                    <p className="payments-warning">
+                      ⚠️ Square payments not activated. Complete activation in the Dashboard first.
+                    </p>
+                  )}
                 </div>
               </div>
               {onlineOrderingEnabled && (
@@ -1354,6 +1382,11 @@ function LocationCard({
           max-width: 100%;
         }
 
+        .payments-warning {
+          margin: 8px 0 0;
+          font-size: 13px;
+          color: #f59e0b;
+        }
         .form-hint {
           display: block;
           font-size: 12px;

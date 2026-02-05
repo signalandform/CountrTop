@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { VendorInsights } from '@countrtop/models';
 import { getFirstUnseenMilestone, type MilestoneConfig, type MilestoneSeen } from '../lib/milestones';
+import { SquareStatusCard } from './SquareStatusCard';
 
 type Props = {
   vendorSlug: string | null;
@@ -149,6 +150,8 @@ export function VendorInsightsDashboard({
       </header>
 
       {statusMessage && <div className="error-banner">{statusMessage}</div>}
+
+      <SquareStatusCard vendorSlug={vendorSlug} />
 
       {unseenMilestone && (
         <OrderMilestoneBanner
