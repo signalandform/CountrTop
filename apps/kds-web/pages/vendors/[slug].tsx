@@ -1739,7 +1739,90 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
             min-width: 0;
           }
 
-          /* Modifier highlighting */
+          /* Parent-scoped :global for renderLineItems() (unscoped class names) */
+          .ticket-middle :global(.line-items-list) {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+          }
+          .ticket-middle :global(.line-item) {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+          }
+          .ticket-middle :global(.line-item:last-child) {
+            border-bottom: none;
+          }
+          .ticket-middle :global(.line-item .item-header) {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: nowrap;
+          }
+          .ticket-middle :global(.line-item .quantity-box) {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 56px;
+            height: 44px;
+            padding: 0 12px;
+            background: #000;
+            border-radius: 10px;
+            font-size: 26px;
+            font-weight: 800;
+            color: #fff;
+            font-variant-numeric: tabular-nums;
+            flex-shrink: 0;
+          }
+          .ticket-middle :global(.line-item .item-name) {
+            font-size: 24px;
+            color: var(--color-text);
+            font-weight: 600;
+            line-height: 1.3;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            min-width: 0;
+          }
+          .ticket-middle :global(.line-item .modifiers-list) {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-left: 72px;
+            margin-top: 4px;
+          }
+          .ticket-middle :global(.line-item .item-note) {
+            margin-left: 72px;
+            margin-top: 4px;
+            font-size: 15px;
+            color: #ffd60a;
+            font-style: italic;
+          }
+          .ticket-middle :global(.line-items-empty) {
+            font-size: 14px;
+            color: var(--color-text-muted);
+          }
+          .ticket-middle :global(.line-item .modifier) {
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            background: var(--color-bg-warm);
+            color: var(--color-text-muted);
+          }
+          .ticket-middle :global(.line-item .modifier-allergy) {
+            background: rgba(255, 59, 48, 0.25);
+            color: #ff6b6b;
+            border: 1px solid rgba(255, 59, 48, 0.4);
+            font-weight: 600;
+          }
+          .ticket-middle :global(.line-item .modifier-extra) {
+            background: rgba(52, 199, 89, 0.2);
+            color: #6ee7b7;
+          }
+
           .modifiers-list {
             display: flex;
             flex-wrap: wrap;
@@ -2119,6 +2202,82 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
 
           .completed-ticket-details {
             margin-bottom: 8px;
+          }
+
+          /* Parent-scoped :global for renderLineItems() in recall modal */
+          .completed-ticket-details :global(.line-items-list) {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+          }
+          .completed-ticket-details :global(.line-item) {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+          }
+          .completed-ticket-details :global(.line-item .item-header) {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: nowrap;
+          }
+          .completed-ticket-details :global(.line-item .quantity-box) {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 40px;
+            height: 32px;
+            padding: 0 8px;
+            background: #000;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: 800;
+            color: #fff;
+            font-variant-numeric: tabular-nums;
+          }
+          .completed-ticket-details :global(.line-item .item-name) {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--color-text);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            min-width: 0;
+          }
+          .completed-ticket-details :global(.line-item .modifiers-list) {
+            display: flex;
+            flex-wrap: wrap;
+            margin-left: 46px;
+            gap: 4px;
+          }
+          .completed-ticket-details :global(.line-item .item-note) {
+            margin-left: 46px;
+            font-size: 12px;
+            color: #ffd60a;
+            font-style: italic;
+          }
+          .completed-ticket-details :global(.line-items-empty) {
+            color: var(--color-text-muted);
+            font-size: 13px;
+            font-style: italic;
+          }
+          .completed-ticket-details :global(.line-item .modifier) {
+            padding: 2px 6px;
+            font-size: 11px;
+            border-radius: 6px;
+            font-weight: 500;
+            background: var(--color-bg-warm);
+            color: var(--color-text-muted);
+          }
+          .completed-ticket-details :global(.line-item .modifier-allergy) {
+            background: rgba(255, 59, 48, 0.25);
+            color: #ff6b6b;
+            border: 1px solid rgba(255, 59, 48, 0.4);
+            font-weight: 600;
+          }
+          .completed-ticket-details :global(.line-item .modifier-extra) {
+            background: rgba(52, 199, 89, 0.2);
+            color: #6ee7b7;
           }
 
           .completed-ticket-details .line-items-list {
