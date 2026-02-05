@@ -243,7 +243,7 @@ export class MockDataClient implements DataClient {
     return [];
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- mock no-op
+  /* eslint-disable @typescript-eslint/no-unused-vars -- mock no-op */
   async markVendorOrderMilestoneSeen(
     _vendorId: string,
     _milestone: number,
@@ -251,6 +251,7 @@ export class MockDataClient implements DataClient {
   ): Promise<void> {
     return;
   }
+  /* eslint-enable @typescript-eslint/no-unused-vars */
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- mock no-op
   async claimVendorOrderMilestone(_vendorId: string, _milestone: number): Promise<void> {
