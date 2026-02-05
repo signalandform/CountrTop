@@ -1579,7 +1579,7 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
 
           .ticket-slot-number {
             position: absolute;
-            top: 8px;
+            top: -17px;
             left: 50%;
             transform: translateX(-50%);
             font-size: 12px;
