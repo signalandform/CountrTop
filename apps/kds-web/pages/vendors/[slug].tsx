@@ -963,21 +963,8 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
                 const age = formatAge(ticket.placedAt, currentTime);
                 const ageColor = getAgeColor(ticket.placedAt);
                 
-                // Three-stage tap-to-start flow labels
-                let actionLabel: string;
-                let buttonClass: string;
-                if (ticket.status === 'placed') {
-                  actionLabel = 'Start';
-                  buttonClass = 'start-button';
-                } else if (ticket.status === 'preparing') {
-                  actionLabel = 'Ready';
-                  buttonClass = 'ready-button';
-                } else {
-                  actionLabel = 'Complete';
-                  buttonClass = 'complete-button';
-                }
-                
                 const isUpdating = updatingTicketId === ticket.id;
+                const statusReadout = isUpdating ? '...' : ticket.status === 'placed' ? 'New' : ticket.status === 'preparing' ? 'In Progress' : 'Ready';
                 const isOnlineOrder = ticket.source === 'countrtop_online';
                 const hasLoyalty = customer?.isLoyaltyMember;
                 const isPreparing = ticket.status === 'preparing';
@@ -985,8 +972,24 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
                 const isFirst = index === 0;
                 const isLast = index === activeTickets.length - 1;
 
+                const handleCardBump = () => {
+                  if (!isUpdating) handleBumpStatus(ticket.id, ticket.status);
+                };
+
                 return (
-                  <div key={ticket.id} className={`ticket-card ${isOnlineOrder ? 'ticket-online' : 'ticket-pos'} ${isPreparing ? 'ticket-preparing' : ''}`}>
+                  <div
+                    key={ticket.id}
+                    className={`ticket-card ${isOnlineOrder ? 'ticket-online' : 'ticket-pos'} ${isPreparing ? 'ticket-preparing' : ''}`}
+                    role="button"
+                    tabIndex={0}
+                    onClick={handleCardBump}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        handleCardBump();
+                      }
+                    }}
+                  >
                     {/* Menu button */}
                     <div className="ticket-menu-wrapper" onClick={(e) => e.stopPropagation()}>
                       <button 
@@ -1054,15 +1057,7 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
                       )}
                     </div>
                     <div className="ticket-right">
-                      <div className="ticket-actions">
-                        <button
-                          className={`action-button ${buttonClass}`}
-                          onClick={() => handleBumpStatus(ticket.id, ticket.status)}
-                          disabled={isUpdating}
-                        >
-                          {isUpdating ? '...' : actionLabel}
-                        </button>
-                      </div>
+                      <span className="ticket-status-readout">{statusReadout}</span>
                     </div>
                   </div>
                 );
@@ -1534,6 +1529,21 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
             width: fit-content;
             max-width: 100%;
             min-width: 420px;
+            cursor: pointer;
+          }
+
+          .ticket-card:hover {
+            background: var(--color-bg-warm);
+            border-color: rgba(232, 93, 4, 0.25);
+          }
+
+          .ticket-card.ticket-held {
+            cursor: default;
+          }
+
+          .ticket-card.ticket-held:hover {
+            background: var(--ct-bg-surface);
+            border-color: var(--color-border);
           }
 
           .ticket-shortcode {
@@ -2060,6 +2070,11 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
             align-items: center;
           }
 
+          .ticket-status-readout {
+            font-size: 14px;
+            color: var(--color-text-muted);
+            font-weight: 500;
+          }
 
           .modal-overlay {
             position: fixed;
