@@ -454,13 +454,9 @@ export type SquarePaymentsActivationResult = {
  * Safe and idempotent; does not charge any money.
  *
  * @param vendor - Vendor object with Square credentials
- * @param locationId - Optional Square location ID (for logging)
  * @returns Result with activated boolean; error if check failed (network, token, or account not activated)
  */
-export async function checkSquarePaymentsActivation(
-  vendor: Vendor,
-  _locationId?: string
-): Promise<SquarePaymentsActivationResult> {
+export async function checkSquarePaymentsActivation(vendor: Vendor): Promise<SquarePaymentsActivationResult> {
   const square = squareClientForVendor(vendor);
   try {
     const { result } = await square.merchantsApi.retrieveMerchant('me');

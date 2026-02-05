@@ -180,10 +180,7 @@ export default async function handler(
         const dataClient = createDataClient({ supabase });
         const vendorForCheck = await dataClient.getVendorById(vendor.id);
         if (vendorForCheck) {
-          const result = await checkSquarePaymentsActivation(
-            vendorForCheck,
-            body.square_location_id
-          );
+          const result = await checkSquarePaymentsActivation(vendorForCheck);
           await dataClient.setSquarePaymentsActivationStatus(vendor.id, {
             activated: result.activated,
             checkedAt: new Date().toISOString(),

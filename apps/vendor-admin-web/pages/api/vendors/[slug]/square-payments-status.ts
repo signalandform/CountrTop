@@ -97,7 +97,7 @@ export default async function handler(
     const locId = locations[0]?.externalLocationId ?? vendor.squareLocationId ?? null;
 
     try {
-      const result = await checkSquarePaymentsActivation(vendor, locId ?? undefined);
+      const result = await checkSquarePaymentsActivation(vendor);
       const checkedAt = new Date().toISOString();
 
       await dataClient.setSquarePaymentsActivationStatus(vendor.id, {
