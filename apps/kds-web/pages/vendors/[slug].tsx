@@ -1690,6 +1690,7 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
             display: flex;
             align-items: center;
             gap: 16px;
+            flex-wrap: nowrap;
           }
 
           .line-item .quantity-box {
@@ -1699,11 +1700,11 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
             min-width: 56px;
             height: 44px;
             padding: 0 12px;
-            background: #1a1a2e;
+            background: #000;
             border-radius: 10px;
             font-size: 26px;
             font-weight: 800;
-            color: #e5e7eb;
+            color: #fff;
             font-variant-numeric: tabular-nums;
             flex-shrink: 0;
           }
@@ -2146,11 +2147,11 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
             min-width: 40px;
             height: 32px;
             padding: 0 8px;
-            background: #1a1a2e;
+            background: #000;
             border-radius: 8px;
             font-size: 18px;
             font-weight: 800;
-            color: #e5e7eb;
+            color: #fff;
             font-variant-numeric: tabular-nums;
           }
 
