@@ -2,7 +2,9 @@ import {
   DataClient,
   LoyaltyLedgerEntryInput,
   OrderSnapshotInput,
-  PushDeviceInput
+  PushDeviceInput,
+  WebhookEvent,
+  WebhookJob
 } from './dataClient';
 import { KitchenTicket, KitchenTicketWithOrder, LoyaltyLedgerEntry, OrderSnapshot, PushDevice, User, Vendor } from './models';
 
@@ -156,6 +158,85 @@ export class MockDataClient implements DataClient {
       order.customerFeedbackRating = rating;
     }
   }
+
+  async insertWebhookEventIfNew(params: {
+    provider: string;
+    eventId: string;
+    eventType: string;
+    payload: Record<string, unknown>;
+  }): Promise<{ created: boolean; webhookEvent: WebhookEvent }> {
+    const now = new Date().toISOString();
+    return {
+      created: true,
+      webhookEvent: {
+        id: `we_${params.eventId}`,
+        provider: params.provider,
+        eventId: params.eventId,
+        eventType: params.eventType,
+        payload: params.payload,
+        receivedAt: now,
+        processedAt: null,
+        status: 'received',
+        error: null
+      }
+    };
+  }
+
+  async enqueueWebhookJob(params: {
+    provider: string;
+    eventId: string;
+    webhookEventId: string;
+  }): Promise<WebhookJob> {
+    const now = new Date().toISOString();
+    return {
+      id: `wj_${params.eventId}`,
+      provider: params.provider,
+      eventId: params.eventId,
+      webhookEventId: params.webhookEventId,
+      status: 'queued',
+      attempts: 0,
+      runAfter: now,
+      lockedAt: null,
+      lockedBy: null,
+      lastError: null,
+      createdAt: now,
+      updatedAt: now
+    };
+  }
+
+  /* eslint-disable @typescript-eslint/no-unused-vars */
+  async claimWebhookJobsRPC(params: {
+    provider: string;
+    limit: number;
+    lockedBy: string;
+  }): Promise<WebhookJob[]> {
+    void params;
+    return [];
+  }
+
+  async markWebhookJobDone(jobId: string): Promise<void> {
+    void jobId;
+  }
+
+  async markWebhookJobFailed(jobId: string, error: string, backoffSeconds: number): Promise<void> {
+    void jobId;
+    void error;
+    void backoffSeconds;
+  }
+
+  async updateWebhookEventStatus(
+    webhookEventId: string,
+    params: { status: string; processedAt?: string; error?: string }
+  ): Promise<void> {
+    void webhookEventId;
+    void params;
+  }
+
+  async getWebhookEventById(id: string): Promise<WebhookEvent | null> {
+    void id;
+    return null;
+  }
+  /* eslint-enable @typescript-eslint/no-unused-vars */
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- mock returns empty list
   async listSupportTickets(_filters: { vendorId?: string; status?: string }): Promise<import('@countrtop/models').SupportTicket[]> {

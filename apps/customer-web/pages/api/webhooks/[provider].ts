@@ -12,148 +12,12 @@
 
 import crypto from 'crypto';
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { createClient } from '@supabase/supabase-js';
 
-import { createLogger, getSquareOrder } from '@countrtop/api-client';
-import { sendOrderConfirmation } from '@countrtop/email';
+import { createLogger } from '@countrtop/api-client';
 import type { POSProvider } from '@countrtop/models';
 import { getServerDataClient } from '../../../lib/dataClient';
 
 const logger = createLogger({ requestId: 'webhook' });
-
-// =============================================================================
-// Email Helper (optional - gracefully skips if not configured)
-// =============================================================================
-
-type EmailParams = {
-  userId: string | null;
-  customerDisplayName: string | null;
-  customerEmail: string | null; // Can come from Square order or auth user
-  vendorSlug: string;
-  vendorDisplayName: string;
-  snapshotId: string;
-  orderId: string;
-  order: Record<string, unknown>;
-  locationId: string;
-  items: Array<{ id: string; name: string; quantity: number; price: number; modifiers: unknown[] }>;
-  total: number;
-  currency: string;
-  dataClient: ReturnType<typeof getServerDataClient>;
-  logger: ReturnType<typeof createLogger>;
-};
-
-async function sendOrderConfirmationEmail(params: EmailParams) {
-  const { userId, customerDisplayName, customerEmail: providedEmail, vendorDisplayName, snapshotId, orderId, order, locationId, items, total, currency, dataClient, logger: log } = params;
-  
-  try {
-    let customerEmail = providedEmail;
-    let customerName = customerDisplayName;
-    
-    // If we have a userId, try to get email from auth (more reliable)
-    if (userId && !customerEmail) {
-      const supabaseUrl = process.env.SUPABASE_URL;
-      const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-      if (supabaseUrl && supabaseKey) {
-        const supabaseAdmin = createClient(supabaseUrl, supabaseKey, {
-          auth: { autoRefreshToken: false, persistSession: false }
-        });
-        const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(userId);
-        customerEmail = authUser?.user?.email ?? null;
-        if (!customerName) {
-          customerName = authUser?.user?.user_metadata?.full_name ??
-            authUser?.user?.user_metadata?.name ??
-            authUser?.user?.email?.split('@')[0] ?? null;
-        }
-      }
-    }
-    
-    if (!customerEmail) {
-      log.info('No customer email found for order confirmation', { userId: userId ?? undefined, orderId });
-      return;
-    }
-    
-    // Get location for pickup instructions
-    const vendorLocation = await dataClient.getVendorLocationBySquareId(locationId);
-    
-    // Use order reference ID for shortcode (last 4 chars)
-    const referenceId = order?.referenceId as string | undefined;
-    const shortcode = referenceId?.slice(-4).toUpperCase() || orderId.slice(-4).toUpperCase();
-    
-    log.info('Sending order confirmation email', { email: customerEmail, shortcode });
-    
-    // Use the @countrtop/email package
-    const result = await sendOrderConfirmation({
-      customerEmail,
-      customerName: customerName || 'Customer',
-      vendorName: vendorDisplayName || 'Restaurant',
-      orderId: snapshotId,
-      shortcode,
-      items: items.map(i => ({ name: i.name, quantity: i.quantity, price: i.price })),
-      total,
-      currency,
-      pickupInstructions: vendorLocation?.pickupInstructions ?? undefined,
-      estimatedWaitMinutes: 15
-    });
-    
-    if (!result.success) {
-      log.warn('Failed to send order confirmation email', { error: result.error });
-    } else {
-      log.info('Order confirmation email sent', { email: customerEmail });
-    }
-  } catch (err) {
-    log.warn('Failed to send order confirmation email', { error: err });
-  }
-}
-
-// Extract customer email from Square order data (for guest checkout)
-function extractSquareCustomerEmail(order: Record<string, unknown>): string | null {
-  // Try to get email from fulfillments (pickup info)
-  const fulfillments = order?.fulfillments as Array<Record<string, unknown>> | undefined;
-  if (fulfillments?.length) {
-    const pickup = fulfillments[0]?.pickupDetails as Record<string, unknown> | undefined;
-    const recipient = pickup?.recipient as Record<string, unknown> | undefined;
-    if (recipient?.emailAddress) {
-      return recipient.emailAddress as string;
-    }
-  }
-  
-  // Try to get from customer object
-  const customer = order?.customer as Record<string, unknown> | undefined;
-  if (customer?.emailAddress) {
-    return customer.emailAddress as string;
-  }
-  
-  // Try tenders for receipt email
-  const tenders = order?.tenders as Array<Record<string, unknown>> | undefined;
-  if (tenders?.length) {
-    const tender = tenders[0];
-    const cardDetails = tender?.cardDetails as Record<string, unknown> | undefined;
-    if (cardDetails?.entryMethod === 'ON_FILE') {
-      // Customer used saved card, may have email on file
-    }
-  }
-  
-  return null;
-}
-
-// Extract customer name from Square order data
-function extractSquareCustomerName(order: Record<string, unknown>): string | null {
-  const fulfillments = order?.fulfillments as Array<Record<string, unknown>> | undefined;
-  if (fulfillments?.length) {
-    const pickup = fulfillments[0]?.pickupDetails as Record<string, unknown> | undefined;
-    const recipient = pickup?.recipient as Record<string, unknown> | undefined;
-    if (recipient?.displayName) {
-      return recipient.displayName as string;
-    }
-  }
-  
-  const customer = order?.customer as Record<string, unknown> | undefined;
-  if (customer?.givenName || customer?.familyName) {
-    return [customer.givenName, customer.familyName].filter(Boolean).join(' ');
-  }
-  
-  return null;
-}
 
 export const config = {
   api: {
@@ -224,29 +88,6 @@ const trackValidationFailure = (key: string) => {
   }, ALERT_WINDOW_MS);
 };
 
-const formatError = (error: unknown): string => {
-  if (error && typeof error === 'object') {
-    const withErrors = error as { errors?: unknown; result?: { errors?: unknown } };
-    if (withErrors.errors) {
-      return JSON.stringify(withErrors.errors);
-    }
-    if (withErrors.result?.errors) {
-      return JSON.stringify(withErrors.result.errors);
-    }
-    try {
-      return JSON.stringify(error, Object.getOwnPropertyNames(error));
-    } catch {
-      return '[object Object]';
-    }
-  }
-
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  return String(error ?? 'Unknown error');
-};
-
 // =============================================================================
 // Square Webhook Handler
 // =============================================================================
@@ -279,14 +120,7 @@ const normalizeSquarePayment = (payment: Record<string, unknown>) => ({
   amountMoney: (payment?.amountMoney ?? payment?.amount_money) as Record<string, unknown> | null ?? null
 });
 
-const parseUserIdFromReference = (referenceId: string | null | undefined) => {
-  if (!referenceId) return null;
-  const parts = referenceId.split('__');
-  if (parts.length < 2) return null;
-  return parts.slice(1).join('__') || null;
-};
-
-async function handleSquareWebhook(
+export async function handleSquareWebhook(
   req: NextApiRequest,
   rawBody: string
 ): Promise<{ response: WebhookResponse; statusCode: number }> {
@@ -302,26 +136,22 @@ async function handleSquareWebhook(
   const notificationUrl = process.env.SQUARE_WEBHOOK_URL;
 
   let signatureValid = true;
-  let signatureError: Error | null = null;
 
   if (signatureKey && notificationUrl) {
     try {
       signatureValid = isValidSquareSignature(rawBody, signatureHeader, signatureKey, notificationUrl);
       if (!signatureValid) {
-        signatureError = new Error('Invalid signature');
         trackValidationFailure(`square_${signatureKey.substring(0, 8)}`);
-        logger.error('Square signature validation failed', signatureError);
+        logger.error('Square signature validation failed', new Error('Invalid signature'));
       }
     } catch (error) {
       signatureValid = false;
-      signatureError = error instanceof Error ? error : new Error(String(error));
-      logger.error('Square signature validation threw error', signatureError);
+      logger.error('Square signature validation threw error', error instanceof Error ? error : new Error(String(error)));
       trackValidationFailure('square_error');
     }
   } else if (process.env.NODE_ENV === 'production') {
     logger.error('Missing Square signature configuration in production');
     signatureValid = false;
-    signatureError = new Error('Webhook signature configuration missing');
   } else {
     logger.warn('Square signature validation skipped (development mode)');
     signatureValid = true;
@@ -337,13 +167,26 @@ async function handleSquareWebhook(
     };
   }
 
+  const eventId = event?.event_id as string | undefined;
+  if (!eventId || typeof eventId !== 'string') {
+    return {
+      response: { ok: false, status: 'invalid', reason: 'Missing event_id', provider: 'square' },
+      statusCode: 400
+    };
+  }
+
   const eventType: string = (event?.type as string) ?? 'unknown';
 
-  // Extract order info from event
+  const dataClient = getServerDataClient();
+  const { created, webhookEvent } = await dataClient.insertWebhookEventIfNew({
+    provider: 'square',
+    eventId,
+    eventType,
+    payload: event
+  });
+
   let orderId: string | undefined;
   let locationId: string | undefined;
-  let isPaymentEvent = false;
-  let payment: ReturnType<typeof normalizeSquarePayment> | null = null;
 
   if (eventType === 'order.updated') {
     const dataObj = event?.data as Record<string, unknown> | undefined;
@@ -353,11 +196,11 @@ async function handleSquareWebhook(
     orderId = (orderUpdated?.order_id ?? orderObj?.id) as string | undefined;
     locationId = (orderObj?.location_id ?? orderUpdated?.location_id) as string | undefined;
   } else if (eventType === 'payment.updated') {
-    isPaymentEvent = true;
-    payment = normalizeSquarePayment(parseSquarePayment(event));
+    const payment = normalizeSquarePayment(parseSquarePayment(event));
     orderId = payment.orderId ?? undefined;
     locationId = payment.locationId ?? undefined;
   } else {
+    await dataClient.updateWebhookEventStatus(webhookEvent.id, { status: 'ignored' });
     return {
       response: { ok: true, status: 'ignored', reason: 'Not an order or payment event', provider: 'square', signatureValid },
       statusCode: 200
@@ -365,202 +208,31 @@ async function handleSquareWebhook(
   }
 
   if (!orderId || !locationId) {
+    await dataClient.updateWebhookEventStatus(webhookEvent.id, { status: 'ignored' });
     return {
       response: { ok: true, status: 'ignored', reason: 'Missing order metadata', provider: 'square', signatureValid },
       statusCode: 200
     };
   }
 
-  const dataClient = getServerDataClient();
   const vendor = await dataClient.getVendorBySquareLocationId(locationId);
   if (!vendor) {
+    await dataClient.updateWebhookEventStatus(webhookEvent.id, { status: 'ignored' });
     return {
       response: { ok: true, status: 'ignored', reason: 'Unknown vendor location', provider: 'square', signatureValid },
       statusCode: 200
     };
   }
 
-  // Fetch full order from Square
-  let order: Record<string, unknown>;
-  try {
-    order = await getSquareOrder(vendor, orderId);
-  } catch (error) {
-    const message = formatError(error);
-    logger.error(`Failed to fetch Square order ${orderId}`, error instanceof Error ? error : new Error(message));
-    return {
-      response: { ok: true, status: 'processed', reason: `Order fetch failed, will retry: ${message}`, provider: 'square', signatureValid },
-      statusCode: 200
-    };
-  }
+  await dataClient.enqueueWebhookJob({
+    provider: 'square',
+    eventId,
+    webhookEventId: webhookEvent.id
+  });
 
-  // Process order ingestion
-  try {
-    await dataClient.upsertSquareOrderFromSquare(order);
-  } catch (error) {
-    logger.error(`Failed to upsert square order ${orderId}`, error instanceof Error ? error : new Error(String(error)));
-  }
-
-  try {
-    await dataClient.ensureKitchenTicketForOpenOrder(order);
-  } catch (error) {
-    logger.error(`Failed to ensure kitchen ticket for order ${orderId}`, error instanceof Error ? error : new Error(String(error)));
-  }
-
-  try {
-    await dataClient.updateTicketForTerminalOrderState(order);
-  } catch (error) {
-    logger.error(`Failed to update ticket for terminal state ${orderId}`, error instanceof Error ? error : new Error(String(error)));
-  }
-
-  // Legacy order_snapshots flow for payment.updated with COMPLETED status
-  if (isPaymentEvent && payment && payment.status === 'COMPLETED') {
-    const existing = await dataClient.getOrderSnapshotBySquareOrderId(vendor.id, orderId);
-    if (existing) {
-      return {
-        response: { ok: true, status: 'processed', reason: 'Snapshot already exists', provider: 'square', signatureValid },
-        statusCode: 200
-      };
-    }
-
-    try {
-      const items = ((order?.lineItems as unknown[]) ?? []).map((item: unknown) => {
-        const i = item as Record<string, unknown>;
-        return {
-          id: (i.catalogObjectId ?? i.uid ?? i.name ?? 'item') as string,
-          name: (i.name ?? 'Item') as string,
-          quantity: Number(i.quantity ?? 1),
-          price: Number((i.basePriceMoney as Record<string, unknown>)?.amount ?? 0),
-          modifiers: ((i.modifiers as unknown[]) ?? []).map((m: unknown) => (m as Record<string, unknown>).name)
-        };
-      });
-
-      const total = Number((order?.totalMoney as Record<string, unknown>)?.amount ?? payment.amountMoney?.amount ?? 0);
-      const currency = ((order?.totalMoney as Record<string, unknown>)?.currency ?? payment.amountMoney?.currency ?? 'USD') as string;
-      const orderMetadata = order?.metadata as Record<string, unknown> | undefined;
-      const userId = (orderMetadata?.ct_user_id ?? parseUserIdFromReference(order?.referenceId as string | undefined)) as string | null;
-
-      // Get user display name if userId exists
-      let customerDisplayName: string | null = null;
-      if (userId) {
-        try {
-          const supabaseUrl = process.env.SUPABASE_URL;
-          const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-          if (supabaseUrl && supabaseKey) {
-            const supabaseAdmin = createClient(supabaseUrl, supabaseKey, {
-              auth: { autoRefreshToken: false, persistSession: false }
-            });
-            const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(userId);
-            if (authUser?.user) {
-              customerDisplayName = authUser.user.user_metadata?.full_name ??
-                authUser.user.user_metadata?.name ??
-                authUser.user.email?.split('@')[0] ??
-                null;
-            }
-          }
-        } catch (error) {
-          logger.warn('Failed to get user display name', { userId, error });
-        }
-      }
-
-      const pickupLabel = customerDisplayName ?? `Order ${orderId.slice(-6).toUpperCase()}`;
-      
-      // Extract guest customer info from Square order
-      const squareEmail = extractSquareCustomerEmail(order);
-      const squareName = extractSquareCustomerName(order);
-
-      const snapshot = await dataClient.createOrderSnapshot({
-        vendorId: vendor.id,
-        userId: userId ?? null,
-        externalOrderId: orderId, // POS-agnostic field
-        squareOrderId: orderId, // Deprecated alias
-        placedAt: (order?.createdAt ?? payment.createdAt ?? new Date().toISOString()) as string,
-        snapshotJson: {
-          items,
-          total,
-          currency,
-          squarePaymentId: payment.id,
-          squareLocationId: locationId,
-          squareReferenceId: order?.referenceId ?? null,
-          // Store customer info for Order Ready emails (works for guests too)
-          customerEmail: squareEmail,
-          customerName: customerDisplayName || squareName
-        },
-        customerDisplayName: customerDisplayName ?? squareName ?? null,
-        pickupLabel
-      });
-
-      // Award loyalty points for logged-in users
-      if (userId) {
-        const points = Math.max(0, Math.floor(total / 100));
-        if (points > 0) {
-          await dataClient.recordLoyaltyEntry({
-            id: crypto.randomUUID(),
-            vendorId: vendor.id,
-            userId,
-            orderId: snapshot.id,
-            pointsDelta: points
-          });
-        }
-        // Record redemption (negative points) if order had loyalty discount
-        const redeemPointsRaw = orderMetadata?.ct_redeem_points;
-        const redeemPoints =
-          typeof redeemPointsRaw === 'string' ? parseInt(redeemPointsRaw as string, 10) : Number(redeemPointsRaw);
-        if (!Number.isNaN(redeemPoints) && redeemPoints > 0) {
-          const entries = await dataClient.listLoyaltyEntriesForUser(vendor.id, userId);
-          const alreadyRedeemed = entries.some((e) => e.orderId === snapshot.id && e.pointsDelta < 0);
-          if (!alreadyRedeemed) {
-            await dataClient.recordLoyaltyEntry({
-              id: crypto.randomUUID(),
-              vendorId: vendor.id,
-              userId,
-              orderId: snapshot.id,
-              pointsDelta: -redeemPoints
-            });
-          }
-        }
-      }
-
-      // Send order confirmation email (async, don't block response)
-      if (process.env.RESEND_API_KEY) {
-        sendOrderConfirmationEmail({
-          userId: userId ?? null,
-          customerDisplayName: customerDisplayName || squareName,
-          customerEmail: squareEmail,
-          vendorSlug: vendor.slug,
-          vendorDisplayName: vendor.displayName,
-          snapshotId: snapshot.id,
-          orderId,
-          order,
-          locationId,
-          items,
-          total,
-          currency,
-          dataClient,
-          logger
-        });
-      }
-
-      return {
-        response: {
-          ok: true,
-          status: 'processed',
-          provider: 'square',
-          signatureValid,
-          ...(signatureError && { reason: `Processed with signature warning: ${signatureError.message}` })
-        },
-        statusCode: 200
-      };
-    } catch (error) {
-      const message = formatError(error);
-      return {
-        response: { ok: false, status: 'invalid', reason: message, provider: 'square', signatureValid },
-        statusCode: 500
-      };
-    }
-  }
-
+  logger.info('Square webhook enqueued', { eventId, eventType, orderId, created });
   return {
-    response: { ok: true, status: 'processed', provider: 'square', signatureValid },
+    response: { ok: true, status: 'processed', reason: 'Enqueued', provider: 'square', signatureValid },
     statusCode: 200
   };
 }

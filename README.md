@@ -131,8 +131,16 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SQUARE_ACCESS_TOKEN=
 SQUARE_ENVIRONMENT=sandbox|production
 SQUARE_WEBHOOK_SIGNATURE_KEY=
+SQUARE_WEBHOOK_URL=               # Must match URL Square calls (e.g. https://yourdomain.com/api/webhooks/square)
 DEFAULT_VENDOR_SLUG=              # For local dev
 RESEND_API_KEY=                   # Order confirmation emails
+CRON_SECRET=                      # For cron jobs (poll-square, process-webhooks)
+```
+
+**Square Webhook Queue**: Webhooks are persisted and processed asynchronously. The worker runs every minute via Vercel Cron. Set `CRON_SECRET` and `SQUARE_WEBHOOK_URL` in production. To replay a failed event:
+```bash
+pnpm tsx scripts/replay-webhook-event.ts --eventId=<Square event_id>
+# Then wait for cron or: curl -X POST <BASE_URL>/api/jobs/process-webhooks -H "Authorization: Bearer $CRON_SECRET"
 ```
 
 ### KDS Web

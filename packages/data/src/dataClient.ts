@@ -26,6 +26,33 @@ export type PushDeviceInput = Omit<PushDevice, 'id' | 'createdAt' | 'updatedAt'>
     platform: PushPlatform;
   };
 
+export type WebhookEvent = {
+  id: string;
+  provider: string;
+  eventId: string;
+  eventType: string;
+  payload: Record<string, unknown>;
+  receivedAt: string;
+  processedAt: string | null;
+  status: string;
+  error: string | null;
+};
+
+export type WebhookJob = {
+  id: string;
+  provider: string;
+  eventId: string;
+  webhookEventId: string;
+  status: string;
+  attempts: number;
+  runAfter: string;
+  lockedAt: string | null;
+  lockedBy: string | null;
+  lastError: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export interface DataClient {
   signInWithProvider(provider: AuthProvider, idToken: string): Promise<User>;
   signOut(): Promise<void>;
@@ -197,6 +224,27 @@ export interface DataClient {
   getActiveTimeEntry(vendorId: string, employeeId: string): Promise<import('@countrtop/models').TimeEntry | null>;
   listActiveTimeEntries(vendorId: string): Promise<import('@countrtop/models').TimeEntry[]>;
   listTimeEntries(vendorId: string, employeeId: string | null, startDate: Date, endDate: Date): Promise<import('@countrtop/models').TimeEntry[]>;
+
+  // Webhook queue (idempotent, replayable)
+  insertWebhookEventIfNew(params: {
+    provider: string;
+    eventId: string;
+    eventType: string;
+    payload: Record<string, unknown>;
+  }): Promise<{ created: boolean; webhookEvent: WebhookEvent }>;
+  enqueueWebhookJob(params: {
+    provider: string;
+    eventId: string;
+    webhookEventId: string;
+  }): Promise<WebhookJob>;
+  claimWebhookJobsRPC(params: { provider: string; limit: number; lockedBy: string }): Promise<WebhookJob[]>;
+  markWebhookJobDone(jobId: string): Promise<void>;
+  markWebhookJobFailed(jobId: string, error: string, backoffSeconds: number): Promise<void>;
+  updateWebhookEventStatus(
+    webhookEventId: string,
+    params: { status: string; processedAt?: string; error?: string }
+  ): Promise<void>;
+  getWebhookEventById(id: string): Promise<WebhookEvent | null>;
 
   // Ops: support tickets
   listSupportTickets(filters: { vendorId?: string; status?: string }): Promise<import('@countrtop/models').SupportTicket[]>;

@@ -1,7 +1,14 @@
 import { randomUUID, createHash } from 'crypto';
 import { SupabaseClient, User as SupabaseAuthUser } from '@supabase/supabase-js';
 
-import { DataClient, LoyaltyLedgerEntryInput, OrderSnapshotInput, PushDeviceInput } from './dataClient';
+import {
+  DataClient,
+  LoyaltyLedgerEntryInput,
+  OrderSnapshotInput,
+  PushDeviceInput,
+  WebhookEvent,
+  WebhookJob
+} from './dataClient';
 import {
   AovPoint,
   CustomerSummary,
@@ -634,9 +641,72 @@ export type Database = {
         Update: Partial<Database['public']['Tables']['vendor_locations']['Insert']>;
         Relationships: [];
       };
+      webhook_events: {
+        Row: {
+          id: string;
+          provider: string;
+          event_id: string;
+          event_type: string;
+          payload: Record<string, unknown>;
+          received_at: string;
+          processed_at: string | null;
+          status: string;
+          error: string | null;
+        };
+        Insert: {
+          id?: string;
+          provider: string;
+          event_id: string;
+          event_type: string;
+          payload: Record<string, unknown>;
+          received_at?: string;
+          processed_at?: string | null;
+          status?: string;
+          error?: string | null;
+        };
+        Update: Partial<Database['public']['Tables']['webhook_events']['Insert']>;
+        Relationships: [];
+      };
+      webhook_jobs: {
+        Row: {
+          id: string;
+          provider: string;
+          event_id: string;
+          webhook_event_id: string;
+          status: string;
+          attempts: number;
+          run_after: string;
+          locked_at: string | null;
+          locked_by: string | null;
+          last_error: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          provider: string;
+          event_id: string;
+          webhook_event_id: string;
+          status?: string;
+          attempts?: number;
+          run_after?: string;
+          locked_at?: string | null;
+          locked_by?: string | null;
+          last_error?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['webhook_jobs']['Insert']>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {
+      claim_webhook_jobs: {
+        Args: { p_provider: string; p_limit: number; p_locked_by: string };
+        Returns: Database['public']['Tables']['webhook_jobs']['Row'][];
+      };
+    };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
   };
@@ -1126,6 +1196,252 @@ export class SupabaseDataClient implements DataClient {
       logQueryPerformance('updateOrderSnapshotFeedback', startTime, true);
     } catch (error) {
       logQueryPerformance('updateOrderSnapshotFeedback', startTime, false, error);
+      throw error;
+    }
+  }
+
+  async insertWebhookEventIfNew(params: {
+    provider: string;
+    eventId: string;
+    eventType: string;
+    payload: Record<string, unknown>;
+  }): Promise<{ created: boolean; webhookEvent: WebhookEvent }> {
+    const startTime = Date.now();
+    try {
+      const { data: inserted, error } = await this.client
+        .from('webhook_events')
+        .insert({
+          provider: params.provider,
+          event_id: params.eventId,
+          event_type: params.eventType,
+          payload: params.payload as unknown as Record<string, unknown>
+        })
+        .select('id,provider,event_id,event_type,payload,received_at,processed_at,status,error')
+        .single();
+      if (!error) {
+        const row = inserted as { id: string; provider: string; event_id: string; event_type: string; payload: Record<string, unknown>; received_at: string; processed_at: string | null; status: string; error: string | null };
+        logQueryPerformance('insertWebhookEventIfNew', startTime, true);
+        return {
+          created: true,
+          webhookEvent: {
+            id: row.id,
+            provider: row.provider,
+            eventId: row.event_id,
+            eventType: row.event_type,
+            payload: row.payload,
+            receivedAt: row.received_at,
+            processedAt: row.processed_at,
+            status: row.status,
+            error: row.error
+          }
+        };
+      }
+      if (error.code === '23505') {
+        const { data: existing } = await this.client
+          .from('webhook_events')
+          .select('id,provider,event_id,event_type,payload,received_at,processed_at,status,error')
+          .eq('provider', params.provider)
+          .eq('event_id', params.eventId)
+          .single();
+        if (existing) {
+          const row = existing as { id: string; provider: string; event_id: string; event_type: string; payload: Record<string, unknown>; received_at: string; processed_at: string | null; status: string; error: string | null };
+          logQueryPerformance('insertWebhookEventIfNew', startTime, true);
+          return {
+            created: false,
+            webhookEvent: {
+              id: row.id,
+              provider: row.provider,
+              eventId: row.event_id,
+              eventType: row.event_type,
+              payload: row.payload,
+              receivedAt: row.received_at,
+              processedAt: row.processed_at,
+              status: row.status,
+              error: row.error
+            }
+          };
+        }
+      }
+      throw error;
+    } catch (error) {
+      logQueryPerformance('insertWebhookEventIfNew', startTime, false, error);
+      throw error;
+    }
+  }
+
+  async enqueueWebhookJob(params: {
+    provider: string;
+    eventId: string;
+    webhookEventId: string;
+  }): Promise<WebhookJob> {
+    const startTime = Date.now();
+    try {
+      const { data, error } = await this.client
+        .from('webhook_jobs')
+        .upsert(
+          {
+            provider: params.provider,
+            event_id: params.eventId,
+            webhook_event_id: params.webhookEventId,
+            status: 'queued',
+            run_after: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          },
+          { onConflict: 'provider,event_id', ignoreDuplicates: false }
+        )
+        .select('id,provider,event_id,webhook_event_id,status,attempts,run_after,locked_at,locked_by,last_error,created_at,updated_at')
+        .single();
+      if (error) throw error;
+      const row = data as { id: string; provider: string; event_id: string; webhook_event_id: string; status: string; attempts: number; run_after: string; locked_at: string | null; locked_by: string | null; last_error: string | null; created_at: string; updated_at: string };
+      logQueryPerformance('enqueueWebhookJob', startTime, true);
+      return {
+        id: row.id,
+        provider: row.provider,
+        eventId: row.event_id,
+        webhookEventId: row.webhook_event_id,
+        status: row.status,
+        attempts: row.attempts,
+        runAfter: row.run_after,
+        lockedAt: row.locked_at,
+        lockedBy: row.locked_by,
+        lastError: row.last_error,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at
+      };
+    } catch (error) {
+      logQueryPerformance('enqueueWebhookJob', startTime, false, error);
+      throw error;
+    }
+  }
+
+  async claimWebhookJobsRPC(params: {
+    provider: string;
+    limit: number;
+    lockedBy: string;
+  }): Promise<WebhookJob[]> {
+    const startTime = Date.now();
+    try {
+      const { data, error } = await this.client.rpc('claim_webhook_jobs', {
+        p_provider: params.provider,
+        p_limit: params.limit,
+        p_locked_by: params.lockedBy
+      });
+      if (error) throw error;
+      const rows = (data ?? []) as Array<{ id: string; provider: string; event_id: string; webhook_event_id: string; status: string; attempts: number; run_after: string; locked_at: string | null; locked_by: string | null; last_error: string | null; created_at: string; updated_at: string }>;
+      const result = rows.map((row) => ({
+        id: row.id,
+        provider: row.provider,
+        eventId: row.event_id,
+        webhookEventId: row.webhook_event_id,
+        status: row.status,
+        attempts: row.attempts,
+        runAfter: row.run_after,
+        lockedAt: row.locked_at,
+        lockedBy: row.locked_by,
+        lastError: row.last_error,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at
+      }));
+      logQueryPerformance('claimWebhookJobsRPC', startTime, true);
+      return result;
+    } catch (error) {
+      logQueryPerformance('claimWebhookJobsRPC', startTime, false, error);
+      throw error;
+    }
+  }
+
+  async markWebhookJobDone(jobId: string): Promise<void> {
+    const startTime = Date.now();
+    try {
+      const { error } = await this.client
+        .from('webhook_jobs')
+        .update({ status: 'done', updated_at: new Date().toISOString() })
+        .eq('id', jobId);
+      if (error) throw error;
+      logQueryPerformance('markWebhookJobDone', startTime, true);
+    } catch (error) {
+      logQueryPerformance('markWebhookJobDone', startTime, false, error);
+      throw error;
+    }
+  }
+
+  async markWebhookJobFailed(jobId: string, error: string, backoffSeconds: number): Promise<void> {
+    const startTime = Date.now();
+    const MAX_ATTEMPTS = 10;
+    try {
+      const { data: job } = await this.client
+        .from('webhook_jobs')
+        .select('attempts')
+        .eq('id', jobId)
+        .single();
+      const attempts = (job as { attempts: number } | null)?.attempts ?? 0;
+      const status = attempts >= MAX_ATTEMPTS ? 'failed' : 'queued';
+      const runAfter = attempts >= MAX_ATTEMPTS ? new Date().toISOString() : new Date(Date.now() + backoffSeconds * 1000).toISOString();
+      const { error: updError } = await this.client
+        .from('webhook_jobs')
+        .update({
+          status,
+          run_after: runAfter,
+          last_error: error,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', jobId);
+      if (updError) throw updError;
+      logQueryPerformance('markWebhookJobFailed', startTime, true);
+    } catch (err) {
+      logQueryPerformance('markWebhookJobFailed', startTime, false, err);
+      throw err;
+    }
+  }
+
+  async updateWebhookEventStatus(
+    webhookEventId: string,
+    params: { status: string; processedAt?: string; error?: string }
+  ): Promise<void> {
+    const startTime = Date.now();
+    try {
+      const payload: Record<string, unknown> = { status: params.status };
+      if (params.processedAt !== undefined) payload.processed_at = params.processedAt;
+      if (params.error !== undefined) payload.error = params.error;
+      const { error } = await this.client
+        .from('webhook_events')
+        .update(payload)
+        .eq('id', webhookEventId);
+      if (error) throw error;
+      logQueryPerformance('updateWebhookEventStatus', startTime, true);
+    } catch (error) {
+      logQueryPerformance('updateWebhookEventStatus', startTime, false, error);
+      throw error;
+    }
+  }
+
+  async getWebhookEventById(id: string): Promise<WebhookEvent | null> {
+    const startTime = Date.now();
+    try {
+      const { data, error } = await this.client
+        .from('webhook_events')
+        .select('id,provider,event_id,event_type,payload,received_at,processed_at,status,error')
+        .eq('id', id)
+        .single();
+      if (error || !data) {
+        logQueryPerformance('getWebhookEventById', startTime, true);
+        return null;
+      }
+      const row = data as { id: string; provider: string; event_id: string; event_type: string; payload: Record<string, unknown>; received_at: string; processed_at: string | null; status: string; error: string | null };
+      logQueryPerformance('getWebhookEventById', startTime, true);
+      return {
+        id: row.id,
+        provider: row.provider,
+        eventId: row.event_id,
+        eventType: row.event_type,
+        payload: row.payload,
+        receivedAt: row.received_at,
+        processedAt: row.processed_at,
+        status: row.status,
+        error: row.error
+      };
+    } catch (error) {
+      logQueryPerformance('getWebhookEventById', startTime, false, error);
       throw error;
     }
   }
@@ -1795,6 +2111,7 @@ export class SupabaseDataClient implements DataClient {
           id,
           square_order_id,
           location_id,
+          pos_provider,
           ct_reference_id,
           customer_user_id,
           source,
@@ -1839,11 +2156,13 @@ export class SupabaseDataClient implements DataClient {
       // Map results to composite type
       const results: KitchenTicketWithOrder[] = [];
       for (const row of data) {
-        const ticket = mapKitchenTicketFromRow(row as Database['public']['Tables']['kitchen_tickets']['Row']);
-        
+        const ticket = mapKitchenTicketFromRow(
+          row as unknown as Database['public']['Tables']['kitchen_tickets']['Row']
+        );
+
         // Handle nested square_orders (can be null or array)
         let order: SquareOrder | null = null;
-        const rowWithOrders = row as Database['public']['Tables']['kitchen_tickets']['Row'] & {
+        const rowWithOrders = row as unknown as Database['public']['Tables']['kitchen_tickets']['Row'] & {
           square_orders?: Database['public']['Tables']['square_orders']['Row'] | Database['public']['Tables']['square_orders']['Row'][];
         };
         const orderData = rowWithOrders.square_orders;
