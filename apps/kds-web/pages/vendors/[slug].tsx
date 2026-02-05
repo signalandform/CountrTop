@@ -1732,6 +1732,10 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
             color: var(--color-text);
             font-weight: 600;
             line-height: 1.3;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            min-width: 0;
           }
 
           /* Modifier highlighting */
@@ -2132,6 +2136,7 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
             display: flex;
             align-items: center;
             gap: 10px;
+            flex-wrap: nowrap;
           }
 
           .completed-ticket-details .quantity-box {
@@ -2164,6 +2169,10 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
             font-size: 14px;
             font-weight: 500;
             color: var(--color-text);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            min-width: 0;
           }
 
           .completed-ticket-details .modifiers-list {
