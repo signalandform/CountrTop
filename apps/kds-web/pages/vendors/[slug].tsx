@@ -935,42 +935,42 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
             </div>
           ) : (
             <div className="tickets-list">
-              {/* Separate held tickets */}
-              {tickets.filter(t => t.ticket.heldAt).length > 0 && (
-                <div className="held-section">
-                  <div className="held-section-header">⏸️ On Hold</div>
-                  {tickets.filter(t => t.ticket.heldAt).map(({ ticket, order, customer }) => {
-                    const displayLabel = ticket.customLabel || (customer?.displayName) || getPickupLabel(ticket, order);
-                    const scheduledLabel = getScheduledLabel(order.scheduledPickupAt);
-                    return (
-                      <div key={ticket.id} className="ticket-card ticket-held">
-                        <div className="ticket-left">
-                          <div className="pickup-label">{displayLabel}</div>
-                          {scheduledLabel && <div className="scheduled-badge">📅 {scheduledLabel}</div>}
-                          <div className="held-badge">⏸️ Held</div>
-                        </div>
-                        <div className="ticket-middle">
-                          {renderLineItems(order.lineItems)}
-                          {ticket.staffNotes && (
-                            <div className="staff-notes">📝 {ticket.staffNotes}</div>
-                          )}
-                        </div>
-                        <div className="ticket-right">
-                          <button 
-                            className="action-button unhold-button"
-                            onClick={() => handleUnholdTicket(ticket.id)}
-                          >
-                            Resume
-                          </button>
-                        </div>
+              {/* Held tickets first, each in a numbered slot */}
+              {tickets.filter(t => t.ticket.heldAt).map(({ ticket, order, customer }, index) => {
+                const displayLabel = ticket.customLabel || (customer?.displayName) || getPickupLabel(ticket, order);
+                const scheduledLabel = getScheduledLabel(order.scheduledPickupAt);
+                return (
+                  <div key={ticket.id} className="ticket-slot">
+                    <span className="ticket-slot-number">{index + 1}</span>
+                    <div className="ticket-card ticket-held">
+                      <div className="ticket-left">
+                        <div className="pickup-label">{displayLabel}</div>
+                        {scheduledLabel && <div className="scheduled-badge">📅 {scheduledLabel}</div>}
+                        <div className="held-badge">⏸️ Held</div>
                       </div>
-                    );
-                  })}
-                </div>
-              )}
+                      <div className="ticket-middle">
+                        {renderLineItems(order.lineItems)}
+                        {ticket.staffNotes && (
+                          <div className="staff-notes">📝 {ticket.staffNotes}</div>
+                        )}
+                      </div>
+                      <div className="ticket-right">
+                        <button 
+                          className="action-button unhold-button"
+                          onClick={() => handleUnholdTicket(ticket.id)}
+                        >
+                          Resume
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
 
-              {/* Active tickets */}
+              {/* Active tickets, slot numbers continue after held */}
               {tickets.filter(t => !t.ticket.heldAt).map(({ ticket, order, customer }, index, activeTickets) => {
+                const heldCount = tickets.filter(t => t.ticket.heldAt).length;
+                const slotNumber = heldCount + index + 1;
                 const displayLabel = ticket.customLabel || (customer?.displayName) || getPickupLabel(ticket, order);
                 const scheduledLabel = getScheduledLabel(order.scheduledPickupAt);
                 const sourceBadge = ticket.source === 'countrtop_online' ? 'Online' : 'POS';
@@ -991,19 +991,20 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
                 };
 
                 return (
-                  <div
-                    key={ticket.id}
-                    className={`ticket-card ${isOnlineOrder ? 'ticket-online' : 'ticket-pos'} ${isPreparing ? 'ticket-preparing' : ''}`}
-                    role="button"
-                    tabIndex={0}
-                    onClick={handleCardBump}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        handleCardBump();
-                      }
-                    }}
-                  >
+                  <div key={ticket.id} className="ticket-slot">
+                    <span className="ticket-slot-number">{slotNumber}</span>
+                    <div
+                      className={`ticket-card ${isOnlineOrder ? 'ticket-online' : 'ticket-pos'} ${isPreparing ? 'ticket-preparing' : ''}`}
+                      role="button"
+                      tabIndex={0}
+                      onClick={handleCardBump}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          handleCardBump();
+                        }
+                      }}
+                    >
                     {/* Menu button */}
                     <div className="ticket-menu-wrapper" onClick={(e) => e.stopPropagation()}>
                       <button 
@@ -1079,6 +1080,7 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
                     </div>
                     <div className="ticket-card-footer">
                       <span className="ticket-status-readout">{statusReadout}</span>
+                    </div>
                     </div>
                   </div>
                 );
@@ -1282,12 +1284,18 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
           }
 
           .header {
+            position: sticky;
+            top: 0;
+            z-index: 100;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 48px;
+            margin-bottom: 0;
+            padding: 24px 0;
             padding-bottom: 24px;
-            border-bottom: 1px solid var(--color-border);
+            margin-bottom: 24px;
+            border-bottom: 2px solid var(--color-border);
+            background: var(--color-bg, var(--ct-bg-surface));
           }
 
           .title {
@@ -1532,9 +1540,34 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
 
           .tickets-list {
             display: flex;
-            flex-direction: column;
+            flex-direction: row;
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            overflow-y: hidden;
             gap: 16px;
-            align-items: flex-start;
+            padding: 16px 0;
+            align-items: stretch;
+            -webkit-overflow-scrolling: touch;
+          }
+
+          .ticket-slot {
+            flex: 0 0 auto;
+            min-width: 420px;
+            max-width: 520px;
+            position: relative;
+            background: rgba(255, 255, 255, 0.04);
+            border-radius: 16px;
+            padding: 12px;
+          }
+
+          .ticket-slot-number {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--color-text-muted);
+            z-index: 1;
           }
 
           .ticket-card {
@@ -1545,13 +1578,12 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
             padding: 20px;
             background: var(--ct-bg-surface);
             border: 1px solid var(--color-border);
-            border-radius: 16px;
+            border-radius: 12px;
             transition: background 0.2s, border-color 0.2s;
             position: relative;
-            width: 520px;
-            max-width: 100%;
-            min-width: 420px;
-            min-height: 240px;
+            width: 100%;
+            min-width: 0;
+            min-height: 220px;
             cursor: pointer;
           }
 
@@ -1924,23 +1956,6 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
             border-radius: 8px;
             font-size: 14px;
             color: #ffd60a;
-          }
-
-          /* Held tickets section */
-          .held-section {
-            margin-bottom: 24px;
-            padding: 16px;
-            background: rgba(255, 159, 10, 0.1);
-            border: 1px solid rgba(255, 159, 10, 0.3);
-            border-radius: 16px;
-            width: fit-content;
-          }
-
-          .held-section-header {
-            font-size: 16px;
-            font-weight: 600;
-            color: #ff9f0a;
-            margin-bottom: 12px;
           }
 
           .ticket-held {
@@ -2631,6 +2646,10 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
           }
 
           @media (max-width: 768px) {
+            .ticket-slot {
+              min-width: 320px;
+            }
+
             .ticket-card {
               flex-direction: column;
               align-items: flex-start;
