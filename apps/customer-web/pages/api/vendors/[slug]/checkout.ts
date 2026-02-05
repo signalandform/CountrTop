@@ -25,6 +25,8 @@ type CheckoutRequest = {
   redeemPoints?: number;
   /** ISO timestamp for scheduled pickup (when location has scheduled_orders_enabled) */
   scheduledPickupAt?: string | null;
+  /** Client-generated idempotency key for Square createPaymentLink; stable across retries to prevent double charges */
+  idempotencyKey?: string | null;
 };
 
 type CheckoutResponse =
@@ -214,8 +216,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse<CheckoutRespons
       ];
     }
 
+    const idempotencyKey = body.idempotencyKey?.trim() || randomUUID();
+    if (!body.idempotencyKey?.trim() && process.env.NODE_ENV === 'production') {
+      logger.warn('Checkout called without idempotencyKey; using random. Risk of double charge on retry.');
+    }
+
     const { result } = await square.checkoutApi.createPaymentLink({
-      idempotencyKey: randomUUID(),
+      idempotencyKey,
       order: orderPayload,
       checkoutOptions: {
         redirectUrl

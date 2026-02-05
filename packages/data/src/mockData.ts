@@ -214,6 +214,10 @@ export class MockDataClient implements DataClient {
     return [];
   }
 
+  async resetStaleWebhookJobs(): Promise<number> {
+    return 0;
+  }
+
   async markWebhookJobDone(jobId: string): Promise<void> {
     void jobId;
   }

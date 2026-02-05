@@ -43,6 +43,11 @@ export default async function handler(
   const dataClient = getServerDataClient();
   const lockedBy = `worker-${Date.now()}`;
 
+  const resetCount = await dataClient.resetStaleWebhookJobs();
+  if (resetCount > 0) {
+    logger.info('Reset stale webhook jobs to queued', { count: resetCount });
+  }
+
   const jobs = await dataClient.claimWebhookJobsRPC({
     provider: 'square',
     limit: CLAIM_LIMIT,
@@ -68,13 +73,15 @@ export default async function handler(
 
       const payload = webhookEvent.payload as Record<string, unknown>;
       const eventType = (payload?.type as string) ?? 'unknown';
-      if (eventType === 'order.updated') {
+      if (eventType === 'order.updated' || eventType === 'order.created') {
         const dataObj = payload?.data as Record<string, unknown> | undefined;
         const objData = dataObj?.object as Record<string, unknown> | undefined;
         const orderUpdated = objData?.order_updated as Record<string, unknown> | undefined;
-        const orderObj = orderUpdated?.order as Record<string, unknown> | undefined;
-        orderId = (orderUpdated?.order_id ?? orderObj?.id) as string | undefined;
-        const locationId = (orderObj?.location_id ?? orderUpdated?.location_id) as string | undefined;
+        const orderCreated = objData?.order_created as Record<string, unknown> | undefined;
+        const orderData = orderUpdated ?? orderCreated;
+        const orderObj = orderData?.order as Record<string, unknown> | undefined;
+        orderId = (orderData?.order_id ?? orderObj?.id) as string | undefined;
+        const locationId = (orderObj?.location_id ?? orderData?.location_id) as string | undefined;
         if (locationId) {
           const vendor = await dataClient.getVendorBySquareLocationId(locationId);
           vendorId = vendor?.id;

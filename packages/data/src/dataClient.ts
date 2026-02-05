@@ -247,6 +247,7 @@ export interface DataClient {
     webhookEventId: string;
   }): Promise<WebhookJob>;
   claimWebhookJobsRPC(params: { provider: string; limit: number; lockedBy: string }): Promise<WebhookJob[]>;
+  resetStaleWebhookJobs(): Promise<number>;
   markWebhookJobDone(jobId: string): Promise<void>;
   markWebhookJobFailed(jobId: string, error: string, backoffSeconds: number): Promise<void>;
   updateWebhookEventStatus(

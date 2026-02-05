@@ -1,6 +1,13 @@
 import type { GetServerSideProps } from 'next';
 import Head from 'next/head';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+
+// Deterministic hash for cart fingerprint (djb2-style)
+function cartFingerprintHash(str: string): string {
+  let h = 5381;
+  for (let i = 0; i < str.length; i++) h = ((h << 5) + h) ^ str.charCodeAt(i);
+  return Math.abs(h >>> 0).toString(36);
+}
 import { createClient } from '@supabase/supabase-js';
 
 import { resolveVendorSlugFromHost, type Database } from '@countrtop/data';
@@ -304,6 +311,14 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
   // ---------------------------------------------------------------------------
   const cartTotal = useMemo(() => cart.reduce((sum, i) => sum + i.price * i.quantity, 0), [cart]);
   const cartCurrency = cart[0]?.currency ?? 'USD';
+
+  // Deterministic cart fingerprint for idempotency key (reset when cart contents change)
+  const cartFingerprint = useMemo(() => {
+    const normalized = cart
+      .map((i) => ({ id: i.id, variationId: i.variationId, quantity: i.quantity }))
+      .sort((a, b) => a.id.localeCompare(b.id));
+    return cartFingerprintHash(JSON.stringify(normalized));
+  }, [cart]);
   const appleEnabled = process.env.NEXT_PUBLIC_APPLE_SIGNIN === 'true';
   const maxRedeemPoints = useMemo(() => {
     if (loyalty === null || !loyaltyRedemptionRules || cart.length === 0) return 0;
@@ -543,6 +558,15 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
     setCheckoutError(null);
     setCheckingOut(true);
 
+    const idempotencyStorageKey = `ct_checkout_idempotency_${vendorSlug}_${cartFingerprint}`;
+    let idempotencyKey = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem(idempotencyStorageKey) : null;
+    if (!idempotencyKey) {
+      idempotencyKey = crypto.randomUUID();
+      if (typeof sessionStorage !== 'undefined') {
+        sessionStorage.setItem(idempotencyStorageKey, idempotencyKey);
+      }
+    }
+
     try {
       const res = await fetch(`/api/vendors/${vendorSlug}/checkout`, {
         method: 'POST',
@@ -552,6 +576,7 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
           locationId: selectedLocation?.squareLocationId,
           redeemPoints: redeemPointsToUse > 0 ? redeemPointsToUse : undefined,
           scheduledPickupAt: scheduledPickupAt ?? undefined,
+          idempotencyKey,
           items: cart.map((i) => ({
             id: i.id,
             name: i.name,
@@ -564,6 +589,11 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error ?? 'Checkout failed');
+
+      // Remove idempotency key so next checkout gets a fresh one
+      if (typeof sessionStorage !== 'undefined') {
+        sessionStorage.removeItem(idempotencyStorageKey);
+      }
 
       // Persist pickup confirmation (24h TTL)
       if (vendorSlug) {

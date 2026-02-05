@@ -188,13 +188,15 @@ export async function handleSquareWebhook(
   let orderId: string | undefined;
   let locationId: string | undefined;
 
-  if (eventType === 'order.updated') {
+  if (eventType === 'order.updated' || eventType === 'order.created') {
     const dataObj = event?.data as Record<string, unknown> | undefined;
     const objData = dataObj?.object as Record<string, unknown> | undefined;
     const orderUpdated = objData?.order_updated as Record<string, unknown> | undefined;
-    const orderObj = orderUpdated?.order as Record<string, unknown> | undefined;
-    orderId = (orderUpdated?.order_id ?? orderObj?.id) as string | undefined;
-    locationId = (orderObj?.location_id ?? orderUpdated?.location_id) as string | undefined;
+    const orderCreated = objData?.order_created as Record<string, unknown> | undefined;
+    const orderData = orderUpdated ?? orderCreated;
+    const orderObj = orderData?.order as Record<string, unknown> | undefined;
+    orderId = (orderData?.order_id ?? orderObj?.id) as string | undefined;
+    locationId = (orderObj?.location_id ?? orderData?.location_id) as string | undefined;
   } else if (eventType === 'payment.updated') {
     const payment = normalizeSquarePayment(parseSquarePayment(event));
     orderId = payment.orderId ?? undefined;

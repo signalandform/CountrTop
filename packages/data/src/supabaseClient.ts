@@ -726,6 +726,10 @@ export type Database = {
         Args: { p_provider: string; p_limit: number; p_locked_by: string };
         Returns: Database['public']['Tables']['webhook_jobs']['Row'][];
       };
+      reset_stale_webhook_jobs: {
+        Args: Record<string, never>;
+        Returns: number;
+      };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
@@ -1366,6 +1370,20 @@ export class SupabaseDataClient implements DataClient {
       return result;
     } catch (error) {
       logQueryPerformance('claimWebhookJobsRPC', startTime, false, error);
+      throw error;
+    }
+  }
+
+  async resetStaleWebhookJobs(): Promise<number> {
+    const startTime = Date.now();
+    try {
+      const { data, error } = await this.client.rpc('reset_stale_webhook_jobs');
+      if (error) throw error;
+      const count = (data as number) ?? 0;
+      logQueryPerformance('resetStaleWebhookJobs', startTime, true);
+      return count;
+    } catch (error) {
+      logQueryPerformance('resetStaleWebhookJobs', startTime, false, error);
       throw error;
     }
   }

@@ -6,6 +6,7 @@ import { createLogger } from '@countrtop/api-client';
 const logger = createLogger({ requestId: 'reconcile' });
 
 export type ReconcileStats = {
+  ordersFetched: number;
   processed: number;
   createdTickets: number;
   updatedTickets: number;
@@ -41,6 +42,7 @@ export async function reconcileSquareOrdersForLocation(
   minutesBack = 10
 ): Promise<ReconcileStats> {
   const stats: ReconcileStats = {
+    ordersFetched: 0,
     processed: 0,
     createdTickets: 0,
     updatedTickets: 0,
@@ -67,6 +69,7 @@ export async function reconcileSquareOrdersForLocation(
       orderCount: orderIds.length
     });
 
+    stats.ordersFetched = orderIds.length;
     if (orderIds.length === 0) {
       return stats;
     }
