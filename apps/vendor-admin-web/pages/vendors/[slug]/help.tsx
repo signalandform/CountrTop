@@ -41,7 +41,7 @@ export const getServerSideProps: GetServerSideProps<VendorHelpPageProps> = async
   };
 };
 
-export default function VendorHelpPage({ vendorSlug, vendorName, vendor }: VendorHelpPageProps) {
+export default function VendorHelpPage({ vendorSlug, vendorName }: VendorHelpPageProps) {
   return (
     <VendorAdminLayout vendorSlug={vendorSlug} vendorName={vendorName}>
       <Head>
