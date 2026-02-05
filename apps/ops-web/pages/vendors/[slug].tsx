@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { OpsAdminLayout } from '../../components/OpsAdminLayout';
 
 import { requireOpsAdmin } from '../../lib/auth';
+import { getMilestoneLabel } from '../../lib/milestones';
 
 type BillingInfo = {
   planId: string;
@@ -85,6 +86,9 @@ export default function VendorDetailPage({ userEmail, vendorSlug }: Props) {
   const [adminSubmitting, setAdminSubmitting] = useState(false);
   const [adminError, setAdminError] = useState<string | null>(null);
   const [adminSuccess, setAdminSuccess] = useState(false);
+  const [milestones, setMilestones] = useState<{ milestone: number; claimedAt: string | null }[]>([]);
+  const [milestonesLoading, setMilestonesLoading] = useState(false);
+  const [claimingMilestone, setClaimingMilestone] = useState<number | null>(null);
 
   const fetchVendor = async () => {
     try {
@@ -172,6 +176,58 @@ export default function VendorDetailPage({ userEmail, vendorSlug }: Props) {
     }
   };
 
+  const fetchMilestones = async () => {
+    if (!vendorSlug) return;
+    try {
+      setMilestonesLoading(true);
+      const response = await fetch(`/api/vendors/${vendorSlug}/milestones`, {
+        credentials: 'include'
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('Failed to fetch milestones:', data.error);
+        return;
+      }
+
+      const data = await response.json();
+      if (data.success) {
+        setMilestones(
+          (data.milestones || []).map((m: { milestone: number; claimedAt: string | null }) => ({
+            milestone: m.milestone,
+            claimedAt: m.claimedAt
+          }))
+        );
+      }
+    } catch (err) {
+      console.error('Error fetching milestones:', err);
+    } finally {
+      setMilestonesLoading(false);
+    }
+  };
+
+  const handleClaimMilestone = async (milestone: number) => {
+    if (!vendorSlug) return;
+    try {
+      setClaimingMilestone(milestone);
+      const response = await fetch(`/api/vendors/${vendorSlug}/milestones/${milestone}/claim`, {
+        method: 'PATCH',
+        credentials: 'include'
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(data.error || `HTTP ${response.status}`);
+      }
+
+      await fetchMilestones();
+    } catch (err) {
+      alert(`Failed to mark claimed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    } finally {
+      setClaimingMilestone(null);
+    }
+  };
+
   const handleSetVendorAdmin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!vendorSlug) return;
@@ -210,6 +266,7 @@ export default function VendorDetailPage({ userEmail, vendorSlug }: Props) {
     if (vendorSlug) {
       fetchVendor();
       fetchFeatureFlags();
+      fetchMilestones();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vendorSlug]);
@@ -406,6 +463,57 @@ export default function VendorDetailPage({ userEmail, vendorSlug }: Props) {
                     disabled={flagsLoading}
                   >
                     {flagsLoading ? 'Refreshing...' : 'Refresh Flags'}
+                  </button>
+                </div>
+              </div>
+
+              <div className="detail-section">
+                <h2>Order Milestones</h2>
+                <p className="milestones-context">
+                  Incentive milestones (t-shirt at 500, plaque at 1,000) for CountrTop online orders.
+                  Mark as claimed when the incentive has been fulfilled.
+                </p>
+                {milestonesLoading ? (
+                  <div className="milestones-loading">
+                    <p>Loading milestones...</p>
+                  </div>
+                ) : milestones.length === 0 ? (
+                  <div className="milestones-empty">
+                    <p>No incentive milestones for this vendor.</p>
+                  </div>
+                ) : (
+                  <div className="milestones-list">
+                    {milestones.map((m) => (
+                      <div key={m.milestone} className="milestone-item">
+                        <div className="milestone-info">
+                          <label className="milestone-label">{getMilestoneLabel(m.milestone)}</label>
+                          <span
+                            className={`milestone-status ${m.claimedAt ? 'claimed' : 'pending'}`}
+                          >
+                            {m.claimedAt ? 'Claimed' : 'Pending'}
+                          </span>
+                        </div>
+                        {!m.claimedAt && (
+                          <button
+                            type="button"
+                            className="btn-claim-milestone"
+                            onClick={() => handleClaimMilestone(m.milestone)}
+                            disabled={claimingMilestone === m.milestone}
+                          >
+                            {claimingMilestone === m.milestone ? 'Claiming...' : 'Mark claimed'}
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div className="milestones-actions">
+                  <button
+                    onClick={fetchMilestones}
+                    className="btn-refresh-milestones"
+                    disabled={milestonesLoading}
+                  >
+                    {milestonesLoading ? 'Refreshing...' : 'Refresh Milestones'}
                   </button>
                 </div>
               </div>
@@ -807,6 +915,112 @@ export default function VendorDetailPage({ userEmail, vendorSlug }: Props) {
           }
 
           .btn-refresh-flags:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+          }
+
+          .milestones-context {
+            margin: 0 0 20px;
+            font-size: 14px;
+            color: var(--color-text-muted);
+          }
+
+          .milestones-loading,
+          .milestones-empty {
+            text-align: center;
+            padding: 32px;
+            color: var(--color-text-muted);
+          }
+
+          .milestones-loading p,
+          .milestones-empty p {
+            margin: 0;
+            font-size: 14px;
+          }
+
+          .milestones-list {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+          }
+
+          .milestone-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px;
+            background: var(--ct-bg-surface);
+            border: 1px solid var(--color-border);
+            border-radius: 12px;
+          }
+
+          .milestone-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+          }
+
+          .milestone-label {
+            font-weight: 500;
+            font-size: 15px;
+          }
+
+          .milestone-status {
+            font-size: 13px;
+            padding: 4px 10px;
+            border-radius: 8px;
+          }
+
+          .milestone-status.claimed {
+            background: rgba(34, 197, 94, 0.15);
+            color: #22c55e;
+          }
+
+          .milestone-status.pending {
+            background: rgba(232, 93, 4, 0.15);
+            color: var(--color-accent);
+          }
+
+          .btn-claim-milestone {
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: 1px solid var(--color-accent);
+            background: rgba(232, 93, 4, 0.12);
+            color: var(--color-accent);
+            font-weight: 500;
+            cursor: pointer;
+          }
+
+          .btn-claim-milestone:hover:not(:disabled) {
+            background: rgba(232, 93, 4, 0.2);
+          }
+
+          .btn-claim-milestone:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+          }
+
+          .milestones-actions {
+            margin-top: 24px;
+            padding-top: 24px;
+            border-top: 1px solid var(--color-border);
+          }
+
+          .btn-refresh-milestones {
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: 1px solid var(--color-border);
+            background: var(--color-bg-warm);
+            color: var(--color-text);
+            font-size: 14px;
+            cursor: pointer;
+          }
+
+          .btn-refresh-milestones:hover:not(:disabled) {
+            background: rgba(232, 93, 4, 0.12);
+          }
+
+          .btn-refresh-milestones:disabled {
             opacity: 0.6;
             cursor: not-allowed;
           }

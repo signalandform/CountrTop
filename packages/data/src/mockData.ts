@@ -239,6 +239,25 @@ export class MockDataClient implements DataClient {
   /* eslint-enable @typescript-eslint/no-unused-vars */
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- mock returns empty list
+  async listVendorOrderMilestones(_vendorId: string): Promise<import('./dataClient').VendorOrderMilestone[]> {
+    return [];
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- mock no-op
+  async markVendorOrderMilestoneSeen(
+    _vendorId: string,
+    _milestone: number,
+    _milestoneType: string
+  ): Promise<void> {
+    return;
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- mock no-op
+  async claimVendorOrderMilestone(_vendorId: string, _milestone: number): Promise<void> {
+    return;
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- mock returns empty list
   async listSupportTickets(_filters: { vendorId?: string; status?: string }): Promise<import('@countrtop/models').SupportTicket[]> {
     return [];
   }

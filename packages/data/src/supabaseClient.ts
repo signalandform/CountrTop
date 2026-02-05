@@ -529,6 +529,26 @@ export type Database = {
         Update: Partial<Database['public']['Tables']['vendor_email_unsubscribes']['Insert']>;
         Relationships: [];
       };
+      vendor_order_milestones: {
+        Row: {
+          id: string;
+          vendor_id: string;
+          milestone: number;
+          milestone_type: string;
+          seen_at: string;
+          claimed_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          vendor_id: string;
+          milestone: number;
+          milestone_type: string;
+          seen_at?: string;
+          claimed_at?: string | null;
+        };
+        Update: Partial<Database['public']['Tables']['vendor_order_milestones']['Insert']>;
+        Relationships: [];
+      };
       employees: {
         Row: {
           id: string;
@@ -1442,6 +1462,74 @@ export class SupabaseDataClient implements DataClient {
       };
     } catch (error) {
       logQueryPerformance('getWebhookEventById', startTime, false, error);
+      throw error;
+    }
+  }
+
+  async listVendorOrderMilestones(vendorId: string): Promise<import('./dataClient').VendorOrderMilestone[]> {
+    const startTime = Date.now();
+    try {
+      const { data, error } = await this.client
+        .from('vendor_order_milestones')
+        .select('id,vendor_id,milestone,milestone_type,seen_at,claimed_at')
+        .eq('vendor_id', vendorId)
+        .order('milestone', { ascending: true });
+      if (error) throw error;
+      const rows = (data ?? []) as Database['public']['Tables']['vendor_order_milestones']['Row'][];
+      const result = rows.map((row) => ({
+        id: row.id,
+        vendorId: row.vendor_id,
+        milestone: row.milestone,
+        milestoneType: row.milestone_type as 'congrats' | 'incentive_shirt' | 'incentive_plaque',
+        seenAt: row.seen_at,
+        claimedAt: row.claimed_at
+      }));
+      logQueryPerformance('listVendorOrderMilestones', startTime, true);
+      return result;
+    } catch (error) {
+      logQueryPerformance('listVendorOrderMilestones', startTime, false, error);
+      throw error;
+    }
+  }
+
+  async markVendorOrderMilestoneSeen(
+    vendorId: string,
+    milestone: number,
+    milestoneType: string
+  ): Promise<void> {
+    const startTime = Date.now();
+    try {
+      const { error } = await this.client
+        .from('vendor_order_milestones')
+        .upsert(
+          {
+            vendor_id: vendorId,
+            milestone,
+            milestone_type: milestoneType,
+            seen_at: new Date().toISOString()
+          },
+          { onConflict: 'vendor_id,milestone', ignoreDuplicates: false }
+        );
+      if (error) throw error;
+      logQueryPerformance('markVendorOrderMilestoneSeen', startTime, true);
+    } catch (error) {
+      logQueryPerformance('markVendorOrderMilestoneSeen', startTime, false, error);
+      throw error;
+    }
+  }
+
+  async claimVendorOrderMilestone(vendorId: string, milestone: number): Promise<void> {
+    const startTime = Date.now();
+    try {
+      const { error } = await this.client
+        .from('vendor_order_milestones')
+        .update({ claimed_at: new Date().toISOString() })
+        .eq('vendor_id', vendorId)
+        .eq('milestone', milestone);
+      if (error) throw error;
+      logQueryPerformance('claimVendorOrderMilestone', startTime, true);
+    } catch (error) {
+      logQueryPerformance('claimVendorOrderMilestone', startTime, false, error);
       throw error;
     }
   }

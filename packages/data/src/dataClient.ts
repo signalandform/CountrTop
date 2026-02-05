@@ -53,6 +53,15 @@ export type WebhookJob = {
   updatedAt: string;
 };
 
+export type VendorOrderMilestone = {
+  id: string;
+  vendorId: string;
+  milestone: number;
+  milestoneType: 'congrats' | 'incentive_shirt' | 'incentive_plaque';
+  seenAt: string;
+  claimedAt: string | null;
+};
+
 export interface DataClient {
   signInWithProvider(provider: AuthProvider, idToken: string): Promise<User>;
   signOut(): Promise<void>;
@@ -245,6 +254,11 @@ export interface DataClient {
     params: { status: string; processedAt?: string; error?: string }
   ): Promise<void>;
   getWebhookEventById(id: string): Promise<WebhookEvent | null>;
+
+  // Vendor order milestones (CountrTop online orders)
+  listVendorOrderMilestones(vendorId: string): Promise<VendorOrderMilestone[]>;
+  markVendorOrderMilestoneSeen(vendorId: string, milestone: number, milestoneType: string): Promise<void>;
+  claimVendorOrderMilestone(vendorId: string, milestone: number): Promise<void>;
 
   // Ops: support tickets
   listSupportTickets(filters: { vendorId?: string; status?: string }): Promise<import('@countrtop/models').SupportTicket[]>;

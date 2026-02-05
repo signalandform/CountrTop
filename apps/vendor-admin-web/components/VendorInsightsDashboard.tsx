@@ -1,15 +1,142 @@
+import { useState } from 'react';
 import { VendorInsights } from '@countrtop/models';
+import { getFirstUnseenMilestone, type MilestoneConfig, type MilestoneSeen } from '../lib/milestones';
 
 type Props = {
   vendorSlug: string | null;
   vendorName: string;
   insights: VendorInsights;
+  totalOrders: number;
+  milestonesSeen: MilestoneSeen[];
   statusMessage?: string | null;
 };
 
 const formatMetric = (value: number) => value.toLocaleString();
 
-export function VendorInsightsDashboard({ vendorSlug, vendorName, insights, statusMessage }: Props) {
+function OrderMilestoneBanner({
+  vendorSlug,
+  milestone,
+  onDismiss
+}: {
+  vendorSlug: string | null;
+  milestone: MilestoneConfig;
+  onDismiss: () => void;
+}) {
+  const [dismissing, setDismissing] = useState(false);
+
+  const handleDismiss = async () => {
+    if (!vendorSlug || dismissing) return;
+    setDismissing(true);
+    try {
+      const res = await fetch(`/api/vendors/${vendorSlug}/milestones/seen`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ milestone: milestone.milestone })
+      });
+      if (res.ok) onDismiss();
+    } catch {
+      setDismissing(false);
+    }
+  };
+
+  const isIncentive = milestone.milestoneType === 'incentive_shirt' || milestone.milestoneType === 'incentive_plaque';
+
+  return (
+    <div className={`milestone-banner ${isIncentive ? 'incentive' : 'congrats'}`}>
+      <div className="milestone-content">
+        <span className="milestone-emoji">{isIncentive ? '🎁' : '🎉'}</span>
+        <div>
+          <p className="milestone-message">{milestone.message}</p>
+          {milestone.cta && (
+            <p className="milestone-cta">{milestone.cta}</p>
+          )}
+        </div>
+      </div>
+      <button
+        type="button"
+        className="milestone-dismiss"
+        onClick={handleDismiss}
+        disabled={dismissing}
+        aria-label="Dismiss"
+      >
+        {dismissing ? '…' : '×'}
+      </button>
+      <style jsx>{`
+        .milestone-banner {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 20px 24px;
+          border-radius: 16px;
+          margin-bottom: 24px;
+        }
+        .milestone-banner.congrats {
+          background: rgba(232, 93, 4, 0.12);
+          border: 1px solid rgba(232, 93, 4, 0.3);
+        }
+        .milestone-banner.incentive {
+          background: rgba(34, 197, 94, 0.12);
+          border: 1px solid rgba(34, 197, 94, 0.3);
+        }
+        .milestone-content {
+          display: flex;
+          align-items: flex-start;
+          gap: 16px;
+        }
+        .milestone-emoji {
+          font-size: 32px;
+        }
+        .milestone-message {
+          font-weight: 600;
+          font-size: 16px;
+          margin: 0;
+          color: var(--color-text);
+        }
+        .milestone-cta {
+          font-size: 14px;
+          color: var(--color-text-muted);
+          margin: 4px 0 0;
+        }
+        .milestone-dismiss {
+          background: none;
+          border: none;
+          font-size: 24px;
+          cursor: pointer;
+          padding: 4px 8px;
+          color: var(--color-text-muted);
+          line-height: 1;
+        }
+        .milestone-dismiss:hover:not(:disabled) {
+          color: var(--color-text);
+        }
+        .milestone-dismiss:disabled {
+          cursor: not-allowed;
+          opacity: 0.7;
+        }
+      `}</style>
+    </div>
+  );
+}
+
+export function VendorInsightsDashboard({
+  vendorSlug,
+  vendorName,
+  insights,
+  totalOrders,
+  milestonesSeen,
+  statusMessage
+}: Props) {
+  const [dismissedMilestones, setDismissedMilestones] = useState<Set<number>>(new Set());
+  const effectiveSeen = [
+    ...milestonesSeen.map((m) => m.milestone),
+    ...dismissedMilestones
+  ].map((milestone) => ({ milestone }));
+  const unseenMilestone = getFirstUnseenMilestone(totalOrders, effectiveSeen);
+
+  const handleMilestoneDismiss = () => {
+    if (unseenMilestone) setDismissedMilestones((prev) => new Set(prev).add(unseenMilestone.milestone));
+  };
+
   return (
     <main className="dashboard-page">
       {/* Header */}
@@ -23,7 +150,26 @@ export function VendorInsightsDashboard({ vendorSlug, vendorName, insights, stat
 
       {statusMessage && <div className="error-banner">{statusMessage}</div>}
 
+      {unseenMilestone && (
+        <OrderMilestoneBanner
+          vendorSlug={vendorSlug}
+          milestone={unseenMilestone}
+          onDismiss={handleMilestoneDismiss}
+        />
+      )}
+
       <div className="dashboard-content">
+        {/* Hero Order Counter */}
+        <section className="order-hero-section">
+          <div className="order-hero-card">
+            <span className="order-hero-label">CountrTop Online Orders</span>
+            <span className="order-hero-value">Order #{formatMetric(totalOrders)}</span>
+            {unseenMilestone && (
+              <span className="order-hero-badge">New milestone reached!</span>
+            )}
+          </div>
+        </section>
+
         {/* Stats Overview */}
         <section className="stats-section">
           <div className="section-header">
@@ -33,7 +179,7 @@ export function VendorInsightsDashboard({ vendorSlug, vendorName, insights, stat
             </a>
           </div>
           <div className="stats-grid">
-            <div className="stat-card">
+            <div className="stat-card stat-card-orders">
               <div className="stat-icon">📋</div>
               <div className="stat-content">
                 <span className="stat-value">{formatMetric(insights.orders)}</span>
@@ -171,6 +317,47 @@ export function VendorInsightsDashboard({ vendorSlug, vendorName, insights, stat
           max-width: 1200px;
           margin: 0 auto;
           padding: 32px 0 0;
+        }
+
+        .order-hero-section {
+          margin-bottom: 32px;
+        }
+
+        .order-hero-card {
+          background: var(--ct-bg-surface);
+          border: 1px solid var(--color-border);
+          border-radius: 20px;
+          padding: 32px 40px;
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+
+        .order-hero-label {
+          font-size: 13px;
+          color: var(--color-text-muted);
+          text-transform: uppercase;
+          letter-spacing: 1px;
+        }
+
+        .order-hero-value {
+          font-size: 42px;
+          font-weight: 800;
+          background: var(--ct-gradient-primary);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+        }
+
+        .order-hero-badge {
+          font-size: 14px;
+          color: var(--color-accent);
+          font-weight: 500;
+        }
+
+        .stat-card.stat-card-orders {
+          background: rgba(232, 93, 4, 0.08);
+          border-color: rgba(232, 93, 4, 0.25);
         }
 
         .section-title {

@@ -15,6 +15,8 @@ type VendorAdminProps = {
   vendorName: string;
   vendor: Vendor | null;
   insights: VendorInsights;
+  totalOrders: number;
+  milestonesSeen: { milestone: number }[];
   statusMessage?: string | null;
 };
 
@@ -42,6 +44,8 @@ export const getServerSideProps: GetServerSideProps<VendorAdminProps> = async (c
           feedbackThumbsDown: 0,
           topReorderedItems: []
         },
+        totalOrders: 0,
+        milestonesSeen: [],
         statusMessage: authResult.error ?? 'Access denied'
       }
     };
@@ -51,6 +55,9 @@ export const getServerSideProps: GetServerSideProps<VendorAdminProps> = async (c
   const vendor = slug ? await dataClient.getVendorBySlug(slug) : null;
   const orders = vendor ? await dataClient.listOrderSnapshotsForVendor(vendor.id) : [];
   const insights = await summarizeInsights(vendor, orders, dataClient);
+  const milestonesSeen = vendor
+    ? (await dataClient.listVendorOrderMilestones(vendor.id)).map((m) => ({ milestone: m.milestone }))
+    : [];
   const statusMessage = vendor ? null : 'Vendor not found';
 
   return {
@@ -59,6 +66,8 @@ export const getServerSideProps: GetServerSideProps<VendorAdminProps> = async (c
       vendorName: vendor?.displayName ?? 'Unknown vendor',
       vendor: vendor ?? null,
       insights,
+      totalOrders: insights.orders,
+      milestonesSeen,
       statusMessage
     }
   };
@@ -69,6 +78,8 @@ export default function VendorAdminVendorPage({
   vendorName,
   vendor,
   insights,
+  totalOrders,
+  milestonesSeen,
   statusMessage
 }: VendorAdminProps) {
   // Handle smooth scrolling to anchor links
@@ -99,6 +110,8 @@ export default function VendorAdminVendorPage({
           vendorSlug={vendorSlug}
           vendorName={vendorName}
           insights={insights}
+          totalOrders={totalOrders}
+          milestonesSeen={milestonesSeen}
           statusMessage={statusMessage}
         />
       </VendorAdminLayout>
