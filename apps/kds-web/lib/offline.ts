@@ -46,6 +46,7 @@ export type Ticket = {
     metadata?: Record<string, unknown> | null;
     lineItems?: unknown[] | null;
     source: 'countrtop_online' | 'square_pos';
+    scheduledPickupAt?: string | null;
   };
   customer?: CustomerInfo;
 };

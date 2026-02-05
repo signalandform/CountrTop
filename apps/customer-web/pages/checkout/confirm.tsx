@@ -26,6 +26,7 @@ type StoredSnapshot = {
   pickupInstructions?: string | null;
   contactPhone?: string | null;
   leadTimeMinutes?: number | null;
+  scheduledPickupAt?: string | null;
 };
 
 type OrderStatus = {
@@ -159,9 +160,12 @@ export default function ConfirmPage({
   const pickupInstructions = snapshot?.pickupInstructions ?? vendorPickupInstructions ?? null;
   const contactPhone = snapshot?.contactPhone ?? vendorPhone ?? null;
   const etaMinutes = orderStatus?.estimatedWaitMinutes ?? snapshot?.leadTimeMinutes ?? null;
-  const etaLabel = etaMinutes
-    ? `Estimated pickup in ~${etaMinutes} min`
-    : 'Pickup time will be shown once the kitchen confirms your order.';
+  const scheduledPickupAt = snapshot?.scheduledPickupAt;
+  const etaLabel = scheduledPickupAt
+    ? `Scheduled for ${new Date(scheduledPickupAt).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })}`
+    : etaMinutes
+      ? `Estimated pickup in ~${etaMinutes} min`
+      : 'Pickup time will be shown once the kitchen confirms your order.';
   const mapsUrl = buildMapsUrl(pickupAddress || pickupName);
 
   return (

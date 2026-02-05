@@ -108,6 +108,9 @@ export const getServerSideProps: GetServerSideProps<LocationsPageProps> = async 
         kdsDisplayMode: ((row as Record<string, unknown>).kds_display_mode as 'grid' | 'list' | undefined) ?? 'grid',
         onlineOrderingLeadTimeMinutes: (row as Record<string, unknown>).online_ordering_lead_time_minutes as number | undefined,
         onlineOrderingHoursJson: (row as Record<string, unknown>).online_ordering_hours_json as Record<string, unknown> | undefined ?? undefined,
+        scheduledOrdersEnabled: (row as Record<string, unknown>).scheduled_orders_enabled as boolean | undefined ?? false,
+        scheduledOrderLeadDays: (row as Record<string, unknown>).scheduled_order_lead_days as number | undefined ?? 7,
+        scheduledOrderSlotMinutes: (row as Record<string, unknown>).scheduled_order_slot_minutes as number | undefined ?? 30,
         createdAt: row.created_at,
         updatedAt: row.updated_at
       }));
@@ -806,6 +809,13 @@ function LocationCard({
   const [onlineOrderingLeadTimeMinutes, setOnlineOrderingLeadTimeMinutes] = useState(
     location.onlineOrderingLeadTimeMinutes?.toString() || '15'
   );
+  const [scheduledOrdersEnabled, setScheduledOrdersEnabled] = useState(location.scheduledOrdersEnabled ?? false);
+  const [scheduledOrderLeadDays, setScheduledOrderLeadDays] = useState(
+    location.scheduledOrderLeadDays?.toString() ?? '7'
+  );
+  const [scheduledOrderSlotMinutes, setScheduledOrderSlotMinutes] = useState(
+    location.scheduledOrderSlotMinutes?.toString() ?? '30'
+  );
 
   // Store hours (for customer storefront): 7 days, index 0 = Sunday
   const [storeHoursByDay, setStoreHoursByDay] = useState<string[]>(() =>
@@ -834,6 +844,9 @@ function LocationCard({
       kdsDisplayMode,
       onlineOrderingLeadTimeMinutes: onlineOrderingLeadTimeMinutes ? parseInt(onlineOrderingLeadTimeMinutes, 10) : 15,
       onlineOrderingHoursJson: storeHoursToJson(storeHoursByDay, closedByDay) ?? undefined,
+      scheduledOrdersEnabled,
+      scheduledOrderLeadDays: scheduledOrderLeadDays ? parseInt(scheduledOrderLeadDays, 10) : 7,
+      scheduledOrderSlotMinutes: scheduledOrderSlotMinutes ? parseInt(scheduledOrderSlotMinutes, 10) : 30,
     });
   };
 
@@ -862,6 +875,7 @@ function LocationCard({
             {location.isPrimary && <span className="badge primary">Primary</span>}
             {!location.isActive && <span className="badge inactive">Inactive</span>}
             {location.onlineOrderingEnabled && <span className="badge online">Online Ordering</span>}
+            {location.scheduledOrdersEnabled && <span className="badge scheduled">Scheduled Orders</span>}
           </div>
         </div>
         {!isEditing && (
@@ -927,20 +941,60 @@ function LocationCard({
                 </div>
               </div>
               {onlineOrderingEnabled && (
-                <div className="form-row">
-                  <div className="form-group">
-                    <label>Lead Time (minutes)</label>
-                    <input
-                      type="number"
-                      min="0"
-                      max="120"
-                      value={onlineOrderingLeadTimeMinutes}
-                      onChange={(e) => setOnlineOrderingLeadTimeMinutes(e.target.value)}
-                      className="input-small"
-                    />
-                    <small className="form-hint">Minimum minutes before pickup</small>
+                <>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Lead Time (minutes)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="120"
+                        value={onlineOrderingLeadTimeMinutes}
+                        onChange={(e) => setOnlineOrderingLeadTimeMinutes(e.target.value)}
+                        className="input-small"
+                      />
+                      <small className="form-hint">Minimum minutes before pickup</small>
+                    </div>
                   </div>
-                </div>
+                  <div className="form-row">
+                    <div className="form-group checkbox-group">
+                      <label>
+                        <input
+                          type="checkbox"
+                          checked={scheduledOrdersEnabled}
+                          onChange={(e) => setScheduledOrdersEnabled(e.target.checked)}
+                        />
+                        Scheduled Orders (customers pick future pickup time)
+                      </label>
+                    </div>
+                  </div>
+                  {scheduledOrdersEnabled && (
+                    <div className="form-row" style={{ gap: 16, flexWrap: 'wrap' }}>
+                      <div className="form-group">
+                        <label>Max days in advance</label>
+                        <input
+                          type="number"
+                          min="1"
+                          max="30"
+                          value={scheduledOrderLeadDays}
+                          onChange={(e) => setScheduledOrderLeadDays(e.target.value)}
+                          className="input-small"
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label>Slot size (minutes)</label>
+                        <select
+                          value={scheduledOrderSlotMinutes}
+                          onChange={(e) => setScheduledOrderSlotMinutes(e.target.value)}
+                        >
+                          <option value="15">15 min</option>
+                          <option value="30">30 min</option>
+                          <option value="60">60 min</option>
+                        </select>
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </div>
 
@@ -1164,6 +1218,11 @@ function LocationCard({
         .badge.online {
           background: rgba(52, 199, 89, 0.2);
           color: #34c759;
+        }
+
+        .badge.scheduled {
+          background: rgba(94, 92, 230, 0.2);
+          color: #5e5ce6;
         }
 
         .edit-btn {

@@ -91,6 +91,12 @@ export type VendorLocation = {
   onlineOrderingLeadTimeMinutes?: number;
   /** Operating hours JSON (day of week -> open/close times) */
   onlineOrderingHoursJson?: Record<string, unknown>;
+  /** Allow customers to select a future pickup time slot */
+  scheduledOrdersEnabled?: boolean;
+  /** Max days in advance for scheduled pickup (default 7) */
+  scheduledOrderLeadDays?: number;
+  /** Slot granularity in minutes (15, 30, or 60) */
+  scheduledOrderSlotMinutes?: number;
   createdAt: string;
   updatedAt: string;
 };

@@ -23,6 +23,8 @@ type CheckoutRequest = {
   locationId?: string | null;
   /** Loyalty points to redeem for order discount (requires userId, loyalty enabled, valid balance) */
   redeemPoints?: number;
+  /** ISO timestamp for scheduled pickup (when location has scheduled_orders_enabled) */
+  scheduledPickupAt?: string | null;
 };
 
 type CheckoutResponse =
@@ -110,21 +112,42 @@ async function handler(req: NextApiRequest, res: NextApiResponse<CheckoutRespons
 
   try {
     let locationId = vendor.squareLocationId;
+    let matchedLocation: Awaited<ReturnType<typeof dataClient.listVendorLocations>>[0] | null = null;
     if (body.locationId) {
       const locations = await dataClient.listVendorLocations(vendor.id);
-      const matched = locations.find(
+      matchedLocation = locations.find(
         (loc) => loc.squareLocationId === body.locationId || loc.externalLocationId === body.locationId
-      );
-      if (!matched) {
+      ) ?? null;
+      if (!matchedLocation) {
         return res.status(400).json({ ok: false, error: 'Invalid pickup location' });
       }
-      if (matched.onlineOrderingEnabled === false) {
+      if (matchedLocation.onlineOrderingEnabled === false) {
         return res.status(400).json({ ok: false, error: 'Online ordering is disabled for this location' });
       }
-      locationId = matched.squareLocationId || matched.externalLocationId || locationId;
+      locationId = matchedLocation.squareLocationId || matchedLocation.externalLocationId || locationId;
     }
     if (!locationId || locationId === 'SQUARE_LOCATION_DEMO') {
       return res.status(400).json({ ok: false, error: 'Vendor Square location id not configured' });
+    }
+
+    const leadTimeMinutes = matchedLocation?.onlineOrderingLeadTimeMinutes ?? 15;
+    const scheduledPickupAt = typeof body.scheduledPickupAt === 'string' && body.scheduledPickupAt.trim()
+      ? body.scheduledPickupAt.trim()
+      : null;
+
+    if (scheduledPickupAt) {
+      const pickupDate = new Date(scheduledPickupAt);
+      if (Number.isNaN(pickupDate.getTime())) {
+        return res.status(400).json({ ok: false, error: 'Invalid scheduled pickup time' });
+      }
+      if (pickupDate.getTime() <= Date.now()) {
+        return res.status(400).json({ ok: false, error: 'Scheduled pickup must be in the future' });
+      }
+      const maxDays = matchedLocation?.scheduledOrderLeadDays ?? 7;
+      const maxMs = maxDays * 24 * 60 * 60 * 1000;
+      if (pickupDate.getTime() - Date.now() > maxMs) {
+        return res.status(400).json({ ok: false, error: `Scheduled pickup cannot be more than ${maxDays} days in advance` });
+      }
     }
 
     logger.debug('Square checkout initiated', {
@@ -140,6 +163,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<CheckoutRespons
     const orderMetadata: Record<string, string> = {};
     if (body.userId) orderMetadata.ct_user_id = body.userId;
     if (redeemPoints > 0) orderMetadata.ct_redeem_points = String(redeemPoints);
+    if (scheduledPickupAt) orderMetadata.ct_scheduled_pickup_at = scheduledPickupAt;
 
     const orderPayload: {
       locationId: string;
@@ -147,6 +171,15 @@ async function handler(req: NextApiRequest, res: NextApiResponse<CheckoutRespons
       lineItems: { catalogObjectId: string; quantity: string }[];
       metadata?: Record<string, string>;
       discounts?: { uid: string; name: string; type: string; amountMoney: { amount: bigint; currency: string }; scope: string }[];
+      fulfillments?: Array<{
+        type: string;
+        pickupDetails?: {
+          scheduleType: string;
+          pickupAt?: string;
+          pickupWindowDuration?: string;
+          prepTimeDuration?: string;
+        };
+      }>;
     } = {
       locationId,
       referenceId: orderReferenceId,
@@ -164,6 +197,19 @@ async function handler(req: NextApiRequest, res: NextApiResponse<CheckoutRespons
           type: 'FIXED_AMOUNT',
           amountMoney: { amount: BigInt(discountCents), currency },
           scope: 'ORDER'
+        }
+      ];
+    }
+    if (scheduledPickupAt) {
+      orderPayload.fulfillments = [
+        {
+          type: 'PICKUP',
+          pickupDetails: {
+            scheduleType: 'SCHEDULED',
+            pickupAt: scheduledPickupAt,
+            pickupWindowDuration: 'PT30M',
+            prepTimeDuration: `PT${leadTimeMinutes}M`
+          }
         }
       ];
     }

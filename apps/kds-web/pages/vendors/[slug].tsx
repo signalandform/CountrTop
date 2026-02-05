@@ -183,6 +183,17 @@ const renderLineItems = (lineItems: unknown[] | null | undefined) => {
   );
 };
 
+const getScheduledLabel = (scheduledPickupAt: string | null | undefined): string | null => {
+  if (!scheduledPickupAt) return null;
+  try {
+    const d = new Date(scheduledPickupAt);
+    if (Number.isNaN(d.getTime())) return null;
+    return d.toLocaleString('en-US', { weekday: 'short', hour: 'numeric', minute: '2-digit', hour12: true });
+  } catch {
+    return null;
+  }
+};
+
 const getPickupLabel = (ticket: Ticket['ticket'], order: Ticket['order']): string => {
   // Check if it's a CountrTop order (has customer_user_id or ct_reference_id)
   if (ticket.customerUserId || ticket.ctReferenceId) {
@@ -930,10 +941,12 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
                   <div className="held-section-header">⏸️ On Hold</div>
                   {tickets.filter(t => t.ticket.heldAt).map(({ ticket, order, customer }) => {
                     const displayLabel = ticket.customLabel || (customer?.displayName) || getPickupLabel(ticket, order);
+                    const scheduledLabel = getScheduledLabel(order.scheduledPickupAt);
                     return (
                       <div key={ticket.id} className="ticket-card ticket-held">
                         <div className="ticket-left">
                           <div className="pickup-label">{displayLabel}</div>
+                          {scheduledLabel && <div className="scheduled-badge">📅 {scheduledLabel}</div>}
                           <div className="held-badge">⏸️ Held</div>
                         </div>
                         <div className="ticket-middle">
@@ -959,6 +972,7 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
               {/* Active tickets */}
               {tickets.filter(t => !t.ticket.heldAt).map(({ ticket, order, customer }, index, activeTickets) => {
                 const displayLabel = ticket.customLabel || (customer?.displayName) || getPickupLabel(ticket, order);
+                const scheduledLabel = getScheduledLabel(order.scheduledPickupAt);
                 const sourceBadge = ticket.source === 'countrtop_online' ? 'Online' : 'POS';
                 const age = formatAge(ticket.placedAt, currentTime);
                 const ageColor = getAgeColor(ticket.placedAt);
@@ -1036,6 +1050,11 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
                         <div className={`age-timer age-timer-${ageColor}`}>{age}</div>
                         <div className="pickup-label">{displayLabel}</div>
                         <div className="badge-row">
+                          {scheduledLabel && (
+                            <div className="scheduled-badge" title={`Scheduled pickup: ${scheduledLabel}`}>
+                              📅 {scheduledLabel}
+                            </div>
+                          )}
                           <div className="source-badge" data-source={ticket.source}>
                             {sourceBadge}
                           </div>
@@ -1928,6 +1947,17 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
             opacity: 0.8;
             background: rgba(255, 159, 10, 0.1) !important;
             border-color: rgba(255, 159, 10, 0.3) !important;
+          }
+
+          .scheduled-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            background: rgba(94, 92, 230, 0.2);
+            color: #5e5ce6;
+            border: 1px solid rgba(94, 92, 230, 0.3);
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
           }
 
           .held-badge {

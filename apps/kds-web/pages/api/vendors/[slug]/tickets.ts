@@ -46,6 +46,7 @@ type TicketsResponse =
           metadata?: Record<string, unknown> | null;
           lineItems?: unknown[] | null;
           source: OrderSource;
+          scheduledPickupAt?: string | null;
         };
         customer?: CustomerInfo;
       }>;
@@ -166,6 +167,19 @@ export default async function handler(
       }
     }
 
+    const extractScheduledPickupAt = (fulfillment: unknown): string | null => {
+      if (!fulfillment) return null;
+      const arr = Array.isArray(fulfillment) ? fulfillment : [fulfillment];
+      for (const f of arr) {
+        const details = (f as Record<string, unknown>)?.pickupDetails ?? (f as Record<string, unknown>)?.pickup_details;
+        if (details && typeof details === 'object') {
+          const at = (details as Record<string, unknown>).pickupAt ?? (details as Record<string, unknown>).pickup_at;
+          if (typeof at === 'string' && at) return at;
+        }
+      }
+      return null;
+    };
+
     // 4. Build enriched tickets with cached customer data
     const enrichedTickets = tickets.map(({ ticket, order }) => {
       let customer: CustomerInfo | undefined;
@@ -212,7 +226,8 @@ export default async function handler(
           referenceId: order.referenceId ?? null,
           metadata: order.metadata ?? null,
           lineItems: order.lineItems ?? null,
-          source: order.source
+          source: order.source,
+          scheduledPickupAt: extractScheduledPickupAt(order.fulfillment) ?? (order.metadata as Record<string, unknown> | null)?.ct_scheduled_pickup_at as string | null ?? null
         },
         customer
       };

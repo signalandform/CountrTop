@@ -27,6 +27,7 @@ type LocationOption = {
   onlineOrderingEnabled?: boolean;
   onlineOrderingLeadTimeMinutes?: number | null;
   onlineOrderingHoursJson?: Record<string, unknown> | null;
+  scheduledOrdersEnabled?: boolean;
 };
 
 type Props = {
@@ -91,7 +92,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req }) => 
       
       const { data: locationRows } = await supabase
         .from('vendor_locations')
-        .select('id, square_location_id, name, is_primary, address_line1, city, state, pickup_instructions, phone, timezone, online_ordering_enabled, online_ordering_lead_time_minutes, online_ordering_hours_json')
+        .select('id, square_location_id, name, is_primary, address_line1, city, state, pickup_instructions, phone, timezone, online_ordering_enabled, online_ordering_lead_time_minutes, online_ordering_hours_json, scheduled_orders_enabled')
         .eq('vendor_id', rawVendor.id)
         .eq('is_active', true)
         .order('is_primary', { ascending: false })
@@ -109,7 +110,8 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req }) => 
           timezone: loc.timezone ?? null,
           onlineOrderingEnabled: loc.online_ordering_enabled,
           onlineOrderingLeadTimeMinutes: loc.online_ordering_lead_time_minutes ?? null,
-          onlineOrderingHoursJson: loc.online_ordering_hours_json ?? null
+          onlineOrderingHoursJson: loc.online_ordering_hours_json ?? null,
+          scheduledOrdersEnabled: (loc as { scheduled_orders_enabled?: boolean }).scheduled_orders_enabled ?? false
         }));
       }
     }
@@ -127,7 +129,8 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req }) => 
         timezone: rawVendor.timezone ?? null,
         onlineOrderingEnabled: true,
         onlineOrderingLeadTimeMinutes: 15,
-        onlineOrderingHoursJson: null
+        onlineOrderingHoursJson: null,
+        scheduledOrdersEnabled: false
       }];
     }
   }
@@ -212,6 +215,9 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
   const [checkingOut, setCheckingOut] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [pickupConfirmed, setPickupConfirmed] = useState(false);
+  const [scheduledPickupAt, setScheduledPickupAt] = useState<string | null>(null);
+  const [pickupSlots, setPickupSlots] = useState<{ start: string; end: string; label: string }[]>([]);
+  const [pickupSlotsLoading, setPickupSlotsLoading] = useState(false);
 
   // User data state (orders + loyalty)
   const [orders, setOrders] = useState<OrderHistoryEntry[]>([]);
@@ -257,6 +263,30 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
   useEffect(() => {
     setPickupConfirmed(false);
   }, [vendorSlug]);
+
+  // Fetch pickup slots when location has scheduled orders enabled
+  useEffect(() => {
+    if (!vendorSlug || !selectedLocation?.scheduledOrdersEnabled) {
+      setPickupSlots([]);
+      setScheduledPickupAt(null);
+      return;
+    }
+    setPickupSlotsLoading(true);
+    const locationId = selectedLocation.squareLocationId;
+    fetch(`/api/vendors/${vendorSlug}/pickup-slots?locationId=${encodeURIComponent(locationId)}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.ok && Array.isArray(data.slots)) {
+          setPickupSlots(data.slots);
+          setScheduledPickupAt(null);
+        } else {
+          setPickupSlots([]);
+        }
+      })
+      .catch(() => setPickupSlots([]))
+      .finally(() => setPickupSlotsLoading(false));
+  }, [vendorSlug, selectedLocation?.squareLocationId, selectedLocation?.scheduledOrdersEnabled]);
+
   const [loadedUserId, setLoadedUserId] = useState<string | null>(null);
 
   // Order History state
@@ -502,6 +532,10 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
 
   const handleCheckout = async () => {
     if (!vendorSlug || cart.length === 0 || checkingOut || !pickupConfirmed || !canOrder) return;
+    if (selectedLocation?.scheduledOrdersEnabled && pickupSlots.length > 0 && !scheduledPickupAt) {
+      setCheckoutError('Please select a pickup time');
+      return;
+    }
     setCheckoutError(null);
     setCheckingOut(true);
 
@@ -513,6 +547,7 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
           userId: user?.id ?? null,
           locationId: selectedLocation?.squareLocationId,
           redeemPoints: redeemPointsToUse > 0 ? redeemPointsToUse : undefined,
+          scheduledPickupAt: scheduledPickupAt ?? undefined,
           items: cart.map((i) => ({
             id: i.id,
             name: i.name,
@@ -545,7 +580,8 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
           pickupAddress: locationAddress,
           pickupInstructions: selectedLocation?.pickupInstructions ?? vendor?.pickupInstructions ?? null,
           contactPhone: contactPhone || null,
-          leadTimeMinutes: pickupEtaMinutes ?? null
+          leadTimeMinutes: pickupEtaMinutes ?? null,
+          scheduledPickupAt: scheduledPickupAt ?? null
         })
       );
       window.location.href = data.checkoutUrl;
@@ -1167,7 +1203,29 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
                   )}
                 </div>
               )}
-              {canOrder && (
+              {canOrder && selectedLocation?.scheduledOrdersEnabled && pickupSlots.length > 0 && (
+                <div className="pickup-time-picker">
+                  <label className="pickup-time-label">Pickup time</label>
+                  {pickupSlotsLoading ? (
+                    <p className="muted">Loading available times…</p>
+                  ) : (
+                    <select
+                      value={scheduledPickupAt ?? ''}
+                      onChange={(e) => setScheduledPickupAt(e.target.value || null)}
+                      className="pickup-time-select"
+                      aria-label="Select pickup time"
+                    >
+                      <option value="">Select a time</option>
+                      {pickupSlots.map((slot) => (
+                        <option key={slot.start} value={slot.start}>
+                          {slot.label}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+              )}
+              {canOrder && !selectedLocation?.scheduledOrdersEnabled && (
                 <div className="pickup-eta">
                   Pickup ETA: ~{pickupEtaMinutes} min
                 </div>
@@ -1187,7 +1245,13 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
               <p className="no-account-label">No account needed — Square Checkout</p>
               <button
                 onClick={handleCheckout}
-                disabled={cart.length === 0 || checkingOut || !pickupConfirmed || !canOrder}
+                disabled={
+                  cart.length === 0 ||
+                  checkingOut ||
+                  !pickupConfirmed ||
+                  !canOrder ||
+                  (selectedLocation?.scheduledOrdersEnabled && pickupSlots.length > 0 && !scheduledPickupAt)
+                }
                 className="btn-checkout"
               >
                 {checkingOut ? 'Processing…' : 'Checkout with Square'}
@@ -2031,6 +2095,29 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
             font-size: 13px;
             color: var(--color-text-muted);
             margin-bottom: 12px;
+          }
+
+          .pickup-time-picker {
+            margin-bottom: 12px;
+          }
+
+          .pickup-time-label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--color-text);
+            margin-bottom: 6px;
+          }
+
+          .pickup-time-select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--color-border);
+            border-radius: 10px;
+            font-size: 14px;
+            font-family: inherit;
+            background: var(--ct-bg-surface);
+            color: var(--color-text);
           }
 
           .btn-checkout {

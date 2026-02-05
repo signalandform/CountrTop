@@ -595,6 +595,9 @@ export type Database = {
           kds_display_mode: string;
           online_ordering_lead_time_minutes: number;
           online_ordering_hours_json: Record<string, unknown> | null;
+          scheduled_orders_enabled: boolean;
+          scheduled_order_lead_days: number;
+          scheduled_order_slot_minutes: number;
           created_at: string;
           updated_at: string;
         };
@@ -622,6 +625,9 @@ export type Database = {
           kds_display_mode?: string;
           online_ordering_lead_time_minutes?: number;
           online_ordering_hours_json?: Record<string, unknown> | null;
+          scheduled_orders_enabled?: boolean;
+          scheduled_order_lead_days?: number;
+          scheduled_order_slot_minutes?: number;
           created_at?: string;
           updated_at?: string;
         };
@@ -874,6 +880,9 @@ export class SupabaseDataClient implements DataClient {
       if (updates.kdsDisplayMode !== undefined) updateData.kds_display_mode = updates.kdsDisplayMode;
       if (updates.onlineOrderingLeadTimeMinutes !== undefined) updateData.online_ordering_lead_time_minutes = updates.onlineOrderingLeadTimeMinutes;
       if (updates.onlineOrderingHoursJson !== undefined) updateData.online_ordering_hours_json = updates.onlineOrderingHoursJson ?? null;
+      if (updates.scheduledOrdersEnabled !== undefined) updateData.scheduled_orders_enabled = updates.scheduledOrdersEnabled;
+      if (updates.scheduledOrderLeadDays !== undefined) updateData.scheduled_order_lead_days = updates.scheduledOrderLeadDays;
+      if (updates.scheduledOrderSlotMinutes !== undefined) updateData.scheduled_order_slot_minutes = updates.scheduledOrderSlotMinutes;
 
       const { data, error } = await this.client
         .from('vendor_locations')
@@ -3529,6 +3538,9 @@ const mapVendorLocationFromRow = (row: Database['public']['Tables']['vendor_loca
   kdsDisplayMode: (row.kds_display_mode ?? 'grid') as 'grid' | 'list',
   onlineOrderingLeadTimeMinutes: row.online_ordering_lead_time_minutes,
   onlineOrderingHoursJson: row.online_ordering_hours_json ?? undefined,
+  scheduledOrdersEnabled: row.scheduled_orders_enabled,
+  scheduledOrderLeadDays: row.scheduled_order_lead_days,
+  scheduledOrderSlotMinutes: row.scheduled_order_slot_minutes,
   createdAt: row.created_at,
   updatedAt: row.updated_at,
 });

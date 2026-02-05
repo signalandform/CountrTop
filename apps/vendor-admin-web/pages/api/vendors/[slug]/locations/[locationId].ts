@@ -81,6 +81,9 @@ export default async function handler(
         // Online ordering settings
         onlineOrderingLeadTimeMinutes,
         onlineOrderingHoursJson,
+        scheduledOrdersEnabled,
+        scheduledOrderLeadDays,
+        scheduledOrderSlotMinutes,
       } = req.body;
 
       const updates: Parameters<typeof dataClient.updateVendorLocation>[1] = {};
@@ -106,6 +109,9 @@ export default async function handler(
       // Online ordering settings  
       if (onlineOrderingLeadTimeMinutes !== undefined) updates.onlineOrderingLeadTimeMinutes = onlineOrderingLeadTimeMinutes;
       if (onlineOrderingHoursJson !== undefined) updates.onlineOrderingHoursJson = onlineOrderingHoursJson ?? null;
+      if (scheduledOrdersEnabled !== undefined) updates.scheduledOrdersEnabled = scheduledOrdersEnabled;
+      if (scheduledOrderLeadDays !== undefined) updates.scheduledOrderLeadDays = scheduledOrderLeadDays;
+      if (scheduledOrderSlotMinutes !== undefined) updates.scheduledOrderSlotMinutes = scheduledOrderSlotMinutes;
 
       const updatedLocation = await dataClient.updateVendorLocation(locationId, updates);
       return res.status(200).json({ ok: true, location: updatedLocation });
