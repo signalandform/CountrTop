@@ -1637,9 +1637,9 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
 
           .badge-row {
             display: flex;
-            gap: 8px;
-            align-items: center;
-            flex-wrap: wrap;
+            flex-direction: column;
+            gap: 6px;
+            align-items: flex-start;
           }
 
           .loyalty-badge {
