@@ -1529,7 +1529,7 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
             border-radius: 16px;
             transition: background 0.2s, border-color 0.2s;
             position: relative;
-            width: fit-content;
+            width: 520px;
             max-width: 100%;
             min-width: 420px;
             min-height: 240px;
