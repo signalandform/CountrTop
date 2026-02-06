@@ -21,6 +21,55 @@ import {
 } from '../../lib/offline';
 import { createTicketsSubscription, type TicketChangeEvent } from '../../lib/realtime';
 
+// Consistent outline-style icons for KDS header (24x24, stroke 2)
+const IconRealtime = () => (
+  <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <path d="M21 12a9 9 0 1 1-2.34-5.93" />
+    <path d="M21 3v6h-6" />
+  </svg>
+);
+const IconOffline = () => (
+  <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <path d="M1 1l22 22" />
+    <path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55" />
+    <path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39" />
+    <path d="M10.71 5.05A16 16 0 0 1 22.58 9" />
+    <path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88" />
+    <path d="M8.53 16.11a6 6 0 0 1 6.95 0" />
+    <path d="M12 20h.01" />
+  </svg>
+);
+const IconPolling = () => (
+  <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <circle cx={12} cy={12} r={10} />
+    <path d="M12 6v6l4 2" />
+  </svg>
+);
+const IconAnalytics = () => (
+  <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <path d="M18 20V10" />
+    <path d="M12 20V4" />
+    <path d="M6 20v-6" />
+  </svg>
+);
+const IconSettings = () => (
+  <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <circle cx={12} cy={12} r={3} />
+    <path d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72l1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l-1.42 1.42" />
+  </svg>
+);
+const IconTimeClock = () => (
+  <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <circle cx={12} cy={12} r={10} />
+    <path d="M12 6v6l4 2" />
+  </svg>
+);
+const IconRecall = () => (
+  <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <path d="M3 10h10a8 8 0 0 1 8 8v2M3 10l6 6M3 10l6-6" />
+  </svg>
+);
+
 // Ticket type is now imported from offline.ts
 
 type TicketsResponse = {
@@ -843,7 +892,18 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
         <div className="container">
           <header className={`header ${kdsNavView === 'minimized' ? 'header-minimized' : ''}`}>
             <div>
-              <h1 className="title">{vendorName}</h1>
+              <div className="header-title-row">
+                <h1 className="title">{vendorName}</h1>
+                {kdsNavView === 'minimized' && (
+                  <span
+                    className="header-status-icon"
+                    title={isOffline ? 'Offline Mode' : useRealtime && realtimeStatus === 'SUBSCRIBED' ? 'Realtime' : 'Polling'}
+                    aria-label={isOffline ? 'Offline Mode' : useRealtime && realtimeStatus === 'SUBSCRIBED' ? 'Realtime' : 'Polling'}
+                  >
+                    {isOffline ? <IconOffline /> : useRealtime && realtimeStatus === 'SUBSCRIBED' ? <IconRealtime /> : <IconPolling />}
+                  </span>
+                )}
+              </div>
               {kdsNavView === 'full' && (
                 <p className="vendor-slug">📍 {locationName}</p>
               )}
@@ -852,14 +912,7 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
                   Avg Prep: {dailyAvgPrepTime.toFixed(1)} min
                 </p>
               )}
-              {kdsNavView === 'minimized' ? (
-                <div className="header-status-icon" title={
-                  isOffline ? 'Offline Mode' :
-                  useRealtime && realtimeStatus === 'SUBSCRIBED' ? 'Realtime' : 'Polling'
-                }>
-                  {isOffline ? '📴' : useRealtime && realtimeStatus === 'SUBSCRIBED' ? '⟳' : '⏱'}
-                </div>
-              ) : (
+              {kdsNavView !== 'minimized' && (
                 <>
                   {isOffline && (
                     <div className="offline-indicator">
@@ -901,10 +954,10 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
             <div className="header-actions">
               {kdsNavView === 'minimized' ? (
                 <>
-                  <a href={`/vendors/${vendorSlug}/analytics?locationId=${locationId}`} className="header-button header-button-icon" title="Analytics">📊</a>
-                  <button onClick={handleSettings} className="header-button header-button-icon" title="Settings">⚙</button>
-                  <button onClick={handleTimeClock} className="header-button header-button-icon" title="Time Clock">⏱</button>
-                  <button onClick={handleRecallClick} className="header-button header-button-icon" title="Recall">↩</button>
+                  <a href={`/vendors/${vendorSlug}/analytics?locationId=${locationId}`} className="header-button header-button-icon" title="Analytics" aria-label="Analytics"><IconAnalytics /></a>
+                  <button onClick={handleSettings} className="header-button header-button-icon" title="Settings" aria-label="Settings"><IconSettings /></button>
+                  <button onClick={handleTimeClock} className="header-button header-button-icon" title="Time Clock" aria-label="Time Clock"><IconTimeClock /></button>
+                  <button onClick={handleRecallClick} className="header-button header-button-icon" title="Recall" aria-label="Recall"><IconRecall /></button>
                 </>
               ) : (
                 <>
@@ -1666,16 +1719,39 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
             border-color: rgba(232, 93, 4, 0.3);
           }
 
+          .header-title-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+          }
+
+          .header-title-row .title {
+            margin: 0;
+          }
+
+          .header-status-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--color-text-muted);
+            opacity: 0.85;
+            flex-shrink: 0;
+          }
+
           .header-minimized .header-status-icon {
-            font-size: 20px;
-            margin-top: 4px;
-            opacity: 0.8;
+            margin: 0;
           }
 
           .header-button-icon {
             padding: 8px 12px;
             min-width: 40px;
-            font-size: 18px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+          }
+
+          .header-button-icon svg {
+            flex-shrink: 0;
           }
 
           .daily-avg {
