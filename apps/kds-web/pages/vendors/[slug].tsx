@@ -1722,7 +1722,7 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
             width: 300px;
             min-width: 300px;
             max-width: 300px;
-            min-height: 450px;
+            min-height: 350px;
             position: relative;
             display: flex;
             flex-direction: column;
