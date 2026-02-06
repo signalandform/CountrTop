@@ -463,8 +463,8 @@ export function OrderStatusTracker({
         }
 
         .cta-thumb:hover {
-          background: rgba(232, 93, 4, 0.08);
-          border-color: rgba(232, 93, 4, 0.25);
+          background: color-mix(in srgb, var(--theme-button, var(--color-primary)) 12%, transparent);
+          border-color: color-mix(in srgb, var(--theme-button, var(--color-primary)) 30%, transparent);
         }
 
         .cta-actions {

@@ -234,6 +234,7 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
   const [orders, setOrders] = useState<OrderHistoryEntry[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [ordersError, setOrdersError] = useState<string | null>(null);
+  const [postCheckoutRetries, setPostCheckoutRetries] = useState(0);
   
   // Order tracking state
   const [trackingState, setTrackingState] = useState<{
@@ -424,9 +425,41 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
   // User data loading (orders + loyalty)
   // Simple pattern: only load when userId changes AND we haven't loaded for this user
   // ---------------------------------------------------------------------------
+  const loadUserData = useCallback(async () => {
+    const userId = user?.id;
+    if (!userId || !vendorSlug) return;
+
+    setOrdersLoading(true);
+    setOrdersError(null);
+
+    const ordersResult = await apiFetch<{ orders: OrderHistoryEntry[] }>(
+      `/api/vendors/${vendorSlug}/orders?userId=${encodeURIComponent(userId)}`
+    );
+    if (ordersResult.ok) {
+      setOrders(ordersResult.data.orders ?? []);
+    } else {
+      setOrdersError(ordersResult.error);
+    }
+
+    const loyaltyResult = await apiFetch<{
+      balance: number;
+      redemptionRules?: { centsPerPoint: number; minPoints: number; maxPointsPerOrder: number };
+    }>(`/api/vendors/${vendorSlug}/loyalty/${encodeURIComponent(userId)}`);
+    if (loyaltyResult.ok) {
+      setLoyalty(loyaltyResult.data.balance ?? 0);
+      setLoyaltyRedemptionRules(loyaltyResult.data.redemptionRules ?? null);
+    } else {
+      setLoyalty(0);
+      setLoyaltyRedemptionRules(null);
+    }
+
+    setOrdersLoading(false);
+    setLoadedUserId(userId);
+  }, [user?.id, vendorSlug]);
+
   useEffect(() => {
     const userId = user?.id;
-    
+
     // If no user, clear data
     if (!userId) {
       if (loadedUserId !== null) {
@@ -440,53 +473,36 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
     // If we already loaded for this user, skip
     if (loadedUserId === userId) return;
 
-    // Don't load if no vendor
     if (!vendorSlug) return;
 
-    // Load user data
-    const load = async () => {
-      setOrdersLoading(true);
-      setOrdersError(null);
+    loadUserData();
+  }, [user?.id, vendorSlug, loadedUserId, loadUserData]);
 
-      // Fetch orders
-      const ordersResult = await apiFetch<{ orders: OrderHistoryEntry[] }>(
-        `/api/vendors/${vendorSlug}/orders?userId=${encodeURIComponent(userId)}`
-      );
-      if (ordersResult.ok) {
-        setOrders(ordersResult.data.orders ?? []);
-      } else {
-        setOrdersError(ordersResult.error);
-      }
-
-      // Fetch loyalty (and redemption rules when loyalty is enabled)
-      const loyaltyResult = await apiFetch<{
-        balance: number;
-        redemptionRules?: { centsPerPoint: number; minPoints: number; maxPointsPerOrder: number };
-      }>(`/api/vendors/${vendorSlug}/loyalty/${encodeURIComponent(userId)}`);
-      if (loyaltyResult.ok) {
-        setLoyalty(loyaltyResult.data.balance ?? 0);
-        setLoyaltyRedemptionRules(loyaltyResult.data.redemptionRules ?? null);
-      } else {
-        setLoyalty(0);
-        setLoyaltyRedemptionRules(null);
-      }
-
-      setOrdersLoading(false);
-      setLoadedUserId(userId);
-    };
-
-    load();
-  }, [user?.id, vendorSlug, loadedUserId]);
-
-  // Refresh after checkout
+  // Refresh after checkout: force reload and schedule retries for webhook latency
   useEffect(() => {
     if (!mounted || !user?.id || !vendorSlug) return;
     const key = sessionStorage.getItem('ct_refresh_after_checkout');
     if (!key) return;
     sessionStorage.removeItem('ct_refresh_after_checkout');
-    // Force reload by clearing loaded user
     setLoadedUserId(null);
+    setPostCheckoutRetries(2);
   }, [mounted, user?.id, vendorSlug]);
+
+  // Post-checkout retries: refetch orders/loyalty at 2s and 4s to catch webhook delay
+  useEffect(() => {
+    if (postCheckoutRetries <= 0 || !user?.id || !vendorSlug) return;
+
+    const t1 = setTimeout(() => loadUserData(), 2000);
+    const t2 = setTimeout(() => {
+      loadUserData();
+      setPostCheckoutRetries(0);
+    }, 4000);
+
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+  }, [postCheckoutRetries, user?.id, vendorSlug, loadUserData]);
 
   // Fetch tracking data for recent order
   useEffect(() => {
@@ -2031,16 +2047,16 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
           .btn-auth {
             padding: 14px;
             border-radius: 12px;
-            border: 1px solid var(--color-border);
+            border: 1px solid var(--theme-button, var(--color-primary));
             background: var(--ct-bg-surface);
-            color: var(--color-text);
+            color: var(--theme-button, var(--color-primary));
             font-weight: 600;
             cursor: pointer;
             transition: background 0.2s;
           }
 
           .btn-auth:hover {
-            background: var(--color-bg-warm);
+            background: color-mix(in srgb, var(--theme-button, var(--color-primary)) 12%, transparent);
           }
 
           .auth-section {
@@ -2073,7 +2089,7 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
 
           .auth-email-input:focus {
             outline: none;
-            border-color: var(--color-primary);
+            border-color: var(--theme-button, var(--color-primary));
           }
 
           .auth-email-input::placeholder {
@@ -2082,6 +2098,13 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
 
           .btn-auth-submit {
             width: 100%;
+            background: var(--theme-button, var(--color-primary));
+            color: #fff;
+            border-color: var(--theme-button, var(--color-primary));
+          }
+
+          .btn-auth-submit:hover:not(:disabled) {
+            opacity: 0.9;
           }
 
           .btn-auth-submit:disabled {
@@ -2101,7 +2124,7 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
           }
 
           .auth-toggle-link:hover {
-            color: var(--color-primary);
+            color: var(--theme-button, var(--color-primary));
           }
 
           .btn-primary {
@@ -2133,16 +2156,16 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
           .btn-secondary {
             padding: 8px 16px;
             border-radius: 20px;
-            border: 1px solid var(--color-border);
+            border: 1px solid var(--theme-button, var(--color-primary));
             background: transparent;
-            color: var(--color-text);
+            color: var(--theme-button, var(--color-primary));
             font-size: 13px;
             cursor: pointer;
             transition: background 0.2s;
           }
 
           .btn-secondary:hover {
-            background: var(--color-bg-warm);
+            background: color-mix(in srgb, var(--theme-button, var(--color-primary)) 12%, transparent);
           }
 
           .btn-secondary:disabled {
@@ -2174,15 +2197,15 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
             width: 32px;
             height: 32px;
             border-radius: 8px;
-            border: 1px solid var(--color-border);
+            border: 1px solid var(--theme-button, var(--color-primary));
             background: transparent;
-            color: var(--color-text);
+            color: var(--theme-button, var(--color-primary));
             font-size: 18px;
             cursor: pointer;
           }
 
           .cart-actions button:hover {
-            background: var(--color-bg-warm);
+            background: color-mix(in srgb, var(--theme-button, var(--color-primary)) 12%, transparent);
           }
 
           .cart-footer {
@@ -2268,7 +2291,7 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
             padding: 16px;
             border-radius: 14px;
             border: none;
-            background: var(--ct-gradient-primary);
+            background: var(--theme-button, var(--color-primary));
             color: #fff;
             font-weight: 700;
             font-size: 15px;

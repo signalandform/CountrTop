@@ -49,6 +49,8 @@ export type Vendor = {
   pickupInstructions?: string | null;
   kdsActiveLimitTotal?: number | null;
   kdsActiveLimitCt?: number | null;
+  /** KDS header: 'full' (buttons with labels) or 'minimized' (icon-only) */
+  kdsNavView?: 'full' | 'minimized' | null;
   // Theming fields
   logoUrl?: string | null;
   primaryColor?: string | null;

@@ -85,6 +85,11 @@ export class MockDataClient implements DataClient {
     // No-op for mock
   }
 
+  async updateVendorKdsNavView(vendorId: string, kdsNavView: 'full' | 'minimized'): Promise<void> {
+    const v = this.vendors.find(x => x.id === vendorId);
+    if (v) (v as { kdsNavView?: 'full' | 'minimized' }).kdsNavView = kdsNavView;
+  }
+
   /* eslint-disable @typescript-eslint/no-unused-vars */
   // Mock vendor location methods - return empty/null for mock client
   async listVendorLocations(vendorId: string, includeInactive = false): Promise<import('./models').VendorLocation[]> {

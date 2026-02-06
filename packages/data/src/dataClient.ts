@@ -81,6 +81,7 @@ export interface DataClient {
     vendorId: string,
     data: { activated: boolean; checkedAt: string; error?: string | null; locationId?: string | null }
   ): Promise<void>;
+  updateVendorKdsNavView(vendorId: string, kdsNavView: 'full' | 'minimized'): Promise<void>;
 
   // Multi-Location Support
   listVendorLocations(vendorId: string, includeInactive?: boolean): Promise<VendorLocation[]>;

@@ -1,12 +1,17 @@
 import Head from 'next/head';
 import type { GetServerSideProps } from 'next';
 import Link from 'next/link';
+import { useState } from 'react';
 import { requireKDSSession } from '../../../lib/auth';
+import { createClient } from '@supabase/supabase-js';
+import type { Database } from '@countrtop/data';
+import { createDataClient } from '@countrtop/data';
 
 type SettingsPageProps = {
   vendorSlug: string;
   vendorName: string;
   locationId: string;
+  kdsNavView: 'full' | 'minimized';
 };
 
 export const getServerSideProps: GetServerSideProps<SettingsPageProps> = async (context) => {
@@ -28,18 +33,58 @@ export const getServerSideProps: GetServerSideProps<SettingsPageProps> = async (
   }
 
   const locationId = locationIdParam || authResult.session.locationId;
+  let kdsNavView: 'full' | 'minimized' = 'full';
+
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_ANON_KEY;
+  if (supabaseUrl && supabaseKey && slug) {
+    const supabase = createClient<Database>(supabaseUrl, supabaseKey, {
+      auth: { persistSession: false }
+    });
+    const dataClient = createDataClient({ supabase });
+    const vendor = await dataClient.getVendorBySlug(slug);
+    if (vendor?.kdsNavView === 'minimized') kdsNavView = 'minimized';
+  }
 
   return {
     props: {
       vendorSlug: slug ?? 'unknown',
       vendorName: 'KDS',
-      locationId
+      locationId,
+      kdsNavView
     }
   };
 };
 
-export default function KDSSettingsPage({ vendorSlug, vendorName, locationId }: SettingsPageProps) {
+export default function KDSSettingsPage({ vendorSlug, vendorName, locationId, kdsNavView: initialKdsNavView }: SettingsPageProps) {
   const backHref = `/vendors/${vendorSlug}${locationId ? `?locationId=${locationId}` : ''}`;
+  const [kdsNavView, setKdsNavView] = useState<'full' | 'minimized'>(initialKdsNavView);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  const handleNavViewChange = async (value: 'full' | 'minimized') => {
+    setKdsNavView(value);
+    setSaving(true);
+    setSaved(false);
+    try {
+      const url = `/api/vendors/${vendorSlug}/kds-settings${locationId ? `?locationId=${locationId}` : ''}`;
+      const res = await fetch(url, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ kdsNavView: value })
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setSaved(true);
+        setTimeout(() => setSaved(false), 2000);
+      }
+    } catch (err) {
+      console.error('Failed to save:', err);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <>
@@ -49,7 +94,35 @@ export default function KDSSettingsPage({ vendorSlug, vendorName, locationId }: 
       <main className="page">
         <div className="container">
           <h1 className="title">Settings</h1>
-          <p className="coming-soon">Coming soon.</p>
+          <div className="settings-section">
+            <label className="settings-label">Nav view</label>
+            <div className="settings-options">
+              <label className="settings-option">
+                <input
+                  type="radio"
+                  name="kdsNavView"
+                  value="full"
+                  checked={kdsNavView === 'full'}
+                  onChange={() => handleNavViewChange('full')}
+                  disabled={saving}
+                />
+                <span>Full</span>
+              </label>
+              <label className="settings-option">
+                <input
+                  type="radio"
+                  name="kdsNavView"
+                  value="minimized"
+                  checked={kdsNavView === 'minimized'}
+                  onChange={() => handleNavViewChange('minimized')}
+                  disabled={saving}
+                />
+                <span>Minimized</span>
+              </label>
+            </div>
+            <p className="settings-hint">Minimized shows icon-only buttons in the header.</p>
+            {saved && <p className="settings-saved">Saved.</p>}
+          </div>
           <Link href={backHref} className="back-link">
             Back to KDS
           </Link>
@@ -72,16 +145,48 @@ export default function KDSSettingsPage({ vendorSlug, vendorName, locationId }: 
           .title {
             font-size: 28px;
             font-weight: 700;
-            margin: 0 0 16px;
+            margin: 0 0 24px;
             background: var(--ct-gradient-primary);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
           }
-          .coming-soon {
+          .settings-section {
+            margin-bottom: 24px;
+            padding: 20px;
+            background: var(--ct-bg-surface);
+            border: 1px solid var(--color-border);
+            border-radius: 12px;
+          }
+          .settings-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 12px;
+          }
+          .settings-options {
+            display: flex;
+            gap: 24px;
+            margin-bottom: 8px;
+          }
+          .settings-option {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+          }
+          .settings-option input {
+            cursor: pointer;
+          }
+          .settings-hint {
+            font-size: 13px;
             color: var(--color-text-muted);
-            font-size: 16px;
-            margin: 0 0 24px;
+            margin: 0;
+          }
+          .settings-saved {
+            font-size: 13px;
+            color: var(--color-success, #10B981);
+            margin: 8px 0 0;
           }
           .back-link {
             display: inline-block;

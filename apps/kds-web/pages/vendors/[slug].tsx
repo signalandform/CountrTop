@@ -37,6 +37,7 @@ type VendorPageProps = {
   vendorName: string;
   locationId: string;
   locationName: string;
+  kdsNavView: 'full' | 'minimized';
 };
 
 export const getServerSideProps: GetServerSideProps<VendorPageProps> = async (context) => {
@@ -68,24 +69,26 @@ export const getServerSideProps: GetServerSideProps<VendorPageProps> = async (co
   
   let vendorName = 'Kitchen';
   let locationName = 'Main';
+  let kdsNavView: 'full' | 'minimized' = 'full';
 
   if (supabaseUrl && supabaseKey && slug) {
     const supabase = createClient<Database>(supabaseUrl, supabaseKey, {
       auth: { persistSession: false }
     });
     const dataClient = createDataClient({ supabase });
-    
+
     const vendor = await dataClient.getVendorBySlug(slug);
     if (vendor) {
       vendorName = vendor.displayName;
-      
+      kdsNavView = vendor.kdsNavView === 'minimized' ? 'minimized' : 'full';
+
       // Try to get location name from vendor_locations
       const { data: locationData } = await supabase
         .from('vendor_locations')
         .select('name')
         .eq('square_location_id', locationId)
         .maybeSingle();
-      
+
       if (locationData) {
         locationName = locationData.name;
       }
@@ -97,7 +100,8 @@ export const getServerSideProps: GetServerSideProps<VendorPageProps> = async (co
       vendorSlug: slug ?? 'unknown',
       vendorName,
       locationId,
-      locationName
+      locationName,
+      kdsNavView
     }
   };
 };
@@ -212,7 +216,7 @@ const getPickupLabel = (ticket: Ticket['ticket'], order: Ticket['order']): strin
   return `Order ${order.squareOrderId.slice(-6).toUpperCase()}`;
 };
 
-export default function VendorQueuePage({ vendorSlug, vendorName, locationId: initialLocationId, locationName }: VendorPageProps) {
+export default function VendorQueuePage({ vendorSlug, vendorName, locationId: initialLocationId, locationName, kdsNavView }: VendorPageProps) {
   const router = useRouter();
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
@@ -838,63 +842,85 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
       </Head>
       <main className="page">
         <div className="container">
-          <header className="header">
+          <header className={`header ${kdsNavView === 'minimized' ? 'header-minimized' : ''}`}>
             <div>
               <h1 className="title">{vendorName}</h1>
               <p className="vendor-slug">📍 {locationName}</p>
-              {dailyAvgPrepTime !== null && (
+              {kdsNavView !== 'minimized' && dailyAvgPrepTime !== null && (
                 <p className="daily-avg">
                   Avg Prep: {dailyAvgPrepTime.toFixed(1)} min
                 </p>
               )}
-              {isOffline && (
-                <div className="offline-indicator">
-                  <span className="offline-dot">●</span>
-                  <span>Offline Mode</span>
-                  {queuedActionsCount > 0 && (
-                    <span className="queue-badge">{queuedActionsCount} queued</span>
+              {kdsNavView === 'minimized' ? (
+                <div className="header-status-icon" title={
+                  isOffline ? 'Offline Mode' :
+                  useRealtime && realtimeStatus === 'SUBSCRIBED' ? 'Realtime' : 'Polling'
+                }>
+                  {isOffline ? '📴' : useRealtime && realtimeStatus === 'SUBSCRIBED' ? '⟳' : '⏱'}
+                </div>
+              ) : (
+                <>
+                  {isOffline && (
+                    <div className="offline-indicator">
+                      <span className="offline-dot">●</span>
+                      <span>Offline Mode</span>
+                      {queuedActionsCount > 0 && (
+                        <span className="queue-badge">{queuedActionsCount} queued</span>
+                      )}
+                    </div>
                   )}
-                </div>
-              )}
-              {!isOffline && useRealtime && realtimeStatus === 'SUBSCRIBED' && (
-                <div className="realtime-indicator">
-                  <span className="realtime-dot">●</span>
-                  <span>Realtime</span>
-                </div>
-              )}
-              {!isOffline && (!useRealtime || realtimeStatus !== 'SUBSCRIBED') && (
-                <div className="polling-indicator">
-                  <span className="polling-dot">●</span>
-                  <span>Polling</span>
-                </div>
-              )}
-              {syncing && (
-                <div className="syncing-indicator">
-                  <span>Syncing...</span>
-                </div>
-              )}
-              {!isOffline && queuedActionsCount > 0 && !syncing && (
-                <div className="queue-indicator">
-                  <span>{queuedActionsCount} queued</span>
-                  <button type="button" onClick={syncQueue} className="queue-action">
-                    Sync now
-                  </button>
-                </div>
+                  {!isOffline && useRealtime && realtimeStatus === 'SUBSCRIBED' && (
+                    <div className="realtime-indicator">
+                      <span className="realtime-dot">●</span>
+                      <span>Realtime</span>
+                    </div>
+                  )}
+                  {!isOffline && (!useRealtime || realtimeStatus !== 'SUBSCRIBED') && (
+                    <div className="polling-indicator">
+                      <span className="polling-dot">●</span>
+                      <span>Polling</span>
+                    </div>
+                  )}
+                  {syncing && (
+                    <div className="syncing-indicator">
+                      <span>Syncing...</span>
+                    </div>
+                  )}
+                  {!isOffline && queuedActionsCount > 0 && !syncing && (
+                    <div className="queue-indicator">
+                      <span>{queuedActionsCount} queued</span>
+                      <button type="button" onClick={syncQueue} className="queue-action">
+                        Sync now
+                      </button>
+                    </div>
+                  )}
+                </>
               )}
             </div>
             <div className="header-actions">
-              <a href={`/vendors/${vendorSlug}/analytics?locationId=${locationId}`} className="header-button">
-                Analytics
-              </a>
-              <button onClick={handleSettings} className="header-button">
-                Settings
-              </button>
-              <button onClick={handleTimeClock} className="header-button">
-                Time Clock
-              </button>
-              <button onClick={handleRecallClick} className="header-button">
-                Recall
-              </button>
+              {kdsNavView === 'minimized' ? (
+                <>
+                  <a href={`/vendors/${vendorSlug}/analytics?locationId=${locationId}`} className="header-button header-button-icon" title="Analytics">📊</a>
+                  <button onClick={handleSettings} className="header-button header-button-icon" title="Settings">⚙</button>
+                  <button onClick={handleTimeClock} className="header-button header-button-icon" title="Time Clock">⏱</button>
+                  <button onClick={handleRecallClick} className="header-button header-button-icon" title="Recall">↩</button>
+                </>
+              ) : (
+                <>
+                  <a href={`/vendors/${vendorSlug}/analytics?locationId=${locationId}`} className="header-button">
+                    Analytics
+                  </a>
+                  <button onClick={handleSettings} className="header-button">
+                    Settings
+                  </button>
+                  <button onClick={handleTimeClock} className="header-button">
+                    Time Clock
+                  </button>
+                  <button onClick={handleRecallClick} className="header-button">
+                    Recall
+                  </button>
+                </>
+              )}
             </div>
           </header>
 
@@ -1447,7 +1473,7 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
             padding-bottom: 24px;
             margin-bottom: 24px;
             border-bottom: 2px solid var(--color-border);
-            background: transparent;
+            background: var(--ct-bg-primary);
           }
 
           .title {
@@ -1637,6 +1663,18 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
           .header-button:hover {
             background: rgba(232, 93, 4, 0.12);
             border-color: rgba(232, 93, 4, 0.3);
+          }
+
+          .header-minimized .header-status-icon {
+            font-size: 20px;
+            margin-top: 4px;
+            opacity: 0.8;
+          }
+
+          .header-button-icon {
+            padding: 8px 12px;
+            min-width: 40px;
+            font-size: 18px;
           }
 
           .daily-avg {

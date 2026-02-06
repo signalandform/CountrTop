@@ -184,6 +184,7 @@ export type Database = {
           pickup_instructions: string | null;
           kds_active_limit_total: number | null;
           kds_active_limit_ct: number | null;
+          kds_nav_view: string | null;
           // Theming columns
           logo_url: string | null;
           primary_color: string | null;
@@ -214,6 +215,7 @@ export type Database = {
           pickup_instructions?: string | null;
           kds_active_limit_total?: number | null;
           kds_active_limit_ct?: number | null;
+          kds_nav_view?: string | null;
           // Theming columns
           logo_url?: string | null;
           primary_color?: string | null;
@@ -780,7 +782,7 @@ export class SupabaseDataClient implements DataClient {
       // Field limiting: only select needed columns (including theming fields)
       const { data, error } = await this.client
         .from('vendors')
-        .select('id,slug,display_name,square_location_id,square_credential_ref,status,address_line1,address_line2,city,state,postal_code,phone,timezone,pickup_instructions,kds_active_limit_total,kds_active_limit_ct,logo_url,primary_color,accent_color,font_family,review_url')
+        .select('id,slug,display_name,square_location_id,square_credential_ref,status,address_line1,address_line2,city,state,postal_code,phone,timezone,pickup_instructions,kds_active_limit_total,kds_active_limit_ct,kds_nav_view,logo_url,primary_color,accent_color,font_family,review_url')
         .eq('slug', slug)
         .maybeSingle();
       if (error) throw error;
@@ -804,7 +806,7 @@ export class SupabaseDataClient implements DataClient {
       // Field limiting: only select needed columns (including theming fields)
       const { data, error } = await this.client
         .from('vendors')
-        .select('id,slug,display_name,square_location_id,square_credential_ref,status,address_line1,address_line2,city,state,postal_code,phone,timezone,pickup_instructions,kds_active_limit_total,kds_active_limit_ct,logo_url,primary_color,accent_color,font_family,review_url')
+        .select('id,slug,display_name,square_location_id,square_credential_ref,status,address_line1,address_line2,city,state,postal_code,phone,timezone,pickup_instructions,kds_active_limit_total,kds_active_limit_ct,kds_nav_view,logo_url,primary_color,accent_color,font_family,review_url')
         .eq('id', vendorId)
         .maybeSingle();
       if (error) throw error;
@@ -828,7 +830,7 @@ export class SupabaseDataClient implements DataClient {
       // Field limiting: only select needed columns (including theming fields)
       const { data, error } = await this.client
         .from('vendors')
-        .select('id,slug,display_name,square_location_id,square_credential_ref,status,address_line1,address_line2,city,state,postal_code,phone,timezone,pickup_instructions,kds_active_limit_total,kds_active_limit_ct,logo_url,primary_color,accent_color,font_family,review_url')
+        .select('id,slug,display_name,square_location_id,square_credential_ref,status,address_line1,address_line2,city,state,postal_code,phone,timezone,pickup_instructions,kds_active_limit_total,kds_active_limit_ct,kds_nav_view,logo_url,primary_color,accent_color,font_family,review_url')
         .eq('square_location_id', locationId)
         .maybeSingle();
       if (error) throw error;
@@ -876,6 +878,16 @@ export class SupabaseDataClient implements DataClient {
         square_payments_activation_error: data.error ?? null,
         square_payments_activation_location_id: data.locationId ?? null
       })
+      .eq('id', vendorId);
+    if (error) throw error;
+    const { data: vendor } = await this.client.from('vendors').select('slug').eq('id', vendorId).single();
+    if (vendor?.slug) invalidateVendorCacheBySlug(vendor.slug);
+  }
+
+  async updateVendorKdsNavView(vendorId: string, kdsNavView: 'full' | 'minimized'): Promise<void> {
+    const { error } = await this.client
+      .from('vendors')
+      .update({ kds_nav_view: kdsNavView })
       .eq('id', vendorId);
     if (error) throw error;
     const { data: vendor } = await this.client.from('vendors').select('slug').eq('id', vendorId).single();
@@ -1162,7 +1174,7 @@ export class SupabaseDataClient implements DataClient {
       const result = (data ?? []).map(
         (row) => mapOrderSnapshotFromRow(row as Database['public']['Tables']['order_snapshots']['Row'])
       );
-      queryCache.set(cacheKey, result);
+      queryCache.set(cacheKey, result, 15 * 1000); // 15 second TTL for fresh post-checkout data
       logQueryPerformance('listOrderSnapshotsForUser', startTime, true);
       return result;
     } catch (error) {
@@ -1789,7 +1801,7 @@ export class SupabaseDataClient implements DataClient {
       const result = (data ?? []).map((row) =>
         mapLoyaltyLedgerFromRow(row as Database['public']['Tables']['loyalty_ledger']['Row'])
       );
-      queryCache.set(cacheKey, result);
+      queryCache.set(cacheKey, result, 15 * 1000); // 15 second TTL for fresh post-checkout data
       logQueryPerformance('listLoyaltyEntriesForUser', startTime, true);
       return result;
     } catch (error) {
@@ -3978,6 +3990,7 @@ const mapVendorFromRow = (row: Database['public']['Tables']['vendors']['Row']): 
   pickupInstructions: row.pickup_instructions ?? undefined,
   kdsActiveLimitTotal: row.kds_active_limit_total ?? undefined,
   kdsActiveLimitCt: row.kds_active_limit_ct ?? undefined,
+  kdsNavView: (row.kds_nav_view === 'minimized' ? 'minimized' : 'full') as 'full' | 'minimized',
   // Theming fields
   logoUrl: row.logo_url ?? undefined,
   primaryColor: row.primary_color ?? undefined,
