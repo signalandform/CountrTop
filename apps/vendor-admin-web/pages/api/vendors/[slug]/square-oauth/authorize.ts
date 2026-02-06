@@ -1,7 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { randomBytes } from 'crypto';
 import { requireVendorAdminApi } from '../../../../../lib/auth';
-import { getServerDataClient } from '../../../../../lib/dataClient';
 
 const SQUARE_SCOPES =
   'MERCHANT_PROFILE_READ ORDERS_READ ORDERS_WRITE PAYMENTS_READ PAYMENTS_WRITE LOCATIONS_READ ITEMS_READ';
