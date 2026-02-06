@@ -571,12 +571,9 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
   };
 
   const handleBumpStatus = async (ticketId: string, currentStatus: string) => {
-    // Three-stage tap-to-start flow:
-    // placed → preparing → ready → completed
+    // Two-stage flow: (placed|preparing) → ready → completed
     let newStatus: 'preparing' | 'ready' | 'completed';
-    if (currentStatus === 'placed') {
-      newStatus = 'preparing';
-    } else if (currentStatus === 'preparing') {
+    if (currentStatus === 'placed' || currentStatus === 'preparing') {
       newStatus = 'ready';
     } else {
       newStatus = 'completed';
@@ -934,170 +931,312 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
               <p>The queue is empty.</p>
             </div>
           ) : (
-            <div className="tickets-list">
-              {/* Held tickets first, each in a numbered slot */}
-              {tickets.filter(t => t.ticket.heldAt).map(({ ticket, order, customer }, index) => {
-                const displayLabel = ticket.customLabel || (customer?.displayName) || getPickupLabel(ticket, order);
-                const scheduledLabel = getScheduledLabel(order.scheduledPickupAt);
-                return (
-                  <div key={ticket.id} className="ticket-slot">
-                    <span className="ticket-slot-number">{index + 1}</span>
-                    <div className="ticket-card ticket-held">
-                      {/* Top row: Held label left, Resume right */}
-                      <div className="ticket-card-header">
-                        <div className="held-badge">⏸️ Held</div>
-                        <button 
-                          className="action-button unhold-button"
-                          onClick={() => handleUnholdTicket(ticket.id)}
+            <div className="tickets-rows">
+              {/* Row 1 – In Progress: held + placed + preparing */}
+              <section className="tickets-row-section">
+                <h3>In Progress</h3>
+                <div className="tickets-list">
+                  {tickets.filter(t => t.ticket.status === 'placed' || t.ticket.status === 'preparing').map(({ ticket, order, customer }, index, inProgressTickets) => {
+                    if (ticket.heldAt) {
+                      const displayLabel = ticket.customLabel || (customer?.displayName) || getPickupLabel(ticket, order);
+                      const scheduledLabel = getScheduledLabel(order.scheduledPickupAt);
+                      return (
+                        <div key={ticket.id} className="ticket-slot">
+                          <span className="ticket-slot-number">{index + 1}</span>
+                          <div className="ticket-card ticket-held">
+                            <div className="ticket-card-header">
+                              <div className="held-badge">⏸️ Held</div>
+                              <button
+                                className="action-button unhold-button"
+                                onClick={() => handleUnholdTicket(ticket.id)}
+                              >
+                                Resume
+                              </button>
+                            </div>
+                            <div className="ticket-card-body">
+                              {renderLineItems(order.lineItems)}
+                              {ticket.staffNotes && (
+                                <div className="staff-notes">📝 {ticket.staffNotes}</div>
+                              )}
+                            </div>
+                            <div className="ticket-card-footer">
+                              <div className="ticket-footer-left">
+                                {ticket.shortcode && (
+                                  <span className="ticket-shortcode">{ticket.shortcode}</span>
+                                )}
+                                <div className="badge-row">
+                                  {scheduledLabel && (
+                                    <div className="scheduled-badge">📅 {scheduledLabel}</div>
+                                  )}
+                                </div>
+                                <span className="pickup-label">{displayLabel}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
+                    const displayLabel = ticket.customLabel || (customer?.displayName) || getPickupLabel(ticket, order);
+                    const scheduledLabel = getScheduledLabel(order.scheduledPickupAt);
+                    const sourceBadge = ticket.source === 'countrtop_online' ? 'Online' : 'POS';
+                    const age = formatAge(ticket.placedAt, currentTime);
+                    const ageColor = getAgeColor(ticket.placedAt);
+                    const isUpdating = updatingTicketId === ticket.id;
+                    const statusReadout = isUpdating ? '...' : (ticket.status === 'placed' || ticket.status === 'preparing') ? 'In Progress' : 'Ready';
+                    const isOnlineOrder = ticket.source === 'countrtop_online';
+                    const hasLoyalty = customer?.isLoyaltyMember;
+                    const isPreparing = ticket.status === 'placed' || ticket.status === 'preparing';
+                    const isMenuOpen = activeTicketMenu === ticket.id;
+                    const isFirst = index === 0;
+                    const isLast = index === inProgressTickets.length - 1;
+
+                    const handleCardBump = () => {
+                      if (!isUpdating) handleBumpStatus(ticket.id, ticket.status);
+                    };
+
+                    return (
+                      <div key={ticket.id} className="ticket-slot">
+                        <span className="ticket-slot-number">{index + 1}</span>
+                        <div
+                          className={`ticket-card ${isOnlineOrder ? 'ticket-online' : 'ticket-pos'} ${isPreparing ? 'ticket-preparing' : ''}`}
+                          role="button"
+                          tabIndex={0}
+                          onClick={handleCardBump}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              handleCardBump();
+                            }
+                          }}
                         >
-                          Resume
-                        </button>
-                      </div>
-                      {/* Middle: line items */}
-                      <div className="ticket-card-body">
-                        {renderLineItems(order.lineItems)}
-                        {ticket.staffNotes && (
-                          <div className="staff-notes">📝 {ticket.staffNotes}</div>
-                        )}
-                      </div>
-                      {/* Bottom: shortcode above badges, order number below */}
-                      <div className="ticket-card-footer">
-                        <div className="ticket-footer-left">
-                          {ticket.shortcode && (
-                            <span className="ticket-shortcode">{ticket.shortcode}</span>
-                          )}
-                          <div className="badge-row">
-                            {scheduledLabel && (
-                              <div className="scheduled-badge">📅 {scheduledLabel}</div>
+                          <div className="ticket-card-header">
+                            <div className={`age-timer age-timer-${ageColor}`}>{age}</div>
+                            <div className="ticket-menu-wrapper" onClick={(e) => e.stopPropagation()}>
+                              <button
+                                className="ticket-menu-button"
+                                onClick={() => handleTicketMenuToggle(ticket.id)}
+                              >
+                                ⋮
+                              </button>
+                              {isMenuOpen && (
+                                <div className="ticket-menu-dropdown">
+                                  <button onClick={() => handleHoldTicket(ticket.id)}>
+                                    ⏸️ Hold
+                                  </button>
+                                  <button onClick={() => handleOpenNoteEditor(ticket.id, ticket.staffNotes || '')}>
+                                    📝 {ticket.staffNotes ? 'Edit Note' : 'Add Note'}
+                                  </button>
+                                  <button onClick={() => handleOpenLabelEditor(ticket.id, ticket.customLabel || '')}>
+                                    ✏️ Rename
+                                  </button>
+                                  <div className="menu-divider" />
+                                  <button
+                                    onClick={() => handleMoveTicket(ticket.id, 'up')}
+                                    disabled={isFirst}
+                                  >
+                                    ⬆️ Move Up
+                                  </button>
+                                  <button
+                                    onClick={() => handleMoveTicket(ticket.id, 'down')}
+                                    disabled={isLast}
+                                  >
+                                    ⬇️ Move Down
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          <div className="ticket-card-body">
+                            {renderLineItems(order.lineItems)}
+                            {ticket.staffNotes && (
+                              <div className="staff-notes">📝 {ticket.staffNotes}</div>
                             )}
                           </div>
-                          <span className="pickup-label">{displayLabel}</span>
+                          <div className="ticket-card-footer">
+                            <div className="ticket-footer-left">
+                              {ticket.shortcode && (
+                                <span className="ticket-shortcode">{ticket.shortcode}</span>
+                              )}
+                              <div className="badge-row">
+                                {scheduledLabel && (
+                                  <div className="scheduled-badge" title={`Scheduled pickup: ${scheduledLabel}`}>
+                                    📅 {scheduledLabel}
+                                  </div>
+                                )}
+                                <div className="source-badge" data-source={ticket.source}>
+                                  {sourceBadge}
+                                </div>
+                                {isPreparing && (
+                                  <div className="status-badge preparing">
+                                    🔥 Cooking
+                                  </div>
+                                )}
+                                {hasLoyalty && (
+                                  <div className="loyalty-badge" title={`${customer?.loyaltyPoints} loyalty points`}>
+                                    ⭐ {customer?.loyaltyPoints}
+                                  </div>
+                                )}
+                              </div>
+                              <span className="pickup-label">{displayLabel}</span>
+                            </div>
+                            <span className="ticket-status-readout">{statusReadout}</span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </div>
-                );
-              })}
+                    );
+                  })}
+                </div>
+              </section>
 
-              {/* Active tickets, slot numbers continue after held */}
-              {tickets.filter(t => !t.ticket.heldAt).map(({ ticket, order, customer }, index, activeTickets) => {
-                const heldCount = tickets.filter(t => t.ticket.heldAt).length;
-                const slotNumber = heldCount + index + 1;
-                const displayLabel = ticket.customLabel || (customer?.displayName) || getPickupLabel(ticket, order);
-                const scheduledLabel = getScheduledLabel(order.scheduledPickupAt);
-                const sourceBadge = ticket.source === 'countrtop_online' ? 'Online' : 'POS';
-                const age = formatAge(ticket.placedAt, currentTime);
-                const ageColor = getAgeColor(ticket.placedAt);
-                
-                const isUpdating = updatingTicketId === ticket.id;
-                const statusReadout = isUpdating ? '...' : ticket.status === 'placed' ? 'New' : ticket.status === 'preparing' ? 'In Progress' : 'Ready';
-                const isOnlineOrder = ticket.source === 'countrtop_online';
-                const hasLoyalty = customer?.isLoyaltyMember;
-                const isPreparing = ticket.status === 'preparing';
-                const isMenuOpen = activeTicketMenu === ticket.id;
-                const isFirst = index === 0;
-                const isLast = index === activeTickets.length - 1;
-
-                const handleCardBump = () => {
-                  if (!isUpdating) handleBumpStatus(ticket.id, ticket.status);
-                };
-
-                return (
-                  <div key={ticket.id} className="ticket-slot">
-                    <span className="ticket-slot-number">{slotNumber}</span>
-                    <div
-                      className={`ticket-card ${isOnlineOrder ? 'ticket-online' : 'ticket-pos'} ${isPreparing ? 'ticket-preparing' : ''}`}
-                      role="button"
-                      tabIndex={0}
-                      onClick={handleCardBump}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault();
-                          handleCardBump();
-                        }
-                      }}
-                    >
-                      {/* Top row: timer left, menu right */}
-                      <div className="ticket-card-header">
-                        <div className={`age-timer age-timer-${ageColor}`}>{age}</div>
-                        <div className="ticket-menu-wrapper" onClick={(e) => e.stopPropagation()}>
-                          <button 
-                            className="ticket-menu-button"
-                            onClick={() => handleTicketMenuToggle(ticket.id)}
-                          >
-                            ⋮
-                          </button>
-                          {isMenuOpen && (
-                            <div className="ticket-menu-dropdown">
-                              <button onClick={() => handleHoldTicket(ticket.id)}>
-                                ⏸️ Hold
-                              </button>
-                              <button onClick={() => handleOpenNoteEditor(ticket.id, ticket.staffNotes || '')}>
-                                📝 {ticket.staffNotes ? 'Edit Note' : 'Add Note'}
-                              </button>
-                              <button onClick={() => handleOpenLabelEditor(ticket.id, ticket.customLabel || '')}>
-                                ✏️ Rename
-                              </button>
-                              <div className="menu-divider" />
-                              <button 
-                                onClick={() => handleMoveTicket(ticket.id, 'up')}
-                                disabled={isFirst}
+              {/* Row 2 – Ready */}
+              <section className="tickets-row-section">
+                <h3>Ready</h3>
+                <div className="tickets-list">
+                  {tickets.filter(t => t.ticket.status === 'ready').map(({ ticket, order, customer }, index, readyTickets) => {
+                    if (ticket.heldAt) {
+                      const displayLabel = ticket.customLabel || (customer?.displayName) || getPickupLabel(ticket, order);
+                      const scheduledLabel = getScheduledLabel(order.scheduledPickupAt);
+                      return (
+                        <div key={ticket.id} className="ticket-slot">
+                          <span className="ticket-slot-number">{index + 1}</span>
+                          <div className="ticket-card ticket-held">
+                            <div className="ticket-card-header">
+                              <div className="held-badge">⏸️ Held</div>
+                              <button
+                                className="action-button unhold-button"
+                                onClick={() => handleUnholdTicket(ticket.id)}
                               >
-                                ⬆️ Move Up
-                              </button>
-                              <button 
-                                onClick={() => handleMoveTicket(ticket.id, 'down')}
-                                disabled={isLast}
-                              >
-                                ⬇️ Move Down
+                                Resume
                               </button>
                             </div>
-                          )}
+                            <div className="ticket-card-body">
+                              {renderLineItems(order.lineItems)}
+                              {ticket.staffNotes && (
+                                <div className="staff-notes">📝 {ticket.staffNotes}</div>
+                              )}
+                            </div>
+                            <div className="ticket-card-footer">
+                              <div className="ticket-footer-left">
+                                {ticket.shortcode && (
+                                  <span className="ticket-shortcode">{ticket.shortcode}</span>
+                                )}
+                                <div className="badge-row">
+                                  {scheduledLabel && (
+                                    <div className="scheduled-badge">📅 {scheduledLabel}</div>
+                                  )}
+                                </div>
+                                <span className="pickup-label">{displayLabel}</span>
+                              </div>
+                            </div>
+                          </div>
                         </div>
-                      </div>
+                      );
+                    }
+                    const displayLabel = ticket.customLabel || (customer?.displayName) || getPickupLabel(ticket, order);
+                    const scheduledLabel = getScheduledLabel(order.scheduledPickupAt);
+                    const sourceBadge = ticket.source === 'countrtop_online' ? 'Online' : 'POS';
+                    const age = formatAge(ticket.placedAt, currentTime);
+                    const ageColor = getAgeColor(ticket.placedAt);
+                    const isUpdating = updatingTicketId === ticket.id;
+                    const statusReadout = isUpdating ? '...' : 'Ready';
+                    const isOnlineOrder = ticket.source === 'countrtop_online';
+                    const hasLoyalty = customer?.isLoyaltyMember;
+                    const isMenuOpen = activeTicketMenu === ticket.id;
+                    const isFirst = index === 0;
+                    const isLast = index === readyTickets.length - 1;
 
-                      {/* Middle: line items (quantity + names) */}
-                      <div className="ticket-card-body">
-                        {renderLineItems(order.lineItems)}
-                        {ticket.staffNotes && (
-                          <div className="staff-notes">📝 {ticket.staffNotes}</div>
-                        )}
-                      </div>
+                    const handleCardBump = () => {
+                      if (!isUpdating) handleBumpStatus(ticket.id, ticket.status);
+                    };
 
-                      {/* Bottom row: shortcode above badges, order number below badges, status right */}
-                      <div className="ticket-card-footer">
-                        <div className="ticket-footer-left">
-                          {ticket.shortcode && (
-                            <span className="ticket-shortcode">{ticket.shortcode}</span>
-                          )}
-                          <div className="badge-row">
-                            {scheduledLabel && (
-                              <div className="scheduled-badge" title={`Scheduled pickup: ${scheduledLabel}`}>
-                                📅 {scheduledLabel}
-                              </div>
-                            )}
-                            <div className="source-badge" data-source={ticket.source}>
-                              {sourceBadge}
+                    return (
+                      <div key={ticket.id} className="ticket-slot">
+                        <span className="ticket-slot-number">{index + 1}</span>
+                        <div
+                          className={`ticket-card ${isOnlineOrder ? 'ticket-online' : 'ticket-pos'}`}
+                          role="button"
+                          tabIndex={0}
+                          onClick={handleCardBump}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              handleCardBump();
+                            }
+                          }}
+                        >
+                          <div className="ticket-card-header">
+                            <div className={`age-timer age-timer-${ageColor}`}>{age}</div>
+                            <div className="ticket-menu-wrapper" onClick={(e) => e.stopPropagation()}>
+                              <button
+                                className="ticket-menu-button"
+                                onClick={() => handleTicketMenuToggle(ticket.id)}
+                              >
+                                ⋮
+                              </button>
+                              {isMenuOpen && (
+                                <div className="ticket-menu-dropdown">
+                                  <button onClick={() => handleHoldTicket(ticket.id)}>
+                                    ⏸️ Hold
+                                  </button>
+                                  <button onClick={() => handleOpenNoteEditor(ticket.id, ticket.staffNotes || '')}>
+                                    📝 {ticket.staffNotes ? 'Edit Note' : 'Add Note'}
+                                  </button>
+                                  <button onClick={() => handleOpenLabelEditor(ticket.id, ticket.customLabel || '')}>
+                                    ✏️ Rename
+                                  </button>
+                                  <div className="menu-divider" />
+                                  <button
+                                    onClick={() => handleMoveTicket(ticket.id, 'up')}
+                                    disabled={isFirst}
+                                  >
+                                    ⬆️ Move Up
+                                  </button>
+                                  <button
+                                    onClick={() => handleMoveTicket(ticket.id, 'down')}
+                                    disabled={isLast}
+                                  >
+                                    ⬇️ Move Down
+                                  </button>
+                                </div>
+                              )}
                             </div>
-                            {isPreparing && (
-                              <div className="status-badge preparing">
-                                🔥 Cooking
-                              </div>
-                            )}
-                            {hasLoyalty && (
-                              <div className="loyalty-badge" title={`${customer?.loyaltyPoints} loyalty points`}>
-                                ⭐ {customer?.loyaltyPoints}
-                              </div>
+                          </div>
+                          <div className="ticket-card-body">
+                            {renderLineItems(order.lineItems)}
+                            {ticket.staffNotes && (
+                              <div className="staff-notes">📝 {ticket.staffNotes}</div>
                             )}
                           </div>
-                          <span className="pickup-label">{displayLabel}</span>
+                          <div className="ticket-card-footer">
+                            <div className="ticket-footer-left">
+                              {ticket.shortcode && (
+                                <span className="ticket-shortcode">{ticket.shortcode}</span>
+                              )}
+                              <div className="badge-row">
+                                {scheduledLabel && (
+                                  <div className="scheduled-badge" title={`Scheduled pickup: ${scheduledLabel}`}>
+                                    📅 {scheduledLabel}
+                                  </div>
+                                )}
+                                <div className="source-badge" data-source={ticket.source}>
+                                  {sourceBadge}
+                                </div>
+                                {hasLoyalty && (
+                                  <div className="loyalty-badge" title={`${customer?.loyaltyPoints} loyalty points`}>
+                                    ⭐ {customer?.loyaltyPoints}
+                                  </div>
+                                )}
+                              </div>
+                              <span className="pickup-label">{displayLabel}</span>
+                            </div>
+                            <span className="ticket-status-readout">{statusReadout}</span>
+                          </div>
                         </div>
-                        <span className="ticket-status-readout">{statusReadout}</span>
                       </div>
-                    </div>
-                  </div>
-                );
-              })}
+                    );
+                  })}
+                </div>
+              </section>
             </div>
           )}
 
@@ -1551,7 +1690,22 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
             margin: 0;
           }
 
-          .tickets-list {
+          .tickets-rows {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+          }
+
+          .tickets-row-section h3 {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--color-text-muted);
+            margin: 0 0 8px 0;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+          }
+
+          .tickets-row-section .tickets-list {
             display: flex;
             flex-direction: row;
             flex-wrap: nowrap;

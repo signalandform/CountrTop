@@ -106,10 +106,10 @@ Per-location settings in **Locations > [Location Name]**:
 
 ### KDS Workflow
 
-1. **New Order** → Ticket appears with "Start" button
-2. **Start** → Marks ticket as "Preparing" (🔥 Cooking badge)
-3. **Ready** → Customer gets notified, ticket shows "Complete" button
-4. **Complete** → Ticket is archived (can recall within 24h)
+1. **In Progress** – New tickets appear here
+2. **Bump** – Marks ticket as Ready (customer notified)
+3. **Ready** – Tickets move to the Ready row
+4. **Bump** – Clears the ticket
 
 ### Ticket Features
 
