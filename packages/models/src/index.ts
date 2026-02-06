@@ -60,6 +60,21 @@ export type Vendor = {
   reviewUrl?: string | null;
 };
 
+/** Square OAuth integration per vendor per environment. Server-only; tokens never exposed to client. */
+export type VendorSquareIntegration = {
+  vendorId: string;
+  squareEnvironment: 'sandbox' | 'production';
+  squareAccessToken: string;
+  squareRefreshToken: string;
+  squareMerchantId?: string | null;
+  availableLocationIds: string[];
+  selectedLocationId?: string | null;
+  connectionStatus: 'connected' | 'expired' | 'revoked' | 'error';
+  connectedAt: string;
+  updatedAt: string;
+  lastError?: string | null;
+};
+
 export type VendorLocation = {
   id: string;
   vendorId: string;

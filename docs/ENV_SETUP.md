@@ -23,14 +23,21 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGc...
 
 ```bash
 # Get from: https://developer.squareup.com/apps
-SQUARE_ACCESS_TOKEN=EAAAl...
-SQUARE_APPLICATION_ID=sandbox-sq0idb-...
+SQUARE_ACCESS_TOKEN=EAAAl...           # Legacy: global token (optional when using OAuth)
+SQUARE_APPLICATION_ID=sq0idp-...       # Production app (for OAuth)
+SQUARE_APPLICATION_SECRET=...          # Production app secret (server-only)
+SQUARE_SANDBOX_APPLICATION_ID=sandbox-sq0idb-...   # Sandbox app (for OAuth)
+SQUARE_SANDBOX_APPLICATION_SECRET=...  # Sandbox app secret (server-only)
 SQUARE_ENVIRONMENT=sandbox  # or 'production'
 
 # For webhooks (set in Square dashboard)
 SQUARE_WEBHOOK_SIGNATURE_KEY=abc123...
 SQUARE_WEBHOOK_URL=https://your-domain.com/api/webhooks/square
 ```
+
+**OAuth (per-vendor Connect Square):** Register redirect URL in Square Developer Console:
+- `https://admin.countrtop.com/api/square-oauth/callback` (production)
+- `https://your-sandbox-domain/api/square-oauth/callback` (sandbox)
 
 ### Toast (Optional)
 

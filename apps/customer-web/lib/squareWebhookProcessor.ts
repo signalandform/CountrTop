@@ -5,7 +5,7 @@
 import crypto from 'crypto';
 import { createClient } from '@supabase/supabase-js';
 
-import { createLogger, getSquareOrder } from '@countrtop/api-client';
+import { createLogger, getSquareOrderWithClient } from '@countrtop/api-client';
 import { sendOrderConfirmation } from '@countrtop/email';
 import type { DataClient, WebhookEvent } from '@countrtop/data';
 
@@ -176,7 +176,36 @@ export async function processSquareWebhookEvent(
     return; // Unknown vendor, ignore
   }
 
-  const order = await getSquareOrder(vendor, orderId);
+  const env =
+    (process.env.SQUARE_ENVIRONMENT === 'production' ? 'production' : 'sandbox') as
+      | 'sandbox'
+      | 'production';
+
+  let order: Record<string, unknown>;
+  try {
+    const { getSquareClientForVendorOrLegacy } = await import('./square');
+    const square = await getSquareClientForVendorOrLegacy(vendor, dataClient);
+    order = await getSquareOrderWithClient(square, orderId);
+  } catch (err: unknown) {
+    const is401 =
+      err &&
+      typeof err === 'object' &&
+      ((err as { statusCode?: number }).statusCode === 401 ||
+        (err as { code?: string }).code === 'UNAUTHORIZED' ||
+        (err as { code?: string }).code === 'ACCESS_TOKEN_EXPIRED');
+    if (is401) {
+      await dataClient.refreshSquareTokenIfNeeded(vendor.id, env);
+      try {
+        const { getSquareClientForVendorOrLegacy } = await import('./square');
+        const square = await getSquareClientForVendorOrLegacy(vendor, dataClient);
+        order = await getSquareOrderWithClient(square, orderId);
+      } catch {
+        throw err;
+      }
+    } else {
+      throw err;
+    }
+  }
 
   await dataClient.upsertSquareOrderFromSquare(order);
   await dataClient.ensureKitchenTicketForOpenOrder(order);

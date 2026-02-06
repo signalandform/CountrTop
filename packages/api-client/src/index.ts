@@ -75,5 +75,5 @@ export type { LogContext, LogLevel } from './logger';
 // Export Square client utilities
 // Note: These use Square SDK which is not Edge Runtime compatible
 // Only import in API routes, not in middleware
-export { createResilientSquareClient, squareClientForVendor, getSquareLocation, getSquareOrder, listSquareOrdersUpdatedSince } from './square';
+export { createResilientSquareClient, squareClientForVendor, getSquareLocation, getSquareOrder, getSquareOrderWithClient, listSquareOrdersUpdatedSince, createSquareClientFromOAuthToken, listSquareLocationsFromIntegration, checkSquarePaymentsActivationWithClient } from './square';
 export type { SquareLocationData } from './square';

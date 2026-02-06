@@ -1,6 +1,6 @@
 import { Client, Environment } from 'square';
 
-import { Vendor } from '@countrtop/models';
+import type { Vendor, VendorSquareIntegration } from '@countrtop/models';
 
 type RetryConfig = {
   maxRetries?: number;
@@ -311,8 +311,32 @@ export async function getSquareLocation(
 }
 
 /**
+ * Fetches a full Square order using a Square client instance.
+ * Use this when you have an OAuth-based client from getSquareClientForVendor.
+ */
+export async function getSquareOrderWithClient(
+  square: { ordersApi: { retrieveOrder: (orderId: string) => Promise<{ result: { order?: unknown; errors?: Array<{ detail?: string; code?: string }> } }> } },
+  orderId: string
+): Promise<Record<string, unknown>> {
+  try {
+    const { result } = await square.ordersApi.retrieveOrder(orderId);
+    if (result.errors && result.errors.length > 0) {
+      const errorMessages = result.errors.map((e) => e.detail || e.code).join(', ');
+      throw new Error(`Square API error for order ${orderId}: ${errorMessages}`);
+    }
+    if (!result.order) {
+      throw new Error(`Order ${orderId} not found`);
+    }
+    return result.order as unknown as Record<string, unknown>;
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    throw new Error(`Failed to fetch Square order ${orderId}: ${errorMessage}`);
+  }
+}
+
+/**
  * Fetches a full Square order by order ID
- * @param vendor - Vendor object with Square credentials
+ * @param vendor - Vendor object with Square credentials (legacy env-based)
  * @param orderId - Square order ID to fetch
  * @returns Raw Square order JSON
  */
@@ -321,25 +345,7 @@ export async function getSquareOrder(
   orderId: string
 ): Promise<Record<string, unknown>> {
   const square = squareClientForVendor(vendor);
-  
-  try {
-    const { result } = await square.ordersApi.retrieveOrder(orderId);
-    
-    if (result.errors && result.errors.length > 0) {
-      const errorMessages = result.errors.map(e => e.detail || e.code).join(', ');
-      throw new Error(`Square API error for order ${orderId}: ${errorMessages}`);
-    }
-    
-    if (!result.order) {
-      throw new Error(`Order ${orderId} not found`);
-    }
-    
-    // Cast to Record<string, unknown> since Square SDK types are complex
-    return result.order as unknown as Record<string, unknown>;
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    throw new Error(`Failed to fetch Square order ${orderId}: ${errorMessage}`);
-  }
+  return getSquareOrderWithClient(square, orderId);
 }
 
 /**
@@ -443,17 +449,67 @@ export async function listSquareOrdersUpdatedSince(
   }
 }
 
+/**
+ * Creates a Square client from an OAuth access token (per-vendor integration).
+ */
+export function createSquareClientFromOAuthToken(
+  accessToken: string,
+  environment: 'sandbox' | 'production'
+): Client {
+  const env = environment === 'production' ? Environment.Production : Environment.Sandbox;
+  return new Client({ accessToken, environment: env });
+}
+
+/**
+ * Lists Square locations for a vendor using their OAuth integration.
+ */
+export async function listSquareLocationsFromIntegration(
+  integration: VendorSquareIntegration
+): Promise<Array<{ id: string; name?: string }>> {
+  const client = createSquareClientFromOAuthToken(
+    integration.squareAccessToken,
+    integration.squareEnvironment
+  );
+  const { result } = await client.locationsApi.listLocations();
+  if (result.errors && result.errors.length > 0) {
+    const msg = result.errors.map((e) => e.detail || e.code).join(', ');
+    throw new Error(`Square API error: ${msg}`);
+  }
+  const locations = result.locations ?? [];
+  return locations.map((loc) => ({ id: loc.id ?? '', name: loc.name ?? undefined }));
+}
+
 export type SquarePaymentsActivationResult = {
   activated: boolean;
   error?: string;
 };
 
 /**
+ * Checks payments activation using a Square client instance (e.g. from OAuth).
+ */
+export async function checkSquarePaymentsActivationWithClient(
+  square: Client
+): Promise<SquarePaymentsActivationResult> {
+  try {
+    const { result } = await square.merchantsApi.retrieveMerchant('me');
+    if (result.errors && result.errors.length > 0) {
+      const msg = result.errors.map((e) => e.detail || e.code).join(', ');
+      return { activated: false, error: msg };
+    }
+    const status = result.merchant?.status;
+    return { activated: status === 'ACTIVE' };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return { activated: false, error: message };
+  }
+}
+
+/**
  * Checks whether the Square merchant account is activated for production card payments.
  * Uses Merchants API retrieveMerchant("me") - status ACTIVE means payments are enabled.
  * Safe and idempotent; does not charge any money.
  *
- * @param vendor - Vendor object with Square credentials
+ * @param vendor - Vendor object with Square credentials (legacy env-based)
  * @returns Result with activated boolean; error if check failed (network, token, or account not activated)
  */
 export async function checkSquarePaymentsActivation(vendor: Vendor): Promise<SquarePaymentsActivationResult> {

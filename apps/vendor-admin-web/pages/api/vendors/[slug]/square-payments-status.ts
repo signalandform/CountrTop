@@ -7,7 +7,11 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { requireVendorAdminApi } from '../../../../lib/auth';
 import { getServerDataClient } from '../../../../lib/dataClient';
-import { checkSquarePaymentsActivation } from '@countrtop/api-client/square';
+import {
+  checkSquarePaymentsActivation,
+  checkSquarePaymentsActivationWithClient,
+  createSquareClientFromOAuthToken
+} from '@countrtop/api-client/square';
 import { createLogger } from '@countrtop/api-client';
 
 const logger = createLogger({ requestId: 'square-payments-status' });
@@ -52,7 +56,16 @@ export default async function handler(
   }
 
   const locations = await dataClient.listVendorLocations(vendor.id);
-  const squareConnected = !!(vendor.squareLocationId && vendor.squareLocationId !== 'SQUARE_LOCATION_DEMO');
+  const env =
+    (process.env.SQUARE_ENVIRONMENT === 'production' ? 'production' : 'sandbox') as
+      | 'sandbox'
+      | 'production';
+  const integration = await dataClient.getVendorSquareIntegration(vendor.id, env);
+  const squareConnected =
+    !!(
+      (vendor.squareLocationId && vendor.squareLocationId !== 'SQUARE_LOCATION_DEMO') ||
+      (integration && integration.squareAccessToken)
+    );
   const locationSelected = locations.length > 0;
   const menuSynced = locationSelected; // Menu comes from Square; having locations implies setup
 
@@ -97,7 +110,13 @@ export default async function handler(
     const locId = locations[0]?.externalLocationId ?? vendor.squareLocationId ?? null;
 
     try {
-      const result = await checkSquarePaymentsActivation(vendor);
+      let result: { activated: boolean; error?: string };
+      if (integration?.squareAccessToken) {
+        const square = createSquareClientFromOAuthToken(integration.squareAccessToken, env);
+        result = await checkSquarePaymentsActivationWithClient(square);
+      } else {
+        result = await checkSquarePaymentsActivation(vendor);
+      }
       const checkedAt = new Date().toISOString();
 
       await dataClient.setSquarePaymentsActivationStatus(vendor.id, {

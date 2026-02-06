@@ -99,6 +99,16 @@ export function SquareStatusCard({ vendorSlug }: Props) {
       <h2 className="section-title">Getting Started</h2>
       <p className="section-description">Complete these steps before going live with online ordering</p>
 
+      {!status.squareConnected && (
+        <div className="connect-square-cta">
+          <a
+            href={vendorSlug ? `/api/vendors/${vendorSlug}/square-oauth/authorize` : '#'}
+            className="btn-connect-square"
+          >
+            Connect Square
+          </a>
+        </div>
+      )}
       <div className="readiness-list">
         <div className={`readiness-item ${status.squareConnected ? 'done' : ''}`}>
           <span className="readiness-icon">{status.squareConnected ? '✅' : '○'}</span>
@@ -185,6 +195,25 @@ const statusCardStyles = `
     font-size: 14px;
     color: var(--color-text-muted);
     margin: 0 0 24px;
+  }
+
+  .connect-square-cta {
+    margin-bottom: 20px;
+  }
+
+  .btn-connect-square {
+    display: inline-block;
+    padding: 12px 24px;
+    border-radius: 10px;
+    background: var(--ct-gradient-primary);
+    color: white;
+    font-weight: 600;
+    font-size: 15px;
+    text-decoration: none;
+  }
+
+  .btn-connect-square:hover {
+    opacity: 0.95;
   }
 
   .readiness-list {

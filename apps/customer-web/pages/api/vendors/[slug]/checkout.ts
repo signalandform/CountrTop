@@ -4,7 +4,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { createLogger } from '@countrtop/api-client';
 import { getServerDataClient } from '../../../../lib/dataClient';
 import { rateLimiters } from '../../../../lib/rateLimit';
-import { squareClientForVendor } from '../../../../lib/square';
+import { getSquareClientForVendorOrLegacy } from '../../../../lib/square';
 
 const logger = createLogger({ requestId: 'checkout' });
 
@@ -132,6 +132,26 @@ async function handler(req: NextApiRequest, res: NextApiResponse<CheckoutRespons
       return res.status(400).json({ ok: false, error: 'Vendor Square location id not configured' });
     }
 
+    const paymentsStatus = await dataClient.getSquarePaymentsActivationStatus(vendor.id);
+    if (paymentsStatus && paymentsStatus.activated === false) {
+      return res.status(400).json({
+        ok: false,
+        error:
+          'This restaurant is not yet ready to accept orders. Please try again later.'
+      });
+    }
+
+    let square;
+    try {
+      square = await getSquareClientForVendorOrLegacy(vendor, dataClient);
+    } catch {
+      return res.status(403).json({
+        ok: false,
+        error:
+          'Vendor must connect Square. Please ask the restaurant to connect Square in their admin dashboard.'
+      });
+    }
+
     const leadTimeMinutes = matchedLocation?.onlineOrderingLeadTimeMinutes ?? 15;
     const scheduledPickupAt = typeof body.scheduledPickupAt === 'string' && body.scheduledPickupAt.trim()
       ? body.scheduledPickupAt.trim()
@@ -159,8 +179,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse<CheckoutRespons
       vendorSquareLocationId: vendor?.squareLocationId,
       locationId
     });
-
-    const square = squareClientForVendor(vendor);
 
     const orderMetadata: Record<string, string> = {};
     if (body.userId) orderMetadata.ct_user_id = body.userId;

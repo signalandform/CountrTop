@@ -345,6 +345,54 @@ export class MockDataClient implements DataClient {
     return;
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- mock returns null
+  async getVendorSquareIntegration(
+    _vendorId: string,
+    _environment: 'sandbox' | 'production'
+  ): Promise<import('@countrtop/models').VendorSquareIntegration | null> {
+    return null;
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- mock returns stub
+  async setVendorSquareIntegration(
+    vendorId: string,
+    environment: 'sandbox' | 'production',
+    data: Partial<Omit<import('@countrtop/models').VendorSquareIntegration, 'vendorId' | 'squareEnvironment' | 'connectedAt'>>
+  ): Promise<import('@countrtop/models').VendorSquareIntegration> {
+    const now = new Date().toISOString();
+    return {
+      vendorId,
+      squareEnvironment: environment,
+      squareAccessToken: data.squareAccessToken ?? 'mock_token',
+      squareRefreshToken: data.squareRefreshToken ?? 'mock_refresh',
+      squareMerchantId: data.squareMerchantId ?? null,
+      availableLocationIds: data.availableLocationIds ?? [],
+      selectedLocationId: data.selectedLocationId ?? null,
+      connectionStatus: (data.connectionStatus ?? 'connected') as 'connected',
+      connectedAt: now,
+      updatedAt: data.updatedAt ?? now,
+      lastError: data.lastError ?? null
+    };
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- mock no-op
+  async setSelectedSquareLocation(_vendorId: string, _locationId: string): Promise<void> {
+    return;
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- mock returns false
+  async refreshSquareTokenIfNeeded(
+    _vendorId: string,
+    _environment: 'sandbox' | 'production'
+  ): Promise<boolean> {
+    return false;
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- mock returns empty
+  async listSquareLocations(_vendorId: string): Promise<Array<{ id: string; name?: string }>> {
+    return [];
+  }
+
   async upsertVendorBilling(
     vendorId: string,
     data: {

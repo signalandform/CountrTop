@@ -343,6 +343,9 @@ importers:
 
   packages/data:
     dependencies:
+      '@countrtop/api-client':
+        specifier: workspace:*
+        version: link:../api-client
       '@countrtop/models':
         specifier: workspace:*
         version: link:../models

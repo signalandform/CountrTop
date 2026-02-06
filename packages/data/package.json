@@ -11,6 +11,7 @@
     "gen:types": "supabase gen types typescript --project-id ${SUPABASE_PROJECT_ID:-} > src/database.types.ts || echo 'Error: SUPABASE_PROJECT_ID env var required, or install Supabase CLI and configure project'"
   },
   "dependencies": {
+    "@countrtop/api-client": "workspace:*",
     "@countrtop/models": "workspace:*",
     "@supabase/supabase-js": "^2.45.6"
   }

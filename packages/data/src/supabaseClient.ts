@@ -79,6 +79,11 @@ export function invalidateVendorCacheBySlug(slug: string): void {
   queryCache.delete(`vendor:slug:${slug}`);
 }
 
+/** Invalidate vendor cache by Square location ID. */
+export function invalidateVendorCacheBySquareLocationId(locationId?: string): void {
+  if (locationId) queryCache.delete(`vendor:square_location:${locationId}`);
+}
+
 // Performance logging helper
 // Use lazy loading to avoid pulling in Square SDK in Edge Runtime (middleware)
 let loggerModule: { getLogger?: () => { info: (msg: string, data?: unknown) => void; warn: (msg: string, data?: unknown) => void; error: (msg: string, error?: unknown, data?: unknown) => void } } | null | false = null;
@@ -540,6 +545,36 @@ export type Database = {
         Update: Partial<Database['public']['Tables']['vendor_crm_usage']['Insert']>;
         Relationships: [];
       };
+      vendor_square_integrations: {
+        Row: {
+          vendor_id: string;
+          square_environment: string;
+          square_access_token: string;
+          square_refresh_token: string;
+          square_merchant_id: string | null;
+          available_location_ids: unknown;
+          selected_location_id: string | null;
+          connection_status: string;
+          connected_at: string;
+          updated_at: string;
+          last_error: string | null;
+        };
+        Insert: {
+          vendor_id: string;
+          square_environment: string;
+          square_access_token: string;
+          square_refresh_token: string;
+          square_merchant_id?: string | null;
+          available_location_ids?: unknown;
+          selected_location_id?: string | null;
+          connection_status?: string;
+          connected_at?: string;
+          updated_at?: string;
+          last_error?: string | null;
+        };
+        Update: Partial<Database['public']['Tables']['vendor_square_integrations']['Insert']>;
+        Relationships: [];
+      };
       vendor_email_unsubscribes: {
         Row: {
           id: string;
@@ -847,7 +882,22 @@ export class SupabaseDataClient implements DataClient {
 
     const startTime = Date.now();
     try {
-      // Field limiting: only select needed columns (including theming fields)
+      // First check vendor_locations (multi-location / OAuth)
+      const { data: locData, error: locError } = await this.client
+        .from('vendor_locations')
+        .select('vendor_id')
+        .eq('square_location_id', locationId)
+        .maybeSingle();
+      if (locError) throw locError;
+      if (locData) {
+        const vendorId = (locData as { vendor_id: string }).vendor_id;
+        const vendor = await this.getVendorById(vendorId);
+        queryCache.set(cacheKey, vendor);
+        logQueryPerformance('getVendorBySquareLocationId', startTime, true);
+        return vendor;
+      }
+
+      // Fall back to vendors.square_location_id (legacy single-location)
       const { data, error } = await this.client
         .from('vendors')
         .select('id,slug,display_name,square_location_id,square_credential_ref,status,address_line1,address_line2,city,state,postal_code,phone,timezone,pickup_instructions,kds_active_limit_total,kds_active_limit_ct,kds_nav_view,logo_url,primary_color,accent_color,font_family,review_url')
@@ -2041,6 +2091,212 @@ export class SupabaseDataClient implements DataClient {
       logQueryPerformance('incrementVendorCrmUsage', startTime, false, error);
       throw error;
     }
+  }
+
+  async getVendorSquareIntegration(
+    vendorId: string,
+    environment: 'sandbox' | 'production'
+  ): Promise<import('@countrtop/models').VendorSquareIntegration | null> {
+    const startTime = Date.now();
+    try {
+      const { data, error } = await this.client
+        .from('vendor_square_integrations')
+        .select('*')
+        .eq('vendor_id', vendorId)
+        .eq('square_environment', environment)
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) {
+        logQueryPerformance('getVendorSquareIntegration', startTime, true);
+        return null;
+      }
+      const row = data as Database['public']['Tables']['vendor_square_integrations']['Row'];
+      const raw = row.available_location_ids;
+      const locIds = Array.isArray(raw) ? (raw as string[]) : [];
+      const result: import('@countrtop/models').VendorSquareIntegration = {
+        vendorId: row.vendor_id,
+        squareEnvironment: row.square_environment as 'sandbox' | 'production',
+        squareAccessToken: row.square_access_token,
+        squareRefreshToken: row.square_refresh_token,
+        squareMerchantId: row.square_merchant_id ?? null,
+        availableLocationIds: locIds,
+        selectedLocationId: row.selected_location_id ?? null,
+        connectionStatus: row.connection_status as 'connected' | 'expired' | 'revoked' | 'error',
+        connectedAt: row.connected_at,
+        updatedAt: row.updated_at,
+        lastError: row.last_error ?? null
+      };
+      logQueryPerformance('getVendorSquareIntegration', startTime, true);
+      return result;
+    } catch (error) {
+      logQueryPerformance('getVendorSquareIntegration', startTime, false, error);
+      throw error;
+    }
+  }
+
+  async setVendorSquareIntegration(
+    vendorId: string,
+    environment: 'sandbox' | 'production',
+    data: Partial<Omit<import('@countrtop/models').VendorSquareIntegration, 'vendorId' | 'squareEnvironment' | 'connectedAt'>>
+  ): Promise<import('@countrtop/models').VendorSquareIntegration> {
+    const startTime = Date.now();
+    try {
+      const now = new Date().toISOString();
+      const existing = await this.getVendorSquareIntegration(vendorId, environment);
+      const connectedAt = existing?.connectedAt ?? now;
+      const payload: Database['public']['Tables']['vendor_square_integrations']['Insert'] = {
+        vendor_id: vendorId,
+        square_environment: environment,
+        square_access_token: data.squareAccessToken ?? '',
+        square_refresh_token: data.squareRefreshToken ?? '',
+        square_merchant_id: data.squareMerchantId ?? null,
+        available_location_ids: (data.availableLocationIds ?? []) as unknown,
+        selected_location_id: data.selectedLocationId ?? null,
+        connection_status: data.connectionStatus ?? 'connected',
+        connected_at: connectedAt,
+        updated_at: data.updatedAt ?? now,
+        last_error: data.lastError ?? null
+      };
+      const { data: row, error } = await this.client
+        .from('vendor_square_integrations')
+        .upsert(payload, { onConflict: 'vendor_id,square_environment' })
+        .select()
+        .single();
+      if (error) throw error;
+      const r = row as Database['public']['Tables']['vendor_square_integrations']['Row'];
+      const locIds = Array.isArray(r.available_location_ids) ? (r.available_location_ids as string[]) : [];
+      const result: import('@countrtop/models').VendorSquareIntegration = {
+        vendorId: r.vendor_id,
+        squareEnvironment: r.square_environment as 'sandbox' | 'production',
+        squareAccessToken: r.square_access_token,
+        squareRefreshToken: r.square_refresh_token,
+        squareMerchantId: r.square_merchant_id ?? null,
+        availableLocationIds: locIds,
+        selectedLocationId: r.selected_location_id ?? null,
+        connectionStatus: r.connection_status as 'connected' | 'expired' | 'revoked' | 'error',
+        connectedAt: r.connected_at,
+        updatedAt: r.updated_at,
+        lastError: r.last_error ?? null
+      };
+      if (result.selectedLocationId) {
+        await this.client
+          .from('vendors')
+          .update({ square_location_id: result.selectedLocationId })
+          .eq('id', vendorId);
+        invalidateVendorCacheBySquareLocationId(result.selectedLocationId);
+        const { data: v } = await this.client.from('vendors').select('slug').eq('id', vendorId).single();
+        if (v?.slug) invalidateVendorCacheBySlug(v.slug);
+      }
+      logQueryPerformance('setVendorSquareIntegration', startTime, true);
+      return result;
+    } catch (error) {
+      logQueryPerformance('setVendorSquareIntegration', startTime, false, error);
+      throw error;
+    }
+  }
+
+  async setSelectedSquareLocation(vendorId: string, locationId: string): Promise<void> {
+    const startTime = Date.now();
+    try {
+      const integration = await this.getVendorSquareIntegration(vendorId, 'sandbox');
+      const prodIntegration = await this.getVendorSquareIntegration(vendorId, 'production');
+      const env = process.env.SQUARE_ENVIRONMENT === 'production' ? 'production' : 'sandbox';
+      const current = env === 'production' ? prodIntegration : integration;
+      const oldLocationId = current?.selectedLocationId ?? null;
+
+      await this.client
+        .from('vendor_square_integrations')
+        .update({ selected_location_id: locationId, updated_at: new Date().toISOString() })
+        .eq('vendor_id', vendorId)
+        .eq('square_environment', env);
+
+      const { error: vendorError } = await this.client
+        .from('vendors')
+        .update({ square_location_id: locationId })
+        .eq('id', vendorId);
+      if (vendorError) throw vendorError;
+
+      invalidateVendorCacheBySquareLocationId(locationId);
+      invalidateVendorCacheBySquareLocationId(oldLocationId ?? undefined);
+      const { data: v } = await this.client.from('vendors').select('slug').eq('id', vendorId).single();
+      if (v?.slug) invalidateVendorCacheBySlug(v.slug);
+      logQueryPerformance('setSelectedSquareLocation', startTime, true);
+    } catch (error) {
+      logQueryPerformance('setSelectedSquareLocation', startTime, false, error);
+      throw error;
+    }
+  }
+
+  async refreshSquareTokenIfNeeded(
+    vendorId: string,
+    environment: 'sandbox' | 'production'
+  ): Promise<boolean> {
+    const integration = await this.getVendorSquareIntegration(vendorId, environment);
+    if (!integration) return false;
+
+    const clientId =
+      environment === 'production'
+        ? process.env.SQUARE_APPLICATION_ID
+        : process.env.SQUARE_SANDBOX_APPLICATION_ID;
+    const clientSecret =
+      environment === 'production'
+        ? process.env.SQUARE_APPLICATION_SECRET
+        : process.env.SQUARE_SANDBOX_APPLICATION_SECRET;
+    if (!clientId || !clientSecret) return false;
+
+    const baseUrl =
+      environment === 'production'
+        ? 'https://connect.squareup.com'
+        : 'https://connect.squareupsandbox.com';
+    const res = await fetch(`${baseUrl}/oauth2/token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        client_id: clientId,
+        client_secret: clientSecret,
+        grant_type: 'refresh_token',
+        refresh_token: integration.squareRefreshToken
+      })
+    });
+    if (!res.ok) {
+      const err = await res.text();
+      await this.client
+        .from('vendor_square_integrations')
+        .update({
+          connection_status: 'error',
+          last_error: err,
+          updated_at: new Date().toISOString()
+        })
+        .eq('vendor_id', vendorId)
+        .eq('square_environment', environment);
+      return false;
+    }
+    const json = (await res.json()) as { access_token?: string };
+    const accessToken = json.access_token;
+    if (!accessToken) return false;
+
+    await this.client
+      .from('vendor_square_integrations')
+      .update({
+        square_access_token: accessToken,
+        connection_status: 'connected',
+        last_error: null,
+        updated_at: new Date().toISOString()
+      })
+      .eq('vendor_id', vendorId)
+      .eq('square_environment', environment);
+    return true;
+  }
+
+  async listSquareLocations(vendorId: string): Promise<Array<{ id: string; name?: string }>> {
+    const env =
+      (process.env.SQUARE_ENVIRONMENT === 'production' ? 'production' : 'sandbox') as
+        | 'sandbox'
+        | 'production';
+    const integration = await this.getVendorSquareIntegration(vendorId, env);
+    if (!integration) return [];
+    const { listSquareLocationsFromIntegration } = await import('@countrtop/api-client/square');
+    return listSquareLocationsFromIntegration(integration);
   }
 
   async upsertPushDevice(device: PushDeviceInput): Promise<PushDevice> {

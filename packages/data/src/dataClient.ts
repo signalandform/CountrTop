@@ -135,6 +135,16 @@ export interface DataClient {
   getVendorCrmUsage(vendorId: string, periodStart: string): Promise<number>;
   incrementVendorCrmUsage(vendorId: string, periodStart: string, count: number): Promise<void>;
 
+  getVendorSquareIntegration(vendorId: string, environment: 'sandbox' | 'production'): Promise<import('@countrtop/models').VendorSquareIntegration | null>;
+  setVendorSquareIntegration(
+    vendorId: string,
+    environment: 'sandbox' | 'production',
+    data: Partial<Omit<import('@countrtop/models').VendorSquareIntegration, 'vendorId' | 'squareEnvironment' | 'connectedAt'>>
+  ): Promise<import('@countrtop/models').VendorSquareIntegration>;
+  setSelectedSquareLocation(vendorId: string, locationId: string): Promise<void>;
+  refreshSquareTokenIfNeeded(vendorId: string, environment: 'sandbox' | 'production'): Promise<boolean>;
+  listSquareLocations(vendorId: string): Promise<Array<{ id: string; name?: string }>>;
+
   upsertPushDevice(device: PushDeviceInput): Promise<PushDevice>;
   listPushDevicesForUser(userId: string): Promise<PushDevice[]>;
 

@@ -3,7 +3,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { MenuItem } from '@countrtop/models';
 import { getServerDataClient } from '../../../../lib/dataClient';
 import { rateLimiters } from '../../../../lib/rateLimit';
-import { squareClientForVendor } from '../../../../lib/square';
+import { getSquareClientForVendorOrLegacy } from '../../../../lib/square';
 
 type CatalogResponse = { ok: true; items: MenuItem[] } | { ok: false; error: string };
 
@@ -32,7 +32,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<CatalogResponse
   }
 
   try {
-    const square = squareClientForVendor(vendor);
+    const square = await getSquareClientForVendorOrLegacy(vendor, dataClient);
     const { result } = await square.catalogApi.listCatalog(undefined, 'ITEM,IMAGE');
 
     const images = new Map<string, string>();
