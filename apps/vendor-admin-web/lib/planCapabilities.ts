@@ -15,6 +15,13 @@ export function canUseCrm(planId: BillingPlanId): boolean {
   return planId === 'pro' || planId === 'starter';
 }
 
+/** CRM promotional emails allowed per calendar month (UTC). beta/trial cannot use CRM. */
+export function getCrmEmailLimit(planId: BillingPlanId): number {
+  if (planId === 'pro') return 500;
+  if (planId === 'starter') return 100;
+  return 0;
+}
+
 /** Plans that can use feature flags. */
 export function canUseFeatureFlags(planId: BillingPlanId): boolean {
   return planId === 'pro' || planId === 'starter';

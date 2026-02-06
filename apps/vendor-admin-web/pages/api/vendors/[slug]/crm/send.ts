@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { getServerDataClient } from '../../../../../lib/dataClient';
 import { requireVendorAdminApi } from '../../../../../lib/auth';
-import { canUseCrm } from '../../../../../lib/planCapabilities';
+import { canUseCrm, getCrmEmailLimit } from '../../../../../lib/planCapabilities';
 import { sendPromotionalEmail } from '@countrtop/email';
 import type { BillingPlanId } from '@countrtop/models';
 
@@ -102,6 +102,10 @@ export default async function handler(
       });
     }
 
+    const now = new Date();
+    const periodStart = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}-01`;
+    const limit = getCrmEmailLimit(planId);
+    const usage = await dataClient.getVendorCrmUsage(vendor.id, periodStart);
     const body = req.body as SendRequest;
     const subject = typeof body.subject === 'string' ? body.subject.trim() : '';
     const html = typeof body.body === 'string' ? body.body.trim() : '';
@@ -115,6 +119,13 @@ export default async function handler(
     const emails = await getCustomerEmails(dataClient, vendor.id);
     if (emails.length === 0) {
       return res.status(200).json({ success: true, sentCount: 0 });
+    }
+
+    if (usage + emails.length > limit) {
+      return res.status(403).json({
+        success: false,
+        error: `CRM email limit reached for this month (${usage}/${limit}). Resets next month.`
+      });
     }
 
     const baseUrl = process.env.CUSTOMER_WEB_BASE_URL || '';
@@ -137,9 +148,14 @@ export default async function handler(
       });
     }
 
+    const sentCount = result.sentCount ?? 0;
+    if (sentCount > 0) {
+      await dataClient.incrementVendorCrmUsage(vendor.id, periodStart, sentCount);
+    }
+
     return res.status(200).json({
       success: true,
-      sentCount: result.sentCount ?? 0
+      sentCount
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Failed to send';

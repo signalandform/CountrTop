@@ -524,6 +524,22 @@ export type Database = {
         Update: Partial<Database['public']['Tables']['vendor_billing']['Insert']>;
         Relationships: [];
       };
+      vendor_crm_usage: {
+        Row: {
+          vendor_id: string;
+          period_start: string;
+          emails_sent: number;
+          updated_at: string;
+        };
+        Insert: {
+          vendor_id: string;
+          period_start: string;
+          emails_sent?: number;
+          updated_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['vendor_crm_usage']['Insert']>;
+        Relationships: [];
+      };
       vendor_email_unsubscribes: {
         Row: {
           id: string;
@@ -740,6 +756,10 @@ export type Database = {
       reset_stale_webhook_jobs: {
         Args: Record<string, never>;
         Returns: number;
+      };
+      increment_vendor_crm_usage: {
+        Args: { p_vendor_id: string; p_period_start: string; p_count: number };
+        Returns: undefined;
       };
     };
     Enums: Record<string, never>;
@@ -1983,6 +2003,42 @@ export class SupabaseDataClient implements DataClient {
       return result;
     } catch (error) {
       logQueryPerformance('listVendorEmailUnsubscribes', startTime, false, error);
+      throw error;
+    }
+  }
+
+  async getVendorCrmUsage(vendorId: string, periodStart: string): Promise<number> {
+    const startTime = Date.now();
+    try {
+      const { data, error } = await this.client
+        .from('vendor_crm_usage')
+        .select('emails_sent')
+        .eq('vendor_id', vendorId)
+        .eq('period_start', periodStart)
+        .maybeSingle();
+      if (error) throw error;
+      const row = data as Database['public']['Tables']['vendor_crm_usage']['Row'] | null;
+      const result = row?.emails_sent ?? 0;
+      logQueryPerformance('getVendorCrmUsage', startTime, true);
+      return result;
+    } catch (error) {
+      logQueryPerformance('getVendorCrmUsage', startTime, false, error);
+      throw error;
+    }
+  }
+
+  async incrementVendorCrmUsage(vendorId: string, periodStart: string, count: number): Promise<void> {
+    const startTime = Date.now();
+    try {
+      const { error } = await this.client.rpc('increment_vendor_crm_usage', {
+        p_vendor_id: vendorId,
+        p_period_start: periodStart,
+        p_count: count
+      });
+      if (error) throw error;
+      logQueryPerformance('incrementVendorCrmUsage', startTime, true);
+    } catch (error) {
+      logQueryPerformance('incrementVendorCrmUsage', startTime, false, error);
       throw error;
     }
   }

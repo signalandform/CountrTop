@@ -335,6 +335,16 @@ export class MockDataClient implements DataClient {
     return [];
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- mock returns 0
+  async getVendorCrmUsage(_vendorId: string, _periodStart: string): Promise<number> {
+    return 0;
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- mock no-op
+  async incrementVendorCrmUsage(_vendorId: string, _periodStart: string, _count: number): Promise<void> {
+    return;
+  }
+
   async upsertVendorBilling(
     vendorId: string,
     data: {

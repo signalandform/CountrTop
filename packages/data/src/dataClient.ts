@@ -132,6 +132,9 @@ export interface DataClient {
   recordVendorEmailUnsubscribe(vendorId: string, email: string): Promise<void>;
   listVendorEmailUnsubscribes(vendorId: string): Promise<string[]>;
 
+  getVendorCrmUsage(vendorId: string, periodStart: string): Promise<number>;
+  incrementVendorCrmUsage(vendorId: string, periodStart: string, count: number): Promise<void>;
+
   upsertPushDevice(device: PushDeviceInput): Promise<PushDevice>;
   listPushDevicesForUser(userId: string): Promise<PushDevice[]>;
 

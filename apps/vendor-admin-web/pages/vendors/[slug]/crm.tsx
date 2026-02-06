@@ -62,15 +62,53 @@ export const getServerSideProps: GetServerSideProps<VendorCrmPageProps> = async 
   };
 };
 
+function escapeCsvField(value: string): string {
+  const escaped = value.replace(/"/g, '""');
+  return `"${escaped}"`;
+}
+
+function downloadCsv(customers: CustomerEntry[]) {
+  const headers = ['Email', 'Display Name', 'Order Count'];
+  const rows = customers.map((c) => [
+    escapeCsvField(c.email),
+    escapeCsvField(c.displayName ?? ''),
+    String(c.orderCount)
+  ]);
+  const csv = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `crm-customers-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export default function VendorCrmPage({ vendorSlug, vendorName, vendor }: VendorCrmPageProps) {
   const [customers, setCustomers] = useState<CustomerEntry[]>([]);
   const [customersLoading, setCustomersLoading] = useState(true);
   const [customersError, setCustomersError] = useState<string | null>(null);
+  const [usage, setUsage] = useState<number | null>(null);
+  const [limit, setLimit] = useState<number | null>(null);
+  const [usageLoading, setUsageLoading] = useState(true);
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const [sentCount, setSentCount] = useState<number | null>(null);
+
+  const fetchUsage = () => {
+    if (!vendorSlug) return;
+    fetch(`/api/vendors/${vendorSlug}/crm/usage`, { credentials: 'include' })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success) {
+          setUsage(data.usage);
+          setLimit(data.limit);
+        }
+      })
+      .finally(() => setUsageLoading(false));
+  };
 
   useEffect(() => {
     if (!vendorSlug) return;
@@ -96,6 +134,11 @@ export default function VendorCrmPage({ vendorSlug, vendorName, vendor }: Vendor
     };
   }, [vendorSlug]);
 
+  useEffect(() => {
+    if (!vendorSlug) return;
+    fetchUsage();
+  }, [vendorSlug]);
+
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
     setSendError(null);
@@ -119,6 +162,7 @@ export default function VendorCrmPage({ vendorSlug, vendorName, vendor }: Vendor
         setSentCount(data.sentCount ?? 0);
         setSubject('');
         setBody('');
+        fetchUsage();
       } else {
         setSendError(data.error ?? 'Failed to send emails');
       }
@@ -142,6 +186,9 @@ export default function VendorCrmPage({ vendorSlug, vendorName, vendor }: Vendor
   }
 
   const customerCount = customers.length;
+  const usageNum = usage ?? 0;
+  const limitNum = limit ?? 0;
+  const atLimit = limitNum > 0 && usageNum >= limitNum;
 
   return (
     <VendorAdminLayout
@@ -168,14 +215,30 @@ export default function VendorCrmPage({ vendorSlug, vendorName, vendor }: Vendor
             <>
               <section className="crm-card ct-card">
                 <h2 className="section-title">Recipients</h2>
+                {!usageLoading && limitNum > 0 && (
+                  <p className="usage-line">
+                    {usageNum} of {limitNum} emails used this month.
+                    {atLimit && (
+                      <span className="usage-limit-msg"> Limit reached. Resets next month.</span>
+                    )}
+                  </p>
+                )}
                 <p className="muted">
                   {customerCount === 0
                     ? 'No past customers with email addresses yet. Orders from logged-in users and guests with email will appear here (excluding unsubscribes).'
                     : `${customerCount} customer${customerCount === 1 ? '' : 's'} will receive this email.`}
                 </p>
                 {customerCount > 0 && (
-                  <details className="email-list-details">
-                    <summary>View emails</summary>
+                  <div className="recipient-actions">
+                    <button
+                      type="button"
+                      className="btn-export"
+                      onClick={() => downloadCsv(customers)}
+                    >
+                      Export to CSV
+                    </button>
+                    <details className="email-list-details">
+                      <summary>View emails</summary>
                     <ul className="email-list">
                       {customers.slice(0, 50).map((c) => (
                         <li key={c.email}>
@@ -188,6 +251,7 @@ export default function VendorCrmPage({ vendorSlug, vendorName, vendor }: Vendor
                       )}
                     </ul>
                   </details>
+                  </div>
                 )}
               </section>
 
@@ -214,7 +278,7 @@ export default function VendorCrmPage({ vendorSlug, vendorName, vendor }: Vendor
                     value={subject}
                     onChange={(e) => setSubject(e.target.value)}
                     placeholder="e.g. 20% off your next order"
-                    disabled={sending || customerCount === 0}
+                    disabled={sending || customerCount === 0 || atLimit}
                   />
                   <label className="field-label" htmlFor="crm-body">
                     Message (plain text or simple HTML)
@@ -226,12 +290,17 @@ export default function VendorCrmPage({ vendorSlug, vendorName, vendor }: Vendor
                     value={body}
                     onChange={(e) => setBody(e.target.value)}
                     placeholder="Write your promotional message…"
-                    disabled={sending || customerCount === 0}
+                    disabled={sending || customerCount === 0 || atLimit}
                   />
+                  {atLimit && (
+                    <p className="usage-limit-inline">
+                      CRM email limit reached for this month ({usageNum}/{limitNum}). Resets next month.
+                    </p>
+                  )}
                   <button
                     type="submit"
                     className="btn-send"
-                    disabled={sending || customerCount === 0}
+                    disabled={sending || customerCount === 0 || atLimit}
                   >
                     {sending ? 'Sending…' : `Send to ${customerCount} customer${customerCount === 1 ? '' : 's'}`}
                   </button>
@@ -299,6 +368,44 @@ export default function VendorCrmPage({ vendorSlug, vendorName, vendor }: Vendor
             margin: 0 0 12px;
             font-size: 16px;
             font-weight: 600;
+          }
+
+          .usage-line {
+            margin: 0 0 8px;
+            font-size: 14px;
+          }
+
+          .usage-limit-msg {
+            color: var(--ct-text-muted);
+          }
+
+          .usage-limit-inline {
+            margin: 0;
+            font-size: 14px;
+            color: var(--ct-text-muted);
+          }
+
+          .recipient-actions {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 12px;
+            margin-top: 12px;
+          }
+
+          .btn-export {
+            padding: 8px 14px;
+            border-radius: 8px;
+            border: 1px solid var(--ct-card-border);
+            background: var(--ct-bg-surface);
+            color: var(--ct-text);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+          }
+
+          .btn-export:hover {
+            background: var(--ct-bg-primary);
           }
 
           .muted {
