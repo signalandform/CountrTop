@@ -82,7 +82,6 @@ export const getServerSideProps: GetServerSideProps<VendorPageProps> = async (co
       vendorName = vendor.displayName;
       kdsNavView = vendor.kdsNavView === 'minimized' ? 'minimized' : 'full';
 
-      // Try to get location name from vendor_locations
       const { data: locationData } = await supabase
         .from('vendor_locations')
         .select('name')
@@ -838,14 +837,16 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
   return (
     <>
       <Head>
-        <title>{vendorName} · {locationName} - KDS</title>
+        <title>{vendorName}{kdsNavView === 'full' ? ` · ${locationName}` : ''} - KDS</title>
       </Head>
       <main className="page">
         <div className="container">
           <header className={`header ${kdsNavView === 'minimized' ? 'header-minimized' : ''}`}>
             <div>
               <h1 className="title">{vendorName}</h1>
-              <p className="vendor-slug">📍 {locationName}</p>
+              {kdsNavView === 'full' && (
+                <p className="vendor-slug">📍 {locationName}</p>
+              )}
               {kdsNavView !== 'minimized' && dailyAvgPrepTime !== null && (
                 <p className="daily-avg">
                   Avg Prep: {dailyAvgPrepTime.toFixed(1)} min
