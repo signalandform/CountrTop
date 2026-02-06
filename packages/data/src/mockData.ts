@@ -346,6 +346,7 @@ export class MockDataClient implements DataClient {
     return;
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- mock returns empty list
   async getMenuAvailabilityForVendor(_vendorId: string): Promise<MenuItemAvailability[]> {
     return [];
   }
