@@ -62,6 +62,7 @@ export default function Home() {
             <a href="#features">Features</a>
             <a href="#how-it-works">How It Works</a>
             <a href="#pricing">Pricing</a>
+            <a href="https://admin.countrtop.com/signup" target="_blank" rel="noopener noreferrer">Sign up</a>
             <a href="https://admin.countrtop.com" target="_blank" rel="noopener noreferrer">Vendor sign in</a>
             <a href="#contact" className="btn-nav">Get Started</a>
           </div>

@@ -1,4 +1,5 @@
 import Head from 'next/head';
+import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 
@@ -335,6 +336,9 @@ export default function LoginPage() {
               >
                 Forgot password?
               </button>
+              <p className="create-account-link">
+                Don&apos;t have an account? <Link href="/signup">Create account</Link>
+              </p>
             </form>
           )}
         </div>
@@ -455,6 +459,21 @@ export default function LoginPage() {
           .btn-forgot:disabled {
             opacity: 0.6;
             cursor: not-allowed;
+          }
+
+          .create-account-link {
+            margin-top: 20px;
+            color: var(--color-text-muted);
+            font-size: 14px;
+          }
+
+          .create-account-link a {
+            color: var(--color-primary);
+            text-decoration: none;
+          }
+
+          .create-account-link a:hover {
+            text-decoration: underline;
           }
 
           .reset-success-message {

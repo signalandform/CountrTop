@@ -222,6 +222,7 @@ export type VendorBilling = {
   /** Subscription status (e.g. active); getVendorBilling returns 'active' when null. */
   status: string;
   currentPeriodEnd?: string | null;
+  trialEndsAt?: string | null;
   stripeCustomerId?: string | null;
   stripeSubscriptionId?: string | null;
   createdAt: string;

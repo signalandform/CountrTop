@@ -18,6 +18,8 @@ type BillingData = {
   interval: 'month' | 'year' | null;
   status: string;
   currentPeriodEnd: string | null;
+  trialEndsAt: string | null;
+  isTrialExpired: boolean;
   paymentMethod: { brand: string; last4: string } | null;
   canUpgrade: boolean;
 };
@@ -160,6 +162,14 @@ export default function VendorBillingPage({ vendorSlug, vendorName, vendor }: Ve
 
   const formatDate = (iso: string) => (iso ? new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '—');
 
+  const trialDaysRemaining = (): number | null => {
+    if (!billing?.trialEndsAt || billing.isTrialExpired) return null;
+    const end = new Date(billing.trialEndsAt);
+    const now = new Date();
+    const diff = Math.ceil((end.getTime() - now.getTime()) / (24 * 60 * 60 * 1000));
+    return Math.max(0, diff);
+  };
+
   const planFeatures: Record<BillingPlanId, string[]> = {
     beta: [
       'KDS: ticket flow New → In Progress → Ready → Complete, order recall',
@@ -216,6 +226,17 @@ export default function VendorBillingPage({ vendorSlug, vendorName, vendor }: Ve
           {error && (
             <div className="error-banner">
               {error}
+            </div>
+          )}
+
+          {billing?.isTrialExpired && (
+            <div className="trial-banner trial-expired">
+              <strong>Trial expired.</strong> Upgrade to continue using CountrTop.
+            </div>
+          )}
+          {billing?.planId === 'trial' && !billing?.isTrialExpired && trialDaysRemaining() !== null && (
+            <div className="trial-banner trial-active">
+              <strong>Free trial.</strong> {trialDaysRemaining()} day{trialDaysRemaining() !== 1 ? 's' : ''} remaining. Ends {formatDate(billing.trialEndsAt!)}.
             </div>
           )}
 
@@ -348,6 +369,25 @@ export default function VendorBillingPage({ vendorSlug, vendorName, vendor }: Ve
             color: #dc2626;
             font-size: 14px;
             margin-bottom: 20px;
+          }
+
+          .trial-banner {
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            margin-bottom: 20px;
+          }
+
+          .trial-banner.trial-active {
+            background: rgba(34, 197, 94, 0.1);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+            color: #16a34a;
+          }
+
+          .trial-banner.trial-expired {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #dc2626;
           }
 
           .billing-sections {

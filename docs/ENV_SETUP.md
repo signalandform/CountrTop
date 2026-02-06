@@ -39,6 +39,11 @@ SQUARE_WEBHOOK_URL=https://your-domain.com/api/webhooks/square
 - `https://admin.countrtop.com/api/square-oauth/callback` (production)
 - `https://your-sandbox-domain/api/square-oauth/callback` (sandbox)
 
+**Self-service vendor signup:** Uses same OAuth callback. Optional env for signup cookie encryption:
+```bash
+SIGNUP_COOKIE_SECRET=your-secret  # Optional: defaults to SUPABASE_SERVICE_ROLE_KEY
+```
+
 ### Toast (Optional)
 
 ```bash

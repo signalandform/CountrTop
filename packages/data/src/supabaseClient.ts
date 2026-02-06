@@ -511,6 +511,7 @@ export type Database = {
           plan_id: string;
           status: string | null;
           current_period_end: string | null;
+          trial_ends_at: string | null;
           stripe_customer_id: string | null;
           stripe_subscription_id: string | null;
           created_at: string;
@@ -521,6 +522,7 @@ export type Database = {
           plan_id?: string;
           status?: string | null;
           current_period_end?: string | null;
+          trial_ends_at?: string | null;
           stripe_customer_id?: string | null;
           stripe_subscription_id?: string | null;
           created_at?: string;
@@ -1955,7 +1957,7 @@ export class SupabaseDataClient implements DataClient {
     try {
       const { data, error } = await this.client
         .from('vendor_billing')
-        .select('vendor_id,plan_id,status,current_period_end,stripe_customer_id,stripe_subscription_id,created_at,updated_at')
+        .select('vendor_id,plan_id,status,current_period_end,trial_ends_at,stripe_customer_id,stripe_subscription_id,created_at,updated_at')
         .eq('vendor_id', vendorId)
         .maybeSingle();
       if (error) throw error;
@@ -1970,6 +1972,7 @@ export class SupabaseDataClient implements DataClient {
         planId: row.plan_id as import('@countrtop/models').BillingPlanId,
         status: row.status ?? 'active',
         currentPeriodEnd: row.current_period_end ?? undefined,
+        trialEndsAt: row.trial_ends_at ?? undefined,
         stripeCustomerId: row.stripe_customer_id ?? undefined,
         stripeSubscriptionId: row.stripe_subscription_id ?? undefined,
         createdAt: row.created_at,
@@ -1989,6 +1992,7 @@ export class SupabaseDataClient implements DataClient {
       planId?: import('@countrtop/models').BillingPlanId;
       status?: string;
       currentPeriodEnd?: string | null;
+      trialEndsAt?: string | null;
     }
   ): Promise<import('@countrtop/models').VendorBilling> {
     const startTime = Date.now();
@@ -1999,12 +2003,13 @@ export class SupabaseDataClient implements DataClient {
         ...(data.stripeCustomerId !== undefined && { stripe_customer_id: data.stripeCustomerId }),
         ...(data.stripeSubscriptionId !== undefined && { stripe_subscription_id: data.stripeSubscriptionId }),
         ...(data.status !== undefined && { status: data.status }),
-        ...(data.currentPeriodEnd !== undefined && { current_period_end: data.currentPeriodEnd })
+        ...(data.currentPeriodEnd !== undefined && { current_period_end: data.currentPeriodEnd }),
+        ...(data.trialEndsAt !== undefined && { trial_ends_at: data.trialEndsAt })
       };
       const { data: row, error } = await this.client
         .from('vendor_billing')
         .upsert(payload, { onConflict: 'vendor_id' })
-        .select('vendor_id,plan_id,status,current_period_end,stripe_customer_id,stripe_subscription_id,created_at,updated_at')
+        .select('vendor_id,plan_id,status,current_period_end,trial_ends_at,stripe_customer_id,stripe_subscription_id,created_at,updated_at')
         .single();
       if (error) throw error;
       const r = row as Database['public']['Tables']['vendor_billing']['Row'];
@@ -2014,6 +2019,7 @@ export class SupabaseDataClient implements DataClient {
         planId: r.plan_id as import('@countrtop/models').BillingPlanId,
         status: r.status ?? 'active',
         currentPeriodEnd: r.current_period_end ?? undefined,
+        trialEndsAt: r.trial_ends_at ?? undefined,
         stripeCustomerId: r.stripe_customer_id ?? undefined,
         stripeSubscriptionId: r.stripe_subscription_id ?? undefined,
         createdAt: r.created_at,

@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import Stripe from 'stripe';
 import { getServerDataClient } from '../../../../../lib/dataClient';
 import { requireVendorAdminApi } from '../../../../../lib/auth';
+import { isTrialExpired } from '../../../../../lib/trialUtils';
 import type { BillingPlanId } from '@countrtop/models';
 
 type BillingGetResponse =
@@ -14,6 +15,8 @@ type BillingGetResponse =
         interval: 'month' | 'year' | null;
         status: string;
         currentPeriodEnd: string | null;
+        trialEndsAt: string | null;
+        isTrialExpired: boolean;
         paymentMethod: { brand: string; last4: string } | null;
         canUpgrade: boolean;
         stripeCustomerId: string | null;
@@ -73,6 +76,8 @@ export default async function handler(
     const planId: BillingPlanId = (billing?.planId as BillingPlanId) ?? 'beta';
     const status = billing?.status ?? 'active';
     const currentPeriodEnd = billing?.currentPeriodEnd ?? null;
+    const trialEndsAt = billing?.trialEndsAt ?? null;
+    const trialExpired = isTrialExpired(billing);
     const stripeCustomerId = billing?.stripeCustomerId ?? null;
 
     let paymentMethod: { brand: string; last4: string } | null = null;
@@ -104,6 +109,8 @@ export default async function handler(
         interval: planId === 'beta' || planId === 'trial' ? null : ('month' as const),
         status,
         currentPeriodEnd,
+        trialEndsAt,
+        isTrialExpired: trialExpired,
         paymentMethod,
         canUpgrade,
         stripeCustomerId

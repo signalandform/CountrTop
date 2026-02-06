@@ -158,12 +158,14 @@ export default async function handler(
       });
     }
 
-    // Populate vendor_billing with default plan so plan-gated features have a row
+    // Populate vendor_billing with trial plan and 30-day timer
+    const trialEndsAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
     const { error: billingError } = await supabase
       .from('vendor_billing')
       .insert({
         vendor_id: vendor.id,
-        plan_id: 'beta'
+        plan_id: 'trial',
+        trial_ends_at: trialEndsAt
       });
 
     if (billingError) {

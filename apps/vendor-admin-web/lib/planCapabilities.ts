@@ -27,7 +27,7 @@ export function canUseFeatureFlags(planId: BillingPlanId): boolean {
   return planId === 'pro' || planId === 'starter';
 }
 
-/** Plans that can use multiple locations. */
+/** Plans that can use multiple locations. Pro only. */
 export function canUseMultipleLocations(planId: BillingPlanId): boolean {
-  return planId === 'pro' || planId === 'starter';
+  return planId === 'pro';
 }

@@ -115,15 +115,8 @@ export function VendorAdminLayout({
         isActive: isPrefix(`${basePath}/billing`)
       },
       {
-        id: 'support',
-        label: 'Support',
-        href: `${basePath}/support`,
-        icon: '📧',
-        isActive: isPrefix(`${basePath}/support`)
-      },
-      {
         id: 'help',
-        label: 'Help',
+        label: 'Help & Support',
         href: `${basePath}/help`,
         icon: '❓',
         isActive: isPrefix(`${basePath}/help`)
