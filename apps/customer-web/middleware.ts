@@ -1,7 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 
-import { resolveVendorSlugFromHost } from '@countrtop/data';
+import { resolveVendorSlugFromHost } from '@countrtop/data/src/vendor';
 
 export function middleware(request: NextRequest) {
   const fallback = process.env.DEFAULT_VENDOR_SLUG;

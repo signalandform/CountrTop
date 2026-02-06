@@ -4,7 +4,7 @@ import {
   squareClientForVendor as createLegacySquareClient,
   createSquareClientFromOAuthToken
 } from '@countrtop/api-client';
-import { getSquareClientForVendor } from '@countrtop/data';
+import { getSquareClientForVendor } from '@countrtop/data/src/squareClient';
 
 import type { DataClient } from '@countrtop/data';
 import type { Vendor } from '@countrtop/models';

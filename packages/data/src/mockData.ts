@@ -345,13 +345,14 @@ export class MockDataClient implements DataClient {
     return;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- mock returns null
+  /* eslint-disable @typescript-eslint/no-unused-vars */
   async getVendorSquareIntegration(
     _vendorId: string,
     _environment: 'sandbox' | 'production'
   ): Promise<import('@countrtop/models').VendorSquareIntegration | null> {
     return null;
   }
+  /* eslint-enable @typescript-eslint/no-unused-vars */
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- mock returns stub
   async setVendorSquareIntegration(
@@ -380,13 +381,14 @@ export class MockDataClient implements DataClient {
     return;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- mock returns false
+  /* eslint-disable @typescript-eslint/no-unused-vars */
   async refreshSquareTokenIfNeeded(
     _vendorId: string,
     _environment: 'sandbox' | 'production'
   ): Promise<boolean> {
     return false;
   }
+  /* eslint-enable @typescript-eslint/no-unused-vars */
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- mock returns empty
   async listSquareLocations(_vendorId: string): Promise<Array<{ id: string; name?: string }>> {
