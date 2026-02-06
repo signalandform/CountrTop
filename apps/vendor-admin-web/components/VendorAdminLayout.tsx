@@ -87,6 +87,13 @@ export function VendorAdminLayout({
         isActive: isPrefix(`${basePath}/orders`)
       },
       {
+        id: 'menu',
+        label: 'Menu',
+        href: `${basePath}/menu`,
+        icon: '🍽️',
+        isActive: isPrefix(`${basePath}/menu`)
+      },
+      {
         id: 'locations',
         label: 'Locations',
         href: `${basePath}/locations`,

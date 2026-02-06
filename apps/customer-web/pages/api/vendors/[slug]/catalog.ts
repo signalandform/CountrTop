@@ -42,7 +42,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<CatalogResponse
       }
     });
 
-    const items: MenuItem[] = (result.objects ?? [])
+    const rawItems: MenuItem[] = (result.objects ?? [])
       .filter((object) => {
         if (object.type !== 'ITEM') return false;
         if (!object.itemData?.variations?.length) return false;
@@ -66,6 +66,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse<CatalogResponse
         };
       })
       .filter((item) => item.id && item.variationId);
+
+    const availabilityList = await dataClient.getMenuAvailabilityForVendor(vendor.id);
+    const availabilityByItemId = new Map(availabilityList.map((a) => [a.catalogItemId, a]));
+    const items = rawItems.filter((item) => {
+      const override = availabilityByItemId.get(item.id);
+      return override === undefined ? true : override.available;
+    });
 
     return res.status(200).json({ ok: true, items });
   } catch (error) {

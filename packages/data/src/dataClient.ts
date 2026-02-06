@@ -62,6 +62,14 @@ export type VendorOrderMilestone = {
   claimedAt: string | null;
 };
 
+export type MenuItemAvailability = {
+  vendorId: string;
+  catalogItemId: string;
+  variationId: string;
+  available: boolean;
+  internalStockCount: number | null;
+};
+
 export interface DataClient {
   signInWithProvider(provider: AuthProvider, idToken: string): Promise<User>;
   signOut(): Promise<void>;
@@ -285,6 +293,14 @@ export interface DataClient {
   listVendorOrderMilestones(vendorId: string): Promise<VendorOrderMilestone[]>;
   markVendorOrderMilestoneSeen(vendorId: string, milestone: number, milestoneType: string): Promise<void>;
   claimVendorOrderMilestone(vendorId: string, milestone: number): Promise<void>;
+
+  getMenuAvailabilityForVendor(vendorId: string): Promise<MenuItemAvailability[]>;
+  upsertMenuItemAvailability(
+    vendorId: string,
+    catalogItemId: string,
+    variationId: string,
+    data: { available?: boolean; internalStockCount?: number | null }
+  ): Promise<MenuItemAvailability>;
 
   // Ops: support tickets
   listSupportTickets(filters: { vendorId?: string; status?: string }): Promise<import('@countrtop/models').SupportTicket[]>;

@@ -4,6 +4,7 @@ import { SupabaseClient, User as SupabaseAuthUser } from '@supabase/supabase-js'
 import {
   DataClient,
   LoyaltyLedgerEntryInput,
+  MenuItemAvailability,
   OrderSnapshotInput,
   PushDeviceInput,
   WebhookEvent,
@@ -545,6 +546,26 @@ export type Database = {
           updated_at?: string;
         };
         Update: Partial<Database['public']['Tables']['vendor_crm_usage']['Insert']>;
+        Relationships: [];
+      };
+      vendor_menu_availability: {
+        Row: {
+          vendor_id: string;
+          catalog_item_id: string;
+          variation_id: string;
+          available: boolean;
+          internal_stock_count: number | null;
+          updated_at: string;
+        };
+        Insert: {
+          vendor_id: string;
+          catalog_item_id: string;
+          variation_id: string;
+          available?: boolean;
+          internal_stock_count?: number | null;
+          updated_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['vendor_menu_availability']['Insert']>;
         Relationships: [];
       };
       vendor_square_integrations: {
@@ -2095,6 +2116,76 @@ export class SupabaseDataClient implements DataClient {
       logQueryPerformance('incrementVendorCrmUsage', startTime, true);
     } catch (error) {
       logQueryPerformance('incrementVendorCrmUsage', startTime, false, error);
+      throw error;
+    }
+  }
+
+  async getMenuAvailabilityForVendor(vendorId: string): Promise<MenuItemAvailability[]> {
+    const startTime = Date.now();
+    try {
+      const { data, error } = await this.client
+        .from('vendor_menu_availability')
+        .select('vendor_id, catalog_item_id, variation_id, available, internal_stock_count')
+        .eq('vendor_id', vendorId);
+      if (error) throw error;
+      const rows = (data ?? []) as Database['public']['Tables']['vendor_menu_availability']['Row'][];
+      const result: MenuItemAvailability[] = rows.map((row) => ({
+        vendorId: row.vendor_id,
+        catalogItemId: row.catalog_item_id,
+        variationId: row.variation_id,
+        available: row.available,
+        internalStockCount: row.internal_stock_count
+      }));
+      logQueryPerformance('getMenuAvailabilityForVendor', startTime, true);
+      return result;
+    } catch (error) {
+      logQueryPerformance('getMenuAvailabilityForVendor', startTime, false, error);
+      throw error;
+    }
+  }
+
+  async upsertMenuItemAvailability(
+    vendorId: string,
+    catalogItemId: string,
+    variationId: string,
+    data: { available?: boolean; internalStockCount?: number | null }
+  ): Promise<MenuItemAvailability> {
+    const startTime = Date.now();
+    try {
+      const { data: existing } = await this.client
+        .from('vendor_menu_availability')
+        .select('variation_id, available, internal_stock_count')
+        .eq('vendor_id', vendorId)
+        .eq('catalog_item_id', catalogItemId)
+        .maybeSingle();
+      const row = existing as Database['public']['Tables']['vendor_menu_availability']['Row'] | null;
+      const rowToUpsert: Database['public']['Tables']['vendor_menu_availability']['Insert'] = {
+        vendor_id: vendorId,
+        catalog_item_id: catalogItemId,
+        variation_id: row?.variation_id ?? variationId,
+        available: data.available !== undefined ? data.available : (row?.available ?? true),
+        internal_stock_count: data.internalStockCount !== undefined ? data.internalStockCount : (row?.internal_stock_count ?? null)
+      };
+      const { data: result, error } = await this.client
+        .from('vendor_menu_availability')
+        .upsert(rowToUpsert, {
+          onConflict: 'vendor_id,catalog_item_id',
+          ignoreDuplicates: false
+        })
+        .select('vendor_id, catalog_item_id, variation_id, available, internal_stock_count')
+        .single();
+      if (error) throw error;
+      const r = result as Database['public']['Tables']['vendor_menu_availability']['Row'];
+      logQueryPerformance('upsertMenuItemAvailability', startTime, true);
+      return {
+        vendorId: r.vendor_id,
+        catalogItemId: r.catalog_item_id,
+        variationId: r.variation_id,
+        available: r.available,
+        internalStockCount: r.internal_stock_count
+      };
+    } catch (error) {
+      logQueryPerformance('upsertMenuItemAvailability', startTime, false, error);
       throw error;
     }
   }

@@ -1,6 +1,7 @@
 import {
   DataClient,
   LoyaltyLedgerEntryInput,
+  MenuItemAvailability,
   OrderSnapshotInput,
   PushDeviceInput,
   WebhookEvent,
@@ -343,6 +344,25 @@ export class MockDataClient implements DataClient {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- mock no-op
   async incrementVendorCrmUsage(_vendorId: string, _periodStart: string, _count: number): Promise<void> {
     return;
+  }
+
+  async getMenuAvailabilityForVendor(_vendorId: string): Promise<MenuItemAvailability[]> {
+    return [];
+  }
+
+  async upsertMenuItemAvailability(
+    vendorId: string,
+    catalogItemId: string,
+    variationId: string,
+    data: { available?: boolean; internalStockCount?: number | null }
+  ): Promise<MenuItemAvailability> {
+    return {
+      vendorId,
+      catalogItemId,
+      variationId,
+      available: data.available ?? true,
+      internalStockCount: data.internalStockCount ?? null
+    };
   }
 
   /* eslint-disable @typescript-eslint/no-unused-vars */
