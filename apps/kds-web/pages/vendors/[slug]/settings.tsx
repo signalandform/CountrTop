@@ -1,6 +1,7 @@
 import Head from 'next/head';
 import type { GetServerSideProps } from 'next';
 import Link from 'next/link';
+import { useRouter } from 'next/router';
 import { useState } from 'react';
 import { requireKDSSession } from '../../../lib/auth';
 import { createClient } from '@supabase/supabase-js';
@@ -57,29 +58,36 @@ export const getServerSideProps: GetServerSideProps<SettingsPageProps> = async (
 };
 
 export default function KDSSettingsPage({ vendorSlug, vendorName, locationId, kdsNavView: initialKdsNavView }: SettingsPageProps) {
+  const router = useRouter();
   const backHref = `/vendors/${vendorSlug}${locationId ? `?locationId=${locationId}` : ''}`;
   const [kdsNavView, setKdsNavView] = useState<'full' | 'minimized'>(initialKdsNavView);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleNavViewChange = async (value: 'full' | 'minimized') => {
-    setKdsNavView(value);
+  const handleSave = async () => {
     setSaving(true);
     setSaved(false);
+    setError(null);
     try {
       const url = `/api/vendors/${vendorSlug}/kds-settings${locationId ? `?locationId=${locationId}` : ''}`;
       const res = await fetch(url, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ kdsNavView: value })
+        body: JSON.stringify({ kdsNavView })
       });
       const data = await res.json();
       if (data.ok) {
         setSaved(true);
-        setTimeout(() => setSaved(false), 2000);
+        setTimeout(() => {
+          router.push(backHref);
+        }, 600);
+      } else {
+        setError(data.error || 'Failed to save');
       }
     } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save');
       console.error('Failed to save:', err);
     } finally {
       setSaving(false);
@@ -103,7 +111,7 @@ export default function KDSSettingsPage({ vendorSlug, vendorName, locationId, kd
                   name="kdsNavView"
                   value="full"
                   checked={kdsNavView === 'full'}
-                  onChange={() => handleNavViewChange('full')}
+                  onChange={() => setKdsNavView('full')}
                   disabled={saving}
                 />
                 <span>Full</span>
@@ -114,14 +122,25 @@ export default function KDSSettingsPage({ vendorSlug, vendorName, locationId, kd
                   name="kdsNavView"
                   value="minimized"
                   checked={kdsNavView === 'minimized'}
-                  onChange={() => handleNavViewChange('minimized')}
+                  onChange={() => setKdsNavView('minimized')}
                   disabled={saving}
                 />
                 <span>Minimized</span>
               </label>
             </div>
             <p className="settings-hint">Minimized shows icon-only buttons in the header.</p>
-            {saved && <p className="settings-saved">Saved.</p>}
+            <div className="settings-actions">
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={saving || kdsNavView === initialKdsNavView}
+                className="settings-save-btn"
+              >
+                {saving ? 'Saving...' : 'Save'}
+              </button>
+              {saved && <span className="settings-saved">Saved.</span>}
+              {error && <span className="settings-error">{error}</span>}
+            </div>
           </div>
           <Link href={backHref} className="back-link">
             Back to KDS
@@ -181,12 +200,42 @@ export default function KDSSettingsPage({ vendorSlug, vendorName, locationId, kd
           .settings-hint {
             font-size: 13px;
             color: var(--color-text-muted);
-            margin: 0;
+            margin: 0 0 16px;
+          }
+          .settings-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+          }
+          .settings-save-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            background: var(--ct-gradient-primary);
+            color: white;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s;
+            font-family: inherit;
+          }
+          .settings-save-btn:hover:not(:disabled) {
+            opacity: 0.9;
+          }
+          .settings-save-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
           }
           .settings-saved {
             font-size: 13px;
             color: var(--color-success, #10B981);
-            margin: 8px 0 0;
+            font-weight: 500;
+          }
+          .settings-error {
+            font-size: 13px;
+            color: #ef4444;
+            font-weight: 500;
           }
           .back-link {
             display: inline-block;
