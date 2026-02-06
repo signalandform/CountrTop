@@ -888,7 +888,7 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
       <Head>
         <title>{vendorName}{kdsNavView === 'full' ? ` · ${locationName}` : ''} - KDS</title>
       </Head>
-      <main className="page">
+      <main className={`page ${kdsNavView === 'minimized' ? 'page-minimized-nav' : ''}`}>
         <div className="container">
           <header className={`header ${kdsNavView === 'minimized' ? 'header-minimized' : ''}`}>
             <div>
@@ -1528,6 +1528,17 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
             margin-bottom: 24px;
             border-bottom: 2px solid var(--color-border);
             background: var(--ct-bg-primary);
+          }
+
+          .header-minimized {
+            border-bottom: none;
+            padding-top: 12px;
+            padding-bottom: 12px;
+            margin-bottom: 12px;
+          }
+
+          .page-minimized-nav {
+            padding-top: 12px;
           }
 
           .title {
