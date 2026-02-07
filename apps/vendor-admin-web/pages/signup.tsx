@@ -4,17 +4,12 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 
 const ERROR_MESSAGES: Record<string, string> = {
-  denied: 'Square connection was denied. You can try again.',
   invalid_state: 'Invalid or expired session. Please start over.',
   session_expired: 'Your session expired. Please try again.',
-  no_locations: 'No Square locations found. Ensure your Square account has at least one location.',
   email_exists: 'An account with this email already exists. Sign in instead.',
   slug_conflict: 'Could not create your store. Please try again.',
   missing_params: 'Missing required parameters. Please start over.',
-  csrf_mismatch: 'Security validation failed. Please start over.',
-  token_exchange: 'Square connection failed. Please try again.',
-  no_tokens: 'Square did not return tokens. Please try again.',
-  not_configured: 'Signup is not configured. Please contact support.'
+  csrf_mismatch: 'Security validation failed. Please start over.'
 };
 
 export default function SignupPage() {
@@ -55,7 +50,7 @@ export default function SignupPage() {
       if (!res.ok || !data.ok) {
         throw new Error(data.error ?? `HTTP ${res.status}`);
       }
-      window.location.href = data.redirect ?? '/api/signup/square-oauth/authorize';
+      window.location.href = data.redirect ?? '/login';
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to continue');
       setSubmitting(false);
@@ -70,7 +65,7 @@ export default function SignupPage() {
       <main className="login-page">
         <div className="login-container">
           <h1>Create Vendor Account</h1>
-          <p className="subtitle">Connect Square to get started with CountrTop</p>
+          <p className="subtitle">Create your account. Connect Square in Settings after signup.</p>
 
           <form onSubmit={handleSubmit} className="login-form">
             <div className="form-group">
@@ -123,7 +118,7 @@ export default function SignupPage() {
               </div>
             )}
             <button type="submit" className="btn-signin" disabled={submitting}>
-              {submitting ? 'Continuing...' : 'Continue with Square'}
+              {submitting ? 'Creating account...' : 'Create Account'}
             </button>
             <p className="signup-link">
               Already have an account? <Link href="/login">Sign in</Link>
