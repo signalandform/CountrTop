@@ -1,6 +1,7 @@
 {
   "crons": [
     {"path": "/api/cron/poll-square", "schedule": "*/2 * * * *"},
-    {"path": "/api/jobs/process-webhooks", "schedule": "* * * * *"}
+    {"path": "/api/jobs/process-webhooks", "schedule": "* * * * *"},
+    {"path": "/api/jobs/process-webhooks?provider=clover", "schedule": "* * * * *"}
   ]
 }

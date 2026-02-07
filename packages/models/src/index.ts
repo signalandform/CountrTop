@@ -325,10 +325,14 @@ export type CustomerTrackingState = 'queued_up' | 'working' | 'ready' | 'enjoy';
 
 export type KitchenTicket = {
   id: string;
-  /** POS order ID */
+  /** POS order ID (Square: square_order_id; Clover: from pos_orders) */
   externalOrderId: string;
   /** @deprecated Use externalOrderId */
   squareOrderId: string;
+  /** FK to pos_orders for Clover and other non-Square POS */
+  posOrderId?: string | null;
+  /** When POS order was canceled/voided; ticket in Ready lane with Canceled badge */
+  posCanceledAt?: string | null;
   /** POS provider for this ticket's order */
   posProvider?: POSProvider;
   locationId: string;

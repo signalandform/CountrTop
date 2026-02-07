@@ -94,6 +94,10 @@ export interface DataClient {
   // Multi-Location Support
   listVendorLocations(vendorId: string, includeInactive?: boolean): Promise<VendorLocation[]>;
   getVendorLocationBySquareId(squareLocationId: string): Promise<VendorLocation | null>;
+  getVendorLocationByExternalId(params: {
+    provider: 'square' | 'clover' | 'toast';
+    externalLocationId: string;
+  }): Promise<VendorLocation | null>;
   getVendorLocationById(locationId: string): Promise<VendorLocation | null>;
   createVendorLocation(location: Omit<VendorLocation, 'id' | 'createdAt' | 'updatedAt'>): Promise<VendorLocation>;
   updateVendorLocation(
@@ -160,6 +164,27 @@ export interface DataClient {
   upsertSquareOrderFromSquare(order: Record<string, unknown>): Promise<void>;
   ensureKitchenTicketForOpenOrder(order: Record<string, unknown>): Promise<void>;
   updateTicketForTerminalOrderState(order: Record<string, unknown>): Promise<void>;
+  upsertPosOrder(order: {
+    provider: string;
+    vendorId: string;
+    vendorLocationId: string;
+    externalOrderId: string;
+    externalLocationId: string;
+    status: string;
+    source?: string;
+    orderJson: Record<string, unknown>;
+  }): Promise<string>;
+  ensureKitchenTicketForPosOrder(order: {
+    provider: string;
+    externalOrderId: string;
+    locationId: string;
+    vendorId: string;
+    vendorLocationId: string;
+    posOrderId: string;
+    status: string;
+    placedAt: string;
+  }): Promise<void>;
+  updateTicketForCloverCanceled(params: { posOrderId: string; locationId: string }): Promise<void>;
 
   // KDS: Queue Management
   listActiveKitchenTickets(locationId: string): Promise<KitchenTicketWithOrder[]>;

@@ -35,6 +35,7 @@ type WebhookResponse = {
   reason?: string;
   signatureValid?: boolean;
   provider?: POSProvider;
+  verificationCode?: string; // For Clover webhook URL verification
 };
 
 // Future use for unified webhook result tracking
@@ -382,7 +383,7 @@ async function handleCloverWebhook(
     logger.warn('Clover webhook signature key not configured');
   }
 
-  let payload: CloverWebhookPayload;
+  let payload: unknown;
   try {
     payload = JSON.parse(rawBody);
   } catch {
@@ -392,8 +393,20 @@ async function handleCloverWebhook(
     };
   }
 
+  // Clover webhook URL verification: POST body is { "verificationCode": "..." }
+  const verificationCode = (payload as Record<string, unknown>)?.verificationCode;
+  if (typeof verificationCode === 'string') {
+    logger.info('Clover webhook verification request', { verificationCode });
+    return {
+      response: { ok: true, status: 'processed', provider: 'clover', verificationCode, signatureValid: true },
+      statusCode: 200
+    };
+  }
+
+  const typedPayload = payload as CloverWebhookPayload;
+
   // Clover sends events grouped by merchant
-  const merchantIds = Object.keys(payload.merchants || {});
+  const merchantIds = Object.keys(typedPayload.merchants || {});
   if (merchantIds.length === 0) {
     return {
       response: { ok: true, status: 'ignored', reason: 'No merchant events', provider: 'clover', signatureValid },
@@ -403,53 +416,33 @@ async function handleCloverWebhook(
 
   const dataClient = getServerDataClient();
 
-  // Process events for each merchant
   for (const merchantId of merchantIds) {
-    const events = payload.merchants[merchantId] || [];
-    
-    // Find vendor by Clover merchantId (stored in externalLocationId via vendor_locations)
-    const location = await dataClient.getVendorLocationBySquareId(merchantId);
+    const events = typedPayload.merchants[merchantId] || [];
+
+    const location = await dataClient.getVendorLocationByExternalId({
+      provider: 'clover',
+      externalLocationId: merchantId
+    });
     if (!location) {
       logger.info(`Unknown Clover merchant: ${merchantId}`);
       continue;
     }
 
-    const vendor = await dataClient.getVendorById(location.vendorId);
-    if (!vendor) {
-      continue;
-    }
-
     for (const event of events) {
-      // Handle order events
-      if (event.type.startsWith('O:')) {
-        const orderId = event.objectId;
-        
-        try {
-          // For order updates, we need to fetch the full order from Clover
-          // This would require the CloverAdapter - for now we just log
-          logger.info(`Clover order event: ${event.type} for order ${orderId}`, {
-            merchantId,
-            vendorId: vendor.id
-          });
-
-          // TODO: Fetch order from Clover and process like Square
-          // const adapter = getAdapterForLocation(location, vendor);
-          // const order = await adapter.fetchOrder(orderId);
-          // await dataClient.upsertCloverOrder(order);
-          // await dataClient.ensureKitchenTicketForOpenOrder(order);
-        } catch (error) {
-          logger.error(`Failed to process Clover order ${orderId}`, error instanceof Error ? error : new Error(String(error)));
-        }
-      }
-
-      // Handle payment events
-      if (event.type.startsWith('P:')) {
-        const paymentId = event.objectId;
-        logger.info(`Clover payment event: ${event.type} for payment ${paymentId}`, {
-          merchantId,
-          vendorId: vendor.id
+      const eventId = `clover:${merchantId}:${event.type}:${event.objectId}:${event.ts}`;
+      const { created, webhookEvent } = await dataClient.insertWebhookEventIfNew({
+        provider: 'clover',
+        eventId,
+        eventType: event.type,
+        payload: { merchantId, event }
+      });
+      if (created) {
+        await dataClient.enqueueWebhookJob({
+          provider: 'clover',
+          eventId,
+          webhookEventId: webhookEvent.id
         });
-        // Payment handling would be similar to Square
+        logger.info(`Clover webhook enqueued`, { eventId, eventType: event.type });
       }
     }
   }

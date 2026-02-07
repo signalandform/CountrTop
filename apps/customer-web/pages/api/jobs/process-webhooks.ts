@@ -3,6 +3,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { createLogger } from '@countrtop/api-client';
 import { getServerDataClient } from '../../../lib/dataClient';
 import { processSquareWebhookEvent } from '../../../lib/squareWebhookProcessor';
+import { processCloverWebhookEvent } from '../../../lib/cloverWebhookProcessor';
 
 const logger = createLogger({ requestId: 'process-webhooks' });
 
@@ -40,6 +41,7 @@ export default async function handler(
     return res.status(401).json({ ok: false, claimed: 0, done: 0, failed: 0, error: 'Unauthorized' });
   }
 
+  const provider = (req.query.provider as string) ?? 'square';
   const dataClient = getServerDataClient();
   const lockedBy = `worker-${Date.now()}`;
 
@@ -49,13 +51,15 @@ export default async function handler(
   }
 
   const jobs = await dataClient.claimWebhookJobsRPC({
-    provider: 'square',
+    provider,
     limit: CLAIM_LIMIT,
     lockedBy
   });
 
   let done = 0;
   let failed = 0;
+
+  const processEvent = provider === 'clover' ? processCloverWebhookEvent : processSquareWebhookEvent;
 
   for (const job of jobs) {
     const { id: jobId, eventId, webhookEventId, attempts } = job;
@@ -72,35 +76,51 @@ export default async function handler(
       }
 
       const payload = webhookEvent.payload as Record<string, unknown>;
-      const eventType = (payload?.type as string) ?? 'unknown';
-      if (eventType === 'order.updated' || eventType === 'order.created') {
-        const dataObj = payload?.data as Record<string, unknown> | undefined;
-        const objData = dataObj?.object as Record<string, unknown> | undefined;
-        const orderUpdated = objData?.order_updated as Record<string, unknown> | undefined;
-        const orderCreated = objData?.order_created as Record<string, unknown> | undefined;
-        const orderData = orderUpdated ?? orderCreated;
-        const orderObj = orderData?.order as Record<string, unknown> | undefined;
-        orderId = (orderData?.order_id ?? orderObj?.id) as string | undefined;
-        const locationId = (orderObj?.location_id ?? orderData?.location_id) as string | undefined;
-        if (locationId) {
-          const vendor = await dataClient.getVendorBySquareLocationId(locationId);
-          vendorId = vendor?.id;
+      if (provider === 'square') {
+        const eventType = (payload?.type as string) ?? 'unknown';
+        if (eventType === 'order.updated' || eventType === 'order.created') {
+          const dataObj = payload?.data as Record<string, unknown> | undefined;
+          const objData = dataObj?.object as Record<string, unknown> | undefined;
+          const orderUpdated = objData?.order_updated as Record<string, unknown> | undefined;
+          const orderCreated = objData?.order_created as Record<string, unknown> | undefined;
+          const orderData = orderUpdated ?? orderCreated;
+          const orderObj = orderData?.order as Record<string, unknown> | undefined;
+          orderId = (orderData?.order_id ?? orderObj?.id) as string | undefined;
+          const locationId = (orderObj?.location_id ?? orderData?.location_id) as string | undefined;
+          if (locationId) {
+            const vendor = await dataClient.getVendorBySquareLocationId(locationId);
+            vendorId = vendor?.id;
+          }
+        } else if (eventType === 'payment.updated') {
+          const dataObj = payload?.data as Record<string, unknown> | undefined;
+          const objData = dataObj?.object as Record<string, unknown> | undefined;
+          const payment = (objData?.payment as Record<string, unknown>) ?? objData;
+          orderId = (payment?.orderId ?? payment?.order_id) as string | undefined;
+          const locationId = (payment?.locationId ?? payment?.location_id) as string | undefined;
+          if (locationId) {
+            const vendor = await dataClient.getVendorBySquareLocationId(locationId);
+            vendorId = vendor?.id;
+          }
         }
-      } else if (eventType === 'payment.updated') {
-        const dataObj = payload?.data as Record<string, unknown> | undefined;
-        const objData = dataObj?.object as Record<string, unknown> | undefined;
-        const payment = (objData?.payment as Record<string, unknown>) ?? objData;
-        orderId = (payment?.orderId ?? payment?.order_id) as string | undefined;
-        const locationId = (payment?.locationId ?? payment?.location_id) as string | undefined;
-        if (locationId) {
-          const vendor = await dataClient.getVendorBySquareLocationId(locationId);
-          vendorId = vendor?.id;
+      } else if (provider === 'clover') {
+        const event = payload?.event as { objectId?: string } | undefined;
+        orderId = event?.objectId;
+        const merchantId = payload?.merchantId as string | undefined;
+        if (merchantId) {
+          const location = await dataClient.getVendorLocationByExternalId({
+            provider: 'clover',
+            externalLocationId: merchantId
+          });
+          if (location) {
+            const vendor = await dataClient.getVendorById(location.vendorId);
+            vendorId = vendor?.id;
+          }
         }
       }
 
-      logger.info('Processing webhook job', { jobId, eventId, orderId, vendorId });
+      logger.info('Processing webhook job', { jobId, eventId, orderId, vendorId, provider });
 
-      await processSquareWebhookEvent(webhookEvent, dataClient);
+      await processEvent(webhookEvent, dataClient);
 
       await dataClient.markWebhookJobDone(jobId);
       await dataClient.updateWebhookEventStatus(webhookEventId, {

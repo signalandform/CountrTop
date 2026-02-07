@@ -414,10 +414,42 @@ export type Database = {
         Update: Partial<Database['public']['Tables']['square_orders']['Insert']>;
         Relationships: [];
       };
+      pos_orders: {
+        Row: {
+          id: string;
+          provider: string;
+          vendor_id: string;
+          vendor_location_id: string;
+          external_order_id: string;
+          external_location_id: string;
+          status: string;
+          source: string;
+          order_json: Record<string, unknown>;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          provider: string;
+          vendor_id: string;
+          vendor_location_id: string;
+          external_order_id: string;
+          external_location_id: string;
+          status: string;
+          source?: string;
+          order_json?: Record<string, unknown>;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['pos_orders']['Insert']>;
+        Relationships: [];
+      };
       kitchen_tickets: {
         Row: {
           id: string;
-          square_order_id: string;
+          square_order_id: string | null;
+          pos_order_id: string | null;
+          pos_canceled_at: string | null;
           location_id: string;
           pos_provider: string;
           ct_reference_id: string | null;
@@ -441,7 +473,9 @@ export type Database = {
         };
         Insert: {
           id?: string;
-          square_order_id: string;
+          square_order_id?: string | null;
+          pos_order_id?: string | null;
+          pos_canceled_at?: string | null;
           location_id: string;
           pos_provider?: string;
           ct_reference_id?: string | null;
@@ -1031,6 +1065,29 @@ export class SupabaseDataClient implements DataClient {
       return data ? mapVendorLocationFromRow(data as Database['public']['Tables']['vendor_locations']['Row']) : null;
     } catch (error) {
       logQueryPerformance('getVendorLocationBySquareId', startTime, false, error);
+      throw error;
+    }
+  }
+
+  async getVendorLocationByExternalId(params: {
+    provider: 'square' | 'clover' | 'toast';
+    externalLocationId: string;
+  }): Promise<VendorLocation | null> {
+    const startTime = Date.now();
+    try {
+      const { data, error } = await this.client
+        .from('vendor_locations')
+        .select('*')
+        .eq('pos_provider', params.provider)
+        .eq('square_location_id', params.externalLocationId)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      logQueryPerformance('getVendorLocationByExternalId', startTime, true);
+      return data ? mapVendorLocationFromRow(data as Database['public']['Tables']['vendor_locations']['Row']) : null;
+    } catch (error) {
+      logQueryPerformance('getVendorLocationByExternalId', startTime, false, error);
       throw error;
     }
   }
@@ -2671,12 +2728,151 @@ export class SupabaseDataClient implements DataClient {
     }
   }
 
+  /**
+   * Upserts a Clover (or other POS) order into pos_orders. Returns the pos_order id.
+   */
+  async upsertPosOrder(order: {
+    provider: string;
+    vendorId: string;
+    vendorLocationId: string;
+    externalOrderId: string;
+    externalLocationId: string;
+    status: string;
+    source?: string;
+    orderJson: Record<string, unknown>;
+  }): Promise<string> {
+    const startTime = Date.now();
+    try {
+      const payload: Database['public']['Tables']['pos_orders']['Insert'] = {
+        provider: order.provider,
+        vendor_id: order.vendorId,
+        vendor_location_id: order.vendorLocationId,
+        external_order_id: order.externalOrderId,
+        external_location_id: order.externalLocationId,
+        status: order.status,
+        source: order.source ?? 'pos',
+        order_json: order.orderJson,
+        updated_at: new Date().toISOString()
+      };
+
+      const { data, error } = await this.client
+        .from('pos_orders')
+        .upsert(payload, { onConflict: 'provider,external_order_id' })
+        .select('id')
+        .single();
+
+      if (error) throw error;
+      logQueryPerformance('upsertPosOrder', startTime, true);
+      return (data as { id: string }).id;
+    } catch (error) {
+      logQueryPerformance('upsertPosOrder', startTime, false, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Ensures a kitchen ticket exists for an open Clover (or other POS) order
+   */
+  async ensureKitchenTicketForPosOrder(order: {
+    provider: string;
+    externalOrderId: string;
+    locationId: string;
+    vendorId: string;
+    vendorLocationId: string;
+    posOrderId: string;
+    status: string;
+    placedAt: string;
+  }): Promise<void> {
+    const startTime = Date.now();
+    try {
+      if (order.status !== 'open') {
+        return;
+      }
+
+      const { data: existingTicket } = await this.client
+        .from('kitchen_tickets')
+        .select('id, status')
+        .eq('pos_order_id', order.posOrderId)
+        .maybeSingle();
+
+      if (existingTicket) {
+        const { error } = await this.client
+          .from('kitchen_tickets')
+          .update({ updated_at: new Date().toISOString() })
+          .eq('pos_order_id', order.posOrderId);
+        if (error) throw error;
+      } else {
+        const insertPayload: Database['public']['Tables']['kitchen_tickets']['Insert'] = {
+          square_order_id: null,
+          pos_order_id: order.posOrderId,
+          location_id: order.locationId,
+          pos_provider: order.provider,
+          source: 'clover_pos',
+          status: 'placed',
+          placed_at: order.placedAt,
+          updated_at: new Date().toISOString()
+        };
+
+        const { error } = await this.client
+          .from('kitchen_tickets')
+          .insert(insertPayload);
+
+        if (error) throw error;
+      }
+
+      logQueryPerformance('ensureKitchenTicketForPosOrder', startTime, true);
+    } catch (error) {
+      logQueryPerformance('ensureKitchenTicketForPosOrder', startTime, false, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Moves ticket to Ready lane and sets pos_canceled_at when Clover order is voided/canceled
+   */
+  async updateTicketForCloverCanceled(params: {
+    posOrderId: string;
+    locationId: string;
+  }): Promise<void> {
+    const startTime = Date.now();
+    try {
+      const now = new Date().toISOString();
+
+      const { data: ticket, error: fetchError } = await this.client
+        .from('kitchen_tickets')
+        .select('id, status')
+        .eq('pos_order_id', params.posOrderId)
+        .maybeSingle();
+
+      if (fetchError) throw fetchError;
+      if (!ticket) return;
+
+      if (ticket.status === 'completed' || ticket.status === 'canceled') return;
+
+      const { error } = await this.client
+        .from('kitchen_tickets')
+        .update({
+          status: 'ready',
+          ready_at: now,
+          pos_canceled_at: now,
+          updated_at: now
+        })
+        .eq('pos_order_id', params.posOrderId);
+
+      if (error) throw error;
+      logQueryPerformance('updateTicketForCloverCanceled', startTime, true);
+    } catch (error) {
+      logQueryPerformance('updateTicketForCloverCanceled', startTime, false, error);
+      throw error;
+    }
+  }
+
   // ============================================================================
   // KDS: Queue Management
   // ============================================================================
 
   /**
-   * Lists active kitchen tickets for a location with their associated Square orders
+   * Lists active kitchen tickets for a location with their associated Square orders or pos_orders
    */
   async listActiveKitchenTickets(locationId: string): Promise<KitchenTicketWithOrder[]> {
     const startTime = Date.now();
@@ -2686,6 +2882,8 @@ export class SupabaseDataClient implements DataClient {
         .select(`
           id,
           square_order_id,
+          pos_order_id,
+          pos_canceled_at,
           location_id,
           pos_provider,
           ct_reference_id,
@@ -2716,6 +2914,15 @@ export class SupabaseDataClient implements DataClient {
             line_items,
             fulfillment,
             source
+          ),
+          pos_orders (
+            id,
+            external_order_id,
+            external_location_id,
+            status,
+            order_json,
+            created_at,
+            updated_at
           )
         `)
         .eq('location_id', locationId)
@@ -2736,17 +2943,23 @@ export class SupabaseDataClient implements DataClient {
           row as unknown as Database['public']['Tables']['kitchen_tickets']['Row']
         );
 
-        // Handle nested square_orders (can be null or array)
+        // Handle nested square_orders or pos_orders
         let order: SquareOrder | null = null;
         const rowWithOrders = row as unknown as Database['public']['Tables']['kitchen_tickets']['Row'] & {
           square_orders?: Database['public']['Tables']['square_orders']['Row'] | Database['public']['Tables']['square_orders']['Row'][];
+          pos_orders?: Database['public']['Tables']['pos_orders']['Row'] | Database['public']['Tables']['pos_orders']['Row'][];
         };
-        const orderData = rowWithOrders.square_orders;
-        if (orderData) {
-          // Supabase returns nested data as array or single object depending on relationship
-          const orderRow = Array.isArray(orderData) ? orderData[0] : orderData;
+        const squareOrderData = rowWithOrders.square_orders;
+        const posOrderData = rowWithOrders.pos_orders;
+        if (squareOrderData) {
+          const orderRow = Array.isArray(squareOrderData) ? squareOrderData[0] : squareOrderData;
           if (orderRow) {
             order = mapSquareOrderFromRow(orderRow as Database['public']['Tables']['square_orders']['Row']);
+          }
+        } else if (posOrderData) {
+          const posRow = Array.isArray(posOrderData) ? posOrderData[0] : posOrderData;
+          if (posRow) {
+            order = mapPosOrderFromRow(posRow as Database['public']['Tables']['pos_orders']['Row']);
           }
         }
 
@@ -2754,8 +2967,7 @@ export class SupabaseDataClient implements DataClient {
         if (order) {
           results.push({ ticket, order });
         } else {
-          // Log warning but don't fail - this should be rare
-          console.warn(`Kitchen ticket ${ticket.id} has no associated Square order`);
+          console.warn(`Kitchen ticket ${ticket.id} has no associated order (square or pos)`);
         }
       }
 
@@ -4543,6 +4755,27 @@ const mapAuthUserNullable = (user: SupabaseAuthUser | null): User | null => {
 };
 
 // KDS Mapping Helpers
+export const mapPosOrderFromRow = (
+  row: Database['public']['Tables']['pos_orders']['Row']
+): SquareOrder => {
+  const orderJson = (row.order_json || {}) as Record<string, unknown>;
+  return {
+    externalOrderId: row.external_order_id,
+    squareOrderId: row.external_order_id,
+    posProvider: row.provider as 'square' | 'toast' | 'clover',
+    locationId: row.external_location_id,
+    state: row.status,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    referenceId: (orderJson.referenceId ?? orderJson.reference_id) as string | null ?? null,
+    metadata: (orderJson.metadata as Record<string, unknown>) ?? null,
+    lineItems: (orderJson.lineItems ?? orderJson.line_items ?? orderJson.items) as unknown[] | null ?? null,
+    fulfillment: (orderJson.fulfillment as Record<string, unknown>) ?? null,
+    source: (orderJson.source as 'countrtop_online' | 'square_pos' | 'clover_pos' | 'pos') ?? 'pos',
+    raw: orderJson
+  };
+};
+
 export const mapSquareOrderFromRow = (
   row: Database['public']['Tables']['square_orders']['Row']
 ): SquareOrder => ({
@@ -4583,8 +4816,10 @@ export const mapKitchenTicketFromRow = (
 ): KitchenTicket => ({
   id: row.id,
   // POS-agnostic fields
-  externalOrderId: row.square_order_id, // Use square_order_id for now (will rename column later)
-  squareOrderId: row.square_order_id, // Deprecated alias
+  externalOrderId: row.square_order_id ?? row.pos_order_id ?? '',
+  squareOrderId: row.square_order_id ?? '',
+  posOrderId: row.pos_order_id ?? undefined,
+  posCanceledAt: row.pos_canceled_at ?? undefined,
   posProvider: (row.pos_provider ?? 'square') as 'square' | 'toast' | 'clover',
   locationId: row.location_id,
   ctReferenceId: row.ct_reference_id ?? undefined,

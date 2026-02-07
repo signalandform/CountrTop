@@ -21,7 +21,7 @@ export type Ticket = {
     locationId: string;
     ctReferenceId?: string | null;
     customerUserId?: string | null;
-    source: 'countrtop_online' | 'square_pos';
+    source: 'countrtop_online' | 'square_pos' | 'clover_pos' | 'pos';
     status: 'placed' | 'preparing' | 'ready';
     shortcode?: string | null;
     promotedAt?: string | null;
@@ -29,6 +29,7 @@ export type Ticket = {
     readyAt?: string | null;
     completedAt?: string | null;
     updatedAt: string;
+    posCanceledAt?: string | null;
     // New fields for hold/notes/reorder
     heldAt?: string | null;
     heldReason?: string | null;
@@ -45,7 +46,7 @@ export type Ticket = {
     referenceId?: string | null;
     metadata?: Record<string, unknown> | null;
     lineItems?: unknown[] | null;
-    source: 'countrtop_online' | 'square_pos';
+    source: 'countrtop_online' | 'square_pos' | 'clover_pos' | 'pos';
     scheduledPickupAt?: string | null;
   };
   customer?: CustomerInfo;

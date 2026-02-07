@@ -210,6 +210,7 @@ export default async function handler(
           readyAt: ticket.readyAt ?? null,
           completedAt: ticket.completedAt ?? null,
           updatedAt: ticket.updatedAt,
+          posCanceledAt: (ticket as { posCanceledAt?: string | null }).posCanceledAt ?? null,
           // New fields
           heldAt: (ticket as Record<string, unknown>).heldAt as string | null ?? null,
           heldReason: (ticket as Record<string, unknown>).heldReason as string | null ?? null,

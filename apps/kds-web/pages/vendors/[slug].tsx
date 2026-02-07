@@ -1045,6 +1045,9 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
                                   <span className="ticket-shortcode">{ticket.shortcode}</span>
                                 )}
                                 <div className="badge-row">
+                                  {(ticket as { posCanceledAt?: string | null }).posCanceledAt && (
+                                    <div className="canceled-badge">Canceled</div>
+                                  )}
                                   {scheduledLabel && (
                                     <div className="scheduled-badge">📅 {scheduledLabel}</div>
                                   )}
@@ -1137,7 +1140,10 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
                               {ticket.shortcode && (
                                 <span className="ticket-shortcode">{ticket.shortcode}</span>
                               )}
-                              <div className="badge-row">
+                                <div className="badge-row">
+                                {(ticket as { posCanceledAt?: string | null }).posCanceledAt && (
+                                  <div className="canceled-badge">Canceled</div>
+                                )}
                                 {scheduledLabel && (
                                   <div className="scheduled-badge" title={`Scheduled pickup: ${scheduledLabel}`}>
                                     📅 {scheduledLabel}
@@ -1201,6 +1207,9 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
                                   <span className="ticket-shortcode">{ticket.shortcode}</span>
                                 )}
                                 <div className="badge-row">
+                                  {(ticket as { posCanceledAt?: string | null }).posCanceledAt && (
+                                    <div className="canceled-badge">Canceled</div>
+                                  )}
                                   {scheduledLabel && (
                                     <div className="scheduled-badge">📅 {scheduledLabel}</div>
                                   )}
@@ -1293,6 +1302,9 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
                                 <span className="ticket-shortcode">{ticket.shortcode}</span>
                               )}
                               <div className="badge-row">
+                                {(ticket as { posCanceledAt?: string | null }).posCanceledAt && (
+                                  <div className="canceled-badge">Canceled</div>
+                                )}
                                 {scheduledLabel && (
                                   <div className="scheduled-badge" title={`Scheduled pickup: ${scheduledLabel}`}>
                                     📅 {scheduledLabel}
@@ -1977,7 +1989,8 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
             border: 1px solid rgba(52, 199, 89, 0.3);
           }
 
-          .source-badge[data-source='square_pos'] {
+          .source-badge[data-source='square_pos'],
+          .source-badge[data-source='clover_pos'] {
             background: rgba(255, 159, 10, 0.2);
             color: #ff9f0a;
             border: 1px solid rgba(255, 159, 10, 0.3);
@@ -2275,6 +2288,16 @@ export default function VendorQueuePage({ vendorSlug, vendorName, locationId: in
             font-weight: 500;
           }
 
+          .canceled-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            background: rgba(220, 53, 69, 0.15);
+            color: #dc3545;
+            border: 1px solid rgba(220, 53, 69, 0.4);
+          }
           .held-badge {
             display: inline-block;
             padding: 4px 10px;

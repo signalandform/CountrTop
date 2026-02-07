@@ -101,6 +101,13 @@ export class MockDataClient implements DataClient {
     return null;
   }
 
+  async getVendorLocationByExternalId(_params: {
+    provider: 'square' | 'clover' | 'toast';
+    externalLocationId: string;
+  }): Promise<import('./models').VendorLocation | null> {
+    return null;
+  }
+
   async getVendorLocationById(locationId: string): Promise<import('./models').VendorLocation | null> {
     return null;
   }
@@ -518,6 +525,39 @@ export class MockDataClient implements DataClient {
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async updateTicketForTerminalOrderState(_order: Record<string, unknown>): Promise<void> {
+    // No-op for mock client
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async upsertPosOrder(_order: {
+    provider: string;
+    vendorId: string;
+    vendorLocationId: string;
+    externalOrderId: string;
+    externalLocationId: string;
+    status: string;
+    source?: string;
+    orderJson: Record<string, unknown>;
+  }): Promise<string> {
+    return 'mock-pos-order-id';
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async ensureKitchenTicketForPosOrder(_order: {
+    provider: string;
+    externalOrderId: string;
+    locationId: string;
+    vendorId: string;
+    vendorLocationId: string;
+    posOrderId: string;
+    status: string;
+    placedAt: string;
+  }): Promise<void> {
+    // No-op for mock client
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async updateTicketForCloverCanceled(_params: { posOrderId: string; locationId: string }): Promise<void> {
     // No-op for mock client
   }
 
