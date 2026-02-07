@@ -128,6 +128,9 @@ importers:
       '@countrtop/models':
         specifier: workspace:*
         version: link:../../packages/models
+      '@countrtop/pos-adapters':
+        specifier: workspace:*
+        version: link:../../packages/pos-adapters
       '@supabase/supabase-js':
         specifier: ^2.45.6
         version: 2.88.0
