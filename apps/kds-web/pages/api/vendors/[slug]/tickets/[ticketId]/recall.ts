@@ -129,7 +129,7 @@ export default async function handler(
       ok: true,
       ticket: {
         id: ticketRow.id,
-        squareOrderId: ticketRow.square_order_id,
+        squareOrderId: ticketRow.square_order_id ?? '',
         locationId: ticketRow.location_id,
         status: 'ready' as const,
         placedAt: ticketRow.placed_at,

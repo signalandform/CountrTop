@@ -132,7 +132,7 @@ export default async function handler(
     }
 
     // Fetch orders from square_orders table (has dedicated line_items column)
-    const squareOrderIds = ticketsData.map(t => t.square_order_id);
+    const squareOrderIds = ticketsData.map(t => t.square_order_id).filter((id): id is string => id != null);
     const { data: ordersData, error: ordersError } = await supabaseAdmin
       .from('square_orders')
       .select('square_order_id, location_id, state, created_at, updated_at, reference_id, metadata, line_items, source')
@@ -150,13 +150,15 @@ export default async function handler(
     const tickets = ticketsData
       .map(ticketRow => {
         const ticket = ticketRow as Database['public']['Tables']['kitchen_tickets']['Row'];
-        const order = ordersMap.get(ticket.square_order_id);
+        const orderId = ticket.square_order_id;
+        if (!orderId) return null;
+        const order = ordersMap.get(orderId);
         if (!order) return null;
 
         return {
           ticket: {
             id: ticket.id,
-            squareOrderId: ticket.square_order_id,
+            squareOrderId: orderId,
             locationId: ticket.location_id,
             ctReferenceId: ticket.ct_reference_id ?? null,
             customerUserId: ticket.customer_user_id ?? null,

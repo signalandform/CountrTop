@@ -129,7 +129,7 @@ export default async function handler(
     };
 
     // 2. Get item counts from active orders
-    const orderIds = tickets.map(t => t.square_order_id);
+    const orderIds = tickets.map(t => t.square_order_id).filter((id): id is string => id != null);
     let itemCounts: ItemCount[] = [];
 
     if (orderIds.length > 0) {
