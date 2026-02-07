@@ -25,17 +25,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const env = (process.env.SQUARE_ENVIRONMENT ?? 'sandbox').toLowerCase() as 'sandbox' | 'production';
   const clientId =
     env === 'production'
-      ? process.env.SQUARE_APPLICATION_ID
-      : process.env.SQUARE_SANDBOX_APPLICATION_ID;
+      ? process.env.SQUARE_APPLICATION_ID ?? process.env.SQUARE_SANDBOX_APPLICATION_ID
+      : process.env.SQUARE_SANDBOX_APPLICATION_ID ?? process.env.SQUARE_APPLICATION_ID;
 
   if (!clientId) {
-    return res.status(500).json({
-      error: 'Square OAuth not configured. Set SQUARE_APPLICATION_ID or SQUARE_SANDBOX_APPLICATION_ID.'
-    });
+    return res.redirect(302, `/vendors/${slug}/settings?square=error&reason=not_configured`);
   }
 
+  const effectiveEnv = clientId === process.env.SQUARE_APPLICATION_ID ? 'production' : 'sandbox';
   const baseUrl =
-    env === 'production'
+    effectiveEnv === 'production'
       ? 'https://connect.squareup.com/oauth2/authorize'
       : 'https://connect.squareupsandbox.com/oauth2/authorize';
 

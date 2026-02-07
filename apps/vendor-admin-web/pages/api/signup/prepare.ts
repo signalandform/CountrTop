@@ -184,16 +184,7 @@ export default async function handler(
 
     await supabase.from('vendors').update({ admin_user_id: authData.user.id }).eq('id', vendorId);
 
-    const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
-      type: 'magiclink',
-      email
-    });
-
-    const redirect =
-      linkError || !linkData?.properties?.action_link
-        ? `/login?signup=success&email=${encodeURIComponent(email)}`
-        : linkData.properties.action_link;
-
+    const redirect = `/login?signup=success&email=${encodeURIComponent(email)}`;
     return res.status(200).json({ ok: true, redirect });
   } catch (err) {
     console.error('Signup prepare error:', err);

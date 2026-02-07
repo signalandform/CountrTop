@@ -267,10 +267,10 @@ async function handleConnectCallback(
   const env = (process.env.SQUARE_ENVIRONMENT ?? 'sandbox').toLowerCase() as 'sandbox' | 'production';
   const clientId =
     env === 'production'
-      ? process.env.SQUARE_APPLICATION_ID
-      : process.env.SQUARE_SANDBOX_APPLICATION_ID;
+      ? process.env.SQUARE_APPLICATION_ID ?? process.env.SQUARE_SANDBOX_APPLICATION_ID
+      : process.env.SQUARE_SANDBOX_APPLICATION_ID ?? process.env.SQUARE_APPLICATION_ID;
   const clientSecret =
-    env === 'production'
+    clientId === process.env.SQUARE_APPLICATION_ID
       ? process.env.SQUARE_APPLICATION_SECRET
       : process.env.SQUARE_SANDBOX_APPLICATION_SECRET;
 
@@ -278,12 +278,14 @@ async function handleConnectCallback(
     return res.redirect(302, `/vendors/${slug}/settings?square=error&reason=not_configured`);
   }
 
+  const effectiveEnv = clientId === process.env.SQUARE_APPLICATION_ID ? 'production' : 'sandbox';
+
   const proto = (req.headers['x-forwarded-proto'] as string) ?? 'https';
   const host = (req.headers['x-forwarded-host'] as string) ?? req.headers.host ?? 'localhost:3000';
   const redirectUri = `${proto}://${host}/api/square-oauth/callback`;
 
   const tokenUrl =
-    env === 'production'
+    effectiveEnv === 'production'
       ? 'https://connect.squareup.com/oauth2/token'
       : 'https://connect.squareupsandbox.com/oauth2/token';
 
@@ -324,7 +326,7 @@ async function handleConnectCallback(
     return res.redirect(302, '/vendors?square=error&reason=vendor_not_found');
   }
 
-  const square = createSquareClientFromOAuthToken(accessToken, env);
+  const square = createSquareClientFromOAuthToken(accessToken, effectiveEnv);
   let locationIds: string[] = [];
   try {
     const { result } = await square.locationsApi.listLocations();
@@ -337,7 +339,7 @@ async function handleConnectCallback(
 
   const selectedLocationId = locationIds[0] ?? null;
 
-  await dataClient.setVendorSquareIntegration(vendor.id, env, {
+  await dataClient.setVendorSquareIntegration(vendor.id, effectiveEnv, {
     squareAccessToken: accessToken,
     squareRefreshToken: refreshToken,
     squareMerchantId: merchantId,
