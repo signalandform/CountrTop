@@ -4,12 +4,12 @@
  * Implements the POSAdapter interface for Square.
  */
 
-import { Client, Environment } from 'square';
+import { Client, Environment } from 'square/legacy';
 import type { 
   Order as SquareOrderType,
   CatalogObject,
   Location as SquareLocationType,
-} from 'square';
+} from 'square/legacy';
 
 import type { POSAdapter, POSAdapterConfig, SquareCredentials } from '../adapter';
 import {
@@ -49,7 +49,9 @@ export class SquareAdapter implements POSAdapter {
     this.debug = config.debug ?? false;
 
     this.client = new Client({
-      accessToken: this.credentials.accessToken,
+      bearerAuthCredentials: {
+        accessToken: this.credentials.accessToken,
+      },
       environment: config.environment === 'production' 
         ? Environment.Production 
         : Environment.Sandbox,
