@@ -55,22 +55,34 @@ export default async function handler(
     }
 
     // The orderId could be:
-    // 1. A ct_reference_id (starts with ct_)
-    // 2. A square_order_id
-    
-    // Build query based on orderId format
+    // 1. A ct_reference_id (starts with ct_) - look up across all vendor locations (Square + Clover)
+    // 2. A square_order_id (or other POS order id)
+    const locations = await dataClient.listVendorLocations(vendor.id);
+    const vendorLocationIds = [
+      ...(vendor.squareLocationId ? [vendor.squareLocationId] : []),
+      ...locations.map((l) => l.externalLocationId ?? l.squareLocationId).filter(Boolean)
+    ];
+    const uniqueLocationIds = [...new Set(vendorLocationIds)].filter(Boolean);
+    const locationIdsToQuery = uniqueLocationIds.length > 0 ? uniqueLocationIds : (vendor.squareLocationId ? [vendor.squareLocationId] : []);
+
+    if (locationIdsToQuery.length === 0) {
+      return res.status(200).json({
+        ok: true,
+        order: { status: 'unknown', estimatedWaitMinutes: null }
+      });
+    }
+
     let ticketQuery = supabaseAdmin
       .from('kitchen_tickets')
       .select('id, status, shortcode, placed_at, ready_at, completed_at, ct_reference_id, square_order_id, location_id')
-      .eq('location_id', vendor.squareLocationId);
-    
-    // Use appropriate filter based on ID format
+      .in('location_id', locationIdsToQuery);
+
     if (orderId.startsWith('ct_')) {
       ticketQuery = ticketQuery.eq('ct_reference_id', orderId);
     } else {
       ticketQuery = ticketQuery.eq('square_order_id', orderId);
     }
-    
+
     const { data: ticketData, error: ticketError } = await ticketQuery.maybeSingle();
 
     if (ticketError) {
@@ -92,11 +104,11 @@ export default async function handler(
     // Calculate estimated wait based on daily average (if available)
     let estimatedWaitMinutes: number | null = null;
     if (ticketData.status !== 'completed' && ticketData.status !== 'ready') {
-      // Get recent prep times to estimate wait
+      const ticketLocationId = ticketData.location_id;
       const { data: recentTickets } = await supabaseAdmin
         .from('kitchen_tickets')
         .select('placed_at, ready_at')
-        .eq('location_id', vendor.squareLocationId)
+        .eq('location_id', ticketLocationId)
         .eq('status', 'completed')
         .not('ready_at', 'is', null)
         .order('completed_at', { ascending: false })

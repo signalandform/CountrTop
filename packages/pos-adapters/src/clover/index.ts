@@ -316,52 +316,96 @@ export class CloverAdapter implements POSAdapter {
   }
 
   // ---------------------------------------------------------------------------
-  // Checkout Operations
+  // Checkout Operations (Clover Hosted Checkout)
   // ---------------------------------------------------------------------------
 
+  /**
+   * Create a Hosted Checkout session. Requires item name and priceCents (HCO does not use Clover catalog).
+   */
   async createCheckout(input: CheckoutInput): Promise<CheckoutResult> {
     try {
-      // Step 1: Create order with line items
-      const lineItems = input.items.map(item => ({
-        item: { id: item.catalogItemId },
-        unitQty: item.quantity * 1000, // Clover uses 1000 = 1 unit
-        note: item.note,
-        // Modifiers would need separate handling
-      }));
-
-      const orderResponse = await this.fetch<CloverOrder>('/orders', {
-        method: 'POST',
-        body: JSON.stringify({
-          state: 'open',
-          manualTransaction: false,
-          groupLineItems: true,
-          note: input.metadata?.note || '',
-          externalReferenceId: input.metadata?.ct_reference_id || `ct_${Date.now()}`,
-        }),
+      const lineItems = input.items.map((item) => {
+        const name = item.name ?? 'Item';
+        const priceCents = item.priceCents ?? 0;
+        if (priceCents < 0) {
+          throw new POSAdapterError('Item price required for Clover Hosted Checkout', 'clover', 'INVALID_INPUT');
+        }
+        return {
+          name,
+          price: priceCents,
+          unitQty: item.quantity,
+          note: item.note ?? undefined,
+        };
       });
 
-      const orderId = orderResponse.id;
+      const customer: Record<string, unknown> = {};
+      if (input.customerEmail) customer.email = input.customerEmail;
+      if (input.customerName) {
+        const parts = input.customerName.trim().split(/\s+/);
+        customer.firstName = parts[0] ?? '';
+        customer.lastName = parts.slice(1).join(' ') || '';
+      }
+      if (input.customerPhone) customer.phoneNumber = input.customerPhone.replace(/\D/g, '').slice(0, 10) || undefined;
 
-      // Step 2: Add line items to order
-      for (const lineItem of lineItems) {
-        await this.fetch(`/orders/${orderId}/line_items`, {
-          method: 'POST',
-          body: JSON.stringify(lineItem),
-        });
+      const body = {
+        customer: Object.keys(customer).length > 0 ? customer : {},
+        shoppingCart: { lineItems },
+        redirectUrls: {
+          success: input.redirectUrl,
+          failure: input.redirectUrl.replace(/orderId=[^&]+/, 'orderId=error'),
+        },
+      };
+
+      const hcoBaseUrl =
+        this.baseUrl.includes('sandbox')
+          ? 'https://apisandbox.dev.clover.com'
+          : 'https://api.clover.com';
+      const url = `${hcoBaseUrl}/invoicingcheckoutservice/v1/checkouts`;
+
+      if (this.debug) {
+        console.log('[Clover] POST', url, '(Hosted Checkout)');
       }
 
-      // Step 3: For online checkout, Clover uses their eCommerce API
-      // This would typically redirect to Clover's hosted checkout
-      // For now, we create the order and return a checkout URL
-      
-      // Note: Full eCommerce integration requires Clover's eCommerce API key
-      // and hosted checkout page setup. This is a simplified version.
-      const checkoutUrl = `https://www.clover.com/pay/${this.credentials.merchantId}?orderId=${orderId}&redirect=${encodeURIComponent(input.redirectUrl)}`;
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.credentials.accessToken}`,
+          'Content-Type': 'application/json',
+          'X-Clover-Merchant-Id': this.credentials.merchantId,
+        },
+        body: JSON.stringify(body),
+      });
+
+      if (!response.ok) {
+        throw await this.handleErrorResponse(response);
+      }
+
+      const data = (await response.json()) as {
+        href?: string;
+        checkoutSessionId?: string;
+        createdTime?: number;
+        expirationTime?: number;
+      };
+
+      const checkoutUrl = data.href ?? '';
+      const checkoutSessionId = data.checkoutSessionId ?? '';
+      const expiresAt =
+        data.expirationTime != null
+          ? new Date(data.expirationTime).toISOString()
+          : undefined;
+
+      if (!checkoutUrl || !checkoutSessionId) {
+        throw new POSAdapterError(
+          'Clover Hosted Checkout did not return URL or session ID',
+          'clover',
+          'CHECKOUT_FAILED'
+        );
+      }
 
       return {
         checkoutUrl,
-        orderId,
-        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours
+        orderId: checkoutSessionId,
+        expiresAt,
       };
     } catch (error) {
       throw this.wrapError(error, 'createCheckout');

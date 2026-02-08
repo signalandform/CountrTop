@@ -2,11 +2,14 @@ import { randomUUID } from 'crypto';
 import type { NextApiRequest, NextApiResponse } from 'next';
 
 import { createLogger } from '@countrtop/api-client';
+import { getAdapterForLocation } from '@countrtop/pos-adapters';
 import { getServerDataClient } from '../../../../lib/dataClient';
 import { rateLimiters } from '../../../../lib/rateLimit';
 import { getSquareClientForVendorOrLegacy } from '../../../../lib/square';
 
 const logger = createLogger({ requestId: 'checkout' });
+
+const cloverEnv = (process.env.CLOVER_ENVIRONMENT ?? (process.env.NODE_ENV === 'production' ? 'production' : 'sandbox')) as 'sandbox' | 'production';
 
 type CheckoutItem = {
   id: string;
@@ -113,21 +116,105 @@ async function handler(req: NextApiRequest, res: NextApiResponse<CheckoutRespons
   }
 
   try {
-    let locationId = vendor.squareLocationId;
-    let matchedLocation: Awaited<ReturnType<typeof dataClient.listVendorLocations>>[0] | null = null;
-    if (body.locationId) {
-      const locations = await dataClient.listVendorLocations(vendor.id);
-      matchedLocation = locations.find(
-        (loc) => loc.squareLocationId === body.locationId || loc.externalLocationId === body.locationId
-      ) ?? null;
-      if (!matchedLocation) {
-        return res.status(400).json({ ok: false, error: 'Invalid pickup location' });
-      }
-      if (matchedLocation.onlineOrderingEnabled === false) {
-        return res.status(400).json({ ok: false, error: 'Online ordering is disabled for this location' });
-      }
-      locationId = matchedLocation.squareLocationId || matchedLocation.externalLocationId || locationId;
+    const locations = await dataClient.listVendorLocations(vendor.id);
+    const matchedLocation = body.locationId
+      ? locations.find(
+          (loc) => loc.squareLocationId === body.locationId || loc.externalLocationId === body.locationId
+        ) ?? null
+      : locations.find((l) => l.isPrimary) ?? locations[0] ?? null;
+
+    if (!matchedLocation) {
+      return res.status(400).json({ ok: false, error: 'No pickup location configured' });
     }
+    if (matchedLocation.onlineOrderingEnabled === false) {
+      return res.status(400).json({ ok: false, error: 'Online ordering is disabled for this location' });
+    }
+
+    const locationId = matchedLocation.externalLocationId ?? matchedLocation.squareLocationId;
+    const posProvider = matchedLocation.posProvider ?? 'square';
+
+    const leadTimeMinutes = matchedLocation.onlineOrderingLeadTimeMinutes ?? 15;
+    const scheduledPickupAt = typeof body.scheduledPickupAt === 'string' && body.scheduledPickupAt.trim()
+      ? body.scheduledPickupAt.trim()
+      : null;
+
+    if (scheduledPickupAt) {
+      const pickupDate = new Date(scheduledPickupAt);
+      if (Number.isNaN(pickupDate.getTime())) {
+        return res.status(400).json({ ok: false, error: 'Invalid scheduled pickup time' });
+      }
+      if (pickupDate.getTime() <= Date.now()) {
+        return res.status(400).json({ ok: false, error: 'Scheduled pickup must be in the future' });
+      }
+      const maxDays = matchedLocation.scheduledOrderLeadDays ?? 7;
+      const maxMs = maxDays * 24 * 60 * 60 * 1000;
+      if (pickupDate.getTime() - Date.now() > maxMs) {
+        return res.status(400).json({ ok: false, error: `Scheduled pickup cannot be more than ${maxDays} days in advance` });
+      }
+    }
+
+    if (posProvider === 'clover') {
+      if (!locationId) {
+        return res.status(400).json({ ok: false, error: 'Clover location not configured' });
+      }
+      const cloverIntegration = await dataClient.getVendorCloverIntegration(vendor.id, cloverEnv);
+      if (!cloverIntegration?.accessToken) {
+        return res.status(403).json({
+          ok: false,
+          error: 'Vendor must connect Clover. Please ask the restaurant to connect Clover in their admin dashboard.'
+        });
+      }
+      const adapter = getAdapterForLocation(matchedLocation, vendor, { cloverIntegration });
+      if (!adapter) {
+        return res.status(503).json({ ok: false, error: 'Clover checkout unavailable.' });
+      }
+
+      const orderTotalCents = body.items.reduce((sum, i) => sum + i.price * i.quantity, 0) - discountCents;
+      const checkoutInput = {
+        locationId,
+        items: body.items.map((item) => ({
+          catalogItemId: item.id,
+          variationId: item.variationId,
+          quantity: item.quantity,
+          name: item.name,
+          priceCents: item.price,
+          note: undefined
+        })),
+        redirectUrl,
+        metadata: {
+          ct_reference_id: orderReferenceId,
+          ...(body.userId && { ct_user_id: body.userId }),
+          ...(redeemPoints > 0 && { ct_redeem_points: String(redeemPoints) }),
+          ...(scheduledPickupAt && { ct_scheduled_pickup_at: scheduledPickupAt })
+        } as Record<string, unknown>,
+        ...(body.userId && { customerEmail: undefined })
+      };
+
+      const result = await adapter.createCheckout(checkoutInput);
+
+      await dataClient.createCloverCheckoutSession({
+        sessionId: result.orderId,
+        vendorId: vendor.id,
+        vendorLocationId: matchedLocation.id,
+        ctReferenceId: orderReferenceId,
+        snapshotJson: {
+          items: body.items.map((i) => ({ id: i.id, name: i.name, quantity: i.quantity, price: i.price })),
+          total: orderTotalCents,
+          currency,
+          userId: body.userId ?? null,
+          redeemPoints: redeemPoints > 0 ? redeemPoints : null,
+          scheduledPickupAt: scheduledPickupAt ?? null
+        }
+      });
+
+      return res.status(200).json({
+        ok: true,
+        checkoutUrl: result.checkoutUrl,
+        orderId: orderReferenceId,
+        squareOrderId: result.orderId
+      });
+    }
+
     if (!locationId || locationId === 'SQUARE_LOCATION_DEMO') {
       return res.status(400).json({ ok: false, error: 'Vendor Square location id not configured' });
     }
@@ -150,26 +237,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse<CheckoutRespons
         error:
           'Vendor must connect Square. Please ask the restaurant to connect Square in their admin dashboard.'
       });
-    }
-
-    const leadTimeMinutes = matchedLocation?.onlineOrderingLeadTimeMinutes ?? 15;
-    const scheduledPickupAt = typeof body.scheduledPickupAt === 'string' && body.scheduledPickupAt.trim()
-      ? body.scheduledPickupAt.trim()
-      : null;
-
-    if (scheduledPickupAt) {
-      const pickupDate = new Date(scheduledPickupAt);
-      if (Number.isNaN(pickupDate.getTime())) {
-        return res.status(400).json({ ok: false, error: 'Invalid scheduled pickup time' });
-      }
-      if (pickupDate.getTime() <= Date.now()) {
-        return res.status(400).json({ ok: false, error: 'Scheduled pickup must be in the future' });
-      }
-      const maxDays = matchedLocation?.scheduledOrderLeadDays ?? 7;
-      const maxMs = maxDays * 24 * 60 * 60 * 1000;
-      if (pickupDate.getTime() - Date.now() > maxMs) {
-        return res.status(400).json({ ok: false, error: `Scheduled pickup cannot be more than ${maxDays} days in advance` });
-      }
     }
 
     logger.debug('Square checkout initiated', {
@@ -261,7 +328,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<CheckoutRespons
       squareOrderId
     });
   } catch (error: any) {
-    logger.error('Square createPaymentLink error', error, {
+    logger.error('Checkout error', error, {
       slug,
       vendorId: vendor?.id
     });

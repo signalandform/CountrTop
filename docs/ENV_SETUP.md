@@ -63,9 +63,15 @@ CLOVER_APP_ID=your-app-id
 CLOVER_APP_SECRET=your-app-secret
 CLOVER_WEBHOOK_SIGNING_KEY=your-signing-key
 CLOVER_ENVIRONMENT=sandbox  # or 'production'
+
+# Clover Hosted Checkout (online ordering): webhook signing secret from Merchant Dashboard
+# Configure in: Merchant Dashboard → Settings → Ecommerce → Hosted Checkout → Webhook URL → Generate (copy Signing Secret)
+CLOVER_HCO_WEBHOOK_SIGNING_SECRET=your-hco-signing-secret
 ```
 
 **Connect Clover (OAuth):** For vendor-admin "Connect Clover" flow, register the redirect URI in the Clover Developer Dashboard (app settings / Alternate Launch Path): `https://<vendor-admin-host>/api/clover-oauth/callback`. Example: `https://admin.countrtop.com/api/clover-oauth/callback`.
+
+**Clover Hosted Checkout (online ordering):** For customer-web online orders paid via Clover Hosted Checkout, configure the webhook in each merchant’s Clover Merchant Dashboard: Settings → Ecommerce → Hosted Checkout → Webhook URL = `https://<customer-web-host>/api/webhooks/clover-hco`. After saving, click **Generate** and copy the **Signing Secret** into `CLOVER_HCO_WEBHOOK_SIGNING_SECRET` (app-level; one secret per environment if all merchants share one customer-web deployment).
 
 ## Email Notifications
 

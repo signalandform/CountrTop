@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
 import { MenuItem } from '@countrtop/models';
+import { getAdapterForLocation } from '@countrtop/pos-adapters';
 import { getServerDataClient } from '../../../../lib/dataClient';
 import { rateLimiters } from '../../../../lib/rateLimit';
 import { getSquareClientForVendorOrLegacy } from '../../../../lib/square';
@@ -9,6 +10,8 @@ type CatalogResponse = { ok: true; items: MenuItem[] } | { ok: false; error: str
 
 const normalizeSlug = (value: string | string[] | undefined) =>
   Array.isArray(value) ? value[0] : value;
+
+const cloverEnv = (process.env.CLOVER_ENVIRONMENT ?? (process.env.NODE_ENV === 'production' ? 'production' : 'sandbox')) as 'sandbox' | 'production';
 
 async function handler(req: NextApiRequest, res: NextApiResponse<CatalogResponse>) {
   if (req.method !== 'GET') {
@@ -32,6 +35,41 @@ async function handler(req: NextApiRequest, res: NextApiResponse<CatalogResponse
   }
 
   try {
+    const locations = await dataClient.listVendorLocations(vendor.id);
+    const primaryOrFirst = locations.find((l) => l.isPrimary) ?? locations[0];
+    const posProvider = primaryOrFirst?.posProvider ?? vendor.posProvider ?? 'square';
+
+    if (posProvider === 'clover' && primaryOrFirst) {
+      const cloverIntegration = await dataClient.getVendorCloverIntegration(vendor.id, cloverEnv);
+      if (!cloverIntegration?.accessToken) {
+        return res.status(503).json({ ok: false, error: 'Clover not connected. Please ask the restaurant to connect Clover.' });
+      }
+      const adapter = getAdapterForLocation(primaryOrFirst, vendor, { cloverIntegration });
+      if (!adapter) {
+        return res.status(503).json({ ok: false, error: 'Clover catalog unavailable.' });
+      }
+      const locationId = primaryOrFirst.externalLocationId ?? primaryOrFirst.squareLocationId;
+      const canonicalItems = await adapter.fetchCatalog(locationId);
+      const rawItems: MenuItem[] = canonicalItems
+        .filter((item) => item.available && item.externalId)
+        .map((item) => ({
+          id: item.id,
+          name: item.name,
+          description: item.description,
+          price: item.priceCents,
+          currency: item.currency,
+          variationId: item.variationId ?? item.externalId,
+          imageUrl: item.imageUrl ?? null
+        }));
+      const availabilityList = await dataClient.getMenuAvailabilityForVendor(vendor.id);
+      const availabilityByItemId = new Map(availabilityList.map((a) => [a.catalogItemId, a]));
+      const items = rawItems.filter((item) => {
+        const override = availabilityByItemId.get(item.id);
+        return override === undefined ? true : override.available;
+      });
+      return res.status(200).json({ ok: true, items });
+    }
+
     const square = await getSquareClientForVendorOrLegacy(vendor, dataClient);
     const { result } = await square.catalogApi.listCatalog(undefined, 'ITEM,IMAGE');
 

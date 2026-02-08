@@ -688,6 +688,28 @@ export type Database = {
         Update: Partial<Database['public']['Tables']['vendor_clover_integrations']['Insert']>;
         Relationships: [];
       };
+      clover_checkout_sessions: {
+        Row: {
+          id: string;
+          session_id: string;
+          vendor_id: string;
+          vendor_location_id: string;
+          ct_reference_id: string;
+          snapshot_json: Record<string, unknown>;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          session_id: string;
+          vendor_id: string;
+          vendor_location_id: string;
+          ct_reference_id: string;
+          snapshot_json?: Record<string, unknown>;
+          created_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['clover_checkout_sessions']['Insert']>;
+        Relationships: [];
+      };
       vendor_email_unsubscribes: {
         Row: {
           id: string;
@@ -2531,6 +2553,62 @@ export class SupabaseDataClient implements DataClient {
     }
   }
 
+  async createCloverCheckoutSession(session: {
+    sessionId: string;
+    vendorId: string;
+    vendorLocationId: string;
+    ctReferenceId: string;
+    snapshotJson?: Record<string, unknown>;
+  }): Promise<void> {
+    const startTime = Date.now();
+    try {
+      const { error } = await this.client.from('clover_checkout_sessions').insert({
+        session_id: session.sessionId,
+        vendor_id: session.vendorId,
+        vendor_location_id: session.vendorLocationId,
+        ct_reference_id: session.ctReferenceId,
+        snapshot_json: session.snapshotJson ?? {}
+      });
+      if (error) throw error;
+      logQueryPerformance('createCloverCheckoutSession', startTime, true);
+    } catch (error) {
+      logQueryPerformance('createCloverCheckoutSession', startTime, false, error);
+      throw error;
+    }
+  }
+
+  async getCloverCheckoutSessionBySessionId(sessionId: string): Promise<{
+    vendorId: string;
+    vendorLocationId: string;
+    ctReferenceId: string;
+    snapshotJson: Record<string, unknown>;
+  } | null> {
+    const startTime = Date.now();
+    try {
+      const { data, error } = await this.client
+        .from('clover_checkout_sessions')
+        .select('vendor_id, vendor_location_id, ct_reference_id, snapshot_json')
+        .eq('session_id', sessionId)
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) {
+        logQueryPerformance('getCloverCheckoutSessionBySessionId', startTime, true);
+        return null;
+      }
+      const row = data as Database['public']['Tables']['clover_checkout_sessions']['Row'];
+      logQueryPerformance('getCloverCheckoutSessionBySessionId', startTime, true);
+      return {
+        vendorId: row.vendor_id,
+        vendorLocationId: row.vendor_location_id,
+        ctReferenceId: row.ct_reference_id,
+        snapshotJson: (row.snapshot_json ?? {}) as Record<string, unknown>
+      };
+    } catch (error) {
+      logQueryPerformance('getCloverCheckoutSessionBySessionId', startTime, false, error);
+      throw error;
+    }
+  }
+
   async setSelectedSquareLocation(vendorId: string, locationId: string): Promise<void> {
     const startTime = Date.now();
     try {
@@ -2953,7 +3031,8 @@ export class SupabaseDataClient implements DataClient {
   }
 
   /**
-   * Ensures a kitchen ticket exists for an open Clover (or other POS) order
+   * Ensures a kitchen ticket exists for an open or paid Clover (or other POS) order.
+   * For HCO paid orders pass ctReferenceId so the confirm page can find the ticket by orderId=ct_xxx.
    */
   async ensureKitchenTicketForPosOrder(order: {
     provider: string;
@@ -2964,23 +3043,29 @@ export class SupabaseDataClient implements DataClient {
     posOrderId: string;
     status: string;
     placedAt: string;
+    ctReferenceId?: string | null;
   }): Promise<void> {
     const startTime = Date.now();
     try {
-      if (order.status !== 'open') {
+      const allowTicket = order.status === 'open' || order.status === 'paid';
+      if (!allowTicket) {
         return;
       }
 
       const { data: existingTicket } = await this.client
         .from('kitchen_tickets')
-        .select('id, status')
+        .select('id, status, ct_reference_id')
         .eq('pos_order_id', order.posOrderId)
         .maybeSingle();
 
       if (existingTicket) {
+        const updatePayload: Record<string, unknown> = { updated_at: new Date().toISOString() };
+        if (order.ctReferenceId && order.ctReferenceId.startsWith('ct_') && !existingTicket.ct_reference_id) {
+          updatePayload.ct_reference_id = order.ctReferenceId;
+        }
         const { error } = await this.client
           .from('kitchen_tickets')
-          .update({ updated_at: new Date().toISOString() })
+          .update(updatePayload)
           .eq('pos_order_id', order.posOrderId);
         if (error) throw error;
       } else {
@@ -2994,7 +3079,8 @@ export class SupabaseDataClient implements DataClient {
           source: sourceForProvider,
           status: 'placed',
           placed_at: order.placedAt,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
+          ct_reference_id: order.ctReferenceId && order.ctReferenceId.startsWith('ct_') ? order.ctReferenceId : null
         };
 
         const { error } = await this.client

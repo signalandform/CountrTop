@@ -191,8 +191,23 @@ export interface DataClient {
     posOrderId: string;
     status: string;
     placedAt: string;
+    ctReferenceId?: string | null;
   }): Promise<void>;
   updateTicketForCloverCanceled(params: { posOrderId: string; locationId: string }): Promise<void>;
+
+  createCloverCheckoutSession(session: {
+    sessionId: string;
+    vendorId: string;
+    vendorLocationId: string;
+    ctReferenceId: string;
+    snapshotJson?: Record<string, unknown>;
+  }): Promise<void>;
+  getCloverCheckoutSessionBySessionId(sessionId: string): Promise<{
+    vendorId: string;
+    vendorLocationId: string;
+    ctReferenceId: string;
+    snapshotJson: Record<string, unknown>;
+  } | null>;
 
   // KDS: Queue Management
   listActiveKitchenTickets(locationId: string): Promise<KitchenTicketWithOrder[]>;

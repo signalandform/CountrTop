@@ -586,6 +586,7 @@ export class MockDataClient implements DataClient {
     posOrderId: string;
     status: string;
     placedAt: string;
+    ctReferenceId?: string | null;
   }): Promise<void> {
     // No-op for mock client
   }
@@ -593,6 +594,36 @@ export class MockDataClient implements DataClient {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async updateTicketForCloverCanceled(_params: { posOrderId: string; locationId: string }): Promise<void> {
     // No-op for mock client
+  }
+
+  private cloverCheckoutSessions = new Map<
+    string,
+    { vendorId: string; vendorLocationId: string; ctReferenceId: string; snapshotJson: Record<string, unknown> }
+  >();
+
+  async createCloverCheckoutSession(session: {
+    sessionId: string;
+    vendorId: string;
+    vendorLocationId: string;
+    ctReferenceId: string;
+    snapshotJson?: Record<string, unknown>;
+  }): Promise<void> {
+    this.cloverCheckoutSessions.set(session.sessionId, {
+      vendorId: session.vendorId,
+      vendorLocationId: session.vendorLocationId,
+      ctReferenceId: session.ctReferenceId,
+      snapshotJson: session.snapshotJson ?? {}
+    });
+  }
+
+  async getCloverCheckoutSessionBySessionId(sessionId: string): Promise<{
+    vendorId: string;
+    vendorLocationId: string;
+    ctReferenceId: string;
+    snapshotJson: Record<string, unknown>;
+  } | null> {
+    const row = this.cloverCheckoutSessions.get(sessionId);
+    return row ?? null;
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars

@@ -105,6 +105,10 @@ export type CheckoutInput = {
     quantity: number;
     modifiers?: Array<{ id: string }>;
     note?: string;
+    /** Item name (required for Clover Hosted Checkout; HCO does not use catalog) */
+    name?: string;
+    /** Unit price in cents (required for Clover Hosted Checkout) */
+    priceCents?: number;
   }>;
   customerEmail?: string;
   customerPhone?: string;
