@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { getServerDataClient } from '../../lib/dataClient';
+import { getServerDataClient } from '../../../lib/dataClient';
 
 const normalizeSlug = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
 
