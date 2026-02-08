@@ -483,6 +483,11 @@ export class MockDataClient implements DataClient {
     return null;
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- mock returns null
+  async getVendorIntake(_vendorId: string): Promise<import('@countrtop/models').VendorIntake | null> {
+    return null;
+  }
+
   async upsertPushDevice(device: PushDeviceInput): Promise<PushDevice> {
     const now = new Date().toISOString();
     const existingIndex = this.pushDevices.findIndex(

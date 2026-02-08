@@ -176,6 +176,7 @@ export type Database = {
           id: string;
           slug: string;
           display_name: string;
+          pos_provider: string | null;
           square_location_id: string;
           square_credential_ref: string | null;
           status: VendorStatus | null;
@@ -207,6 +208,7 @@ export type Database = {
           id?: string;
           slug: string;
           display_name: string;
+          pos_provider?: string | null;
           square_location_id: string;
           square_credential_ref?: string | null;
           status?: VendorStatus | null;
@@ -234,6 +236,34 @@ export type Database = {
           square_payments_activation_location_id?: string | null;
         };
         Update: Partial<Database['public']['Tables']['vendors']['Insert']>;
+        Relationships: [];
+      };
+      vendor_intake: {
+        Row: {
+          vendor_id: string;
+          locations_count: number | null;
+          needs_kds: boolean;
+          needs_online_ordering: boolean;
+          needs_scheduled_orders: boolean;
+          needs_loyalty: boolean;
+          needs_crm: boolean;
+          needs_time_tracking: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          vendor_id: string;
+          locations_count?: number | null;
+          needs_kds?: boolean;
+          needs_online_ordering?: boolean;
+          needs_scheduled_orders?: boolean;
+          needs_loyalty?: boolean;
+          needs_crm?: boolean;
+          needs_time_tracking?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['vendor_intake']['Insert']>;
         Relationships: [];
       };
       order_snapshots: {
@@ -894,7 +924,7 @@ export class SupabaseDataClient implements DataClient {
       // Field limiting: only select needed columns (including theming fields)
       const { data, error } = await this.client
         .from('vendors')
-        .select('id,slug,display_name,square_location_id,square_credential_ref,status,address_line1,address_line2,city,state,postal_code,phone,timezone,pickup_instructions,kds_active_limit_total,kds_active_limit_ct,kds_nav_view,logo_url,primary_color,accent_color,font_family,review_url')
+        .select('id,slug,display_name,pos_provider,square_location_id,square_credential_ref,status,address_line1,address_line2,city,state,postal_code,phone,timezone,pickup_instructions,kds_active_limit_total,kds_active_limit_ct,kds_nav_view,logo_url,primary_color,accent_color,font_family,review_url')
         .eq('slug', slug)
         .maybeSingle();
       if (error) throw error;
@@ -918,7 +948,7 @@ export class SupabaseDataClient implements DataClient {
       // Field limiting: only select needed columns (including theming fields)
       const { data, error } = await this.client
         .from('vendors')
-        .select('id,slug,display_name,square_location_id,square_credential_ref,status,address_line1,address_line2,city,state,postal_code,phone,timezone,pickup_instructions,kds_active_limit_total,kds_active_limit_ct,kds_nav_view,logo_url,primary_color,accent_color,font_family,review_url')
+        .select('id,slug,display_name,pos_provider,square_location_id,square_credential_ref,status,address_line1,address_line2,city,state,postal_code,phone,timezone,pickup_instructions,kds_active_limit_total,kds_active_limit_ct,kds_nav_view,logo_url,primary_color,accent_color,font_family,review_url')
         .eq('id', vendorId)
         .maybeSingle();
       if (error) throw error;
@@ -957,7 +987,7 @@ export class SupabaseDataClient implements DataClient {
       // Fall back to vendors.square_location_id (legacy single-location)
       const { data, error } = await this.client
         .from('vendors')
-        .select('id,slug,display_name,square_location_id,square_credential_ref,status,address_line1,address_line2,city,state,postal_code,phone,timezone,pickup_instructions,kds_active_limit_total,kds_active_limit_ct,kds_nav_view,logo_url,primary_color,accent_color,font_family,review_url')
+        .select('id,slug,display_name,pos_provider,square_location_id,square_credential_ref,status,address_line1,address_line2,city,state,postal_code,phone,timezone,pickup_instructions,kds_active_limit_total,kds_active_limit_ct,kds_nav_view,logo_url,primary_color,accent_color,font_family,review_url')
         .eq('square_location_id', locationId)
         .maybeSingle();
       if (error) throw error;
@@ -1118,7 +1148,7 @@ export class SupabaseDataClient implements DataClient {
         vendor_id: location.vendorId,
         // Use externalLocationId if provided, fall back to squareLocationId for backward compatibility
         square_location_id: location.externalLocationId ?? location.squareLocationId,
-        pos_provider: location.posProvider ?? 'square',
+        pos_provider: location.posProvider ?? undefined,
         name: location.name,
         is_primary: location.isPrimary,
         is_active: location.isActive,
@@ -2058,6 +2088,39 @@ export class SupabaseDataClient implements DataClient {
       };
     } catch (error) {
       logQueryPerformance('getVendorBilling', startTime, false, error);
+      throw error;
+    }
+  }
+
+  async getVendorIntake(vendorId: string): Promise<import('@countrtop/models').VendorIntake | null> {
+    const startTime = Date.now();
+    try {
+      const { data, error } = await this.client
+        .from('vendor_intake')
+        .select('vendor_id,locations_count,needs_kds,needs_online_ordering,needs_scheduled_orders,needs_loyalty,needs_crm,needs_time_tracking,created_at,updated_at')
+        .eq('vendor_id', vendorId)
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) {
+        logQueryPerformance('getVendorIntake', startTime, true);
+        return null;
+      }
+      const row = data as Database['public']['Tables']['vendor_intake']['Row'];
+      logQueryPerformance('getVendorIntake', startTime, true);
+      return {
+        vendorId: row.vendor_id,
+        locationsCount: row.locations_count ?? null,
+        needsKds: row.needs_kds,
+        needsOnlineOrdering: row.needs_online_ordering,
+        needsScheduledOrders: row.needs_scheduled_orders,
+        needsLoyalty: row.needs_loyalty,
+        needsCrm: row.needs_crm,
+        needsTimeTracking: row.needs_time_tracking,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at
+      };
+    } catch (error) {
+      logQueryPerformance('getVendorIntake', startTime, false, error);
       throw error;
     }
   }
@@ -4598,6 +4661,7 @@ const mapVendorFromRow = (row: Database['public']['Tables']['vendors']['Row']): 
   id: row.id,
   slug: row.slug,
   displayName: row.display_name,
+  posProvider: (row.pos_provider === 'square' || row.pos_provider === 'clover' ? row.pos_provider : undefined),
   squareLocationId: row.square_location_id,
   squareCredentialRef: row.square_credential_ref ?? undefined,
   status: row.status ?? undefined,
@@ -4623,10 +4687,12 @@ const mapVendorFromRow = (row: Database['public']['Tables']['vendors']['Row']): 
 const mapVendorLocationFromRow = (row: Database['public']['Tables']['vendor_locations']['Row']): VendorLocation => ({
   id: row.id,
   vendorId: row.vendor_id,
-  // POS-agnostic fields
+  // POS-agnostic fields; do not default pos_provider to Square when null (legacy)
   externalLocationId: row.square_location_id, // Use square_location_id for now (will rename column later)
   squareLocationId: row.square_location_id, // Deprecated alias
-  posProvider: (row.pos_provider ?? 'square') as 'square' | 'toast' | 'clover',
+  posProvider: (row.pos_provider === 'square' || row.pos_provider === 'clover' || row.pos_provider === 'toast'
+    ? row.pos_provider
+    : undefined) as 'square' | 'toast' | 'clover' | undefined,
   name: row.name,
   isPrimary: row.is_primary,
   isActive: row.is_active,
@@ -4782,7 +4848,9 @@ export const mapSquareOrderFromRow = (
   // POS-agnostic fields
   externalOrderId: row.square_order_id, // Use square_order_id for now (will rename column later)
   squareOrderId: row.square_order_id, // Deprecated alias
-  posProvider: (row.pos_provider ?? 'square') as 'square' | 'toast' | 'clover',
+  posProvider: (row.pos_provider === 'square' || row.pos_provider === 'clover' || row.pos_provider === 'toast'
+    ? row.pos_provider
+    : undefined) as 'square' | 'toast' | 'clover' | undefined,
   locationId: row.location_id,
   state: row.state,
   createdAt: row.created_at,
@@ -4820,7 +4888,9 @@ export const mapKitchenTicketFromRow = (
   squareOrderId: row.square_order_id ?? '',
   posOrderId: row.pos_order_id ?? undefined,
   posCanceledAt: row.pos_canceled_at ?? undefined,
-  posProvider: (row.pos_provider ?? 'square') as 'square' | 'toast' | 'clover',
+  posProvider: (row.pos_provider === 'square' || row.pos_provider === 'clover' || row.pos_provider === 'toast'
+    ? row.pos_provider
+    : undefined) as 'square' | 'toast' | 'clover' | undefined,
   locationId: row.location_id,
   ctReferenceId: row.ct_reference_id ?? undefined,
   customerUserId: row.customer_user_id ?? undefined,

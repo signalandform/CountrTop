@@ -78,6 +78,7 @@ export interface DataClient {
   getVendorBySlug(slug: string): Promise<Vendor | null>;
   getVendorById(vendorId: string): Promise<Vendor | null>;
   getVendorBySquareLocationId(locationId: string): Promise<Vendor | null>;
+  getVendorIntake(vendorId: string): Promise<import('@countrtop/models').VendorIntake | null>;
 
   getSquarePaymentsActivationStatus(vendorId: string): Promise<{
     activated: boolean | null;

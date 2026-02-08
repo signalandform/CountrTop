@@ -12,11 +12,16 @@ type SquareStatusData = {
 
 type Props = {
   vendorSlug: string | null;
+  /** POS provider chosen at signup; used to show "Connect Square" or "Connect Clover". */
+  posProvider?: 'square' | 'clover' | null;
 };
 
 const SQUARE_DASHBOARD_URL = 'https://squareup.com/dashboard';
 
-export function SquareStatusCard({ vendorSlug }: Props) {
+export function SquareStatusCard({ vendorSlug, posProvider }: Props) {
+  const posLabel = posProvider === 'clover' ? 'Clover' : 'Square';
+  const showSquareConnect = posProvider !== 'clover';
+  const showCloverConnect = posProvider === 'clover';
   const [status, setStatus] = useState<SquareStatusData | null>(null);
   const [loading, setLoading] = useState(true);
   const [rechecking, setRechecking] = useState(false);
@@ -71,7 +76,7 @@ export function SquareStatusCard({ vendorSlug }: Props) {
     return (
       <section className="square-status-section">
         <h2 className="section-title">Getting Started</h2>
-        <p className="muted">Loading Square status…</p>
+        <p className="muted">Loading {posLabel} status…</p>
         <style jsx>{statusCardStyles}</style>
       </section>
     );
@@ -99,7 +104,7 @@ export function SquareStatusCard({ vendorSlug }: Props) {
       <h2 className="section-title">Getting Started</h2>
       <p className="section-description">Complete these steps before going live with online ordering</p>
 
-      {!status.squareConnected && (
+      {!status.squareConnected && showSquareConnect && (
         <div className="connect-square-cta">
           <a
             href={vendorSlug ? `/api/vendors/${vendorSlug}/square-oauth/authorize` : '#'}
@@ -109,34 +114,44 @@ export function SquareStatusCard({ vendorSlug }: Props) {
           </a>
         </div>
       )}
+      {showCloverConnect && (
+        <div className="connect-pos-note">
+          <p className="connect-pos-label">Connect your Clover account</p>
+          <p className="connect-pos-hint">Add your Clover location in Settings → Locations. KDS and POS orders will sync once the location is connected.</p>
+        </div>
+      )}
       <div className="readiness-list">
         <div className={`readiness-item ${status.squareConnected ? 'done' : ''}`}>
           <span className="readiness-icon">{status.squareConnected ? '✅' : '○'}</span>
-          <span className="readiness-label">Square Connected</span>
+          <span className="readiness-label">{posLabel} Connected</span>
         </div>
-        <div className={`readiness-item ${status.locationSelected ? 'done' : ''}`}>
-          <span className="readiness-icon">{status.locationSelected ? '✅' : '○'}</span>
-          <span className="readiness-label">Location Selected</span>
-        </div>
-        <div className={`readiness-item ${status.menuSynced ? 'done' : ''}`}>
-          <span className="readiness-icon">{status.menuSynced ? '✅' : '○'}</span>
-          <span className="readiness-label">Menu Synced</span>
-        </div>
-        <div className={`readiness-item ${status.paymentsActivated === true ? 'done' : paymentsActionRequired ? 'action' : ''}`}>
-          <span className="readiness-icon">
-            {status.paymentsActivated === true ? '✅' : paymentsActionRequired ? '⚠️' : '○'}
-          </span>
-          <span className="readiness-label">
-            {status.paymentsActivated === true
-              ? 'Payments Activated'
-              : paymentsActionRequired
-                ? 'Payments Activated — Action Required'
-                : 'Payments Activated'}
-          </span>
-        </div>
+        {showSquareConnect && (
+          <>
+            <div className={`readiness-item ${status.locationSelected ? 'done' : ''}`}>
+              <span className="readiness-icon">{status.locationSelected ? '✅' : '○'}</span>
+              <span className="readiness-label">Location Selected</span>
+            </div>
+            <div className={`readiness-item ${status.menuSynced ? 'done' : ''}`}>
+              <span className="readiness-icon">{status.menuSynced ? '✅' : '○'}</span>
+              <span className="readiness-label">Menu Synced</span>
+            </div>
+            <div className={`readiness-item ${status.paymentsActivated === true ? 'done' : paymentsActionRequired ? 'action' : ''}`}>
+              <span className="readiness-icon">
+                {status.paymentsActivated === true ? '✅' : paymentsActionRequired ? '⚠️' : '○'}
+              </span>
+              <span className="readiness-label">
+                {status.paymentsActivated === true
+                  ? 'Payments Activated'
+                  : paymentsActionRequired
+                    ? 'Payments Activated — Action Required'
+                    : 'Payments Activated'}
+              </span>
+            </div>
+          </>
+        )}
       </div>
 
-      {paymentsActionRequired && status.squareConnected && (
+      {showSquareConnect && paymentsActionRequired && status.squareConnected && (
         <div className="action-required-card">
           <p className="action-title">Your Square account isn&apos;t activated for taking card payments in production yet.</p>
           <p className="action-steps">
@@ -160,7 +175,7 @@ export function SquareStatusCard({ vendorSlug }: Props) {
         </div>
       )}
 
-      {status.paymentsActivated === true && (
+      {showSquareConnect && status.paymentsActivated === true && (
         <p className="success-note">All set! Your Square account is ready for production payments.</p>
       )}
 
@@ -199,6 +214,28 @@ const statusCardStyles = `
 
   .connect-square-cta {
     margin-bottom: 20px;
+  }
+
+  .connect-pos-note {
+    margin-bottom: 20px;
+    padding: 16px;
+    background: var(--ct-bg-primary);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+  }
+
+  .connect-pos-label {
+    font-weight: 600;
+    font-size: 15px;
+    margin: 0 0 6px;
+    color: var(--color-text);
+  }
+
+  .connect-pos-hint {
+    font-size: 14px;
+    color: var(--color-text-muted);
+    margin: 0;
+    line-height: 1.5;
   }
 
   .btn-connect-square {

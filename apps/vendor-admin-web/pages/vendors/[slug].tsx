@@ -113,6 +113,7 @@ export default function VendorAdminVendorPage({
           totalOrders={totalOrders}
           milestonesSeen={milestonesSeen}
           statusMessage={statusMessage}
+          posProvider={vendor?.posProvider ?? undefined}
         />
       </VendorAdminLayout>
     </>

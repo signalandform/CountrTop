@@ -28,10 +28,26 @@ export type OrderSource =
 // Vendor Types
 // =============================================================================
 
+/** Vendor signup intake: locations count and feature needs. */
+export type VendorIntake = {
+  vendorId: string;
+  locationsCount: number | null;
+  needsKds: boolean;
+  needsOnlineOrdering: boolean;
+  needsScheduledOrders: boolean;
+  needsLoyalty: boolean;
+  needsCrm: boolean;
+  needsTimeTracking: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type Vendor = {
   id: string;
   slug: string;
   displayName: string;
+  /** POS provider chosen at signup (Square or Clover). Do not default to square when unknown. */
+  posProvider?: 'square' | 'clover' | null;
   /** @deprecated Use VendorLocation.externalLocationId instead */
   squareLocationId: string;
   /** POS location ID (POS-agnostic alias for squareLocationId) */
@@ -82,8 +98,8 @@ export type VendorLocation = {
   externalLocationId: string;
   /** @deprecated Use externalLocationId */
   squareLocationId: string;
-  /** POS provider for this location */
-  posProvider: POSProvider;
+  /** POS provider for this location. Undefined when unknown (legacy); do not assume Square. */
+  posProvider?: POSProvider;
   name: string;
   isPrimary: boolean;
   isActive: boolean;

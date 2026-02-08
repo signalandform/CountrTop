@@ -10,6 +10,8 @@ type Props = {
   totalOrders: number;
   milestonesSeen: MilestoneSeen[];
   statusMessage?: string | null;
+  /** POS provider chosen at signup; shown in "Connect Square/Clover" CTA. */
+  posProvider?: 'square' | 'clover' | null;
 };
 
 const formatMetric = (value: number) => value.toLocaleString();
@@ -122,6 +124,7 @@ function OrderMilestoneBanner({
 export function VendorInsightsDashboard({
   vendorSlug,
   vendorName,
+  posProvider,
   insights,
   totalOrders,
   milestonesSeen,
@@ -151,7 +154,7 @@ export function VendorInsightsDashboard({
 
       {statusMessage && <div className="error-banner">{statusMessage}</div>}
 
-      <SquareStatusCard vendorSlug={vendorSlug} />
+      <SquareStatusCard vendorSlug={vendorSlug} posProvider={posProvider} />
 
       {unseenMilestone && (
         <OrderMilestoneBanner

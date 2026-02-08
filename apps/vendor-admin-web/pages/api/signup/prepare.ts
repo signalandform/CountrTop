@@ -7,6 +7,15 @@ type PrepareRequest = {
   email: string;
   password: string;
   businessName?: string;
+  /** POS provider chosen at signup (required; do not default to Square). */
+  pos_provider: 'square' | 'clover';
+  locations_count?: number;
+  needs_kds?: boolean;
+  needs_online_ordering?: boolean;
+  needs_scheduled_orders?: boolean;
+  needs_loyalty?: boolean;
+  needs_crm?: boolean;
+  needs_time_tracking?: boolean;
 };
 
 type PrepareResponse = { ok: true; redirect: string } | { ok: false; error: string };
@@ -106,9 +115,27 @@ export default async function handler(
   const email = typeof body.email === 'string' ? body.email.trim() : '';
   const password = typeof body.password === 'string' ? body.password : '';
   const businessName = typeof body.businessName === 'string' ? body.businessName.trim() : undefined;
+  const posProvider = body.pos_provider === 'square' || body.pos_provider === 'clover' ? body.pos_provider : null;
+  const locationsCount =
+    typeof body.locations_count === 'number' && body.locations_count >= 0
+      ? Math.min(999, Math.floor(body.locations_count))
+      : null;
+  const needsKds = Boolean(body.needs_kds);
+  const needsOnlineOrdering = Boolean(body.needs_online_ordering);
+  const needsScheduledOrders = Boolean(body.needs_scheduled_orders);
+  const needsLoyalty = Boolean(body.needs_loyalty);
+  const needsCrm = Boolean(body.needs_crm);
+  const needsTimeTracking = Boolean(body.needs_time_tracking);
 
   if (!email || !password) {
     return res.status(400).json({ ok: false, error: 'Email and password are required' });
+  }
+
+  if (!posProvider) {
+    return res.status(400).json({
+      ok: false,
+      error: 'Please select your POS system (Square or Clover).'
+    });
   }
 
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -147,6 +174,7 @@ export default async function handler(
       id: vendorId,
       slug,
       display_name: displayName,
+      pos_provider: posProvider,
       square_location_id: '',
       square_credential_ref: null,
       status: 'active'
@@ -155,6 +183,22 @@ export default async function handler(
     if (vendorError) {
       console.error('Signup vendor insert failed:', vendorError);
       return res.status(500).json({ ok: false, error: 'Could not create your store. Please try again.' });
+    }
+
+    const { error: intakeError } = await supabase.from('vendor_intake').insert({
+      vendor_id: vendorId,
+      locations_count: locationsCount,
+      needs_kds: needsKds,
+      needs_online_ordering: needsOnlineOrdering,
+      needs_scheduled_orders: needsScheduledOrders,
+      needs_loyalty: needsLoyalty,
+      needs_crm: needsCrm,
+      needs_time_tracking: needsTimeTracking
+    });
+
+    if (intakeError) {
+      console.error('Signup vendor_intake insert failed:', intakeError);
+      return res.status(500).json({ ok: false, error: 'Could not save your preferences. Please try again.' });
     }
 
     const trialEndsAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
