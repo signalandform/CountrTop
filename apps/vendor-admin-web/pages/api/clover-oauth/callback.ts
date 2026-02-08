@@ -47,10 +47,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const tokenBaseUrl =
     env === 'production' ? 'https://api.clover.com' : 'https://apisandbox.dev.clover.com';
 
-  const proto = (req.headers['x-forwarded-proto'] as string) ?? 'https';
-  const host = (req.headers['x-forwarded-host'] as string) ?? req.headers.host ?? 'localhost:3000';
-  const redirectUri = `${proto}://${host}/api/clover-oauth/callback`;
-
   const tokenRes = await fetch(`${tokenBaseUrl}/oauth/v2/token`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
