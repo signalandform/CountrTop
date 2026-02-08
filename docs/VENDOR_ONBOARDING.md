@@ -19,7 +19,7 @@ Welcome to CountrTop! This guide will help you set up your restaurant on our pla
 
 ### What You'll Need
 
-- An active POS system (Square supported now; Toast/Clover coming soon)
+- An active POS system (Square and Clover supported now; more integrations on the way)
 - A business email address
 - Your restaurant's logo (recommended: 500x500px PNG)
 - Your brand colors (hex codes)
@@ -34,7 +34,7 @@ Welcome to CountrTop! This guide will help you set up your restaurant on our pla
 
 ## Connecting Your POS System
 
-CountrTop integrates with major POS systems to automatically sync your menu and orders. Square is supported now; Toast and Clover are coming soon.
+CountrTop integrates with major POS systems to automatically sync your menu and orders. Square and Clover are supported now. More integrations on the way.
 
 ### Square
 
@@ -51,13 +51,11 @@ CountrTop integrates with major POS systems to automatically sync your menu and 
 
 **Square Payments Activation:** Your Square account must be activated for production card payments before going live. CountrTop detects this automatically and shows a "Payments Activated" status on your Dashboard. If your account is not yet activated, complete the setup in your [Square Dashboard](https://squareup.com/dashboard) (business info + bank account), then click "Re-check Square Activation" on the CountrTop Dashboard.
 
-### Toast (Coming soon)
+### Clover
 
-Toast integration is on our roadmap. We will update this guide as soon as it is available.
+Clover integration is supported for KDS and order webhooks. Connect your Clover location in Vendor Admin or contact the CountrTop ops team.
 
-### Clover (Coming soon)
-
-Clover integration is on our roadmap. We will update this guide as soon as it is available.
+Additional POS integrations are on our roadmap. We will update this guide when they are available.
 
 ---
 
@@ -69,7 +67,7 @@ Your customers will order from `yourname.countrtop.com`
 
 Your menu is automatically synced from your POS system. To make changes:
 
-1. Update items in your POS (Square now; Toast/Clover coming soon)
+1. Update items in your POS (Square or Clover)
 2. Changes sync to CountrTop within 5 minutes
 3. Hidden items in your POS won't appear on your storefront
 
@@ -164,7 +162,7 @@ If you have multiple locations:
    - Address
    - Phone
    - Pickup instructions
-   - POS location ID (from Square now; Toast/Clover coming soon)
+   - POS location ID (from your POS: Square or Clover)
 
 ### Location Settings
 

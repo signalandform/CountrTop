@@ -165,21 +165,8 @@ export default function Home() {
               </svg>
               <span className="pos-status supported">Supported now</span>
             </div>
-            <div className="pos-logo">
-              <svg viewBox="0 0 100 40" fill="currentColor">
-                <circle cx="20" cy="20" r="10" />
-                <text x="38" y="26" fontSize="14" fontWeight="600">Toast</text>
-              </svg>
-              <span className="pos-status coming-soon">Coming soon</span>
-            </div>
-            <div className="pos-logo">
-              <svg viewBox="0 0 100 40" fill="currentColor">
-                <path d="M10 15 L20 10 L30 15 L30 25 L20 30 L10 25 Z" />
-                <text x="38" y="26" fontSize="14" fontWeight="600">Clover</text>
-              </svg>
-              <span className="pos-status coming-soon">Coming soon</span>
-            </div>
           </div>
+          <p className="proof-subline">More POS integrations on the way.</p>
         </div>
       </section>
 
@@ -202,7 +189,7 @@ export default function Home() {
               <span className="win-icon">🔌</span>
               <div className="win-content">
                 <h4>POS Integration as Moat</h4>
-                <p>Deep Square integration supported now. Toast and Clover integrations are coming soon. Menu syncs automatically and orders flow into your existing systems.</p>
+                <p>Deep Square integration supported now. More POS integrations on the way. Menu syncs automatically and orders flow into your existing systems.</p>
               </div>
             </div>
             <div className="win-item">
@@ -288,7 +275,7 @@ export default function Home() {
                 </svg>
               </div>
               <h3>POS Integration</h3>
-              <p>Connect to Square now. Toast and Clover integrations are coming soon.</p>
+              <p>Connect to Square now. More integrations on the way.</p>
             </div>
             <div className="feature-card">
               <div className="feature-icon">
@@ -346,7 +333,7 @@ export default function Home() {
               <div className="step-number">1</div>
               <div className="step-content">
                 <h3>Connect Your POS</h3>
-                <p>Link your Square account in a few clicks. Toast and Clover integrations are coming soon.</p>
+                <p>Link your Square account in a few clicks. More integrations on the way.</p>
               </div>
               <div className="step-visual">
                 <div className="connect-visual">
@@ -878,6 +865,12 @@ export default function Home() {
           color: var(--color-text-muted);
           font-size: 0.875rem;
           margin-bottom: 2rem;
+        }
+        .proof-subline {
+          text-align: center;
+          color: var(--color-text-muted);
+          font-size: 0.8125rem;
+          margin-top: 1rem;
         }
         .pos-logos {
           display: flex;

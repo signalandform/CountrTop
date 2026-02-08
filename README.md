@@ -9,7 +9,7 @@ CountrTop is a **commission-free online ordering platform** for independent rest
 - **Next.js** – Customer web, vendor admin, KDS, ops dashboard, and marketing site
 - **React Native (Expo)** – Customer iOS shell + vendor ops tablet app
 - **Supabase** – Auth, data, RLS, and realtime subscriptions
-- **Square / Toast / Clover** – POS integrations for catalog, checkout, and orders. Vendors must activate their Square account for production payments; CountrTop detects and guides this during onboarding.
+- **Square and Clover** – POS integrations for catalog, checkout, and orders. Square for full storefront and checkout; Clover for KDS. Vendors must activate Square for production payments; CountrTop detects and guides this during onboarding.
 - **Resend** – Transactional email (order confirmations, ready notifications)
 - **Vercel** – Hosting and deployment
 
@@ -167,10 +167,10 @@ CountrTop integrates with multiple POS systems:
 | POS | Status | Features |
 |-----|--------|----------|
 | **Square** | ✅ Production | Catalog sync, checkout, webhooks, order polling |
-| **Toast** | 🔧 In Progress | Catalog sync, order webhooks |
-| **Clover** | 🔧 In Progress | Catalog sync, order webhooks |
+| **Clover** | ✅ Production (KDS) | Order webhooks, KDS |
+| **More POS** | Roadmap | Additional integrations planned |
 
-See `docs/SQUARE_SETUP.md`, `docs/TOAST_SETUP.md`, and `docs/CLOVER_SETUP.md` for integration guides.
+See `docs/SQUARE_SETUP.md` and `docs/CLOVER_SETUP.md` for integration guides.
 
 ---
 
