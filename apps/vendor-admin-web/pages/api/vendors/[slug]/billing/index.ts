@@ -20,6 +20,8 @@ type BillingGetResponse =
         paymentMethod: { brand: string; last4: string } | null;
         canUpgrade: boolean;
         stripeCustomerId: string | null;
+        /** Set when planId is kds_only or online_only (per-location pricing). */
+        locationsCount?: number | null;
       };
     }
   | { success: false; error: string };
@@ -28,14 +30,19 @@ const PLAN_NAMES: Record<BillingPlanId, string> = {
   beta: 'Beta',
   trial: 'Trial',
   starter: 'Starter',
-  pro: 'Pro'
+  pro: 'Pro',
+  kds_only: 'KDS only',
+  online_only: 'Online ordering only'
 };
 
+/** Per-month amounts in cents. For kds_only/online_only, per-location (use locationsCount for total). */
 const PLAN_AMOUNTS: Record<BillingPlanId, number> = {
   beta: 0,
   trial: 0,
   starter: 4900,
-  pro: 9900
+  pro: 9900,
+  kds_only: 1500,
+  online_only: 2500
 };
 
 /**
@@ -100,6 +107,17 @@ export default async function handler(
 
     const canUpgrade = planId === 'beta' || planId === 'trial';
 
+    let locationsCount: number | null = null;
+    if (planId === 'kds_only' || planId === 'online_only') {
+      const intake = await dataClient.getVendorIntake(vendor.id);
+      if (intake?.locationsCount != null && intake.locationsCount > 0) {
+        locationsCount = intake.locationsCount;
+      } else {
+        const locations = await dataClient.listVendorLocations(vendor.id);
+        locationsCount = Math.max(1, locations.length);
+      }
+    }
+
     return res.status(200).json({
       success: true,
       data: {
@@ -113,7 +131,8 @@ export default async function handler(
         isTrialExpired: trialExpired,
         paymentMethod,
         canUpgrade,
-        stripeCustomerId
+        stripeCustomerId,
+        ...(locationsCount != null ? { locationsCount } : {})
       }
     });
   } catch (error) {

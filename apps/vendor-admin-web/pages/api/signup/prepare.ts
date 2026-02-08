@@ -201,7 +201,7 @@ export default async function handler(
       return res.status(500).json({ ok: false, error: 'Could not save your preferences. Please try again.' });
     }
 
-    const trialEndsAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+    const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
     await supabase.from('vendor_billing').insert({
       vendor_id: vendorId,
       plan_id: 'trial',

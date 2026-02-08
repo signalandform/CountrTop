@@ -15,15 +15,61 @@ const ERROR_MESSAGES: Record<string, string> = {
   use_signup_form: 'Please create your account using the form below (choose your POS and needs first). Connect your POS in Settings after signup.'
 };
 
+type RecommendedPlanId = 'pro' | 'starter' | 'kds_only' | 'online_only';
+
 const STEPS = [
   { id: 1, label: 'POS' },
   { id: 2, label: 'Needs' },
-  { id: 3, label: 'Account' }
+  { id: 3, label: 'Plans' },
+  { id: 4, label: 'Account' }
 ] as const;
+
+const PLAN_INFO: Record<RecommendedPlanId, { name: string; price: string; features: string[] }> = {
+  kds_only: {
+    name: 'KDS only',
+    price: '$15/location/month',
+    features: ['Kitchen Display System', 'POS order sync', 'Single or multi-location']
+  },
+  online_only: {
+    name: 'Online ordering only',
+    price: '$25/location/month',
+    features: ['Storefront & checkout', 'Scheduled orders', 'Per-location pricing']
+  },
+  starter: {
+    name: 'Starter',
+    price: '$49/month',
+    features: ['KDS + online ordering', 'Loyalty, scheduled orders', 'Custom branding', '1 location']
+  },
+  pro: {
+    name: 'Pro',
+    price: '$99/month',
+    features: ['Everything in Starter', 'Multiple locations', 'Advanced analytics', 'Role-based staff']
+  }
+};
+
+function getRecommendedPlan(
+  locationsCount: number,
+  needsKds: boolean,
+  needsOnlineOrdering: boolean
+): { planId: RecommendedPlanId; reason: string } {
+  if (needsKds && !needsOnlineOrdering) {
+    return { planId: 'kds_only', reason: 'You selected KDS only.' };
+  }
+  if (needsOnlineOrdering && !needsKds) {
+    return { planId: 'online_only', reason: 'You selected online ordering only.' };
+  }
+  if (needsKds && needsOnlineOrdering) {
+    if (locationsCount >= 2) {
+      return { planId: 'pro', reason: 'You have 2+ locations and want full features.' };
+    }
+    return { planId: 'starter', reason: 'You have 1 location and want full features.' };
+  }
+  return { planId: 'starter', reason: 'A good fit for most vendors.' };
+}
 
 export default function SignupPage() {
   const router = useRouter();
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [submitting, setSubmitting] = useState(false);
   const [posProvider, setPosProvider] = useState<PosProvider | null>(null);
   const [locationsCount, setLocationsCount] = useState<number>(1);
@@ -62,10 +108,22 @@ export default function SignupPage() {
     setStep(1);
   };
 
+  const handleStep3Next = () => {
+    setError(null);
+    setStep(4);
+  };
+
   const handleStep3Back = () => {
     setError(null);
     setStep(2);
   };
+
+  const handleStep4Back = () => {
+    setError(null);
+    setStep(3);
+  };
+
+  const recommended = getRecommendedPlan(locationsCount, needsKds, needsOnlineOrdering);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -256,8 +314,48 @@ export default function SignupPage() {
 
           {step === 3 && (
             <>
+              <p className="subtitle">Recommended plan</p>
+              <p className="hint">Based on your needs. You can choose any plan in Billing after signup.</p>
+              <div className="recommended-plan">
+                <div className="recommended-badge">Recommended for you</div>
+                <div className="recommended-name">{PLAN_INFO[recommended.planId].name}</div>
+                <div className="recommended-price">{PLAN_INFO[recommended.planId].price}</div>
+                <p className="recommended-reason">{recommended.reason}</p>
+              </div>
+              <div className="all-plans">
+                {(Object.keys(PLAN_INFO) as RecommendedPlanId[]).map((planId) => (
+                  <div key={planId} className={`plan-card ${planId === recommended.planId ? 'recommended' : ''}`}>
+                    <div className="plan-name">{PLAN_INFO[planId].name}</div>
+                    <div className="plan-price">{PLAN_INFO[planId].price}</div>
+                    <ul className="plan-features">
+                      {PLAN_INFO[planId].features.map((f, i) => (
+                        <li key={i}>{f}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+              <p className="trial-copy">
+                Your account will be created on a <strong>14-day free trial</strong>. To secure plan access after the trial, add a payment method in Billing.
+              </p>
+              <div className="step-actions">
+                <button type="button" className="btn-secondary" onClick={handleStep3Back}>
+                  Back
+                </button>
+                <button type="button" className="btn-signin" onClick={handleStep3Next}>
+                  Next
+                </button>
+              </div>
+            </>
+          )}
+
+          {step === 4 && (
+            <>
               <p className="subtitle">
                 Create your account. Connect your {posProvider === 'clover' ? 'Clover' : 'Square'} account in Settings after signup.
+              </p>
+              <p className="hint">
+                Your account will start on a 14-day free trial. Add a payment method in Billing to secure your plan.
               </p>
               <form onSubmit={handleSubmit} className="login-form">
                 <div className="form-group">
@@ -305,7 +403,7 @@ export default function SignupPage() {
                   </div>
                 )}
                 <div className="step-actions">
-                  <button type="button" className="btn-secondary" onClick={handleStep3Back} disabled={submitting}>
+                  <button type="button" className="btn-secondary" onClick={handleStep4Back} disabled={submitting}>
                     Back
                   </button>
                   <button type="submit" className="btn-signin" disabled={submitting}>
@@ -338,7 +436,7 @@ export default function SignupPage() {
             border-radius: 16px;
             padding: 48px;
             text-align: center;
-            max-width: 440px;
+            max-width: 520px;
             width: 100%;
           }
 
@@ -393,6 +491,85 @@ export default function SignupPage() {
             color: var(--color-text-muted);
             margin: 0 0 24px;
             font-size: 14px;
+          }
+
+          .recommended-plan {
+            text-align: left;
+            margin-bottom: 20px;
+            padding: 16px;
+            border: 2px solid var(--color-primary);
+            border-radius: 12px;
+            background: rgba(var(--color-primary-rgb, 99, 102, 241), 0.08);
+          }
+
+          .recommended-badge {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--color-primary);
+            margin-bottom: 6px;
+          }
+
+          .recommended-name {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 4px;
+          }
+
+          .recommended-price {
+            font-size: 15px;
+            color: var(--color-text-muted);
+            margin-bottom: 8px;
+          }
+
+          .recommended-reason {
+            font-size: 14px;
+            color: var(--color-text-muted);
+            margin: 0;
+          }
+
+          .all-plans {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 20px;
+            text-align: left;
+          }
+
+          .plan-card {
+            padding: 12px;
+            border: 1px solid var(--color-border);
+            border-radius: 10px;
+            font-size: 13px;
+          }
+
+          .plan-card.recommended {
+            border-color: var(--color-primary);
+          }
+
+          .plan-card .plan-name {
+            font-weight: 600;
+            margin-bottom: 4px;
+          }
+
+          .plan-card .plan-price {
+            color: var(--color-text-muted);
+            margin-bottom: 8px;
+          }
+
+          .plan-card .plan-features {
+            margin: 0;
+            padding-left: 18px;
+          }
+
+          .plan-card .plan-features li {
+            margin-bottom: 2px;
+          }
+
+          .trial-copy {
+            font-size: 14px;
+            color: var(--color-text-muted);
+            margin: 0 0 24px;
+            line-height: 1.5;
           }
 
           .pos-options {

@@ -395,6 +395,9 @@ export default function LocationsPage({
   const [showAddForm, setShowAddForm] = useState(false);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  const [dismissed24h, setDismissed24h] = useState(false);
+
+  const hasOnlineOrderingEnabled = locations.some((l) => l.onlineOrderingEnabled);
 
   const handleSave = useCallback(async (locationId: string, updates: Partial<VendorLocation>) => {
     setSaving(true);
@@ -502,6 +505,14 @@ export default function LocationsPage({
           {saveError && <div className="error-banner">{saveError}</div>}
           {saveSuccess && <div className="success-banner">✓ Saved successfully</div>}
           {createError && <div className="error-banner">{createError}</div>}
+          {hasOnlineOrderingEnabled && !dismissed24h && (
+            <div className="storefront-24h-banner">
+              <span>Customer online ordering will be available at your storefront within 24 hours.</span>
+              <button type="button" className="storefront-24h-dismiss" onClick={() => setDismissed24h(true)} aria-label="Dismiss">
+                ×
+              </button>
+            </div>
+          )}
 
           <section className="locations-list">
             {locations.length === 0 ? (
@@ -649,6 +660,35 @@ export default function LocationsPage({
             padding: 16px;
             margin-bottom: 24px;
             color: #34c759;
+          }
+
+          .storefront-24h-banner {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            background: rgba(59, 130, 246, 0.15);
+            border: 1px solid rgba(59, 130, 246, 0.35);
+            border-radius: 12px;
+            padding: 14px 16px;
+            margin-bottom: 24px;
+            color: #1d4ed8;
+            font-size: 14px;
+          }
+
+          .storefront-24h-dismiss {
+            flex-shrink: 0;
+            background: none;
+            border: none;
+            color: inherit;
+            font-size: 20px;
+            cursor: pointer;
+            padding: 0 4px;
+            line-height: 1;
+          }
+
+          .storefront-24h-dismiss:hover {
+            opacity: 0.8;
           }
 
           .locations-list {

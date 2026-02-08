@@ -36,22 +36,22 @@ export function canUseMultipleLocations(planId: BillingPlanId): boolean {
 // Module-level gating (plan + intake): if intake says "no", return false; else use plan rules.
 // -----------------------------------------------------------------------------
 
-/** KDS: intake must want it; no plan gate (all plans can use KDS if they want it). */
+/** KDS: intake must want it; plan gate (kds_only, starter, pro — paid required for live KDS). */
 export function canUseKdsModule(planId: BillingPlanId, intake: VendorIntake | null): boolean {
   if (intake && !intake.needsKds) return false;
-  return true;
+  return planId === 'kds_only' || planId === 'starter' || planId === 'pro';
 }
 
-/** Online ordering: intake must want it; plan gate (starter/pro for full storefront). */
+/** Online ordering: intake must want it; plan gate (online_only, starter, pro). */
 export function canUseOnlineOrderingModule(planId: BillingPlanId, intake: VendorIntake | null): boolean {
   if (intake && !intake.needsOnlineOrdering) return false;
-  return planId === 'pro' || planId === 'starter';
+  return planId === 'online_only' || planId === 'starter' || planId === 'pro';
 }
 
-/** Scheduled orders: intake must want it; plan gate (starter/pro). */
+/** Scheduled orders: intake must want it; plan gate (online_only, starter, pro). */
 export function canUseScheduledOrdersModule(planId: BillingPlanId, intake: VendorIntake | null): boolean {
   if (intake && !intake.needsScheduledOrders) return false;
-  return planId === 'pro' || planId === 'starter';
+  return planId === 'online_only' || planId === 'starter' || planId === 'pro';
 }
 
 /** Loyalty: intake must want it; plan gate (starter/pro). */

@@ -11,6 +11,8 @@ type VendorBillingPageProps = {
   vendor: Vendor | null;
 };
 
+type PaidPlanId = 'starter' | 'pro' | 'kds_only' | 'online_only';
+
 type BillingData = {
   planId: BillingPlanId;
   planName: string;
@@ -22,6 +24,7 @@ type BillingData = {
   isTrialExpired: boolean;
   paymentMethod: { brand: string; last4: string } | null;
   canUpgrade: boolean;
+  locationsCount?: number | null;
 };
 
 type InvoiceItem = {
@@ -132,7 +135,7 @@ export default function VendorBillingPage({ vendorSlug, vendorName, vendor }: Ve
     }
   };
 
-  const handleSubscribe = async (plan: 'starter' | 'pro') => {
+  const handleSubscribe = async (plan: PaidPlanId) => {
     setCheckoutLoading(plan);
     setError(null);
     try {
@@ -180,9 +183,7 @@ export default function VendorBillingPage({ vendorSlug, vendorName, vendor }: Ve
       'Your storefront: yourname.countrtop.com',
       'POS integration, email notifications'
     ],
-    trial: [
-      'Same as Beta during trial'
-    ],
+    trial: ['Same as Beta during trial'],
     starter: [
       'Everything in Beta',
       'Advanced analytics',
@@ -195,6 +196,16 @@ export default function VendorBillingPage({ vendorSlug, vendorName, vendor }: Ve
       'Multiple locations',
       'Multiple KDS screens',
       'Role-based staff accounts'
+    ],
+    kds_only: [
+      'Kitchen Display System',
+      'POS order sync',
+      'Single or multi-location (per-location pricing)'
+    ],
+    online_only: [
+      'Storefront & checkout',
+      'Scheduled orders',
+      'Per-location pricing'
     ]
   };
 
@@ -236,7 +247,12 @@ export default function VendorBillingPage({ vendorSlug, vendorName, vendor }: Ve
           )}
           {billing?.planId === 'trial' && !billing?.isTrialExpired && trialDaysRemaining() !== null && (
             <div className="trial-banner trial-active">
-              <strong>Free trial.</strong> {trialDaysRemaining()} day{trialDaysRemaining() !== 1 ? 's' : ''} remaining. Ends {formatDate(billing.trialEndsAt!)}.
+              <strong>14-day free trial.</strong> {trialDaysRemaining()} day{trialDaysRemaining() !== 1 ? 's' : ''} remaining. Ends {formatDate(billing.trialEndsAt!)}. Add a payment method and choose a plan to secure access before the trial ends.
+            </div>
+          )}
+          {billing?.planId === 'beta' && !billing?.isTrialExpired && (
+            <div className="trial-banner trial-active">
+              <strong>Your account is on a 14-day free trial.</strong> Add a payment method and choose a plan to secure access before the trial ends.
             </div>
           )}
 
@@ -250,8 +266,20 @@ export default function VendorBillingPage({ vendorSlug, vendorName, vendor }: Ve
                   <>
                     <div className="plan-name">{billing.planName}</div>
                     <div className="plan-price">
-                      {formatPrice(billing.amountCents)}
-                      {billing.interval && <span className="plan-interval">/{billing.interval}</span>}
+                      {(billing.planId === 'kds_only' || billing.planId === 'online_only') &&
+                       billing.locationsCount != null &&
+                       billing.locationsCount > 0 ? (
+                        <>
+                          {formatPrice(billing.amountCents * billing.locationsCount)}
+                          <span className="plan-interval">/mo</span>
+                          <span className="plan-per-loc"> ({billing.locationsCount} location{billing.locationsCount !== 1 ? 's' : ''}, ${(billing.amountCents / 100).toFixed(0)}/loc)</span>
+                        </>
+                      ) : (
+                        <>
+                          {formatPrice(billing.amountCents)}
+                          {billing.interval && <span className="plan-interval">/{billing.interval}</span>}
+                        </>
+                      )}
                     </div>
                     {billing.currentPeriodEnd && (
                       <p className="muted">Next billing: {formatDate(billing.currentPeriodEnd)}</p>
@@ -265,23 +293,52 @@ export default function VendorBillingPage({ vendorSlug, vendorName, vendor }: Ve
                     )}
                     {billing.canUpgrade && (
                       <div className="upgrade-actions">
-                        <button
-                          type="button"
-                          className="btn-upgrade"
-                          disabled={!!checkoutLoading}
-                          onClick={() => handleSubscribe('starter')}
-                        >
-                          {checkoutLoading === 'starter' ? 'Redirecting…' : 'Upgrade to Starter ($49/mo)'}
-                        </button>
-                        <button
-                          type="button"
-                          className="btn-upgrade btn-upgrade-pro"
-                          disabled={!!checkoutLoading}
-                          onClick={() => handleSubscribe('pro')}
-                        >
-                          {checkoutLoading === 'pro' ? 'Redirecting…' : 'Upgrade to Pro ($99/mo)'}
-                        </button>
+                        <p className="choose-plan-hint">Choose a plan to subscribe:</p>
+                        <div className="plan-buttons">
+                          <button
+                            type="button"
+                            className="btn-upgrade btn-upgrade-kds"
+                            disabled={!!checkoutLoading}
+                            onClick={() => handleSubscribe('kds_only')}
+                          >
+                            {checkoutLoading === 'kds_only' ? 'Redirecting…' : 'KDS only ($15/loc/mo)'}
+                          </button>
+                          <button
+                            type="button"
+                            className="btn-upgrade btn-upgrade-online"
+                            disabled={!!checkoutLoading}
+                            onClick={() => handleSubscribe('online_only')}
+                          >
+                            {checkoutLoading === 'online_only' ? 'Redirecting…' : 'Online only ($25/loc/mo)'}
+                          </button>
+                          <button
+                            type="button"
+                            className="btn-upgrade"
+                            disabled={!!checkoutLoading}
+                            onClick={() => handleSubscribe('starter')}
+                          >
+                            {checkoutLoading === 'starter' ? 'Redirecting…' : 'Starter ($49/mo)'}
+                          </button>
+                          <button
+                            type="button"
+                            className="btn-upgrade btn-upgrade-pro"
+                            disabled={!!checkoutLoading}
+                            onClick={() => handleSubscribe('pro')}
+                          >
+                            {checkoutLoading === 'pro' ? 'Redirecting…' : 'Pro ($99/mo)'}
+                          </button>
+                        </div>
                       </div>
+                    )}
+                    {!billing.canUpgrade && (billing.planId === 'starter' || billing.planId === 'pro' || billing.planId === 'kds_only' || billing.planId === 'online_only') && (
+                      <button
+                        type="button"
+                        className="btn-secondary btn-manage-sub"
+                        disabled={portalLoading}
+                        onClick={handleManagePaymentMethod}
+                      >
+                        {portalLoading ? 'Opening…' : 'Manage your subscription'}
+                      </button>
                     )}
                   </>
                 ) : (
@@ -304,7 +361,7 @@ export default function VendorBillingPage({ vendorSlug, vendorName, vendor }: Ve
                   disabled={portalLoading}
                   onClick={handleManagePaymentMethod}
                 >
-                  {portalLoading ? 'Opening…' : 'Manage payment method'}
+                  {portalLoading ? 'Opening…' : billing?.canUpgrade ? 'Add payment method' : 'Manage payment method'}
                 </button>
               </section>
 
@@ -427,6 +484,36 @@ export default function VendorBillingPage({ vendorSlug, vendorName, vendor }: Ve
           .plan-interval {
             font-size: 14px;
             font-weight: 500;
+          }
+
+          .plan-per-loc {
+            font-size: 13px;
+            color: var(--ct-text-muted);
+            font-weight: 400;
+          }
+
+          .choose-plan-hint {
+            margin: 0 0 10px;
+            font-size: 14px;
+            color: var(--ct-text-muted);
+          }
+
+          .plan-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+          }
+
+          .btn-upgrade-kds {
+            background: linear-gradient(135deg, #059669, #10b981);
+          }
+
+          .btn-upgrade-online {
+            background: linear-gradient(135deg, #7c3aed, #8b5cf6);
+          }
+
+          .btn-manage-sub {
+            margin-top: 12px;
           }
 
           .plan-features-list {

@@ -58,7 +58,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           break;
         }
         const plan = (subscription.metadata?.plan ?? 'starter') as BillingPlanId;
-        const planId: BillingPlanId = plan === 'starter' || plan === 'pro' ? plan : 'starter';
+        const planId: BillingPlanId =
+          plan === 'starter' || plan === 'pro' || plan === 'kds_only' || plan === 'online_only'
+            ? plan
+            : 'starter';
         const currentPeriodEnd = subscription.current_period_end
           ? new Date(subscription.current_period_end * 1000).toISOString()
           : null;
