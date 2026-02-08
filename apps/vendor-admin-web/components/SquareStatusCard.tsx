@@ -23,6 +23,7 @@ export function SquareStatusCard({ vendorSlug, posProvider }: Props) {
   const showSquareConnect = posProvider !== 'clover';
   const showCloverConnect = posProvider === 'clover';
   const [status, setStatus] = useState<SquareStatusData | null>(null);
+  const [cloverConnected, setCloverConnected] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
   const [rechecking, setRechecking] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -32,19 +33,32 @@ export function SquareStatusCard({ vendorSlug, posProvider }: Props) {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/vendors/${vendorSlug}/square-payments-status`, { credentials: 'include' });
-      const data = await res.json();
-      if (data.success && data.data) {
-        setStatus(data.data);
+      if (showCloverConnect) {
+        const cloverRes = await fetch(`/api/vendors/${vendorSlug}/clover-connection-status`, {
+          credentials: 'include'
+        });
+        const cloverData = await cloverRes.json();
+        if (cloverData.success && cloverData.data) {
+          setCloverConnected(cloverData.data.connected);
+        }
+        setStatus(null);
       } else {
-        setError(data.error ?? 'Failed to load status');
+        const res = await fetch(`/api/vendors/${vendorSlug}/square-payments-status`, {
+          credentials: 'include'
+        });
+        const data = await res.json();
+        if (data.success && data.data) {
+          setStatus(data.data);
+        } else {
+          setError(data.error ?? 'Failed to load status');
+        }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load status');
     } finally {
       setLoading(false);
     }
-  }, [vendorSlug]);
+  }, [vendorSlug, showCloverConnect]);
 
   useEffect(() => {
     fetchStatus();
@@ -82,13 +96,46 @@ export function SquareStatusCard({ vendorSlug, posProvider }: Props) {
     );
   }
 
-  if (error && !status) {
+  if (error && !status && !showCloverConnect) {
     return (
       <section className="square-status-section">
         <h2 className="section-title">Getting Started</h2>
         <div className="error-banner small">
           <p>{error}</p>
         </div>
+        <style jsx>{statusCardStyles}</style>
+      </section>
+    );
+  }
+
+  if (showCloverConnect) {
+    const connected = cloverConnected === true;
+    return (
+      <section className="square-status-section">
+        <h2 className="section-title">Getting Started</h2>
+        <p className="section-description">Complete these steps before going live with online ordering</p>
+
+        {!connected && (
+          <div className="connect-square-cta">
+            <a
+              href={vendorSlug ? `/api/vendors/${vendorSlug}/clover-oauth/authorize` : '#'}
+              className="btn-connect-square"
+            >
+              Connect Clover
+            </a>
+          </div>
+        )}
+        <div className="readiness-list">
+          <div className={`readiness-item ${connected ? 'done' : ''}`}>
+            <span className="readiness-icon">{connected ? '✅' : '○'}</span>
+            <span className="readiness-label">Clover Connected</span>
+          </div>
+        </div>
+        {error && (
+          <div className="error-banner small">
+            <p>{error}</p>
+          </div>
+        )}
         <style jsx>{statusCardStyles}</style>
       </section>
     );
@@ -112,12 +159,6 @@ export function SquareStatusCard({ vendorSlug, posProvider }: Props) {
           >
             Connect Square
           </a>
-        </div>
-      )}
-      {showCloverConnect && (
-        <div className="connect-pos-note">
-          <p className="connect-pos-label">Connect your Clover account</p>
-          <p className="connect-pos-hint">Add your Clover location in Settings → Locations. KDS and POS orders will sync once the location is connected.</p>
         </div>
       )}
       <div className="readiness-list">

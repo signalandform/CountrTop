@@ -54,6 +54,7 @@ export {
   getPOSEnvironment,
   getProviderFromSource,
   getSourceForProvider,
+  type GetAdapterForLocationOptions,
 } from './utils';
 
 // ---------------------------------------------------------------------------

@@ -16,3 +16,4 @@ coverage
 **/.env
 docs/phase-3-notes.md
 **/tsconfig.tsbuildinfo
+supabase/.temp/

@@ -91,6 +91,19 @@ export type VendorSquareIntegration = {
   lastError?: string | null;
 };
 
+/** Clover OAuth integration per vendor per environment. Server-only; tokens never exposed to client. */
+export type VendorCloverIntegration = {
+  vendorId: string;
+  cloverEnvironment: 'sandbox' | 'production';
+  merchantId?: string | null;
+  accessToken: string;
+  refreshToken: string;
+  connectionStatus: 'connected' | 'expired' | 'revoked' | 'error';
+  connectedAt: string;
+  updatedAt: string;
+  lastError?: string | null;
+};
+
 export type VendorLocation = {
   id: string;
   vendorId: string;

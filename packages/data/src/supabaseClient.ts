@@ -662,6 +662,32 @@ export type Database = {
         Update: Partial<Database['public']['Tables']['vendor_square_integrations']['Insert']>;
         Relationships: [];
       };
+      vendor_clover_integrations: {
+        Row: {
+          vendor_id: string;
+          clover_environment: string;
+          merchant_id: string | null;
+          access_token: string;
+          refresh_token: string;
+          connection_status: string;
+          connected_at: string;
+          updated_at: string;
+          last_error: string | null;
+        };
+        Insert: {
+          vendor_id: string;
+          clover_environment: string;
+          merchant_id?: string | null;
+          access_token: string;
+          refresh_token: string;
+          connection_status?: string;
+          connected_at?: string;
+          updated_at?: string;
+          last_error?: string | null;
+        };
+        Update: Partial<Database['public']['Tables']['vendor_clover_integrations']['Insert']>;
+        Relationships: [];
+      };
       vendor_email_unsubscribes: {
         Row: {
           id: string;
@@ -882,6 +908,15 @@ export type Database = {
       increment_vendor_crm_usage: {
         Args: { p_vendor_id: string; p_period_start: string; p_count: number };
         Returns: undefined;
+      };
+      get_kds_throughput_buckets: {
+        Args: {
+          p_location_id: string;
+          p_start_ts: string;
+          p_end_ts: string;
+          p_granularity: string;
+        };
+        Returns: { bucket_key: string; ticket_count: number; avg_prep_minutes: number | null }[];
       };
     };
     Enums: Record<string, never>;
@@ -2412,6 +2447,90 @@ export class SupabaseDataClient implements DataClient {
     }
   }
 
+  async getVendorCloverIntegration(
+    vendorId: string,
+    environment: 'sandbox' | 'production'
+  ): Promise<import('@countrtop/models').VendorCloverIntegration | null> {
+    const startTime = Date.now();
+    try {
+      const { data, error } = await this.client
+        .from('vendor_clover_integrations')
+        .select('*')
+        .eq('vendor_id', vendorId)
+        .eq('clover_environment', environment)
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) {
+        logQueryPerformance('getVendorCloverIntegration', startTime, true);
+        return null;
+      }
+      const row = data as Database['public']['Tables']['vendor_clover_integrations']['Row'];
+      const result: import('@countrtop/models').VendorCloverIntegration = {
+        vendorId: row.vendor_id,
+        cloverEnvironment: row.clover_environment as 'sandbox' | 'production',
+        merchantId: row.merchant_id ?? null,
+        accessToken: row.access_token,
+        refreshToken: row.refresh_token,
+        connectionStatus: row.connection_status as 'connected' | 'expired' | 'revoked' | 'error',
+        connectedAt: row.connected_at,
+        updatedAt: row.updated_at,
+        lastError: row.last_error ?? null
+      };
+      logQueryPerformance('getVendorCloverIntegration', startTime, true);
+      return result;
+    } catch (error) {
+      logQueryPerformance('getVendorCloverIntegration', startTime, false, error);
+      throw error;
+    }
+  }
+
+  async setVendorCloverIntegration(
+    vendorId: string,
+    environment: 'sandbox' | 'production',
+    data: Partial<Omit<import('@countrtop/models').VendorCloverIntegration, 'vendorId' | 'cloverEnvironment' | 'connectedAt'>>
+  ): Promise<import('@countrtop/models').VendorCloverIntegration> {
+    const startTime = Date.now();
+    try {
+      const now = new Date().toISOString();
+      const existing = await this.getVendorCloverIntegration(vendorId, environment);
+      const connectedAt = existing?.connectedAt ?? now;
+      const payload: Database['public']['Tables']['vendor_clover_integrations']['Insert'] = {
+        vendor_id: vendorId,
+        clover_environment: environment,
+        merchant_id: data.merchantId ?? null,
+        access_token: data.accessToken ?? '',
+        refresh_token: data.refreshToken ?? '',
+        connection_status: data.connectionStatus ?? 'connected',
+        connected_at: connectedAt,
+        updated_at: data.updatedAt ?? now,
+        last_error: data.lastError ?? null
+      };
+      const { data: row, error } = await this.client
+        .from('vendor_clover_integrations')
+        .upsert(payload, { onConflict: 'vendor_id,clover_environment' })
+        .select()
+        .single();
+      if (error) throw error;
+      const r = row as Database['public']['Tables']['vendor_clover_integrations']['Row'];
+      const result: import('@countrtop/models').VendorCloverIntegration = {
+        vendorId: r.vendor_id,
+        cloverEnvironment: r.clover_environment as 'sandbox' | 'production',
+        merchantId: r.merchant_id ?? null,
+        accessToken: r.access_token,
+        refreshToken: r.refresh_token,
+        connectionStatus: r.connection_status as 'connected' | 'expired' | 'revoked' | 'error',
+        connectedAt: r.connected_at,
+        updatedAt: r.updated_at,
+        lastError: r.last_error ?? null
+      };
+      logQueryPerformance('setVendorCloverIntegration', startTime, true);
+      return result;
+    } catch (error) {
+      logQueryPerformance('setVendorCloverIntegration', startTime, false, error);
+      throw error;
+    }
+  }
+
   async setSelectedSquareLocation(vendorId: string, locationId: string): Promise<void> {
     const startTime = Date.now();
     try {
@@ -2865,12 +2984,14 @@ export class SupabaseDataClient implements DataClient {
           .eq('pos_order_id', order.posOrderId);
         if (error) throw error;
       } else {
+        const sourceForProvider =
+          order.provider === 'toast' ? 'toast_pos' : order.provider === 'clover' ? 'clover_pos' : 'pos';
         const insertPayload: Database['public']['Tables']['kitchen_tickets']['Insert'] = {
           square_order_id: null,
           pos_order_id: order.posOrderId,
           location_id: order.locationId,
           pos_provider: order.provider,
-          source: 'clover_pos',
+          source: sourceForProvider,
           status: 'placed',
           placed_at: order.placedAt,
           updated_at: new Date().toISOString()
@@ -3369,62 +3490,20 @@ export class SupabaseDataClient implements DataClient {
   ): Promise<KdsThroughputPoint[]> {
     const startTime = Date.now();
     try {
-      // For v1, we'll fetch all tickets and group in JavaScript
-      // TODO: Optimize with RPC function for large date ranges
-      const { data: tickets, error } = await this.client
-        .from('kitchen_tickets')
-        .select('placed_at, ready_at')
-        .eq('location_id', locationId)
-        .gte('placed_at', startDate.toISOString())
-        .lte('placed_at', endDate.toISOString())
-        .not('completed_at', 'is', null);
+      const { data: rows, error } = await this.client.rpc('get_kds_throughput_buckets', {
+        p_location_id: locationId,
+        p_start_ts: startDate.toISOString(),
+        p_end_ts: endDate.toISOString(),
+        p_granularity: granularity
+      });
 
       if (error) throw error;
 
-      const ticketsData = tickets || [];
-      const buckets = new Map<string, { count: number; prepTimes: number[] }>();
-
-      // Group tickets by time bucket
-      ticketsData.forEach(ticket => {
-        const placedDate = new Date(ticket.placed_at);
-        let bucketKey: string;
-        
-        if (granularity === 'hour') {
-          bucketKey = placedDate.toISOString().slice(0, 13) + ':00:00.000Z';
-        } else if (granularity === 'day') {
-          bucketKey = placedDate.toISOString().slice(0, 10) + 'T00:00:00.000Z';
-        } else { // week
-          const weekStart = new Date(placedDate);
-          weekStart.setDate(placedDate.getDate() - placedDate.getDay());
-          weekStart.setHours(0, 0, 0, 0);
-          bucketKey = weekStart.toISOString();
-        }
-
-        if (!buckets.has(bucketKey)) {
-          buckets.set(bucketKey, { count: 0, prepTimes: [] });
-        }
-        
-        const bucket = buckets.get(bucketKey)!;
-        bucket.count++;
-        
-        if (ticket.ready_at) {
-          const placed = new Date(ticket.placed_at).getTime();
-          const ready = new Date(ticket.ready_at).getTime();
-          const prepTime = (ready - placed) / (1000 * 60);
-          bucket.prepTimes.push(prepTime);
-        }
-      });
-
-      // Convert to result array
-      const result: KdsThroughputPoint[] = Array.from(buckets.entries())
-        .map(([timestamp, data]) => ({
-          timestamp,
-          count: data.count,
-          avgPrepTime: data.prepTimes.length > 0
-            ? data.prepTimes.reduce((sum, t) => sum + t, 0) / data.prepTimes.length
-            : null
-        }))
-        .sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+      const result: KdsThroughputPoint[] = (rows || []).map(row => ({
+        timestamp: new Date(row.bucket_key).toISOString(),
+        count: row.ticket_count,
+        avgPrepTime: row.avg_prep_minutes != null ? Number(row.avg_prep_minutes) : null
+      }));
 
       logQueryPerformance('getKdsThroughput', startTime, true);
       return result;
@@ -4141,7 +4220,7 @@ export class SupabaseDataClient implements DataClient {
         revenue: data.revenue,
         orderCount: data.orderCount.size,
         avgPrice: data.quantity > 0 ? data.revenue / data.quantity : 0,
-        avgPrepTimeMinutes: null // TODO: Correlate with kitchen_tickets if needed
+        avgPrepTimeMinutes: null // Item-level data does not map 1:1 to kitchen tickets; would require item-level timing from KDS
       })).sort((a, b) => b.revenue - a.revenue); // Sort by revenue descending
 
       logQueryPerformance('getItemPerformance', startTime, true);

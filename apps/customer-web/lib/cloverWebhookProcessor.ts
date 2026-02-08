@@ -49,7 +49,12 @@ export async function processCloverWebhookEvent(
     return;
   }
 
-  const adapter = getAdapterForLocation(location, vendor);
+  const cloverEnv =
+    (process.env.CLOVER_ENVIRONMENT ?? (process.env.NODE_ENV === 'production' ? 'production' : 'sandbox')) as
+      | 'sandbox'
+      | 'production';
+  const cloverIntegration = await dataClient.getVendorCloverIntegration(vendor.id, cloverEnv);
+  const adapter = getAdapterForLocation(location, vendor, { cloverIntegration });
   if (!adapter) {
     logger.warn(`No Clover adapter for location ${location.id}`);
     return;

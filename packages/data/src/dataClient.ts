@@ -158,6 +158,13 @@ export interface DataClient {
   refreshSquareTokenIfNeeded(vendorId: string, environment: 'sandbox' | 'production'): Promise<boolean>;
   listSquareLocations(vendorId: string): Promise<Array<{ id: string; name?: string }>>;
 
+  getVendorCloverIntegration(vendorId: string, environment: 'sandbox' | 'production'): Promise<import('@countrtop/models').VendorCloverIntegration | null>;
+  setVendorCloverIntegration(
+    vendorId: string,
+    environment: 'sandbox' | 'production',
+    data: Partial<Omit<import('@countrtop/models').VendorCloverIntegration, 'vendorId' | 'cloverEnvironment' | 'connectedAt'>>
+  ): Promise<import('@countrtop/models').VendorCloverIntegration>;
+
   upsertPushDevice(device: PushDeviceInput): Promise<PushDevice>;
   listPushDevicesForUser(userId: string): Promise<PushDevice[]>;
 

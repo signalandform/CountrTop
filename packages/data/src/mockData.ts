@@ -423,6 +423,35 @@ export class MockDataClient implements DataClient {
     return [];
   }
 
+  /* eslint-disable @typescript-eslint/no-unused-vars */
+  async getVendorCloverIntegration(
+    _vendorId: string,
+    _environment: 'sandbox' | 'production'
+  ): Promise<import('@countrtop/models').VendorCloverIntegration | null> {
+    return null;
+  }
+  /* eslint-enable @typescript-eslint/no-unused-vars */
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- mock returns stub
+  async setVendorCloverIntegration(
+    vendorId: string,
+    environment: 'sandbox' | 'production',
+    data: Partial<Omit<import('@countrtop/models').VendorCloverIntegration, 'vendorId' | 'cloverEnvironment' | 'connectedAt'>>
+  ): Promise<import('@countrtop/models').VendorCloverIntegration> {
+    const now = new Date().toISOString();
+    return {
+      vendorId,
+      cloverEnvironment: environment,
+      merchantId: data.merchantId ?? null,
+      accessToken: data.accessToken ?? 'mock_token',
+      refreshToken: data.refreshToken ?? 'mock_refresh',
+      connectionStatus: (data.connectionStatus ?? 'connected') as 'connected',
+      connectedAt: now,
+      updatedAt: data.updatedAt ?? now,
+      lastError: data.lastError ?? null
+    };
+  }
+
   async upsertVendorBilling(
     vendorId: string,
     data: {

@@ -17,6 +17,8 @@ NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGc...
 ```
 
+**Custom domain:** If you added a custom domain to your Supabase project (Project Settings → API), use that URL instead of `*.supabase.co` for both `SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_URL`. Keys (anon, service_role) usually stay the same. Update these two variables in every place you run or deploy the app: Vercel env for each project, local `.env.local`, and any scripts that use `SUPABASE_URL`. Redeploy after changing Vercel env vars.
+
 ## POS Integrations
 
 ### Square
@@ -60,7 +62,10 @@ TOAST_WEBHOOK_SECRET=your-webhook-secret
 CLOVER_APP_ID=your-app-id
 CLOVER_APP_SECRET=your-app-secret
 CLOVER_WEBHOOK_SIGNING_KEY=your-signing-key
+CLOVER_ENVIRONMENT=sandbox  # or 'production'
 ```
+
+**Connect Clover (OAuth):** For vendor-admin "Connect Clover" flow, register the redirect URI in the Clover Developer Dashboard (app settings / Alternate Launch Path): `https://<vendor-admin-host>/api/clover-oauth/callback`. Example: `https://admin.countrtop.com/api/clover-oauth/callback`.
 
 ## Email Notifications
 

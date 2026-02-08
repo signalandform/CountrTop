@@ -15,6 +15,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 
 import { createLogger } from '@countrtop/api-client';
 import type { POSProvider } from '@countrtop/models';
+import { getAdapterForLocation } from '@countrtop/pos-adapters';
 import { getServerDataClient } from '../../../lib/dataClient';
 
 const logger = createLogger({ requestId: 'webhook' });
@@ -325,11 +326,53 @@ async function handleToastWebhook(
         vendorId: vendor.id
       });
 
-      // TODO: Fetch full order from Toast and process
-      // const adapter = getAdapterForLocation(location, vendor);
-      // const order = await adapter.fetchOrder(orderGuid);
-      // await dataClient.upsertToastOrder(order);
-      // await dataClient.ensureKitchenTicketForOpenOrder(order);
+      const adapter = getAdapterForLocation(location, vendor);
+      if (!adapter) {
+        logger.warn(`No Toast adapter for location ${location.id}`);
+      } else {
+        const order = await adapter.fetchOrder(orderGuid);
+        if (!order) {
+          logger.warn(`Toast order not found: ${orderGuid}`);
+        } else {
+          const orderJson: Record<string, unknown> = {
+            ...order,
+            items: order.items,
+            metadata: order.metadata,
+            raw: order.raw
+          };
+
+          const posOrderId = await dataClient.upsertPosOrder({
+            provider: 'toast',
+            vendorId: vendor.id,
+            vendorLocationId: location.id,
+            externalOrderId: order.externalId,
+            externalLocationId: order.locationId,
+            status: order.status,
+            source: order.source === 'countrtop_online' ? 'countrtop_online' : 'pos',
+            orderJson
+          });
+
+          if (order.status === 'open') {
+            await dataClient.ensureKitchenTicketForPosOrder({
+              provider: 'toast',
+              externalOrderId: order.externalId,
+              locationId: order.locationId,
+              vendorId: vendor.id,
+              vendorLocationId: location.id,
+              posOrderId,
+              status: order.status,
+              placedAt: order.createdAt
+            });
+          }
+
+          if (order.status === 'canceled') {
+            await dataClient.updateTicketForCloverCanceled({
+              posOrderId,
+              locationId: order.locationId
+            });
+          }
+        }
+      }
     } catch (error) {
       logger.error(`Failed to process Toast order ${orderGuid}`, error instanceof Error ? error : new Error(String(error)));
     }

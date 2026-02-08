@@ -4,7 +4,7 @@
  * Helper functions for working with POS adapters in the CountrTop application.
  */
 
-import type { VendorLocation, Vendor, POSProvider } from '@countrtop/models';
+import type { VendorLocation, Vendor, POSProvider, VendorCloverIntegration } from '@countrtop/models';
 import { createAdapter, type POSAdapter, type POSAdapterConfig, type SquareCredentials, type CloverCredentials, type ToastCredentials } from './adapter';
 
 // =============================================================================
@@ -96,25 +96,33 @@ function resolveToastCredentials(location: VendorLocation): ToastCredentials | n
 }
 
 /**
- * Resolves Clover credentials for a vendor location
+ * Resolves Clover credentials for a vendor location.
+ * When cloverIntegration is provided and merchantId matches location, uses DB-stored tokens; otherwise falls back to env.
  */
-function resolveCloverCredentials(location: VendorLocation): CloverCredentials | null {
-  // Try location-specific token first
-  const locationKey = location.externalLocationId?.replace(/[^A-Z0-9_]/gi, '_').toUpperCase();
-  let accessToken = locationKey ? process.env[`CLOVER_ACCESS_TOKEN_${locationKey}`] : null;
-  
-  // Fall back to default Clover token
-  if (!accessToken) {
-    accessToken = process.env.CLOVER_ACCESS_TOKEN ?? null;
-  }
-
-  if (!accessToken) {
+function resolveCloverCredentials(
+  location: VendorLocation,
+  cloverIntegration?: VendorCloverIntegration | null
+): CloverCredentials | null {
+  const merchantId = location.externalLocationId;
+  if (!merchantId) {
     return null;
   }
 
-  // merchantId is the Clover location ID (stored in externalLocationId)
-  const merchantId = location.externalLocationId;
-  if (!merchantId) {
+  if (cloverIntegration && cloverIntegration.merchantId === merchantId && cloverIntegration.accessToken) {
+    return {
+      provider: 'clover',
+      accessToken: cloverIntegration.accessToken,
+      merchantId,
+      webhookSigningKey: process.env.CLOVER_WEBHOOK_SIGNING_KEY,
+    };
+  }
+
+  const locationKey = merchantId.replace(/[^A-Z0-9_]/gi, '_').toUpperCase();
+  let accessToken = locationKey ? process.env[`CLOVER_ACCESS_TOKEN_${locationKey}`] : null;
+  if (!accessToken) {
+    accessToken = process.env.CLOVER_ACCESS_TOKEN ?? null;
+  }
+  if (!accessToken) {
     return null;
   }
 
@@ -156,9 +164,14 @@ export function getAdapterForVendor(vendor: Vendor): POSAdapter | null {
  * Creates a POS adapter for a specific vendor location
  * This is the preferred method for multi-POS support
  */
+export type GetAdapterForLocationOptions = {
+  cloverIntegration?: VendorCloverIntegration | null;
+};
+
 export function getAdapterForLocation(
   location: VendorLocation,
-  vendor: Vendor
+  vendor: Vendor,
+  options?: GetAdapterForLocationOptions
 ): POSAdapter | null {
   const provider = location.posProvider ?? 'square';
 
@@ -172,7 +185,7 @@ export function getAdapterForLocation(
       credentials = resolveToastCredentials(location);
       break;
     case 'clover':
-      credentials = resolveCloverCredentials(location);
+      credentials = resolveCloverCredentials(location, options?.cloverIntegration);
       break;
     default:
       console.error(`Unknown POS provider: ${provider}`);
