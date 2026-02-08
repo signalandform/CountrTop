@@ -100,7 +100,7 @@ export default async function handler(
 
     const dataClient = getServerDataClient();
     const billing = await dataClient.getVendorBilling(vendorRow.id);
-    const planId: BillingPlanId = (billing?.planId as BillingPlanId) ?? 'beta';
+    const planId: BillingPlanId = (billing?.planId as BillingPlanId) ?? 'trial';
     const hasBrandingUpdate =
       logoUrl !== undefined ||
       primaryColor !== undefined ||

@@ -57,7 +57,7 @@ export default async function handler(
     // POST: Create a new location
     if (req.method === 'POST') {
       const billing = await dataClient.getVendorBilling(vendor.id);
-      const planId: BillingPlanId = (billing?.planId as BillingPlanId) ?? 'beta';
+      const planId: BillingPlanId = (billing?.planId as BillingPlanId) ?? 'trial';
       const existingLocations = await dataClient.listVendorLocations(vendor.id, true);
       if (existingLocations.length >= 1 && !canUseMultipleLocations(planId)) {
         return res.status(403).json({

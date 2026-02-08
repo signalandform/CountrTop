@@ -79,7 +79,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (!vendorId) break;
         await dataClient.upsertVendorBilling(vendorId, {
           stripeSubscriptionId: null,
-          planId: 'beta',
+          planId: 'trial',
           status: 'canceled',
           currentPeriodEnd: null
         });

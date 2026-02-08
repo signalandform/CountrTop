@@ -37,7 +37,7 @@ export const getServerSideProps: GetServerSideProps<LocationsPageProps> = async 
         vendorName: 'Access Denied',
         vendor: null,
         locations: [],
-        planId: 'beta' as BillingPlanId,
+        planId: 'trial' as BillingPlanId,
         canAddMoreLocations: true,
         squarePaymentsActivated: null,
         error: authResult.error ?? 'Access denied'
@@ -55,7 +55,7 @@ export const getServerSideProps: GetServerSideProps<LocationsPageProps> = async 
         vendorName: 'Unknown',
         vendor: null,
         locations: [],
-        planId: 'beta' as BillingPlanId,
+        planId: 'trial' as BillingPlanId,
         canAddMoreLocations: true,
         squarePaymentsActivated: null,
         error: 'Vendor not found'
@@ -68,7 +68,7 @@ export const getServerSideProps: GetServerSideProps<LocationsPageProps> = async 
     dataClient.getSquarePaymentsActivationStatus(vendor.id)
   ]);
   const billing = billingResult;
-  const planId: BillingPlanId = (billing?.planId as BillingPlanId) ?? 'beta';
+  const planId: BillingPlanId = (billing?.planId as BillingPlanId) ?? 'trial';
 
   // Fetch locations using service role
   const supabaseUrl = process.env.SUPABASE_URL;

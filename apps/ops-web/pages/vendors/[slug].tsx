@@ -38,10 +38,11 @@ type Vendor = {
 };
 
 const PLAN_LABELS: Record<string, string> = {
-  beta: 'Beta',
   trial: 'Trial',
   starter: 'Starter',
-  pro: 'Pro'
+  pro: 'Pro',
+  kds_only: 'KDS only',
+  online_only: 'Online only'
 };
 
 type Props = {
@@ -423,7 +424,7 @@ export default function VendorDetailPage({ userEmail, vendorSlug }: Props) {
                 <h2>Feature Flags</h2>
                 <p className="flags-context">
                   Feature flags are available on Starter and Pro plans. This vendor is on{' '}
-                  <strong>{PLAN_LABELS[vendor.billing?.planId ?? 'beta'] ?? vendor.billing?.planId ?? 'Beta'}</strong>.
+                  <strong>{PLAN_LABELS[vendor.billing?.planId ?? 'trial'] ?? vendor.billing?.planId ?? 'Trial'}</strong>.
                 </p>
                 {flagsLoading ? (
                   <div className="flags-loading">

@@ -102,7 +102,7 @@ export default async function handler(
       const billing = billingByVendorId.get(v.id);
       return {
         ...v,
-        planId: billing?.plan_id ?? 'beta',
+        planId: billing?.plan_id ?? 'trial',
         billingStatus: billing?.status ?? null,
         currentPeriodEnd: billing?.current_period_end ?? null
       };

@@ -2140,7 +2140,7 @@ export class SupabaseDataClient implements DataClient {
     try {
       const payload: Database['public']['Tables']['vendor_billing']['Insert'] = {
         vendor_id: vendorId,
-        plan_id: data.planId ?? 'beta',
+        plan_id: data.planId ?? 'trial',
         ...(data.stripeCustomerId !== undefined && { stripe_customer_id: data.stripeCustomerId }),
         ...(data.stripeSubscriptionId !== undefined && { stripe_subscription_id: data.stripeSubscriptionId }),
         ...(data.status !== undefined && { status: data.status }),

@@ -2,8 +2,8 @@ export type AuthProvider = 'apple' | 'google';
 
 export type VendorStatus = 'active' | 'inactive';
 
-/** Billing plan IDs for vendor feature gating (Beta, Trial, Starter, Pro, KDS-only, Online-only). */
-export type BillingPlanId = 'beta' | 'trial' | 'starter' | 'pro' | 'kds_only' | 'online_only';
+/** Billing plan IDs for vendor feature gating (trial, starter, pro, kds_only, online_only). */
+export type BillingPlanId = 'trial' | 'starter' | 'pro' | 'kds_only' | 'online_only';
 
 // =============================================================================
 // POS Provider Types

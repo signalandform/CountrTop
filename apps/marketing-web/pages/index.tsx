@@ -79,7 +79,7 @@ export default function Home() {
           <div className="hero-content">
             <div className="hero-badge animate-fade-in">
               <span className="badge-dot" />
-              Bootstrapped • Private Beta • POS-Integrated SaaS
+              Bootstrapped • POS-Integrated SaaS
             </div>
             <h1 className="hero-title animate-fade-in animate-delay-1">
               Your restaurant.<br />
@@ -388,14 +388,14 @@ export default function Home() {
           <div className="pricing-cards">
             <div className="pricing-card">
               <div className="pricing-header">
-                <h3>Beta</h3>
+                <h3>Free trial</h3>
                 <div className="pricing-badge">Limited Time</div>
               </div>
               <div className="pricing-price">
                 <span className="price-amount">$0</span>
                 <span className="price-period">/month</span>
               </div>
-              <p className="pricing-description">Free while we&apos;re in beta. Lock in your spot and help shape the product.</p>
+              <p className="pricing-description">Start with a 14-day free trial. Choose a plan when you&apos;re ready.</p>
               <ul className="pricing-features">
                 <li><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" fill="#10B981"/></svg>KDS single screen: ticket flow New → In Progress → Ready → Complete, order recall</li>
                 <li><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" fill="#10B981"/></svg>Employee clock in/out</li>
@@ -416,9 +416,9 @@ export default function Home() {
                 <span className="price-amount">$49</span>
                 <span className="price-period">/month</span>
               </div>
-              <p className="pricing-description">Everything in Beta plus loyalty, branding, and more.</p>
+              <p className="pricing-description">Core features plus loyalty, branding, and more.</p>
               <ul className="pricing-features">
-                <li><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" fill="#64748B"/></svg>Everything in Beta</li>
+                <li><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" fill="#64748B"/></svg>Core features included</li>
                 <li><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" fill="#64748B"/></svg>Advanced analytics</li>
                 <li><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" fill="#64748B"/></svg>Customer loyalty program</li>
                 <li><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" fill="#64748B"/></svg>Scheduled orders</li>
@@ -512,8 +512,6 @@ export default function Home() {
                 <span>Bootstrapped</span>
                 <span>•</span>
                 <span>Founded 2025</span>
-                <span>•</span>
-                <span>Private Beta</span>
               </div>
             </div>
             <div className="footer-links">

@@ -46,7 +46,7 @@ export default async function handler(
     }
 
     const billing = await dataClient.getVendorBilling(vendor.id);
-    const planId: BillingPlanId = (billing?.planId as BillingPlanId) ?? 'beta';
+    const planId: BillingPlanId = (billing?.planId as BillingPlanId) ?? 'trial';
     if (!canUseCrm(planId)) {
       return res.status(403).json({
         success: false,

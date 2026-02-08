@@ -27,7 +27,6 @@ type BillingGetResponse =
   | { success: false; error: string };
 
 const PLAN_NAMES: Record<BillingPlanId, string> = {
-  beta: 'Beta',
   trial: 'Trial',
   starter: 'Starter',
   pro: 'Pro',
@@ -37,7 +36,6 @@ const PLAN_NAMES: Record<BillingPlanId, string> = {
 
 /** Per-month amounts in cents. For kds_only/online_only, per-location (use locationsCount for total). */
 const PLAN_AMOUNTS: Record<BillingPlanId, number> = {
-  beta: 0,
   trial: 0,
   starter: 4900,
   pro: 9900,
@@ -80,7 +78,7 @@ export default async function handler(
     }
 
     const billing = await dataClient.getVendorBilling(vendor.id);
-    const planId: BillingPlanId = (billing?.planId as BillingPlanId) ?? 'beta';
+    const planId: BillingPlanId = (billing?.planId as BillingPlanId) ?? 'trial';
     const status = billing?.status ?? 'active';
     const currentPeriodEnd = billing?.currentPeriodEnd ?? null;
     const trialEndsAt = billing?.trialEndsAt ?? null;
@@ -105,7 +103,7 @@ export default async function handler(
       }
     }
 
-    const canUpgrade = planId === 'beta' || planId === 'trial';
+    const canUpgrade = planId === 'trial';
 
     let locationsCount: number | null = null;
     if (planId === 'kds_only' || planId === 'online_only') {
@@ -124,7 +122,7 @@ export default async function handler(
         planId,
         planName: PLAN_NAMES[planId],
         amountCents: PLAN_AMOUNTS[planId],
-        interval: planId === 'beta' || planId === 'trial' ? null : ('month' as const),
+        interval: planId === 'trial' ? null : ('month' as const),
         status,
         currentPeriodEnd,
         trialEndsAt,

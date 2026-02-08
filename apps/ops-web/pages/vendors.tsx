@@ -8,7 +8,7 @@ import { requireOpsAdmin } from '../lib/auth';
 
 type POSProvider = 'square' | 'clover' | 'toast';
 
-type PlanId = 'beta' | 'trial' | 'starter' | 'pro';
+type PlanId = 'trial' | 'starter' | 'pro' | 'kds_only' | 'online_only';
 
 type Vendor = {
   id: string;
@@ -33,10 +33,11 @@ type Vendor = {
 };
 
 const PLAN_LABELS: Record<string, string> = {
-  beta: 'Beta',
   trial: 'Trial',
   starter: 'Starter',
-  pro: 'Pro'
+  pro: 'Pro',
+  kds_only: 'KDS only',
+  online_only: 'Online only'
 };
 
 const POS_LABELS: Record<POSProvider, string> = {
@@ -120,7 +121,7 @@ export default function VendorsPage({ userEmail }: Props) {
       return false;
     }
     // Plan filter
-    if (planFilter !== 'all' && (vendor.planId ?? 'beta') !== planFilter) {
+    if (planFilter !== 'all' && (vendor.planId ?? 'trial') !== planFilter) {
       return false;
     }
     // Search filter
@@ -143,7 +144,7 @@ export default function VendorsPage({ userEmail }: Props) {
 
   // Calculate plan counts for summary
   const planCounts = vendors.reduce((acc, v) => {
-    const plan = v.planId ?? 'beta';
+    const plan = v.planId ?? 'trial';
     acc[plan] = (acc[plan] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
@@ -212,12 +213,6 @@ export default function VendorsPage({ userEmail }: Props) {
               All plans ({vendors.length})
             </button>
             <button
-              className={`plan-tab ${planFilter === 'beta' ? 'active' : ''}`}
-              onClick={() => setPlanFilter('beta')}
-            >
-              Beta ({planCounts.beta ?? 0})
-            </button>
-            <button
               className={`plan-tab ${planFilter === 'trial' ? 'active' : ''}`}
               onClick={() => setPlanFilter('trial')}
             >
@@ -280,7 +275,7 @@ export default function VendorsPage({ userEmail }: Props) {
                       </td>
                       <td>
                         <span className="plan-badge">
-                          {PLAN_LABELS[vendor.planId ?? 'beta'] ?? vendor.planId ?? 'Beta'}
+                          {PLAN_LABELS[vendor.planId ?? 'trial'] ?? vendor.planId ?? 'Trial'}
                         </span>
                       </td>
                       <td>

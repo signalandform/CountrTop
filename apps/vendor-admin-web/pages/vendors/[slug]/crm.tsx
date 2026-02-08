@@ -33,7 +33,7 @@ export const getServerSideProps: GetServerSideProps<VendorCrmPageProps> = async 
         vendorSlug: slug ?? 'unknown',
         vendorName: 'Access Denied',
         vendor: null,
-        planId: 'beta' as BillingPlanId
+        planId: 'trial' as BillingPlanId
       }
     };
   }
@@ -41,7 +41,7 @@ export const getServerSideProps: GetServerSideProps<VendorCrmPageProps> = async 
   const dataClient = getServerDataClient();
   const vendor = slug ? await dataClient.getVendorBySlug(slug) : null;
   const billing = vendor ? await dataClient.getVendorBilling(vendor.id) : null;
-  const planId: BillingPlanId = (billing?.planId as BillingPlanId) ?? 'beta';
+  const planId: BillingPlanId = (billing?.planId as BillingPlanId) ?? 'trial';
 
   if (!canUseCrm(planId)) {
     return {

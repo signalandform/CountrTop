@@ -436,7 +436,7 @@ export class MockDataClient implements DataClient {
     const now = new Date().toISOString();
     return {
       vendorId,
-      planId: data.planId ?? 'beta',
+      planId: data.planId ?? 'trial',
       status: data.status ?? 'active',
       stripeCustomerId: data.stripeCustomerId ?? null,
       stripeSubscriptionId: data.stripeSubscriptionId ?? null,

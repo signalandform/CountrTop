@@ -46,7 +46,7 @@ export function VendorAdminLayout({
       .then((res) => res.json())
       .then((data) => {
         if (cancelled || !data.success || !data.data) return;
-        const id = (data.data.planId as BillingPlanId) ?? 'beta';
+        const id = (data.data.planId as BillingPlanId) ?? 'trial';
         setPlanId(id);
       })
       .catch(() => {});

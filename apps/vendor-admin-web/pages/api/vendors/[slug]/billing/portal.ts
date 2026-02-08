@@ -58,7 +58,7 @@ export default async function handler(
       customerId = customer.id;
       await dataClient.upsertVendorBilling(vendor.id, {
         stripeCustomerId: customerId,
-        planId: (billing?.planId as 'beta' | 'trial' | 'starter' | 'pro') ?? 'beta',
+        planId: (billing?.planId as 'trial' | 'starter' | 'pro' | 'kds_only' | 'online_only') ?? 'trial',
         status: billing?.status ?? 'active'
       });
     }

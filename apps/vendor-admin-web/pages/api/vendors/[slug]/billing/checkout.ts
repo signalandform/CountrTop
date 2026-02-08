@@ -107,7 +107,7 @@ export default async function handler(
       customerId = customer.id;
       await dataClient.upsertVendorBilling(vendor.id, {
         stripeCustomerId: customerId,
-        planId: billing?.planId ?? 'beta',
+        planId: billing?.planId ?? 'trial',
         status: billing?.status ?? 'active'
       });
     }

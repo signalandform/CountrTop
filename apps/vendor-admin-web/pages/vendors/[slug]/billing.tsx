@@ -174,18 +174,18 @@ export default function VendorBillingPage({ vendorSlug, vendorName, vendor }: Ve
   };
 
   const planFeatures: Record<BillingPlanId, string[]> = {
-    beta: [
+    trial: [
       'KDS: ticket flow New → In Progress → Ready → Complete, order recall',
       'Employee clock in/out',
       'Customer notifications when order is ready',
       'Basic analytics, single location, employee timesheets',
       'Custom pickup instructions, basic support',
       'Your storefront: yourname.countrtop.com',
-      'POS integration, email notifications'
+      'POS integration, email notifications',
+      'Full access during your 14-day free trial'
     ],
-    trial: ['Same as Beta during trial'],
     starter: [
-      'Everything in Beta',
+      'Core features included',
       'Advanced analytics',
       'Customer loyalty program',
       'Scheduled orders',
@@ -250,12 +250,6 @@ export default function VendorBillingPage({ vendorSlug, vendorName, vendor }: Ve
               <strong>14-day free trial.</strong> {trialDaysRemaining()} day{trialDaysRemaining() !== 1 ? 's' : ''} remaining. Ends {formatDate(billing.trialEndsAt!)}. Add a payment method and choose a plan to secure access before the trial ends.
             </div>
           )}
-          {billing?.planId === 'beta' && !billing?.isTrialExpired && (
-            <div className="trial-banner trial-active">
-              <strong>Your account is on a 14-day free trial.</strong> Add a payment method and choose a plan to secure access before the trial ends.
-            </div>
-          )}
-
           {loading ? (
             <p className="muted">Loading billing…</p>
           ) : (
