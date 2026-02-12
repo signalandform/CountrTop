@@ -8,6 +8,7 @@ This document lists all environment variables needed to run CountrTop.
 
 ```bash
 # Get from: https://app.supabase.com → Project Settings → API
+# Project reference ID (for MCP): Project Settings → General → Reference ID
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_ANON_KEY=eyJhbGc...
 SUPABASE_SERVICE_ROLE_KEY=eyJhbGc...  # Server-side only, never expose to client
