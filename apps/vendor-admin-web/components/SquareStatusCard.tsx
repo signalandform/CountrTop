@@ -236,7 +236,7 @@ const statusCardStyles = `
     background: var(--ct-bg-surface);
     border: 1px solid var(--color-border);
     border-radius: 20px;
-    padding: 28px;
+    padding: 40px 28px 28px 28px;
     margin-bottom: 32px;
   }
 

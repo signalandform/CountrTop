@@ -396,8 +396,31 @@ export default function LocationsPage({
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [dismissed24h, setDismissed24h] = useState(false);
+  const [pinStatus, setPinStatus] = useState<Record<string, boolean>>({});
 
   const hasOnlineOrderingEnabled = locations.some((l) => l.onlineOrderingEnabled);
+
+  const refreshPinStatus = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/vendors/${vendorSlug}/location-pins`);
+      const data = await response.json();
+      if (data.success && data.data) {
+        const status: Record<string, boolean> = {};
+        for (const loc of data.data) {
+          status[loc.locationId] = loc.hasPin;
+        }
+        setPinStatus(status);
+      }
+    } catch (err) {
+      console.error('Failed to fetch PIN status:', err);
+    }
+  }, [vendorSlug]);
+
+  useEffect(() => {
+    if (locations.length > 0) {
+      refreshPinStatus();
+    }
+  }, [locations.length, refreshPinStatus]);
 
   const handleSave = useCallback(async (locationId: string, updates: Partial<VendorLocation>) => {
     setSaving(true);
@@ -579,20 +602,26 @@ export default function LocationsPage({
                     <a href={`/vendors/${vendorSlug}/billing`} className="upgrade-link">Go to Billing</a>
                   </div>
                 )}
-                {locations.map(location => (
-                  <LocationCard
-                    key={location.id}
-                    location={location}
-                    isEditing={editingId === location.id}
-                    saving={saving}
-                    squarePaymentsActivated={squarePaymentsActivated}
-                    onEdit={() => setEditingId(location.id)}
-                    onCancel={() => setEditingId(null)}
-                    onSave={(updates) => handleSave(location.id, updates)}
-                    onToggleActive={() => handleToggleActive(location.id, location.isActive)}
-                    onSetPrimary={() => handleSetPrimary(location.id)}
-                  />
-                ))}
+                {locations.map(location => {
+                  const locId = location.externalLocationId ?? location.squareLocationId;
+                  return (
+                    <LocationCard
+                      key={location.id}
+                      location={location}
+                      isEditing={editingId === location.id}
+                      saving={saving}
+                      squarePaymentsActivated={squarePaymentsActivated}
+                      vendorSlug={vendorSlug}
+                      hasPin={pinStatus[locId] ?? false}
+                      onPinSet={refreshPinStatus}
+                      onEdit={() => setEditingId(location.id)}
+                      onCancel={() => setEditingId(null)}
+                      onSave={(updates) => handleSave(location.id, updates)}
+                      onToggleActive={() => handleToggleActive(location.id, location.isActive)}
+                      onSetPrimary={() => handleSetPrimary(location.id)}
+                    />
+                  );
+                })}
               </>
             )}
           </section>
@@ -828,6 +857,9 @@ type LocationCardProps = {
   isEditing: boolean;
   saving: boolean;
   squarePaymentsActivated: boolean | null;
+  vendorSlug: string;
+  hasPin: boolean;
+  onPinSet: () => void;
   onEdit: () => void;
   onCancel: () => void;
   onSave: (updates: Partial<VendorLocation>) => void;
@@ -840,6 +872,9 @@ function LocationCard({
   isEditing, 
   saving,
   squarePaymentsActivated,
+  vendorSlug,
+  hasPin,
+  onPinSet,
   onEdit, 
   onCancel, 
   onSave,
@@ -876,6 +911,44 @@ function LocationCard({
   const [closedByDay, setClosedByDay] = useState<boolean[]>(() =>
     deriveClosedByDay(location.onlineOrderingHoursJson)
   );
+
+  // KDS Location PIN
+  const locationId = location.externalLocationId ?? location.squareLocationId;
+  const [pinInput, setPinInput] = useState('');
+  const [pinSaving, setPinSaving] = useState(false);
+  const [pinError, setPinError] = useState<string | null>(null);
+
+  const handleSetPin = async () => {
+    const pin = pinInput.trim();
+    if (!pin) {
+      setPinError('PIN is required');
+      return;
+    }
+    if (!/^\d{4}$/.test(pin)) {
+      setPinError('PIN must be exactly 4 digits');
+      return;
+    }
+    setPinSaving(true);
+    setPinError(null);
+    try {
+      const response = await fetch(`/api/vendors/${vendorSlug}/location-pins`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ locationId, pin })
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || `Failed to set PIN (${response.status})`);
+      }
+      setPinInput('');
+      onPinSet();
+    } catch (err) {
+      setPinError(err instanceof Error ? err.message : 'Failed to set PIN');
+    } finally {
+      setPinSaving(false);
+    }
+  };
 
   useEffect(() => {
     if (!isEditing) {
@@ -959,6 +1032,39 @@ function LocationCard({
               ? 'Configured'
               : 'Not set'}
           </span>
+        </div>
+
+        {/* KDS Location PIN - always visible */}
+        <div className="pin-row">
+          <span className="label">KDS PIN:</span>
+          <span className={`pin-badge ${hasPin ? 'set' : 'unset'}`}>
+            {hasPin ? '✓ Set' : 'Not set'}
+          </span>
+          <div className="pin-input-row">
+            <input
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]{4}"
+              maxLength={4}
+              value={pinInput}
+              onChange={(e) => {
+                setPinInput(e.target.value.replace(/\D/g, '').slice(0, 4));
+                setPinError(null);
+              }}
+              placeholder={hasPin ? '••••' : '0000'}
+              className={`pin-input ${pinError ? 'error' : ''}`}
+              disabled={pinSaving}
+            />
+            <button
+              type="button"
+              onClick={handleSetPin}
+              className="btn-pin"
+              disabled={pinSaving || pinInput.length !== 4}
+            >
+              {pinSaving ? '...' : hasPin ? 'Update' : 'Set'}
+            </button>
+          </div>
+          {pinError && <div className="pin-error">{pinError}</div>}
         </div>
 
         {isEditing && (
@@ -1334,6 +1440,94 @@ function LocationCard({
           padding: 2px 8px;
           border-radius: 4px;
           font-size: 12px;
+        }
+
+        .pin-row {
+          display: flex;
+          flex-wrap: wrap;
+          align-items: center;
+          gap: 12px;
+          margin-top: 16px;
+          padding-top: 16px;
+          border-top: 1px solid var(--color-border);
+        }
+
+        .pin-row .label {
+          margin-bottom: 0;
+        }
+
+        .pin-badge {
+          padding: 4px 10px;
+          border-radius: 6px;
+          font-size: 12px;
+          font-weight: 600;
+        }
+
+        .pin-badge.set {
+          background: rgba(16, 185, 129, 0.18);
+          color: var(--color-success);
+        }
+
+        .pin-badge.unset {
+          background: var(--color-bg-warm);
+          color: var(--color-text-muted);
+        }
+
+        .pin-input-row {
+          display: flex;
+          gap: 8px;
+          align-items: center;
+        }
+
+        .pin-input {
+          width: 80px;
+          padding: 8px 12px;
+          border-radius: 8px;
+          border: 1px solid var(--color-border);
+          background: var(--ct-bg-surface);
+          color: var(--color-text);
+          font-size: 16px;
+          font-family: monospace;
+          text-align: center;
+          letter-spacing: 4px;
+        }
+
+        .pin-input:focus {
+          outline: none;
+          border-color: var(--color-primary);
+        }
+
+        .pin-input.error {
+          border-color: #f87171;
+        }
+
+        .btn-pin {
+          padding: 8px 16px;
+          border-radius: 8px;
+          border: none;
+          background: var(--color-primary);
+          color: white;
+          font-weight: 600;
+          font-size: 13px;
+          cursor: pointer;
+          transition: background 0.2s;
+          font-family: inherit;
+        }
+
+        .btn-pin:hover:not(:disabled) {
+          opacity: 0.9;
+        }
+
+        .btn-pin:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
+        .pin-error {
+          width: 100%;
+          font-size: 12px;
+          color: #f87171;
+          margin-top: 4px;
         }
 
         .edit-section {

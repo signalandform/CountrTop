@@ -33,13 +33,6 @@ export function VendorSettings({ vendor, vendorSlug, planId }: Props) {
   const [loyaltySettingsLoading, setLoyaltySettingsLoading] = useState(true);
   const [loyaltySettingsSaving, setLoyaltySettingsSaving] = useState(false);
 
-  // Location PINs state
-  const [locations, setLocations] = useState<Array<{ locationId: string; locationName: string; hasPin: boolean }>>([]);
-  const [locationsLoading, setLocationsLoading] = useState(true);
-  const [pinInputs, setPinInputs] = useState<Record<string, string>>({});
-  const [pinSaving, setPinSaving] = useState<Record<string, boolean>>({});
-  const [pinErrors, setPinErrors] = useState<Record<string, string>>({});
-
   // Employees (add/edit/delete)
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [employeesLoading, setEmployeesLoading] = useState(true);
@@ -133,24 +126,6 @@ export function VendorSettings({ vendor, vendorSlug, planId }: Props) {
   useEffect(() => {
     loadMfaFactors();
   }, []);
-
-  // Fetch locations and PIN status on mount
-  useEffect(() => {
-    const fetchLocations = async () => {
-      try {
-        const response = await fetch(`/api/vendors/${vendorSlug}/location-pins`);
-        const data = await response.json();
-        if (data.success) {
-          setLocations(data.data);
-        }
-      } catch (err) {
-        console.error('Failed to fetch locations:', err);
-      } finally {
-        setLocationsLoading(false);
-      }
-    };
-    fetchLocations();
-  }, [vendorSlug]);
 
   const fetchEmployees = async () => {
     setEmployeesLoading(true);
@@ -324,58 +299,6 @@ export function VendorSettings({ vendor, vendorSlug, planId }: Props) {
       alert('Failed to save loyalty settings. Please try again.');
     } finally {
       setLoyaltySettingsSaving(false);
-    }
-  };
-
-  const handleSetPin = async (locationId: string) => {
-    const pin = pinInputs[locationId]?.trim();
-    if (!pin) {
-      setPinErrors(prev => ({ ...prev, [locationId]: 'PIN is required' }));
-      return;
-    }
-
-    if (!/^\d{4}$/.test(pin)) {
-      setPinErrors(prev => ({ ...prev, [locationId]: 'PIN must be exactly 4 digits' }));
-      return;
-    }
-
-    setPinSaving(prev => ({ ...prev, [locationId]: true }));
-    setPinErrors(prev => ({ ...prev, [locationId]: '' }));
-
-    try {
-      const response = await fetch(`/api/vendors/${vendorSlug}/location-pins`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ locationId, pin })
-      });
-
-      let data: { success?: boolean; error?: string } = {};
-      try {
-        data = await response.json();
-      } catch {
-        data = { success: false, error: 'Invalid response from server' };
-      }
-      if (!response.ok) {
-        throw new Error(data.error || `Failed to set PIN (${response.status})`);
-      }
-      if (data.success) {
-        setLocations(prev =>
-          prev.map(loc => loc.locationId === locationId ? { ...loc, hasPin: true } : loc)
-        );
-        setPinInputs(prev => {
-          const next = { ...prev };
-          delete next[locationId];
-          return next;
-        });
-      } else {
-        throw new Error(data.error || 'Failed to set PIN');
-      }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to set PIN';
-      setPinErrors(prev => ({ ...prev, [locationId]: errorMessage }));
-    } finally {
-      setPinSaving(prev => ({ ...prev, [locationId]: false }));
     }
   };
 
@@ -739,60 +662,6 @@ export function VendorSettings({ vendor, vendorSlug, planId }: Props) {
               )}
             </div>
           )}
-
-          {/* KDS Location PINs Section */}
-          <div className="form-section">
-            <h2>🔑 KDS Location PINs</h2>
-            <p className="section-description">Set 4-digit PINs for each location to enable KDS access</p>
-
-            {locationsLoading ? (
-              <p className="muted">Loading locations...</p>
-            ) : locations.length === 0 ? (
-              <p className="muted">No locations found. Make sure POS access token is configured.</p>
-            ) : (
-              <div className="locations-grid">
-                {locations.map(location => (
-                  <div key={location.locationId} className="location-card">
-                    <div className="location-header">
-                      <div className="location-name">{location.locationName}</div>
-                      <span className={`pin-badge ${location.hasPin ? 'set' : 'unset'}`}>
-                        {location.hasPin ? '✓ PIN Set' : 'No PIN'}
-                      </span>
-                    </div>
-                    <div className="location-id">{location.locationId}</div>
-                    <div className="pin-row">
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        pattern="[0-9]{4}"
-                        maxLength={4}
-                        value={pinInputs[location.locationId] || ''}
-                        onChange={(e) => {
-                          const value = e.target.value.replace(/\D/g, '').slice(0, 4);
-                          setPinInputs(prev => ({ ...prev, [location.locationId]: value }));
-                          setPinErrors(prev => ({ ...prev, [location.locationId]: '' }));
-                        }}
-                        placeholder={location.hasPin ? '••••' : '0000'}
-                        className={`pin-input ${pinErrors[location.locationId] ? 'error' : ''}`}
-                        disabled={pinSaving[location.locationId]}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => handleSetPin(location.locationId)}
-                        className="btn-pin"
-                        disabled={pinSaving[location.locationId] || !pinInputs[location.locationId]}
-                      >
-                        {pinSaving[location.locationId] ? '...' : location.hasPin ? 'Update' : 'Set'}
-                      </button>
-                    </div>
-                    {pinErrors[location.locationId] && (
-                      <div className="pin-error">{pinErrors[location.locationId]}</div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
 
           {/* Employees Section */}
           <div className="form-section">
@@ -1466,112 +1335,6 @@ export function VendorSettings({ vendor, vendorSlug, planId }: Props) {
           font-weight: 600;
           font-size: 15px;
           cursor: default;
-        }
-
-        /* Location PINs */
-        .locations-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-          gap: 16px;
-        }
-
-        .location-card {
-          padding: 20px;
-          border-radius: 12px;
-          border: 1px solid var(--color-border);
-          background: var(--ct-bg-surface);
-        }
-
-        .location-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 8px;
-        }
-
-        .location-name {
-          font-size: 16px;
-          font-weight: 600;
-          color: var(--color-text);
-        }
-
-        .pin-badge {
-          padding: 4px 10px;
-          border-radius: 6px;
-          font-size: 12px;
-          font-weight: 600;
-        }
-
-        .pin-badge.set {
-          background: rgba(16, 185, 129, 0.18);
-          color: var(--color-success);
-        }
-
-        .pin-badge.unset {
-          background: var(--color-bg-warm);
-          color: var(--color-text-muted);
-        }
-
-        .location-id {
-          font-size: 12px;
-          font-family: monospace;
-          color: var(--color-text-muted);
-          margin-bottom: 16px;
-        }
-
-        .pin-row {
-          display: flex;
-          gap: 12px;
-        }
-
-        .pin-input {
-          flex: 1;
-          padding: 12px 16px;
-          border-radius: 8px;
-          border: 1px solid var(--color-border);
-          background: var(--ct-bg-surface);
-          color: var(--color-text);
-          font-size: 18px;
-          font-family: monospace;
-          text-align: center;
-          letter-spacing: 8px;
-        }
-
-        .pin-input:focus {
-          outline: none;
-          border-color: var(--color-primary);
-        }
-
-        .pin-input.error {
-          border-color: #f87171;
-        }
-
-        .btn-pin {
-          padding: 12px 20px;
-          border-radius: 8px;
-          border: none;
-          background: var(--color-primary);
-          color: white;
-          font-weight: 600;
-          font-size: 14px;
-          cursor: pointer;
-          transition: background 0.2s;
-          font-family: inherit;
-        }
-
-        .btn-pin:hover:not(:disabled) {
-          background: var(--color-primary-dark);
-        }
-
-        .btn-pin:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
-        }
-
-        .pin-error {
-          margin-top: 8px;
-          font-size: 12px;
-          color: #f87171;
         }
 
         /* Error Banner */
