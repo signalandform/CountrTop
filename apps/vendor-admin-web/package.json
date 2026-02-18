@@ -14,6 +14,7 @@
     "@countrtop/data": "workspace:*",
     "@countrtop/email": "workspace:*",
     "@countrtop/models": "workspace:*",
+    "@countrtop/pos-adapters": "workspace:*",
     "@countrtop/ui": "workspace:*",
     "@supabase/auth-helpers-nextjs": "^0.15.0",
     "@supabase/supabase-js": "^2.45.6",

@@ -281,6 +281,9 @@ importers:
       '@countrtop/monitoring':
         specifier: workspace:*
         version: link:../../packages/monitoring
+      '@countrtop/pos-adapters':
+        specifier: workspace:*
+        version: link:../../packages/pos-adapters
       '@countrtop/ui':
         specifier: workspace:*
         version: link:../../packages/ui
