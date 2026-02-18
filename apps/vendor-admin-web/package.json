@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@countrtop/api-client": "workspace:^",
+    "@countrtop/monitoring": "workspace:*",
     "@countrtop/data": "workspace:*",
     "@countrtop/email": "workspace:*",
     "@countrtop/models": "workspace:*",

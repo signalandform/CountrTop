@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@countrtop/data": "workspace:*",
+    "@countrtop/monitoring": "workspace:*",
     "@countrtop/email": "workspace:*",
     "@countrtop/models": "workspace:*",
     "@countrtop/ui": "workspace:*",

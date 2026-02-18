@@ -54,7 +54,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const redirectUri = getRedirectUri(req);
   const params = new URLSearchParams({
     client_id: clientId,
-    scope: SQUARE_SCOPES,
+    scope: process.env.SQUARE_OAUTH_SCOPES ?? SQUARE_SCOPES,
     session: 'false',
     state
   });

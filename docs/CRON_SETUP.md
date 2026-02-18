@@ -35,10 +35,11 @@ To change the schedule, update the `schedule` field using [cron syntax](https://
 Set these in your Vercel project settings:
 
 #### Required
-- `VERCEL_CRON_SECRET` - Secret token for authenticating cron requests (Vercel standard)
+- `VERCEL_CRON_SECRET` or `CRON_SECRET` - **Required in production.** Secret token for authenticating cron requests.
+  - Without this, cron endpoints (poll-square, process-webhooks) may be callable by anyone.
   - Generate a secure random string (e.g., `openssl rand -hex 32`)
   - Must be at least 16 characters
-  - Vercel automatically sends this in the `X-Vercel-Authorization` header
+  - Vercel automatically sends `VERCEL_CRON_SECRET` in the `X-Vercel-Authorization` header
   - **Alternative:** `CRON_SECRET` (custom) - also supported for flexibility
 
 #### Optional

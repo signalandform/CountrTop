@@ -11,12 +11,16 @@ export function middleware(request: NextRequest) {
   if (vendorSlug) {
     requestHeaders.set('x-vendor-slug', vendorSlug);
   }
+  const requestId = request.headers.get('x-request-id') ?? crypto.randomUUID();
+  requestHeaders.set('x-request-id', requestId);
 
-  return NextResponse.next({
+  const response = NextResponse.next({
     request: {
       headers: requestHeaders
     }
   });
+  response.headers.set('x-request-id', requestId);
+  return response;
 }
 
 export const config = {

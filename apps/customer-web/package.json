@@ -6,11 +6,13 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test": "vitest run"
   },
   "dependencies": {
     "@countrtop/data": "workspace:*",
     "@countrtop/email": "workspace:*",
+    "@countrtop/monitoring": "workspace:*",
     "@countrtop/models": "workspace:*",
     "@countrtop/pos-adapters": "workspace:*",
     "@supabase/supabase-js": "^2.45.6",
@@ -23,6 +25,7 @@
     "@types/node": "^20.14.9",
     "@types/react": "^18.3.5",
     "@types/react-dom": "^18.3.0",
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "vitest": "^2.0.0"
   }
 }

@@ -5,7 +5,7 @@
 
 CREATE TABLE IF NOT EXISTS vendor_location_pins (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  vendor_id uuid NOT NULL REFERENCES vendors(id) ON DELETE CASCADE,
+  vendor_id text NOT NULL REFERENCES vendors(id) ON DELETE CASCADE,
   location_id text NOT NULL,
   pin_hash text NOT NULL,
   created_at timestamptz NOT NULL DEFAULT now(),

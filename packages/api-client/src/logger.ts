@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import pino from 'pino';
 
 export type LogContext = {
@@ -134,9 +135,14 @@ export function getLogger(): Logger {
 /**
  * Creates a child logger with additional context.
  * Useful for request-scoped logging.
+ * Auto-generates requestId (correlation ID) when not provided.
  */
-export function createLogger(context: LogContext): Logger {
-  return getLogger().child(context);
+export function createLogger(context: LogContext = {}): Logger {
+  const ctx = { ...context };
+  if (!ctx.requestId) {
+    ctx.requestId = randomUUID();
+  }
+  return getLogger().child(ctx);
 }
 
 // Export default logger for convenience

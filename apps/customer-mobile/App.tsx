@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { WebView, WebViewMessageEvent } from 'react-native-webview';
 import * as WebBrowser from 'expo-web-browser';
 
+import { captureException } from '@countrtop/monitoring';
 import { validateEnvProduction, customerMobileEnvSchema } from '@countrtop/models';
 import { ErrorBoundary } from '@countrtop/ui';
 
@@ -221,8 +222,7 @@ export default function App() {
         if (__DEV__) {
           console.error('Application error:', error, errorInfo);
         }
-        // In production, send to monitoring service
-        // Example: Sentry.captureException(error, { contexts: { react: errorInfo } });
+        captureException(error, { extra: { componentStack: errorInfo?.componentStack } });
       }}
     >
       <SafeAreaView style={styles.container}>

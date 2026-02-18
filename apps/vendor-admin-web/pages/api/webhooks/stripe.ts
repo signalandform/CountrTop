@@ -1,7 +1,26 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import Stripe from 'stripe';
+import { createClient } from '@supabase/supabase-js';
+import { createLogger } from '@countrtop/api-client';
 import { getServerDataClient } from '../../../lib/dataClient';
 import type { BillingPlanId } from '@countrtop/models';
+
+const logger = createLogger({ requestId: 'stripe-webhook' });
+
+async function insertStripeWebhookEventIfNew(eventId: string): Promise<boolean> {
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return false;
+  const supabase = createClient(url, key, { auth: { persistSession: false } });
+  const { error } = await supabase
+    .from('stripe_webhook_events')
+    .insert({ event_id: eventId })
+    .select('event_id')
+    .single();
+  if (error?.code === '23505') return false; // duplicate
+  if (error) throw error;
+  return true;
+}
 
 export const config = {
   api: { bodyParser: false }
@@ -27,7 +46,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const secret = process.env.STRIPE_WEBHOOK_SECRET;
   if (!secret) {
-    console.error('STRIPE_WEBHOOK_SECRET is not set');
+    logger.error('STRIPE_WEBHOOK_SECRET is not set');
     return res.status(500).json({ error: 'Webhook not configured' });
   }
 
@@ -41,8 +60,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     event = Stripe.webhooks.constructEvent(rawBody, sig, secret);
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown';
-    console.error('Stripe webhook signature verification failed:', message);
+    logger.error('Stripe webhook signature verification failed', err);
     return res.status(400).json({ error: `Webhook Error: ${message}` });
+  }
+
+  // Idempotency: skip if already processed (Stripe retries)
+  try {
+    const isNew = await insertStripeWebhookEventIfNew(event.id);
+    if (!isNew) {
+      logger.info('Stripe webhook event already processed', { eventId: event.id });
+      return res.status(200).json({ received: true });
+    }
+  } catch (err) {
+    logger.error('Stripe webhook idempotency check failed', err);
+    return res.status(500).json({ error: 'Webhook handler failed' });
   }
 
   const dataClient = getServerDataClient();
@@ -54,7 +85,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const subscription = event.data.object as Stripe.Subscription;
         const vendorId = subscription.metadata?.vendor_id;
         if (!vendorId) {
-          console.warn('Stripe subscription missing vendor_id in metadata', { subscriptionId: subscription.id });
+          logger.warn('Stripe subscription missing vendor_id in metadata', { subscriptionId: subscription.id });
           break;
         }
         const plan = (subscription.metadata?.plan ?? 'starter') as BillingPlanId;
@@ -96,7 +127,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     return res.status(200).json({ received: true });
   } catch (error) {
-    console.error('Stripe webhook handler error:', error);
+    logger.error('Stripe webhook handler error', error);
     return res.status(500).json({ error: 'Webhook handler failed' });
   }
 }

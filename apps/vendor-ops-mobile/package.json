@@ -11,6 +11,9 @@
     "lint": "eslint . --ext .ts,.tsx"
   },
   "dependencies": {
+    "@countrtop/models": "workspace:*",
+    "@countrtop/monitoring": "workspace:*",
+    "@countrtop/ui": "workspace:*",
     "expo": "~54.0.30",
     "expo-image": "^3.0.11",
     "expo-status-bar": "~3.0.9",

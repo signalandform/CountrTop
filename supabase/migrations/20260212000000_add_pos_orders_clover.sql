@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS public.pos_orders (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   provider text NOT NULL,
   vendor_id text NOT NULL REFERENCES public.vendors(id) ON DELETE CASCADE,
-  vendor_location_id text NOT NULL REFERENCES public.vendor_locations(id) ON DELETE CASCADE,
+  vendor_location_id uuid NOT NULL REFERENCES public.vendor_locations(id) ON DELETE CASCADE,
   external_order_id text NOT NULL,
   external_location_id text NOT NULL,
   status text NOT NULL CHECK (status IN ('open', 'paid', 'completed', 'canceled')),

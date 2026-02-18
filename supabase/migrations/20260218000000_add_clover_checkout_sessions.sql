@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS public.clover_checkout_sessions (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   session_id text NOT NULL UNIQUE,
   vendor_id text NOT NULL REFERENCES public.vendors(id) ON DELETE CASCADE,
-  vendor_location_id text NOT NULL REFERENCES public.vendor_locations(id) ON DELETE CASCADE,
+  vendor_location_id uuid NOT NULL REFERENCES public.vendor_locations(id) ON DELETE CASCADE,
   ct_reference_id text NOT NULL,
   snapshot_json jsonb NOT NULL DEFAULT '{}'::jsonb,
   created_at timestamptz NOT NULL DEFAULT now()

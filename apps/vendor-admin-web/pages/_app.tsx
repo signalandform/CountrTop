@@ -1,6 +1,7 @@
 import type { AppProps } from 'next/app';
 import Head from 'next/head';
 
+import { captureException } from '@countrtop/monitoring';
 import { validateEnvProduction, vendorAdminWebEnvSchema } from '@countrtop/models';
 import { ErrorBoundary } from '@countrtop/ui';
 import '@countrtop/ui/theme.css';
@@ -28,8 +29,7 @@ export default function VendorAdminApp({ Component, pageProps }: AppProps) {
         if (process.env.NODE_ENV === 'development') {
           console.error('Application error:', error, errorInfo);
         }
-        // In production, send to monitoring service
-        // Example: Sentry.captureException(error, { contexts: { react: errorInfo } });
+        captureException(error, { extra: { componentStack: errorInfo?.componentStack } });
       }}
     >
       <Head>

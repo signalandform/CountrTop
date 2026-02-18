@@ -170,44 +170,7 @@ export default async function handler(
 
     const vendorId = `vendor_${slug}_${Date.now()}`;
 
-    const { error: vendorError } = await supabase.from('vendors').insert({
-      id: vendorId,
-      slug,
-      display_name: displayName,
-      pos_provider: posProvider,
-      square_location_id: '',
-      square_credential_ref: null,
-      status: 'active'
-    });
-
-    if (vendorError) {
-      console.error('Signup vendor insert failed:', vendorError);
-      return res.status(500).json({ ok: false, error: 'Could not create your store. Please try again.' });
-    }
-
-    const { error: intakeError } = await supabase.from('vendor_intake').insert({
-      vendor_id: vendorId,
-      locations_count: locationsCount,
-      needs_kds: needsKds,
-      needs_online_ordering: needsOnlineOrdering,
-      needs_scheduled_orders: needsScheduledOrders,
-      needs_loyalty: needsLoyalty,
-      needs_crm: needsCrm,
-      needs_time_tracking: needsTimeTracking
-    });
-
-    if (intakeError) {
-      console.error('Signup vendor_intake insert failed:', intakeError);
-      return res.status(500).json({ ok: false, error: 'Could not save your preferences. Please try again.' });
-    }
-
-    const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
-    await supabase.from('vendor_billing').insert({
-      vendor_id: vendorId,
-      plan_id: 'trial',
-      trial_ends_at: trialEndsAt
-    });
-
+    // 1. Create auth user first (nothing to rollback if this fails)
     const { data: authData, error: authError } = await supabase.auth.admin.createUser({
       email,
       password,
@@ -226,7 +189,53 @@ export default async function handler(
       return res.status(500).json({ ok: false, error: 'Could not create your account. Please try again.' });
     }
 
-    await supabase.from('vendors').update({ admin_user_id: authData.user.id }).eq('id', vendorId);
+    // 2. Vendor, intake, billing, update vendor. If any fails, delete auth user (compensating transaction)
+    try {
+      const { error: vendorError } = await supabase.from('vendors').insert({
+        id: vendorId,
+        slug,
+        display_name: displayName,
+        pos_provider: posProvider,
+        square_location_id: '',
+        square_credential_ref: null,
+        status: 'active',
+        admin_user_id: authData.user.id
+      });
+
+      if (vendorError) {
+        throw vendorError;
+      }
+
+      const { error: intakeError } = await supabase.from('vendor_intake').insert({
+        vendor_id: vendorId,
+        locations_count: locationsCount,
+        needs_kds: needsKds,
+        needs_online_ordering: needsOnlineOrdering,
+        needs_scheduled_orders: needsScheduledOrders,
+        needs_loyalty: needsLoyalty,
+        needs_crm: needsCrm,
+        needs_time_tracking: needsTimeTracking
+      });
+
+      if (intakeError) {
+        throw intakeError;
+      }
+
+      const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
+      const { error: billingError } = await supabase.from('vendor_billing').insert({
+        vendor_id: vendorId,
+        plan_id: 'trial',
+        trial_ends_at: trialEndsAt
+      });
+
+      if (billingError) {
+        throw billingError;
+      }
+    } catch (dbError) {
+      console.error('Signup DB insert failed:', dbError);
+      await supabase.auth.admin.deleteUser(authData.user.id);
+      return res.status(500).json({ ok: false, error: 'Could not create your store. Please try again.' });
+    }
 
     const redirect = `/login?signup=success&email=${encodeURIComponent(email)}`;
     return res.status(200).json({ ok: true, redirect });

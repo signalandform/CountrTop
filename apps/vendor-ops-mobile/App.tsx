@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 
+import { captureException } from '@countrtop/monitoring';
 import { OpsOrder, validateEnvProduction, vendorOpsMobileEnvSchema } from '@countrtop/models';
 import { ErrorBoundary, brandTheme } from '@countrtop/ui';
 
@@ -104,8 +105,7 @@ export default function VendorOpsApp() {
         if (__DEV__) {
           console.error('Application error:', error, errorInfo);
         }
-        // In production, send to monitoring service
-        // Example: Sentry.captureException(error, { contexts: { react: errorInfo } });
+        captureException(error, { extra: { componentStack: errorInfo?.componentStack } });
       }}
     >
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>

@@ -30,3 +30,9 @@ jobs:
 
       - name: Tests
         run: pnpm test
+
+      - name: Verify migrations
+        run: npx tsx scripts/verify-migrations.ts
+
+      - name: Build
+        run: pnpm build

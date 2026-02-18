@@ -1,6 +1,6 @@
 create table if not exists kds_pairing_tokens (
   id uuid primary key default gen_random_uuid(),
-  vendor_id uuid not null references vendors(id) on delete cascade,
+  vendor_id text not null references vendors(id) on delete cascade,
   location_id text,
   token_hash text not null unique,
   expires_at timestamptz not null,
