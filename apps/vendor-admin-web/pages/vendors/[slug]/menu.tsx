@@ -8,11 +8,14 @@ import { requireVendorAdmin } from '../../../lib/auth';
 import { getServerDataClient } from '../../../lib/dataClient';
 import { VendorAdminLayout } from '../../../components/VendorAdminLayout';
 import type { MenuItemWithAvailability } from '../../api/vendors/[slug]/menu';
+import { fetchMenuForVendor } from '../../../lib/fetchMenu';
 
 type MenuPageProps = {
   vendorSlug: string;
   vendorName: string;
   vendor: Vendor | null;
+  initialItems: MenuItemWithAvailability[];
+  menuError: string | null;
 };
 
 export const getServerSideProps: GetServerSideProps<MenuPageProps> = async (context) => {
@@ -28,7 +31,9 @@ export const getServerSideProps: GetServerSideProps<MenuPageProps> = async (cont
       props: {
         vendorSlug: slug ?? 'unknown',
         vendorName: 'Access Denied',
-        vendor: null
+        vendor: null,
+        initialItems: [],
+        menuError: authResult.error ?? null
       }
     };
   }
@@ -36,11 +41,25 @@ export const getServerSideProps: GetServerSideProps<MenuPageProps> = async (cont
   const dataClient = getServerDataClient();
   const vendor = slug ? await dataClient.getVendorBySlug(slug) : null;
 
+  let initialItems: MenuItemWithAvailability[] = [];
+  let menuError: string | null = null;
+
+  if (vendor) {
+    const menuResult = await fetchMenuForVendor(vendor, dataClient);
+    if (menuResult.success) {
+      initialItems = menuResult.items;
+    } else {
+      menuError = menuResult.error;
+    }
+  }
+
   return {
     props: {
       vendorSlug: slug ?? 'unknown',
       vendorName: vendor?.displayName ?? 'Unknown Vendor',
-      vendor: vendor ?? null
+      vendor: vendor ?? null,
+      initialItems,
+      menuError
     }
   };
 };
@@ -48,10 +67,10 @@ export const getServerSideProps: GetServerSideProps<MenuPageProps> = async (cont
 const formatPrice = (cents: number, currency: string) =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(cents / 100);
 
-export default function MenuPage({ vendorSlug, vendorName, vendor }: MenuPageProps) {
-  const [items, setItems] = useState<MenuItemWithAvailability[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+export default function MenuPage({ vendorSlug, vendorName, vendor, initialItems, menuError: initialMenuError }: MenuPageProps) {
+  const [items, setItems] = useState<MenuItemWithAvailability[]>(initialItems);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(initialMenuError);
   const [stockInputs, setStockInputs] = useState<Record<string, string>>({});
 
   const fetchMenu = useCallback(async () => {
@@ -74,10 +93,6 @@ export default function MenuPage({ vendorSlug, vendorName, vendor }: MenuPagePro
       setLoading(false);
     }
   }, [vendorSlug]);
-
-  useEffect(() => {
-    fetchMenu();
-  }, [fetchMenu]);
 
   const updateItem = useCallback(
     async (catalogItemId: string, variationId: string, patch: { available?: boolean; internalStockCount?: number | null }) => {
@@ -160,13 +175,22 @@ export default function MenuPage({ vendorSlug, vendorName, vendor }: MenuPagePro
       <VendorAdminLayout vendorSlug={vendorSlug} vendorName={vendorName} vendorLogoUrl={vendor.logoUrl}>
         <main className="page">
           <div className="container">
-            <h1 className="title">Menu</h1>
-            <p className="subtitle">Toggle availability and set internal stock count for each item. Unavailable items are hidden from your storefront.</p>
+            <div className="headerRow">
+              <div>
+                <h1 className="title">Menu</h1>
+                <p className="subtitle">Toggle availability and set internal stock count for each item. Unavailable items are hidden from your storefront.</p>
+              </div>
+              <button type="button" onClick={fetchMenu} disabled={loading} className="btnRefresh">
+                {loading ? 'Loading…' : 'Refresh'}
+              </button>
+            </div>
 
             {loading && <p className="status">Loading menu…</p>}
             {error && <p className="error">{error}</p>}
             {!loading && !error && items.length === 0 && (
-              <p className="status">No menu items found. Connect Square to sync your catalog.</p>
+              <p className="status">
+                No menu items found. Connect {vendor?.posProvider === 'clover' ? 'Clover' : 'Square'} to sync your catalog.
+              </p>
             )}
 
             {!loading && !error && items.length > 0 && (
@@ -227,6 +251,34 @@ export default function MenuPage({ vendorSlug, vendorName, vendor }: MenuPagePro
             .container {
               max-width: 800px;
               margin: 0 auto;
+            }
+
+            .headerRow {
+              display: flex;
+              justify-content: space-between;
+              align-items: flex-start;
+              gap: 16px;
+              margin-bottom: 8px;
+            }
+
+            .btnRefresh {
+              flex-shrink: 0;
+              padding: 8px 16px;
+              border-radius: 8px;
+              border: 1px solid var(--ct-card-border);
+              background: var(--ct-bg-surface);
+              color: var(--ct-text);
+              font-size: 14px;
+              cursor: pointer;
+            }
+
+            .btnRefresh:hover:not(:disabled) {
+              background: var(--ct-bg-surface-warm);
+            }
+
+            .btnRefresh:disabled {
+              opacity: 0.7;
+              cursor: not-allowed;
             }
 
             .title {
