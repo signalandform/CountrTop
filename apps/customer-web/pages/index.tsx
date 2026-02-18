@@ -78,6 +78,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req }) => 
     pickupInstructions: rawVendor.pickupInstructions ?? null,
     kdsActiveLimitTotal: rawVendor.kdsActiveLimitTotal ?? null,
     kdsActiveLimitCt: rawVendor.kdsActiveLimitCt ?? null,
+    posProvider: rawVendor.posProvider ?? 'square',
     // Theming fields
     logoUrl: rawVendor.logoUrl ?? null,
     primaryColor: rawVendor.primaryColor ?? null,
@@ -806,7 +807,9 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
                 <h1 className="title">{vendorName}</h1>
                 <p className="subtitle">Order fast, earn points, get notified when ready.</p>
                 <div className="badges">
-                  <span className="badge">Square checkout</span>
+                  <span className="badge">
+                    {vendor?.posProvider === 'clover' ? 'Clover checkout' : 'Square checkout'}
+                  </span>
                   <span className="badge">Pickup only</span>
                   {(hoursStatus?.isOpen === true || hoursStatus?.isOpen === false) && (
                     <span className={`badge badge-status ${hoursStatus.isOpen ? 'open' : 'closed'}`}>
@@ -1340,7 +1343,9 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
                   </span>
                 </label>
               )}
-              <p className="no-account-label">No account needed — Square Checkout</p>
+              <p className="no-account-label">
+                No account needed — {vendor?.posProvider === 'clover' ? 'Clover' : 'Square'} Checkout
+              </p>
               <button
                 onClick={handleCheckout}
                 disabled={
@@ -1352,7 +1357,7 @@ export default function CustomerHome({ vendorSlug, vendorName, vendor, locations
                 }
                 className="btn-checkout"
               >
-                {checkingOut ? 'Processing…' : 'Checkout with Square'}
+                {checkingOut ? 'Processing…' : `Checkout with ${vendor?.posProvider === 'clover' ? 'Clover' : 'Square'}`}
               </button>
               {checkoutError && <p className="error">{checkoutError}</p>}
             </div>
