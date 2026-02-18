@@ -1,6 +1,6 @@
 import Head from 'next/head';
 import type { GetServerSideProps } from 'next';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 
 import type { Vendor } from '@countrtop/models';
 
