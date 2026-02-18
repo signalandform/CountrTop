@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { MenuItem } from '@countrtop/models';
+import { getAdapterForLocation } from '@countrtop/pos-adapters';
 import { getServerDataClient } from '../../../../../lib/dataClient';
 import { requireVendorAdminApi } from '../../../../../lib/auth';
 import { getSquareClientForVendorOrLegacy } from '../../../../../lib/square';
@@ -54,6 +55,55 @@ export default async function handler(
 
   if (req.method === 'GET') {
     try {
+      const locations = await dataClient.listVendorLocations(vendor.id);
+      const primaryOrFirst = locations.find((l) => l.isPrimary) ?? locations[0];
+      const posProvider = primaryOrFirst?.posProvider ?? vendor.posProvider ?? 'square';
+
+      if (posProvider === 'clover') {
+        if (!primaryOrFirst) {
+          return res.status(503).json({
+            success: false,
+            error: 'No location configured. Connect Clover in Settings to sync your menu.'
+          });
+        }
+        const cloverEnv = (process.env.CLOVER_ENVIRONMENT ?? 'sandbox').toLowerCase() as 'sandbox' | 'production';
+        const cloverIntegration = await dataClient.getVendorCloverIntegration(vendor.id, cloverEnv);
+        if (!cloverIntegration?.accessToken) {
+          return res.status(503).json({
+            success: false,
+            error: 'Clover not connected. Connect Clover in Settings.'
+          });
+        }
+        const adapter = getAdapterForLocation(primaryOrFirst, vendor, { cloverIntegration });
+        if (!adapter) {
+          return res.status(503).json({ success: false, error: 'Clover catalog unavailable.' });
+        }
+        const locationId = primaryOrFirst.externalLocationId ?? primaryOrFirst.squareLocationId;
+        const canonicalItems = await adapter.fetchCatalog(locationId);
+        const rawItems: MenuItem[] = canonicalItems
+          .filter((item) => item.available && item.externalId)
+          .map((item) => ({
+            id: item.id,
+            name: item.name,
+            description: item.description,
+            price: item.priceCents,
+            currency: item.currency,
+            variationId: item.variationId ?? item.externalId,
+            imageUrl: item.imageUrl ?? null
+          }));
+        const availabilityList = await dataClient.getMenuAvailabilityForVendor(vendor.id);
+        const availabilityByItemId = new Map(availabilityList.map((a) => [a.catalogItemId, a]));
+        const items: MenuItemWithAvailability[] = rawItems.map((item) => {
+          const override = availabilityByItemId.get(item.id);
+          return {
+            ...item,
+            available: override === undefined ? true : override.available,
+            internalStockCount: override === undefined ? null : override.internalStockCount
+          };
+        });
+        return res.status(200).json({ success: true, items });
+      }
+
       const square = await getSquareClientForVendorOrLegacy(vendor, dataClient);
       const { result } = await square.catalogApi.listCatalog(undefined, 'ITEM,IMAGE');
 

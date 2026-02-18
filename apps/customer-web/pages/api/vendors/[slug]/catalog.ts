@@ -39,7 +39,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse<CatalogResponse
     const primaryOrFirst = locations.find((l) => l.isPrimary) ?? locations[0];
     const posProvider = primaryOrFirst?.posProvider ?? vendor.posProvider ?? 'square';
 
-    if (posProvider === 'clover' && primaryOrFirst) {
+    if (posProvider === 'clover') {
+      if (!primaryOrFirst) {
+        return res.status(503).json({
+          ok: false,
+          error: 'No location configured. Please connect Clover in Settings to sync your menu.'
+        });
+      }
       const cloverIntegration = await dataClient.getVendorCloverIntegration(vendor.id, cloverEnv);
       if (!cloverIntegration?.accessToken) {
         return res.status(503).json({ ok: false, error: 'Clover not connected. Please ask the restaurant to connect Clover.' });

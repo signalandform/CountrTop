@@ -71,6 +71,13 @@ export default async function handler(
   const merchantId = payload.MerchantId;
   const paymentId = payload.Id;
 
+  // Clover sends a verification code when configuring the webhook URL; log it so you can paste into the Dashboard
+  const verificationCode = (payload as { verificationCode?: string }).verificationCode;
+  if (verificationCode) {
+    logger.info('Clover HCO webhook verification code (paste into Clover Dashboard)', { verificationCode });
+    return res.status(200).json({ ok: true, status: 'ignored', reason: 'Verification' });
+  }
+
   if (!sessionId || !merchantId) {
     return res.status(200).json({ ok: true, status: 'ignored', reason: 'Missing Data or MerchantId' });
   }
