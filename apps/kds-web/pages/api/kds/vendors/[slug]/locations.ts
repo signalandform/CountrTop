@@ -27,6 +27,9 @@ export default async function handler(
     return res.status(405).json({ success: false, error: 'Method not allowed' });
   }
 
+  // Prevent caching - locations can change when vendor adds/edits locations
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+
   const slugParam = req.query.slug;
   const slug = Array.isArray(slugParam) ? slugParam[0] : slugParam;
 
@@ -72,11 +75,29 @@ export default async function handler(
 
     // If no locations in the table, fall back to primary vendor location
     if (!locationRows || locationRows.length === 0) {
-      // Return vendor's primary Square location as fallback
+      // Try vendor.square_location_id first, then vendor_square_integrations.selected_location_id
+      let fallbackLocationId = vendor.squareLocationId || null;
+      if (!fallbackLocationId) {
+        const { data: integrations } = await supabase
+          .from('vendor_square_integrations')
+          .select('square_environment, selected_location_id')
+          .eq('vendor_id', vendor.id)
+          .not('selected_location_id', 'is', null);
+        const prod = integrations?.find((r) => r.square_environment === 'production');
+        const sandbox = integrations?.find((r) => r.square_environment === 'sandbox');
+        fallbackLocationId = (prod?.selected_location_id ?? sandbox?.selected_location_id) ?? null;
+      }
+      if (!fallbackLocationId) {
+        return res.status(200).json({
+          success: true,
+          data: [],
+          vendorDisplayName: vendor.displayName
+        });
+      }
       return res.status(200).json({
         success: true,
         data: [{
-          id: vendor.squareLocationId,
+          id: fallbackLocationId,
           name: vendor.displayName,
           isPrimary: true,
           address: [vendor.addressLine1, vendor.city, vendor.state].filter(Boolean).join(', ')
