@@ -9,7 +9,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   invalid_state: 'Invalid or expired session. Please start over.',
   session_expired: 'Your session expired. Please try again.',
   email_exists: 'An account with this email already exists. Sign in instead.',
-  slug_conflict: 'Could not create your store. Please try again.',
+  slug_conflict: 'This business name is already registered. Please try a different name or sign in to your existing account.',
   missing_params: 'Missing required parameters. Please start over.',
   csrf_mismatch: 'Security validation failed. Please start over.',
   use_signup_form: 'Please create your account using the form below (choose your POS and needs first). Connect your POS in Settings after signup.'

@@ -72,15 +72,6 @@ function slugify(s: string): string {
     .replace(/-+/g, '-') || 'store';
 }
 
-function randomAlphanumeric(len: number): string {
-  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-  let out = '';
-  for (let i = 0; i < len; i++) {
-    out += chars[Math.floor(Math.random() * chars.length)];
-  }
-  return out;
-}
-
 export function decryptSignupCookie(encrypted: string): { email: string; password: string; businessName?: string } | null {
   try {
     const key = getEncryptionKey();
@@ -150,22 +141,14 @@ export default async function handler(
   try {
     const supabase = getSupabase();
     const displayName = businessName?.trim() || 'My Store';
-    const baseSlug = slugify(businessName || email.split('@')[0]);
-
-    let slug = baseSlug + '_' + randomAlphanumeric(4);
-    for (let attempt = 0; attempt < 3; attempt++) {
-      const { data: existing } = await supabase
-        .from('vendors')
-        .select('id')
-        .eq('slug', slug)
-        .maybeSingle();
-      if (!existing) break;
-      slug = baseSlug + '_' + randomAlphanumeric(6);
-    }
+    const slug = slugify(businessName || email.split('@')[0]);
 
     const { data: slugCheck } = await supabase.from('vendors').select('id').eq('slug', slug).maybeSingle();
     if (slugCheck) {
-      return res.status(400).json({ ok: false, error: 'Could not create your store. Please try again.' });
+      return res.status(400).json({
+        ok: false,
+        error: 'This business name is already registered. Please try a different name or sign in to your existing account.'
+      });
     }
 
     const vendorId = `vendor_${slug}_${Date.now()}`;
