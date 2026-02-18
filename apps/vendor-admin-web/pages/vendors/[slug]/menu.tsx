@@ -7,8 +7,7 @@ import type { Vendor } from '@countrtop/models';
 import { requireVendorAdmin } from '../../../lib/auth';
 import { getServerDataClient } from '../../../lib/dataClient';
 import { VendorAdminLayout } from '../../../components/VendorAdminLayout';
-import type { MenuItemWithAvailability } from '../../api/vendors/[slug]/menu';
-import { fetchMenuForVendor } from '../../../lib/fetchMenu';
+import { fetchMenuForVendor, type MenuItemWithAvailability } from '../../../lib/fetchMenu';
 
 type MenuPageProps = {
   vendorSlug: string;
