@@ -96,7 +96,7 @@ export default function Home() {
             </p>
             <div className="hero-cta animate-fade-in animate-delay-3">
               <a href="#contact" className="btn-primary btn-large">
-                Join the Waitlist
+                Book a Demo
                 <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
                   <path d="M4 10h12m0 0l-4-4m4 4l-4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
@@ -449,7 +449,7 @@ export default function Home() {
                 <li><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" fill="#10B981"/></svg>Your storefront: yourname.countrtop.com</li>
                 <li><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" fill="#10B981"/></svg>POS integration, email notifications</li>
               </ul>
-              <a href="#contact" className="btn-primary btn-full">Join Waitlist</a>
+              <a href="#contact" className="btn-primary btn-full">Book a Demo</a>
             </div>
             <div className="pricing-card pricing-card-future">
               <div className="pricing-header">
@@ -532,7 +532,7 @@ export default function Home() {
                   </div>
                   {error && <p className="form-error">{error}</p>}
                   <button type="submit" className="btn-primary btn-full" disabled={loading}>
-                    {loading ? 'Submitting...' : 'Join the Waitlist'}
+                    {loading ? 'Submitting...' : 'Book a Demo'}
                   </button>
                   <p className="form-note">No spam, ever. We&apos;ll only email you about CountrTop.</p>
                 </form>
@@ -819,7 +819,7 @@ export default function Home() {
           align-items: flex-start;
         }
         .phone-mockup {
-          width: 260px;
+          width: 300px;
           background: white;
           border-radius: 32px;
           padding: 12px;
@@ -1131,17 +1131,17 @@ export default function Home() {
           flex-direction: column;
           gap: 0;
           padding: 1rem;
-          background: #1a1a1a;
-          border: 1px solid rgba(255,255,255,0.1);
+          background: #fff;
+          border: 1px solid var(--color-border);
           border-radius: 12px;
-          box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+          box-shadow: 0 4px 12px rgba(0,0,0,0.08);
         }
         .kds-ticket-online {
           border-left: 4px solid #34c759;
         }
         .kds-ticket-preparing {
-          background: rgba(255, 159, 10, 0.08);
-          border-color: rgba(255, 159, 10, 0.2);
+          background: rgba(255, 159, 10, 0.06);
+          border-color: rgba(255, 159, 10, 0.25);
         }
         .kds-ticket-header {
           display: flex;
@@ -1161,7 +1161,7 @@ export default function Home() {
         .kds-menu-btn {
           background: transparent;
           border: none;
-          color: rgba(255,255,255,0.6);
+          color: var(--color-text-muted);
           font-size: 1.25rem;
           cursor: default;
           padding: 0 4px;
@@ -1179,7 +1179,7 @@ export default function Home() {
           flex-direction: column;
           gap: 4px;
           padding: 6px 0;
-          border-bottom: 1px solid rgba(255,255,255,0.05);
+          border-bottom: 1px solid rgba(0,0,0,0.06);
         }
         .kds-line-item:last-child {
           border-bottom: none;
@@ -1206,7 +1206,7 @@ export default function Home() {
         .kds-item-name {
           font-size: 14px;
           font-weight: 600;
-          color: #fff;
+          color: #000;
         }
         .kds-modifiers-list {
           display: flex;
@@ -1220,8 +1220,8 @@ export default function Home() {
           font-size: 11px;
         }
         .kds-modifier-extra {
-          background: rgba(52, 199, 89, 0.2);
-          color: #6ee7b7;
+          background: rgba(52, 199, 89, 0.15);
+          color: #0d9488;
         }
         .kds-ticket-footer {
           display: flex;
@@ -1231,7 +1231,7 @@ export default function Home() {
           gap: 0.5rem;
           margin-top: 0.5rem;
           padding-top: 0.5rem;
-          border-top: 1px solid rgba(255,255,255,0.05);
+          border-top: 1px solid rgba(0,0,0,0.06);
         }
         .kds-footer-left {
           display: flex;
@@ -1241,7 +1241,7 @@ export default function Home() {
         .kds-shortcode {
           font-size: 12px;
           font-weight: 600;
-          color: rgba(255,255,255,0.7);
+          color: var(--color-text-muted);
         }
         .kds-badge-row {
           display: flex;
@@ -1279,7 +1279,7 @@ export default function Home() {
         }
         .kds-pickup-label {
           font-size: 12px;
-          color: rgba(255,255,255,0.6);
+          color: var(--color-text-muted);
         }
         .kds-status-readout {
           font-size: 12px;
@@ -1661,7 +1661,7 @@ export default function Home() {
             justify-content: center;
           }
           .phone-mockup {
-            width: 220px;
+            width: 260px;
           }
           .wins-grid {
             grid-template-columns: repeat(2, 1fr);
