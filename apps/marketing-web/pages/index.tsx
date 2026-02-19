@@ -125,26 +125,38 @@ export default function Home() {
           <div className="hero-visual animate-fade-in animate-delay-5">
           <div className="phone-mockup">
             <div className="phone-screen">
-              <div className="mockup-header">
-                <div className="mockup-logo">🍕 Sal&apos;s Pizza</div>
-                <div className="mockup-cart">🛒 2</div>
-              </div>
-              <div className="mockup-items">
-                <div className="mockup-item">
-                  <div className="item-img" />
-                  <div className="item-info">
-                    <div className="item-name">Margherita Pizza</div>
-                    <div className="item-price">$14.99</div>
-                  </div>
-                  <button className="item-add">+</button>
+              <div className="mockup-hero">
+                <p className="mockup-eyebrow">CountrTop</p>
+                <h2 className="mockup-title">Sal&apos;s Pizza</h2>
+                <p className="mockup-subtitle">Order fast, earn points, get notified when ready.</p>
+                <div className="mockup-badges">
+                  <span className="mockup-badge">Square checkout</span>
+                  <span className="mockup-badge">Pickup only</span>
+                  <span className="mockup-badge mockup-badge-open">Open now</span>
                 </div>
-                <div className="mockup-item">
-                  <div className="item-img" style={{ background: '#FFE4B5' }} />
-                  <div className="item-info">
-                    <div className="item-name">Garlic Knots (6)</div>
-                    <div className="item-price">$6.99</div>
+              </div>
+              <div className="mockup-menu-grid">
+                <div className="mockup-menu-card">
+                  <div className="mockup-menu-image"><span className="mockup-placeholder">🍕</span></div>
+                  <div className="mockup-menu-info">
+                    <div className="mockup-menu-row">
+                      <h3>Margherita Pizza</h3>
+                      <span className="mockup-price">$14.99</span>
+                    </div>
+                    <p className="mockup-muted">Fresh mozzarella, basil, tomato sauce</p>
                   </div>
-                  <button className="item-add">+</button>
+                  <button className="mockup-btn-add">Add to cart</button>
+                </div>
+                <div className="mockup-menu-card">
+                  <div className="mockup-menu-image" style={{ background: '#FFE4B5' }}><span className="mockup-placeholder">🥖</span></div>
+                  <div className="mockup-menu-info">
+                    <div className="mockup-menu-row">
+                      <h3>Garlic Knots (6)</h3>
+                      <span className="mockup-price">$6.99</span>
+                    </div>
+                    <p className="mockup-muted">Fresh and delicious.</p>
+                  </div>
+                  <button className="mockup-btn-add">Add to cart</button>
                 </div>
               </div>
             </div>
@@ -162,6 +174,16 @@ export default function Home() {
               <svg viewBox="0 0 100 40" fill="currentColor">
                 <rect x="10" y="10" width="20" height="20" rx="4" />
                 <text x="40" y="26" fontSize="14" fontWeight="600">Square</text>
+              </svg>
+              <span className="pos-status supported">Supported now</span>
+            </div>
+            <div className="pos-logo">
+              <svg viewBox="0 0 100 40" fill="currentColor">
+                <circle cx="14" cy="12" r="6" />
+                <circle cx="26" cy="12" r="6" />
+                <circle cx="14" cy="24" r="6" />
+                <circle cx="26" cy="24" r="6" />
+                <text x="42" y="26" fontSize="14" fontWeight="600">Clover</text>
               </svg>
               <span className="pos-status supported">Supported now</span>
             </div>
@@ -189,7 +211,7 @@ export default function Home() {
               <span className="win-icon">🔌</span>
               <div className="win-content">
                 <h4>POS Integration as Moat</h4>
-                <p>Deep Square integration supported now. More POS integrations on the way. Menu syncs automatically and orders flow into your existing systems.</p>
+                <p>Square and Clover integrations supported now. More POS integrations on the way. Menu syncs automatically and orders flow into your existing systems.</p>
               </div>
             </div>
             <div className="win-item">
@@ -251,18 +273,40 @@ export default function Home() {
                 <li>Offline support</li>
               </ul>
               <div className="kds-preview">
-                <div className="kds-preview-card">
-                  <div className="kds-preview-left">
-                    <div className="kds-preview-timer">2:34</div>
-                    <div className="kds-preview-label">Order A1B2C3</div>
-                    <span className="kds-preview-badge" data-source="online">Online</span>
+                <div className="kds-ticket-card kds-ticket-online kds-ticket-preparing">
+                  <div className="kds-ticket-header">
+                    <div className="kds-age-timer kds-age-green">2:34</div>
+                    <button type="button" className="kds-menu-btn" aria-label="Menu">⋮</button>
                   </div>
-                  <div className="kds-preview-middle">
-                    <div className="kds-preview-line"><span className="kds-preview-qty">2×</span> Burger</div>
-                    <div className="kds-preview-line"><span className="kds-preview-qty">1×</span> Fries <span className="kds-preview-mod">+ Extra salt</span></div>
+                  <div className="kds-ticket-body">
+                    <div className="kds-line-items-list">
+                      <div className="kds-line-item">
+                        <div className="kds-item-header">
+                          <span className="kds-quantity-box">2</span>
+                          <span className="kds-item-name">Burger</span>
+                        </div>
+                      </div>
+                      <div className="kds-line-item">
+                        <div className="kds-item-header">
+                          <span className="kds-quantity-box">1</span>
+                          <span className="kds-item-name">Fries</span>
+                        </div>
+                        <div className="kds-modifiers-list">
+                          <span className="kds-modifier kds-modifier-extra">+ Extra salt</span>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <div className="kds-preview-right">
-                    <button type="button" className="kds-preview-btn" disabled>Ready</button>
+                  <div className="kds-ticket-footer">
+                    <div className="kds-footer-left">
+                      <span className="kds-shortcode">#A1B2</span>
+                      <div className="kds-badge-row">
+                        <span className="kds-source-badge" data-source="online">Online</span>
+                        <span className="kds-status-badge kds-preparing">🔥 Cooking</span>
+                      </div>
+                      <span className="kds-pickup-label">Order A1B2</span>
+                    </div>
+                    <span className="kds-status-readout">In Progress</span>
                   </div>
                 </div>
               </div>
@@ -275,7 +319,7 @@ export default function Home() {
                 </svg>
               </div>
               <h3>POS Integration</h3>
-              <p>Connect to Square now. More integrations on the way.</p>
+              <p>Connect to Square or Clover. More integrations on the way.</p>
             </div>
             <div className="feature-card">
               <div className="feature-icon">
@@ -333,7 +377,7 @@ export default function Home() {
               <div className="step-number">1</div>
               <div className="step-content">
                 <h3>Connect Your POS</h3>
-                <p>Link your Square account in a few clicks. More integrations on the way.</p>
+                <p>Link your Square or Clover account in a few clicks. More integrations on the way.</p>
               </div>
               <div className="step-visual">
                 <div className="connect-visual">
@@ -784,71 +828,112 @@ export default function Home() {
           align-self: flex-end;
         }
         .phone-screen {
-          background: #FAFAFA;
+          background: var(--color-bg-primary, #FAFAFA);
           border-radius: 24px;
           padding: 1rem;
-          min-height: 400px;
+          min-height: 420px;
         }
-        .mockup-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
+        .mockup-hero {
           margin-bottom: 1rem;
         }
-        .mockup-logo {
+        .mockup-eyebrow {
+          text-transform: uppercase;
+          letter-spacing: 2px;
+          font-size: 9px;
+          color: var(--color-primary);
+          margin: 0 0 4px;
+        }
+        .mockup-title {
+          font-size: 14px;
           font-weight: 700;
-          font-size: 0.875rem;
+          margin: 0 0 4px;
+          background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-accent) 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
         }
-        .mockup-cart {
-          background: var(--color-primary);
-          color: white;
-          padding: 0.25rem 0.75rem;
-          border-radius: 100px;
-          font-size: 0.75rem;
-          font-weight: 600;
+        .mockup-subtitle {
+          font-size: 10px;
+          color: var(--color-text-muted);
+          margin: 0 0 8px;
         }
-        .mockup-items {
+        .mockup-badges {
+          display: flex;
+          gap: 4px;
+          flex-wrap: wrap;
+        }
+        .mockup-badge {
+          background: var(--color-bg-warm);
+          border: 1px solid var(--color-border);
+          color: var(--color-text-muted);
+          padding: 3px 8px;
+          border-radius: 12px;
+          font-size: 9px;
+        }
+        .mockup-badge-open {
+          background: rgba(16, 185, 129, 0.15);
+          border-color: rgba(16, 185, 129, 0.35);
+          color: #0f766e;
+        }
+        .mockup-menu-grid {
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 10px;
+        }
+        .mockup-menu-card {
+          background: white;
+          border: 1px solid var(--color-border);
+          border-radius: 12px;
+          padding: 12px;
           display: flex;
           flex-direction: column;
-          gap: 0.75rem;
+          gap: 8px;
         }
-        .mockup-item {
+        .mockup-menu-image {
+          height: 56px;
+          border-radius: 8px;
+          background: #FFF0E5;
           display: flex;
           align-items: center;
-          gap: 0.75rem;
-          background: white;
-          padding: 0.75rem;
-          border-radius: 12px;
+          justify-content: center;
         }
-        .item-img {
-          width: 48px;
-          height: 48px;
-          background: #FFF0E5;
-          border-radius: 8px;
+        .mockup-placeholder {
+          font-size: 20px;
         }
-        .item-info {
+        .mockup-menu-info {
           flex: 1;
         }
-        .item-name {
+        .mockup-menu-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          gap: 4px;
+        }
+        .mockup-menu-row h3 {
+          font-size: 11px;
           font-weight: 600;
-          font-size: 0.875rem;
+          margin: 0;
         }
-        .item-price {
+        .mockup-price {
+          font-weight: 700;
+          font-size: 11px;
+          color: var(--color-accent);
+        }
+        .mockup-muted {
+          font-size: 9px;
           color: var(--color-text-muted);
-          font-size: 0.8125rem;
+          margin: 0;
+          line-height: 1.3;
         }
-        .item-add {
-          width: 28px;
-          height: 28px;
+        .mockup-btn-add {
+          padding: 6px 12px;
           background: var(--color-primary);
           color: white;
           border: none;
           border-radius: 8px;
-          font-size: 1.25rem;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          cursor: pointer;
+          font-size: 10px;
+          font-weight: 600;
+          cursor: default;
         }
 
         /* Social Proof */
@@ -1041,78 +1126,165 @@ export default function Home() {
           padding-top: 1.5rem;
           border-top: 1px solid var(--color-border);
         }
-        .kds-preview-card {
+        .kds-ticket-card {
           display: flex;
-          align-items: stretch;
-          gap: 1rem;
+          flex-direction: column;
+          gap: 0;
           padding: 1rem;
-          background: white;
-          border: 1px solid var(--color-border);
+          background: #1a1a1a;
+          border: 1px solid rgba(255,255,255,0.1);
           border-radius: 12px;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+          box-shadow: 0 4px 12px rgba(0,0,0,0.2);
         }
-        .kds-preview-left {
+        .kds-ticket-online {
+          border-left: 4px solid #34c759;
+        }
+        .kds-ticket-preparing {
+          background: rgba(255, 159, 10, 0.08);
+          border-color: rgba(255, 159, 10, 0.2);
+        }
+        .kds-ticket-header {
           display: flex;
-          flex-direction: column;
-          gap: 0.25rem;
-          min-width: 80px;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 0.5rem;
         }
-        .kds-preview-timer {
+        .kds-age-timer {
           font-family: var(--font-display);
-          font-weight: 700;
+          font-weight: 800;
           font-size: 1.25rem;
-          color: var(--color-success);
+          font-variant-numeric: tabular-nums;
         }
-        .kds-preview-label {
-          font-size: 0.875rem;
-          font-weight: 600;
-          color: var(--color-text);
+        .kds-age-green {
+          color: #34c759;
         }
-        .kds-preview-badge {
-          display: inline-block;
-          padding: 0.2rem 0.5rem;
-          border-radius: 6px;
-          font-size: 0.7rem;
-          font-weight: 600;
+        .kds-menu-btn {
+          background: transparent;
+          border: none;
+          color: rgba(255,255,255,0.6);
+          font-size: 1.25rem;
+          cursor: default;
+          padding: 0 4px;
         }
-        .kds-preview-badge[data-source="online"] {
-          background: rgba(59, 130, 246, 0.15);
-          color: #2563eb;
+        .kds-ticket-body {
+          padding: 0.5rem 0;
         }
-        .kds-preview-middle {
-          flex: 1;
+        .kds-line-items-list {
           display: flex;
           flex-direction: column;
-          gap: 0.35rem;
-          font-size: 0.875rem;
-          color: var(--color-text);
+          gap: 4px;
         }
-        .kds-preview-line {
+        .kds-line-item {
           display: flex;
-          align-items: baseline;
-          gap: 0.35rem;
+          flex-direction: column;
+          gap: 4px;
+          padding: 6px 0;
+          border-bottom: 1px solid rgba(255,255,255,0.05);
         }
-        .kds-preview-qty {
-          font-weight: 700;
-          min-width: 2ch;
+        .kds-line-item:last-child {
+          border-bottom: none;
         }
-        .kds-preview-mod {
-          font-size: 0.8rem;
-          color: var(--color-text-muted);
-        }
-        .kds-preview-right {
+        .kds-item-header {
           display: flex;
           align-items: center;
+          gap: 12px;
         }
-        .kds-preview-btn {
-          padding: 0.5rem 1rem;
-          border-radius: 8px;
-          border: none;
-          background: var(--color-primary);
-          color: white;
+        .kds-quantity-box {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          min-width: 32px;
+          height: 32px;
+          padding: 0 6px;
+          background: #000;
+          border-radius: 6px;
+          font-size: 16px;
+          font-weight: 800;
+          color: #fff;
+          font-variant-numeric: tabular-nums;
+        }
+        .kds-item-name {
+          font-size: 14px;
           font-weight: 600;
-          font-size: 0.875rem;
-          cursor: default;
+          color: #fff;
+        }
+        .kds-modifiers-list {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 4px;
+          margin-left: 44px;
+        }
+        .kds-modifier {
+          padding: 2px 8px;
+          border-radius: 6px;
+          font-size: 11px;
+        }
+        .kds-modifier-extra {
+          background: rgba(52, 199, 89, 0.2);
+          color: #6ee7b7;
+        }
+        .kds-ticket-footer {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-end;
+          flex-wrap: wrap;
+          gap: 0.5rem;
+          margin-top: 0.5rem;
+          padding-top: 0.5rem;
+          border-top: 1px solid rgba(255,255,255,0.05);
+        }
+        .kds-footer-left {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+        .kds-shortcode {
+          font-size: 12px;
+          font-weight: 600;
+          color: rgba(255,255,255,0.7);
+        }
+        .kds-badge-row {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 4px;
+          align-items: center;
+        }
+        .kds-source-badge {
+          display: inline-block;
+          padding: 2px 8px;
+          border-radius: 6px;
+          font-size: 10px;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+        .kds-source-badge[data-source="online"] {
+          background: rgba(52, 199, 89, 0.2);
+          color: #34c759;
+          border: 1px solid rgba(52, 199, 89, 0.3);
+        }
+        .kds-status-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 2px;
+          padding: 2px 8px;
+          border-radius: 6px;
+          font-size: 10px;
+          font-weight: 600;
+        }
+        .kds-status-badge.kds-preparing {
+          background: linear-gradient(135deg, rgba(255, 159, 10, 0.2) 0%, rgba(255, 69, 58, 0.2) 100%);
+          color: #ff9f0a;
+          border: 1px solid rgba(255, 159, 10, 0.3);
+        }
+        .kds-pickup-label {
+          font-size: 12px;
+          color: rgba(255,255,255,0.6);
+        }
+        .kds-status-readout {
+          font-size: 12px;
+          font-weight: 600;
+          color: #ff9f0a;
         }
 
         /* How It Works */
